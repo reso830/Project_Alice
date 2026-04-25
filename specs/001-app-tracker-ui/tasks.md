@@ -158,6 +158,24 @@ is covered by the foundational model tests.
 
 ---
 
+## Phase 9: Cosmetic Corrections (Post-Phase 8)
+
+**Purpose**: Fix visual and interaction gaps identified during QA after Phase 8 sign-off. All tasks reference the corrected requirements in FR-001, FR-005, FR-007, FR-016, FR-017, FR-028, FR-029.
+
+- [X] T055 [P] [US5] Navbar app title — add "AppTracker" text label alongside the indigo logo mark in `src/components/Navbar.js`; add `.navbar__logo-mark` and `.navbar__logo-text` CSS rules to `src/styles/main.css`
+- [X] T056 [P] [US1] Equalize pill heights — update `.id-pill` in `src/styles/main.css` to `display: inline-flex; padding: 3px 9px; font-size: 10px; line-height: 1.2` so it matches `.status-badge` height exactly
+- [X] T057 [P] [US1] Card detail labels — add `createDetailCell(label, valueEl, modifier)` helper in `src/components/Card.js`; wrap Responsibilities, Skills, and Salary values in `div.card-detail.card-detail--{resp|skills|salary}` containing a `span.card-detail__label`; add `.card-detail` and `.card-detail__label` CSS to `src/styles/main.css`
+- [X] T058 [P] [US1] Remove URL from card face — remove `url` element from `Card.js` rowThree; update `.card__row--details` grid from 4 to 3 columns in all breakpoints in `src/styles/main.css`; remove `.url-display` rule (FR-005, FR-016)
+- [X] T059 [P] [US1] Responsibilities font size — increase `.responsibilities, .salary, .skills` font-size from `9px` to `11px` in `src/styles/main.css`
+- [X] T060 [P] [US1] Toolbar heading — update `src/components/Toolbar.js` to render a `span.toolbar__label` ("All Applications") and a separate `span.count-badge` (number only); update `updateCount` to set number only; add `.toolbar__label` and `display: flex` to `.toolbar` in `src/styles/main.css` (FR-017)
+- [X] T061 [US4] Fix navbar sticky — remove the intermediate `<div>` wrapper around the navbar in `src/main.js`; append the `<header class="navbar">` element directly to `document.body` so `position: sticky` is not constrained by a same-height parent (FR-029)
+- [X] T062 [US2] Fix mobile card tap — replace `pointerdown`/`pointerup` distance-check handlers in `src/components/Card.js` with a single `click` event listener; the browser handles tap-vs-scroll disambiguation natively on touch devices (FR-007)
+- [X] T063 [P] [US4] Compat bar mobile order — change mobile CSS `order` of `.card__row--middle .compat-bar` from 4 to 7; assign orders: `.card-detail--resp` = 4, `.card-detail--skills` = 5, `.card-detail--salary` = 6, compat-bar = 7, `.card__actions` = 8 in `src/styles/main.css` (FR-028)
+
+**Checkpoint**: `npm run lint` → zero errors; `npm run test:run` → 20/20 pass; verify in browser: AppTracker title visible, pills aligned, card labels present, no URL on card, toolbar shows "All Applications" + number pill, navbar sticky on mobile scroll, mobile tap opens bottom sheet, compat bar above actions on mobile
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
