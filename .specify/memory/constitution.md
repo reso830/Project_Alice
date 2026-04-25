@@ -18,6 +18,16 @@ Templates requiring updates:
 - .specify/templates/tasks-template.md - updated
 - .specify/templates/commands/*.md - not applicable; directory absent
 Follow-up TODOs: none
+
+Amendment 1.0.1 — 2026-04-25
+Reason: Replaced "created date" required field with last_status_update. A single
+temporal field set on entry creation and on every status change is sufficient for v1
+and avoids managing two date fields before an edit form exists.
+Modified principles:
+- I. User-First Application Tracking — required date field updated
+- IV. Practical User Experience — "date applied" reference updated
+Removed from optional fields: application date (consolidated into last_status_update)
+Templates updated: .specify/templates/plan-template.md (constitution check bullet)
 -->
 
 # Application Tracker Constitution
@@ -27,9 +37,10 @@ Follow-up TODOs: none
 ### I. User-First Application Tracking
 The system MUST help users track job applications clearly and quickly. Every job
 application record MUST include company name, job title, application status, and
-created date. Optional fields MAY include source platform, job posting URL,
-application date, salary, notes, follow-up action, and follow-up date. Status
-values MUST be controlled, consistent, and easy to filter.
+a last_status_update date (set automatically on entry creation and on every status
+change). Optional fields MAY include source platform, job posting URL, salary,
+notes, follow-up action, and follow-up date. Status values MUST be controlled,
+consistent, and easy to filter.
 
 Rationale: The application exists to make a user's job search understandable at
 a glance, so the core record shape and status vocabulary are non-negotiable.
@@ -56,9 +67,9 @@ need confidence that their records remain accurate.
 ### IV. Practical User Experience
 The app MUST make it easy to add, edit, search, filter, and review job
 applications. The main view MUST prioritize application status, company, role,
-date applied, and next follow-up. Users MUST be able to quickly identify stale
-applications and pending follow-ups. Empty states, loading states, and error
-states MUST be handled clearly.
+last status update, and next follow-up. Users MUST be able to quickly identify
+stale applications and pending follow-ups. Empty states, loading states, and
+error states MUST be handled clearly.
 
 Rationale: The tracker succeeds only when common job-search workflows are fast,
 visible, and low-friction.
@@ -116,4 +127,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-04-25
+**Version**: 1.0.1 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-04-25

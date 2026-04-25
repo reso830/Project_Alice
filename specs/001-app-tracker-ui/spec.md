@@ -18,7 +18,7 @@ A job seeker opens the app and immediately lands on the Tracker page, where all 
 **Acceptance Scenarios**:
 
 1. **Given** the user opens the app, **When** the page loads, **Then** the Tracker page is displayed by default with all job application cards visible in a scrollable list
-2. **Given** there are job applications in the system, **When** the Tracker page is displayed, **Then** each card shows the application ID, status badge, position title, company name, last updated date, compatibility score bar, a 2-line preview of responsibilities, skill tags, and salary; any optional field that is absent displays a dash (—)
+2. **Given** there are job applications in the system, **When** the Tracker page is displayed, **Then** each card shows the application ID, status badge, position title, company name, last updated date, compatibility score bar, a 2-line preview of responsibilities, skill tags, salary, and the job posting URL (or — when absent); any optional field that is absent displays a dash (—)
 3. **Given** there are multiple job applications, **When** the Tracker page is displayed, **Then** cards are ordered by ID ascending, with any cards that have invalid or missing IDs appearing at the bottom
 4. **Given** the Tracker page is displayed, **When** the user views the toolbar, **Then** a count badge showing the total number of applications is visible
 5. **Given** there are no job applications in the system, **When** the Tracker page is displayed, **Then** an empty state message is shown prompting the user to add their first application
@@ -40,7 +40,7 @@ A job seeker makes a deliberate click (not a scroll gesture) on a card row to op
 3. **Given** the detail modal is open, **When** the user tries to scroll the background page, **Then** the background does not scroll
 4. **Given** the detail modal is open and the user has scrolled partway down the Tracker list, **When** the user closes the modal by clicking outside it, **Then** the modal closes, background scroll is restored, and the list returns to the same scroll position as before the modal was opened
 5. **Given** the detail modal is open, **When** the user views the modal header, **Then** the application ID, status, and position title are prominently displayed
-6. **Given** the detail modal is open, **When** the user changes the status via the modal's status control, **Then** the status badge in the modal updates immediately, and the card behind it also reflects the new status and last updated date without closing the modal
+6. **Given** the detail modal is open, **When** the user changes the status via the modal's status control, **Then** the status badge in the modal updates immediately, the last updated date in the modal body refreshes to the current date, and the card behind it also reflects the new status and last updated date without closing the modal
 
 ---
 
@@ -101,9 +101,10 @@ A job seeker uses the top navigation bar to switch between the three main sectio
 
 - What happens when there are no job applications? → Show an empty state message prompting the user to add their first application
 - How does the modal handle very long responsibilities or skills content? → The modal is independently scrollable up to 90% of viewport height; content does not overflow outside the modal bounds
-- What happens when the user tries to copy a URL but the URL field is empty? → The copy URL button is hidden or disabled when no URL is set for the application
+- What happens when the user tries to copy a URL but the URL field is empty? → The copy URL button is always visible; clicking it when no URL is set shows a toast notifying the user that no URL is on file; the URL text display in the card shows a dash (—) and is not a clickable link
 - What happens if the compatibility score is 0% or 100%? → The bar renders correctly at both extremes with a readable percentage label
-- What happens when the status dropdown would extend beyond the viewport edge? → The dropdown repositions to remain fully visible within the viewport
+- What happens when the status dropdown would extend beyond the viewport edge? → The dropdown repositions to remain fully visible: if the panel bottom would exceed the viewport height it opens above the anchor; if the panel right edge would exceed the viewport width it right-aligns to the anchor element instead
+- What happens if a modal is already open and the user clicks another card? → The backdrop covers the card list, making it non-interactive; this scenario cannot occur
 - What happens when clipboard copy fails or is denied? → A failure toast appears (e.g., "Copy failed — check browser permissions") and auto-dismisses within 3 seconds
 - What happens if a stored application is missing its status field? → The status defaults to Wishlisted; the card renders normally with the Wishlisted badge
 - What happens if a stored application has a missing or unparseable ID? → The card receives a soft red highlight and a warning icon; these entries are sorted to the bottom of the list below all valid entries
@@ -116,7 +117,7 @@ A job seeker uses the top navigation bar to switch between the three main sectio
 - **FR-002**: System MUST default to the Tracker page when the app is first loaded
 - **FR-003**: System MUST visually highlight the active navigation button to distinguish it from inactive ones; all three navigation labels MUST be visible without scrolling on desktop and mobile viewports
 - **FR-004**: System MUST display all job applications as interactive card rows in the Tracker page, ordered by ID ascending by default; cards with invalid or missing IDs MUST appear at the bottom of the list
-- **FR-005**: Each card MUST display: application ID pill, status badge, position title, company name, last updated date, compatibility score bar with percentage label, a 2-line clamped preview of responsibilities, skill tags, and salary; any optional field that is absent MUST display a dash (—) in its place
+- **FR-005**: Each card MUST display: application ID pill, status badge, position title, company name, last updated date, compatibility score bar with percentage label, a 2-line clamped preview of responsibilities, skill tags, salary, and the job posting URL as plain text (not a link); any optional field that is absent MUST display a dash (—) in its place
 - **FR-006**: Each card MUST include quick action buttons: Edit, Status Change, Copy URL, and Star/Favorite; the Edit button MUST open the same detail modal as clicking the card body
 - **FR-007**: System MUST open a detail modal when the user makes a deliberate click (not a scroll gesture) on a card row body, where the click target excludes all action buttons (Edit, Status Change, Copy URL, Star)
 - **FR-008**: System MUST lock background page scroll when any modal or overlay is open
@@ -127,7 +128,7 @@ A job seeker uses the top navigation bar to switch between the three main sectio
 - **FR-013**: Status changes MUST be reflected immediately on the card (badge color and left-border accent) without a page reload; the last updated date on the card MUST refresh to the current date at the same time
 - **FR-014**: System MUST allow users to toggle the star/favorite state on any application card, and the state MUST persist across page reloads
 - **FR-015**: System MUST attempt to copy the job posting URL to the clipboard when the copy URL button is clicked; on success, display a success toast that auto-dismisses within 3 seconds; on failure or permission denial, display a failure toast that auto-dismisses within 3 seconds
-- **FR-016**: Copy URL button MUST be hidden or disabled when no URL is set for the application
+- **FR-016**: The Copy URL quick action button MUST always be visible on the card; when clicked and no URL is set, the system MUST show a toast notifying the user that no URL is on file; the URL text display in the card MUST show a dash (—) when no URL is set and MUST NOT be rendered as a clickable link
 - **FR-017**: System MUST display a toolbar below the top bar showing a count badge with the total number of applications
 - **FR-018**: System MUST show an empty state message when no applications exist in the Tracker
 - **FR-019**: System MUST use a defined set of application statuses with consistent visual representation: Wishlisted, Applied, Phone Screen, Interview, Technical Assessment, Offer, Rejected, Withdrawn, Ghosted
@@ -136,8 +137,9 @@ A job seeker uses the top navigation bar to switch between the three main sectio
 - **FR-022**: On mobile viewports (< 640px), the detail modal MUST appear as a bottom-sheet that slides up from the bottom with rounded top corners
 - **FR-023**: System MUST display the Calendar page as a stub with a month grid showing status update dates when the user navigates to it
 - **FR-024**: System MUST display the Profile page as a stub with stat cards (total applications, active, offers, rejections) when the user navigates to it
-- **FR-025**: System MUST enforce the following required fields: ID, position title, company name, and status; if status is missing at load time, the system MUST default it to Wishlisted; if ID is missing or unparseable, the card MUST display a soft red highlight and warning icon and be sorted to the bottom of the list
+- **FR-025**: System MUST enforce the following required fields: ID, position title, company name, and status; if status is missing at load time, the system MUST default it to Wishlisted; if ID is missing or non-numeric (blank, alphabetical, or symbolic characters), the card MUST display a soft red highlight and warning icon and be sorted to the bottom of the list
 - **FR-026**: Optional fields (recruiter, URL, salary, responsibilities, skills, compatibility score) MUST render a dash (—) when absent; cards and modals MUST not break or show empty gaps when these fields are missing
+- **FR-027**: System MUST close any open modal or status dropdown when the user presses the Escape key
 
 ### Key Entities *(include if feature involves data)*
 
