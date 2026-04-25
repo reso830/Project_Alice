@@ -28,6 +28,18 @@ function createStatusBadge(status) {
   return badge;
 }
 
+function createDetailCell(label, valueEl, modifier) {
+  const cell = document.createElement('div');
+  const labelEl = document.createElement('span');
+
+  cell.className = modifier ? `card-detail card-detail--${modifier}` : 'card-detail';
+  labelEl.className = 'card-detail__label';
+  labelEl.textContent = label;
+  cell.append(labelEl, valueEl);
+
+  return cell;
+}
+
 function createSkills(skills) {
   const wrapper = document.createElement('div');
   wrapper.className = 'skills';
@@ -67,12 +79,10 @@ export function render(application, callbacks = {}) {
   const company = document.createElement('span');
   const responsibilities = document.createElement('div');
   const salary = document.createElement('span');
-  const url = document.createElement('span');
   const editButton = createActionButton('✎', 'card-btn--edit');
   const statusButton = createActionButton('⇄', 'card-btn--status');
   const copyButton = createActionButton('🔗', 'card-btn--copy');
   const starButton = createActionButton('★', 'card-btn--star');
-  let pointerStart = null;
 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
@@ -117,9 +127,6 @@ export function render(application, callbacks = {}) {
   salary.className = 'salary';
   salary.textContent = displayValue(application.salary);
 
-  url.className = 'url-display';
-  url.textContent = displayValue(application.url);
-
   if (application._corrupt) {
     const warning = document.createElement('span');
     warning.className = 'card-warning';
@@ -151,20 +158,8 @@ export function render(application, callbacks = {}) {
     });
   });
 
-  card.addEventListener('pointerdown', (event) => {
-    pointerStart = { x: event.clientX, y: event.clientY };
-  });
-
-  card.addEventListener('pointerup', (event) => {
-    if (!pointerStart || event.target.closest('.card-btn')) {
-      pointerStart = null;
-      return;
-    }
-
-    const distance = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
-    pointerStart = null;
-
-    if (distance < 5) {
+  card.addEventListener('click', (event) => {
+    if (!event.target.closest('.card-btn')) {
       callbacks.onOpen?.(application.id);
     }
   });
@@ -185,7 +180,11 @@ export function render(application, callbacks = {}) {
   rowOne.append(rowOneMeta, rowOneActions);
   rowTwoText.append(position, company);
   rowTwo.append(rowTwoText, CompatBar.render(application.compat));
-  rowThree.append(responsibilities, createSkills(application.skills), salary, url);
+  rowThree.append(
+    createDetailCell('Responsibilities', responsibilities, 'resp'),
+    createDetailCell('Skills', createSkills(application.skills), 'skills'),
+    createDetailCell('Salary', salary, 'salary'),
+  );
   card.append(rowOne, rowTwo, rowThree);
 
   return card;

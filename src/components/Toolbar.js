@@ -1,25 +1,26 @@
 let _badge = null;
 
-function getCountLabel(count) {
-  return `${count} Applications`;
-}
-
 export function updateCount(count) {
   if (_badge) {
-    _badge.textContent = getCountLabel(count);
+    _badge.textContent = String(count);
+    _badge.setAttribute('aria-label', `${count} applications`);
   }
 }
 
 export function render(count) {
   const toolbar = document.createElement('div');
+  const label = document.createElement('span');
   const badge = document.createElement('span');
 
   toolbar.className = 'toolbar';
+  label.className = 'toolbar__label';
+  label.textContent = 'All Applications';
   badge.className = 'count-badge';
   badge.setAttribute('aria-live', 'polite');
-  badge.textContent = getCountLabel(count);
+  badge.setAttribute('aria-label', `${count} applications`);
+  badge.textContent = String(count);
 
-  toolbar.append(badge);
+  toolbar.append(label, badge);
   _badge = badge;
 
   return toolbar;

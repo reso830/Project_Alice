@@ -110,18 +110,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const existingRoot = document.querySelector('#app');
-  const header = document.createElement('div');
   const main = document.createElement('main');
   const navbar = Navbar.render('tracker');
 
   main.id = 'app';
-  header.append(navbar);
 
   if (existingRoot) {
     existingRoot.remove();
   }
 
-  document.body.append(header, main);
+  document.body.append(navbar, main);
 
   for (const button of navbar.querySelectorAll('.nav-btn')) {
     button.addEventListener('click', () => navigate(button.dataset.page));

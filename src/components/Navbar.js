@@ -19,10 +19,15 @@ export function setActive(page) {
 export function render(activePage) {
   const navbar = document.createElement('header');
   const logo = document.createElement('div');
+  const logoMark = document.createElement('div');
+  const logoText = document.createElement('span');
   const navActions = document.createElement('nav');
 
   navbar.className = 'navbar';
   logo.className = 'navbar__logo';
+  logoMark.className = 'navbar__logo-mark';
+  logoText.className = 'navbar__logo-text';
+  logoText.textContent = 'AppTracker';
   navActions.className = 'navbar__actions';
   navActions.setAttribute('aria-label', 'Primary navigation');
 
@@ -35,6 +40,7 @@ export function render(activePage) {
     navActions.append(button);
   }
 
+  logo.append(logoMark, logoText);
   navbar.append(logo, navActions);
   _root = navbar;
   setActive(activePage);
