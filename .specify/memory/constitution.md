@@ -1,50 +1,119 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: template -> 1.0.0
+Modified principles:
+- Template Principle 1 -> I. User-First Application Tracking
+- Template Principle 2 -> II. Simple, Maintainable Web Architecture
+- Template Principle 3 -> III. Data Integrity and Validation
+- Template Principle 4 -> IV. Practical User Experience
+- Template Principle 5 -> V. Testing and Quality Gates
+Added sections:
+- Privacy, Accessibility, and Extensibility Constraints
+- Development Workflow and Review Gates
+Removed sections:
+- Template placeholder sections
+Templates requiring updates:
+- .specify/templates/plan-template.md - updated
+- .specify/templates/spec-template.md - updated
+- .specify/templates/tasks-template.md - updated
+- .specify/templates/commands/*.md - not applicable; directory absent
+Follow-up TODOs: none
+-->
+
+# Application Tracker Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. User-First Application Tracking
+The system MUST help users track job applications clearly and quickly. Every job
+application record MUST include company name, job title, application status, and
+created date. Optional fields MAY include source platform, job posting URL,
+application date, salary, notes, follow-up action, and follow-up date. Status
+values MUST be controlled, consistent, and easy to filter.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: The application exists to make a user's job search understandable at
+a glance, so the core record shape and status vocabulary are non-negotiable.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Simple, Maintainable Web Architecture
+Implementation MUST prefer readable, direct web application structure over clever
+abstractions. Business logic MUST be separated from UI rendering. Validation
+rules MUST be centralized and reusable by forms, persistence logic, and tests.
+New dependencies MUST be introduced only when they clearly reduce complexity or
+improve maintainability.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: The project is intended to remain easy to extend, debug, and test as the
+tracker grows beyond the initial application record workflow.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Data Integrity and Validation
+Required fields MUST be validated before saving. URLs MUST be validated when
+provided. Dates MUST use one consistent project format. Invalid data MUST produce
+clear user-facing errors. Application records MUST NOT be silently corrupted,
+silently overwritten, or saved in an ambiguous state.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: Job application data is private and operationally important; users
+need confidence that their records remain accurate.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Practical User Experience
+The app MUST make it easy to add, edit, search, filter, and review job
+applications. The main view MUST prioritize application status, company, role,
+date applied, and next follow-up. Users MUST be able to quickly identify stale
+applications and pending follow-ups. Empty states, loading states, and error
+states MUST be handled clearly.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: The tracker succeeds only when common job-search workflows are fast,
+visible, and low-friction.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Testing and Quality Gates
+Core validation logic MUST have automated tests. Status transitions, required
+fields, URL validation, and date handling MUST be tested. New features MUST NOT
+break existing tests. Code MUST be linted and formatted consistently before a
+feature is considered complete.
+
+Rationale: Validation and status behavior define the reliability of the tracker,
+so they require repeatable automated checks.
+
+## Privacy, Accessibility, and Extensibility Constraints
+
+Job application data MUST be treated as private user data. The app MUST NOT
+expose application data, sensitive notes, or usage details to external services
+unless a later specification explicitly requires it. Analytics, tracking, and
+third-party data sharing MUST be absent by default.
+
+The app MUST be usable on desktop and mobile browsers. Forms MUST have labels and
+clear validation messages. Keyboard navigation MUST work for core workflows.
+Color MUST NOT be the only way to communicate status.
+
+The data model MUST allow future support for interviews, contacts, documents,
+reminders, and salary tracking without requiring a rewrite of the base
+application record. These future features MUST NOT be overbuilt until specified.
+
+## Development Workflow and Review Gates
+
+Specifications MUST describe how each feature supports application tracking,
+data integrity, privacy, accessibility, and practical review workflows. Plans
+MUST pass a Constitution Check before implementation design is accepted. Tasks
+MUST include validation, state handling, and required quality-gate work whenever
+the feature touches application records, forms, filtering, persistence, or status
+behavior.
+
+Before completion, contributors MUST run the relevant automated tests and the
+project's lint/format checks when those commands exist. Any skipped check MUST be
+documented with the reason and residual risk.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution overrides convenience during specification, planning, and
+implementation. Any proposed technical choice MUST support simplicity, data
+integrity, testability, and maintainability. If a feature conflicts with this
+constitution, this constitution wins unless explicitly revised.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendments MUST document the reason for change, update impacted templates or
+guidance, and include a semantic version bump. MAJOR versions apply to backward
+incompatible governance or principle redefinitions. MINOR versions apply to new
+principles, new sections, or materially expanded guidance. PATCH versions apply
+to clarifications and non-semantic wording changes.
+
+Compliance review is required during specification, planning, task generation,
+implementation review, and final verification.
+
+**Version**: 1.0.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-04-25

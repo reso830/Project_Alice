@@ -89,15 +89,23 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST preserve required job application fields: company name, job title, status, and created date
+- **FR-007**: System MUST use controlled application status values that are consistent and filterable
+- **FR-008**: System MUST validate required fields, URLs when provided, dates, and status transitions before saving
+- **FR-009**: System MUST provide clear user-facing errors for invalid data
+- **FR-010**: System MUST avoid external analytics, tracking, or data sharing unless explicitly specified
+- **FR-011**: System MUST support desktop and mobile browser use, labeled forms, keyboard navigation, and non-color-only status communication
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-012**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-013**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
-- **[Entity 1]**: [What it represents, key attributes without implementation]
+- **Job Application**: A tracked application record with required company name,
+  job title, status, and created date; optional source platform, job posting URL,
+  application date, salary, notes, follow-up action, and follow-up date
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
 ## Success Criteria *(mandatory)*
@@ -126,3 +134,5 @@
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- Job application data is private and local-first unless the feature explicitly
+  specifies an external service requirement.

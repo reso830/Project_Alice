@@ -31,7 +31,22 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Application records include required company name, job title, controlled status,
+  and created date fields; optional fields are intentionally scoped.
+- Business logic is separated from UI rendering, with centralized reusable
+  validation rules.
+- Required field, URL, date format, status transition, and overwrite/corruption
+  risks are addressed before saving.
+- Main workflows cover add, edit, search, filter, review, stale applications, and
+  pending follow-ups with clear empty, loading, and error states.
+- Automated tests cover core validation logic and any changed status/date
+  behavior; lint/format commands are identified.
+- Privacy remains local-first by default with no analytics, tracking, or external
+  data sharing unless explicitly specified.
+- Desktop/mobile responsiveness, form labels, validation messages, keyboard
+  navigation, and non-color-only status indicators are planned.
+- Data model choices preserve future extensibility for interviews, contacts,
+  documents, reminders, and salary tracking without overbuilding them.
 
 ## Project Structure
 
