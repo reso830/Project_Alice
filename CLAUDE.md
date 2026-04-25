@@ -63,5 +63,5 @@ Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of 
 
 ## Git & Worktrees
 
-Remote: `https://github.com/reso830/Application_Tracker_v2.git` (main branch: `main`)  
+Remote: `https://github.com/reso830/Project_Alice.git` (main branch: `main`)  
 Active worktrees live under `.claude/worktrees/`. PowerShell setup scripts are in `.specify/scripts/powershell/`.
