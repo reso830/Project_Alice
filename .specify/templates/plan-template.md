@@ -32,7 +32,8 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - Application records include required company name, job title, controlled status,
-  and created date fields; optional fields are intentionally scoped.
+  and last_status_update date (auto-set on creation and on status change); optional
+  fields are intentionally scoped.
 - Business logic is separated from UI rendering, with centralized reusable
   validation rules.
 - Required field, URL, date format, status transition, and overwrite/corruption
