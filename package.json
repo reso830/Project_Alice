@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest/results.xml",
     "lint": "eslint src tests"
   },
   "devDependencies": {

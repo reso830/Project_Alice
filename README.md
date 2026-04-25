@@ -36,7 +36,17 @@ npm run dev        # start dev server at http://localhost:5173
 | `npm run preview` | Preview the production build locally |
 | `npm test` | Run tests in watch mode |
 | `npm run test:run` | Run tests once (CI mode) |
+| `npm run test:ci` | Run tests once and write JUnit results to `test-results/vitest/` |
 | `npm run lint` | Lint `src/` and `tests/` |
+
+## Continuous Integration
+
+GitHub Actions runs Node.js CI on every push to `main` and every pull request targeting `main`. The workflow tests Node.js 18.x, 20.x, and 22.x, then runs install, lint, build, and CI test-result generation.
+
+Local runtime logs and generated test reports belong under ignored output folders:
+
+- `logs/`
+- `test-results/`
 
 ## Project Structure
 

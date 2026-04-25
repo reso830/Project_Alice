@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- GitHub Actions Node.js CI workflow for pushes to `main` and pull requests targeting `main`
+- CI test-result generation via `npm run test:ci`, with Vitest JUnit output written under `test-results/vitest/`
+- Ignored output directories for local logs and generated test results
+
 ## [0.1.0] — 2026-04-25
 
 ### Added
