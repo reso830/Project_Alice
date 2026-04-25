@@ -34,6 +34,11 @@ function createCallbacks() {
         return;
       }
 
+      if (!navigator.clipboard) {
+        Toast.show('Copy failed — clipboard not available', 'failure');
+        return;
+      }
+
       navigator.clipboard.writeText(application.url)
         .then(() => Toast.show('URL copied to clipboard', 'success'))
         .catch(() => Toast.show('Copy failed — check browser permissions', 'failure'));

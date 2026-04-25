@@ -137,9 +137,6 @@ export function open(application, { onStatusChange } = {}) {
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-labelledby', 'modal-title');
-  if (window.innerWidth < 640) {
-    panel.classList.add('modal-panel--bottom-sheet');
-  }
   header.className = 'modal-header';
   headerMeta.className = 'modal-header__meta';
   titleRow.className = 'modal-header__title-row';

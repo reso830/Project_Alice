@@ -73,7 +73,12 @@ export function updateStatus(id, newStatus) {
     return;
   }
 
-  application.status = STATUS_VALUES.includes(newStatus) ? newStatus : 'wishlisted';
+  const normalized = STATUS_VALUES.includes(newStatus) ? newStatus : 'wishlisted';
+  if (normalized === application.status) {
+    return;
+  }
+
+  application.status = normalized;
   application.last_status_update = toISODate();
   save();
 }

@@ -799,10 +799,6 @@ button:focus-visible,
   }
 
   .modal-panel {
-    max-height: 90vh;
-  }
-
-  .modal-panel--bottom-sheet {
     position: fixed;
     right: 0;
     bottom: 0;
