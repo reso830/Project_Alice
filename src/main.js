@@ -7,7 +7,6 @@ import { Tracker } from './pages/Tracker.js';
 import { toISODate } from './utils/date.js';
 
 const DAY_MS = 86400000;
-const SEED_SESSION_KEY = 'apptracker_seed_initialized';
 
 let _currentPage = null;
 let _currentUnmount = null;
@@ -100,13 +99,12 @@ const SEED_DATA = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
+  const hasStoredApplications = store.hasStoredApplications();
+
   store.load();
 
-  if (store.getAll().length === 0 && sessionStorage.getItem(SEED_SESSION_KEY) !== 'true') {
+  if (!hasStoredApplications && store.getAll().length === 0) {
     store.save(SEED_DATA);
-    sessionStorage.setItem(SEED_SESSION_KEY, 'true');
-  } else if (store.getAll().length > 0) {
-    sessionStorage.setItem(SEED_SESSION_KEY, 'true');
   }
 
   const existingRoot = document.querySelector('#app');

@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { toDisplayDate, toISODate } from '../../src/utils/date.js';
 
 describe('date utilities', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('formats today as an ISO date', () => {
     expect(toISODate()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
@@ -11,6 +15,9 @@ describe('date utilities', () => {
   });
 
   it('omits the year for current-year display dates', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 25));
+
     expect(toDisplayDate('2026-04-25')).toBe('Apr 25');
   });
 

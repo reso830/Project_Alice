@@ -1,15 +1,13 @@
 # Project Alice — Application Tracker
 
-A local-first job application tracker built with vanilla JavaScript and Vite. Add, edit, filter, and review applications throughout the job search process.
+A local-first job application tracker built with vanilla JavaScript and Vite. Review applications, inspect details, update statuses, star priority leads, and copy saved job URLs.
 
 ## Features
 
 - **Application cards** — surface company, role, status, date, and compatibility at a glance
-- **Full detail view** — modal with all fields including salary, source URL, and notes
-- **Add / Edit forms** — validated inputs with required-field enforcement and URL checking
+- **Full detail view** — modal with all fields including salary, source URL, recruiter, and notes
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
-- **Search and filter** — filter by status; full-text search across company and role
-- **Stale detection** — surfaces applications that need follow-up
+- **Quick actions** — change status, star applications, and copy saved URLs directly from the card list
 - **Local-first storage** — all data lives in `localStorage`; no external services
 
 ## Tech Stack
@@ -44,7 +42,7 @@ npm run dev        # start dev server at http://localhost:5173
 
 ```
 src/
-  components/     # Reusable UI components (cards, modals, forms, badges)
+  components/     # Reusable UI components (cards, modals, badges, toolbar)
   pages/          # Page-level components (tracker, calendar, profile)
   data/           # Data store and localStorage adapter
   models/         # Application model and validation rules

@@ -69,6 +69,23 @@ describe('validateApplication', () => {
     expect(record.status).toBe('applied');
     expect(record.last_status_update).toBe('2026-04-25');
   });
+
+  it('returns a validated copy without mutating the input record', () => {
+    const input = validRecord({
+      status: 'unknown',
+      compat: 150,
+      skills: 'JavaScript',
+    });
+    const validated = validateApplication(input);
+
+    expect(validated).not.toBe(input);
+    expect(validated.status).toBe('wishlisted');
+    expect(validated.compat).toBe(100);
+    expect(validated.skills).toEqual([]);
+    expect(input.status).toBe('unknown');
+    expect(input.compat).toBe(150);
+    expect(input.skills).toBe('JavaScript');
+  });
 });
 
 describe('normalizeApplication', () => {

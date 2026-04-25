@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getAll,
   getById,
+  hasStoredApplications,
   load,
   save,
   STORAGE_KEY,
@@ -90,20 +91,53 @@ describe('store', () => {
     expect(load()).toEqual([]);
   });
 
+  it('detects whether application storage has been initialized', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    expect(hasStoredApplications()).toBe(false);
+
+    localStorage.setItem(STORAGE_KEY, '[]');
+    expect(hasStoredApplications()).toBe(true);
+  });
+
+  it('loads valid stored records', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records()));
+
+    expect(load()).toHaveLength(3);
+    expect(getById('002').company).toBe('Beta Inc');
+  });
+
   it('updates status and last_status_update for a matching id', () => {
     save(records());
 
-    updateStatus('002', 'applied');
+    expect(updateStatus('002', 'applied')).toBe(true);
 
     expect(getById('002').status).toBe('applied');
     expect(getById('002').last_status_update).toBe(toISODate());
+  });
+
+  it('coerces invalid status updates to wishlisted', () => {
+    save(records());
+
+    expect(updateStatus('002', 'not-real')).toBe(true);
+
+    expect(getById('002').status).toBe('wishlisted');
+    expect(getById('002').last_status_update).toBe(toISODate());
+  });
+
+  it('does not save or update the date when status is unchanged', () => {
+    save(records());
+
+    expect(updateStatus('002', 'interview')).toBe(false);
+
+    expect(getById('002').status).toBe('interview');
+    expect(getById('002').last_status_update).toBe('2026-04-21');
   });
 
   it('does nothing when updating a missing id', () => {
     save(records());
     const before = getAll();
 
-    expect(() => updateStatus('999', 'applied')).not.toThrow();
+    expect(updateStatus('999', 'applied')).toBe(false);
     expect(getAll()).toEqual(before);
   });
 
@@ -122,5 +156,16 @@ describe('store', () => {
 
     expect(getById('003').company).toBe('Gamma LLC');
     expect(getById('999')).toBeUndefined();
+  });
+
+  it('returns copies from getById instead of live store references', () => {
+    save(records());
+
+    const application = getById('001');
+    application.company = 'Mutated';
+    application.skills.push('Mutation');
+
+    expect(getById('001').company).toBe('Acme Corp');
+    expect(getById('001').skills).toEqual([]);
   });
 });

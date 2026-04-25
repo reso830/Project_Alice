@@ -26,6 +26,29 @@ function sanitizeForSave(record) {
   return persisted;
 }
 
+function cloneApplication(record) {
+  if (!record) {
+    return undefined;
+  }
+
+  return {
+    ...record,
+    skills: [...record.skills],
+  };
+}
+
+function findById(id) {
+  return _applications.find((application) => application.id === id);
+}
+
+export function hasStoredApplications() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== null;
+  } catch {
+    return true;
+  }
+}
+
 export function load() {
   let parsed = [];
 
@@ -60,31 +83,33 @@ export function save(applications = _applications) {
 }
 
 export function getAll() {
-  return [..._applications];
+  return _applications.map(cloneApplication);
 }
 
 export function getById(id) {
-  return _applications.find((application) => application.id === id);
+  return cloneApplication(findById(id));
 }
 
 export function updateStatus(id, newStatus) {
-  const application = getById(id);
+  const application = findById(id);
   if (!application) {
-    return;
+    return false;
   }
 
   const normalized = STATUS_VALUES.includes(newStatus) ? newStatus : 'wishlisted';
   if (normalized === application.status) {
-    return;
+    return false;
   }
 
   application.status = normalized;
   application.last_status_update = toISODate();
   save();
+
+  return true;
 }
 
 export function toggleFav(id) {
-  const application = getById(id);
+  const application = findById(id);
   if (!application) {
     return;
   }
@@ -96,6 +121,7 @@ export function toggleFav(id) {
 export const store = {
   load,
   save,
+  hasStoredApplications,
   getAll,
   getById,
   updateStatus,

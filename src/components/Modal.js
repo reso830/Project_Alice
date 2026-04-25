@@ -1,5 +1,6 @@
 import { STATUS_CONFIG } from '../models/application.js';
 import { toDisplayDate, toISODate } from '../utils/date.js';
+import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
 let _savedScrollY = 0;
@@ -9,23 +10,6 @@ let _keydownHandler = null;
 function getFocusableElements(root) {
   return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
     .filter((element) => !element.disabled && element.offsetParent !== null);
-}
-
-function displayValue(value) {
-  return typeof value === 'string' && value.trim() !== '' ? value : '—';
-}
-
-function createStatusBadge(status) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
-  const badge = document.createElement('span');
-
-  badge.id = 'modal-status-badge';
-  badge.className = 'status-badge';
-  badge.textContent = config.label;
-  badge.style.backgroundColor = config.badgeBg;
-  badge.style.color = config.badgeText;
-
-  return badge;
 }
 
 function updateStatusBadge(status) {
@@ -154,7 +138,12 @@ export function open(application, { onStatusChange } = {}) {
 
   statusButton.addEventListener('click', () => {
     StatusDropdown.open(statusButton, currentStatus, (newStatus) => {
-      onStatusChange?.(application.id, newStatus);
+      const didChange = onStatusChange?.(application.id, newStatus) ?? true;
+
+      if (!didChange) {
+        return;
+      }
+
       currentStatus = newStatus;
       updateStatusBadge(newStatus);
       updateStatusDate();
@@ -195,7 +184,10 @@ export function open(application, { onStatusChange } = {}) {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  headerMeta.append(idPill, createStatusBadge(application.status));
+  const statusDateField = createField('Last status update', toDisplayDate(application.last_status_update));
+  statusDateField.dataset.modalField = 'last-status-update';
+
+  headerMeta.append(idPill, createStatusBadge(application.status, { id: 'modal-status-badge' }));
   titleRow.append(title, statusButton);
   header.append(headerMeta, titleRow);
   body.append(
@@ -203,12 +195,11 @@ export function open(application, { onStatusChange } = {}) {
     createField('Recruiter', application.recruiter),
     createField('Salary', application.salary),
     createField('Compatibility', `${application.compat}%`),
-    createField('Last status update', toDisplayDate(application.last_status_update)),
+    statusDateField,
     createField('Responsibilities', application.responsibilities, true),
     createSkills(application.skills),
     createField('URL', application.url, true),
   );
-  body.querySelectorAll('.modal-field')[4].dataset.modalField = 'last-status-update';
   panel.append(header, body);
   backdrop.append(panel);
   document.body.append(backdrop);

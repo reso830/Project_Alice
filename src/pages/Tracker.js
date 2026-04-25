@@ -12,15 +12,23 @@ function createCallbacks() {
     onOpen: (id) => {
       Modal.open(store.getById(id), {
         onStatusChange: (applicationId, newStatus) => {
-          store.updateStatus(applicationId, newStatus);
-          refreshCard(applicationId);
+          const didChange = store.updateStatus(applicationId, newStatus);
+
+          if (didChange) {
+            refreshCard(applicationId);
+          }
+
+          return didChange;
         },
       });
     },
     onStatusChange: (id, newStatus) => {
-      store.updateStatus(id, newStatus);
-      refreshCard(id);
-      Toolbar.updateCount(store.getAll().length);
+      const didChange = store.updateStatus(id, newStatus);
+
+      if (didChange) {
+        refreshCard(id);
+        Toolbar.updateCount(store.getAll().length);
+      }
     },
     onFavToggle: (id) => {
       store.toggleFav(id);

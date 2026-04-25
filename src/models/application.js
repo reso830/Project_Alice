@@ -98,39 +98,41 @@ export function normalizeApplication(record) {
 }
 
 export function validateApplication(record) {
-  if (!isDigitString(record.id)) {
-    record._corrupt = true;
+  const validated = { ...record };
+
+  if (!isDigitString(validated.id)) {
+    validated._corrupt = true;
   }
 
-  if (typeof record.position !== 'string' || record.position.trim() === '') {
-    record._corrupt = true;
+  if (typeof validated.position !== 'string' || validated.position.trim() === '') {
+    validated._corrupt = true;
   }
 
-  if (typeof record.company !== 'string' || record.company.trim() === '') {
-    record._corrupt = true;
+  if (typeof validated.company !== 'string' || validated.company.trim() === '') {
+    validated._corrupt = true;
   }
 
-  if (!STATUS_VALUES.includes(record.status)) {
-    record.status = 'wishlisted';
+  if (!STATUS_VALUES.includes(validated.status)) {
+    validated.status = 'wishlisted';
   }
 
-  if (!isValidISODate(record.last_status_update)) {
-    record.last_status_update = toISODate();
+  if (!isValidISODate(validated.last_status_update)) {
+    validated.last_status_update = toISODate();
   }
 
-  record.compat = clampCompat(record.compat);
+  validated.compat = clampCompat(validated.compat);
 
-  if (!Array.isArray(record.skills)) {
-    record.skills = [];
+  if (!Array.isArray(validated.skills)) {
+    validated.skills = [];
   }
 
-  if (typeof record.fav !== 'boolean') {
-    record.fav = false;
+  if (typeof validated.fav !== 'boolean') {
+    validated.fav = false;
   }
 
-  if (!isValidUrl(record.url)) {
-    record.url = '';
+  if (!isValidUrl(validated.url)) {
+    validated.url = '';
   }
 
-  return record;
+  return validated;
 }

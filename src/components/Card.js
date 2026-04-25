@@ -1,11 +1,8 @@
 import { STATUS_CONFIG } from '../models/application.js';
 import { toDisplayDate } from '../utils/date.js';
+import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
-
-function displayValue(value) {
-  return typeof value === 'string' && value.trim() !== '' ? value : '—';
-}
 
 function createActionButton(label, className) {
   const button = document.createElement('button');
@@ -14,18 +11,6 @@ function createActionButton(label, className) {
   button.textContent = label;
 
   return button;
-}
-
-function createStatusBadge(status) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
-  const badge = document.createElement('span');
-
-  badge.className = 'status-badge';
-  badge.textContent = config.label;
-  badge.style.backgroundColor = config.badgeBg;
-  badge.style.color = config.badgeText;
-
-  return badge;
 }
 
 function createDetailCell(label, valueEl, modifier) {
