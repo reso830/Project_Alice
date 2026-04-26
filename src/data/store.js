@@ -1,3 +1,7 @@
+/**
+ * @deprecated Tracker persistence now goes through `src/services/api.js`.
+ * This legacy localStorage store remains only for reference during migration.
+ */
 import { normalizeApplication, STATUS_VALUES, validateApplication } from '../models/application.js';
 import { toISODate } from '../utils/date.js';
 
@@ -102,7 +106,7 @@ export function updateStatus(id, newStatus) {
   }
 
   application.status = normalized;
-  application.last_status_update = toISODate();
+  application.lastStatusUpdate = toISODate();
   save();
 
   return true;

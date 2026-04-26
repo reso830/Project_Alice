@@ -1,14 +1,14 @@
 # Project Alice — Application Tracker
 
-A local-first job application tracker built with vanilla JavaScript and Vite. Review applications, inspect details, update statuses, star priority leads, and copy saved job URLs.
+A local-first job application tracker built with vanilla JavaScript, Vite, and a SQLite-backed Express API. Review applications, inspect details, update statuses, star priority leads, copy saved job URLs, and archive records.
 
 ## Features
 
 - **Application cards** — surface company, role, status, date, and compatibility at a glance
 - **Full detail view** — modal with all fields including salary, source URL, recruiter, and notes
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
-- **Quick actions** — change status, star applications, and copy saved URLs directly from the card list
-- **Local-first storage** — all data lives in `localStorage`; no external services
+- **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
+- **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 
 ## Tech Stack
 
@@ -17,27 +17,74 @@ A local-first job application tracker built with vanilla JavaScript and Vite. Re
 | [Vite](https://vite.dev) | Dev server and bundler |
 | Vanilla JS (ES modules) | UI and business logic |
 | CSS custom properties | Design tokens (colors, typography, spacing) |
-| [Vitest](https://vitest.dev) | Unit tests |
+| [Express](https://expressjs.com) | REST API server |
+| [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | SQLite database driver |
+| [Zod](https://zod.dev) | API request validation |
+| [Vitest](https://vitest.dev) | Unit and integration tests |
 | [ESLint v9](https://eslint.org) | Linting |
 
 ## Getting Started
 
+Two processes are required — the backend API and the frontend dev server:
+
 ```bash
 npm install
-npm run dev        # start dev server at http://localhost:5173
+
+# 1. Initialize the database (first time only; safe to re-run)
+npm run db:init
+
+# 2. Terminal 1 — backend API (port 3001)
+npm run server:dev
+
+# 3. Terminal 2 — frontend dev server (port 5173)
+npm run dev
 ```
+
+Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests to the backend automatically.
 
 ## Available Scripts
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Start development server |
+| `npm run db:init` | Initialize (or re-initialize) the SQLite database |
+| `npm run db:seed` | Clear the database and load 23 demo records |
+| `npm run db:clear` | Delete all records from the database |
+| `npm run server:dev` | Start backend API in watch mode (nodemon, port 3001) |
+| `npm run server:start` | Start backend API without watch mode |
+| `npm run dev` | Start frontend development server (port 5173) |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm test` | Run tests in watch mode |
 | `npm run test:run` | Run tests once (CI mode) |
 | `npm run test:ci` | Run tests once and write JUnit results to `test-results/vitest/` |
-| `npm run lint` | Lint `src/` and `tests/` |
+| `npm run lint` | Lint `src/`, `tests/`, `server/`, and `shared/` |
+
+## Demo Data
+
+Two scripts are provided for demos and local development:
+
+```bash
+# Load 23 pre-written records (clears any existing data first)
+npm run db:seed
+
+# Remove all records without touching the schema
+npm run db:clear
+```
+
+`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Rejected, Withdrawn, and Ghosted — plus one archived record. Records have varied dates, compatibility scores, notes, skills, and salary ranges so the UI renders a representative view.
+
+`db:clear` is a hard delete of all rows. The schema (tables and indexes) is left intact, so the server keeps running and `db:seed` can be run again without `db:init`.
+
+**Typical demo flow:**
+
+```bash
+npm run db:init       # first time only
+npm run db:seed       # load demo data
+npm run server:dev    # terminal 1
+npm run dev           # terminal 2 — open http://localhost:5173
+# ... demo ...
+npm run db:clear      # reset when done
+```
 
 ## Continuous Integration
 
@@ -51,14 +98,34 @@ Local runtime logs and generated test reports belong under ignored output folder
 ## Project Structure
 
 ```
+shared/
+  constants.js    # STATUS_VALUES — shared by frontend and backend
+server/
+  index.js        # Express app factory and entry point
+  db.js           # Database connection and schema initializer
+  db-init.js      # Standalone init script (npm run db:init)
+  db/
+    applications.js  # SQL queries (repository layer)
+  routes/
+    applications.js  # Route handlers
+  validation/
+    application.js   # Zod schemas
+data/
+  alice.db        # SQLite database file (git-ignored)
 src/
   components/     # Reusable UI components (cards, modals, badges, toolbar)
   pages/          # Page-level components (tracker, calendar, profile)
-  data/           # Data store and localStorage adapter
-  models/         # Application model and validation rules
+  services/
+    api.js        # fetch-based API client
+  models/         # Application model and client-side validation
   styles/         # Global styles and design tokens
 specs/            # Specification, plan, and task documents per feature branch
-tests/            # Unit tests
+tests/
+  server/         # Backend integration tests
+  services/       # Frontend service tests
+  models/         # Model and validation tests
+  data/           # Legacy store tests
+  utils/          # Utility tests
 ```
 
 ## Versioning
@@ -71,7 +138,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.1.0**
+Current version: **0.2.0**
 
 ## Development Workflow
 

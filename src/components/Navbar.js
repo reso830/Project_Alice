@@ -27,7 +27,7 @@ export function render(activePage) {
   logo.className = 'navbar__logo';
   logoMark.className = 'navbar__logo-mark';
   logoText.className = 'navbar__logo-text';
-  logoText.textContent = 'AppTracker';
+  logoText.textContent = 'Project Alice';
   navActions.className = 'navbar__actions';
   navActions.setAttribute('aria-label', 'Primary navigation');
 

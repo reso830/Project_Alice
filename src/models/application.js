@@ -1,4 +1,5 @@
 import { isValidISODate, toISODate } from '../utils/date.js';
+import { STATUS_VALUES } from '../../shared/constants.js';
 
 export const STATUS_CONFIG = {
   wishlisted: {
@@ -57,10 +58,10 @@ export const STATUS_CONFIG = {
   },
 };
 
-export const STATUS_VALUES = Object.keys(STATUS_CONFIG);
+export { STATUS_VALUES };
 
-function isDigitString(value) {
-  return typeof value === 'string' && /^\d+$/.test(value);
+function isPositiveInteger(value) {
+  return Number.isInteger(value) && value > 0;
 }
 
 function isValidUrl(value) {
@@ -88,7 +89,7 @@ function clampCompat(value) {
 export function normalizeApplication(record) {
   const normalized = { ...record };
 
-  for (const field of ['responsibilities', 'salary', 'recruiter', 'url']) {
+  for (const field of ['responsibilities', 'salary', 'recruiter', 'jobPostingUrl']) {
     if (typeof normalized[field] !== 'string') {
       normalized[field] = '';
     }
@@ -100,15 +101,15 @@ export function normalizeApplication(record) {
 export function validateApplication(record) {
   const validated = { ...record };
 
-  if (!isDigitString(validated.id)) {
+  if (!isPositiveInteger(validated.id)) {
     validated._corrupt = true;
   }
 
-  if (typeof validated.position !== 'string' || validated.position.trim() === '') {
+  if (typeof validated.jobTitle !== 'string' || validated.jobTitle.trim() === '') {
     validated._corrupt = true;
   }
 
-  if (typeof validated.company !== 'string' || validated.company.trim() === '') {
+  if (typeof validated.companyName !== 'string' || validated.companyName.trim() === '') {
     validated._corrupt = true;
   }
 
@@ -116,8 +117,8 @@ export function validateApplication(record) {
     validated.status = 'wishlisted';
   }
 
-  if (!isValidISODate(validated.last_status_update)) {
-    validated.last_status_update = toISODate();
+  if (!isValidISODate(validated.lastStatusUpdate)) {
+    validated.lastStatusUpdate = toISODate();
   }
 
   validated.compat = clampCompat(validated.compat);
@@ -130,8 +131,8 @@ export function validateApplication(record) {
     validated.fav = false;
   }
 
-  if (!isValidUrl(validated.url)) {
-    validated.url = '';
+  if (!isValidUrl(validated.jobPostingUrl)) {
+    validated.jobPostingUrl = '';
   }
 
   return validated;

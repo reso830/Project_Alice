@@ -1,0 +1,596 @@
+import { describe, expect, it } from 'vitest';
+import { createApp } from '../../server/index.js';
+import { makeMemoryDb } from './helpers.js';
+
+async function withServer(test) {
+  const db = makeMemoryDb();
+  const app = createApp({ db });
+  const server = app.listen(0);
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    await test(baseUrl, db);
+  } finally {
+    server.close();
+    db.close();
+  }
+}
+
+async function request(baseUrl, path, options = {}) {
+  const response = await globalThis.fetch(`${baseUrl}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {}),
+    },
+    ...options,
+  });
+
+  return {
+    status: response.status,
+    body: await response.json(),
+  };
+}
+
+describe('applications API', () => {
+  it('returns health status', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/health');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok' });
+    });
+  });
+
+  it('returns an empty list for a fresh database', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: [] });
+    });
+  });
+
+  it('creates a minimal application with system fields', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toMatchObject({
+        companyName: 'Acme Corp',
+        jobTitle: 'Frontend Engineer',
+        status: 'applied',
+        compat: 0,
+        fav: false,
+        archived: false,
+        skills: [],
+        metadata: null,
+      });
+      expect(Number.isInteger(response.body.data.id)).toBe(true);
+      expect(response.body.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(response.body.data.updatedAt).toBe(response.body.data.createdAt);
+      expect(response.body.data.lastStatusUpdate).toBe(response.body.data.createdAt);
+    });
+  });
+
+  it('lists a created application', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0]).toMatchObject(created.body.data);
+    });
+  });
+
+  it('returns one application by id', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: created.body.data });
+    });
+  });
+
+  it('returns not found for an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
+        },
+      });
+    });
+  });
+
+  it('returns validation fields for an empty create request', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          companyName: expect.any(String),
+          jobTitle: expect.any(String),
+          status: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('returns validation fields for an invalid job posting URL', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          jobPostingUrl: 'not-a-url',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          jobPostingUrl: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('returns validation error for a non-object create request body', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify('not-an-object'),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+      });
+    });
+  });
+
+  it('updates status and lastStatusUpdate while preserving other fields', async () => {
+    await withServer(async (baseUrl, db) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          notes: 'Original note',
+        }),
+      });
+      const original = created.body.data;
+      db.prepare(`
+        UPDATE applications
+        SET last_status_update = '2026-04-20', updated_at = '2026-04-20'
+        WHERE id = ?
+      `).run(original.id);
+      const response = await request(baseUrl, `/api/applications/${original.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        ...original,
+        status: 'interview',
+        lastStatusUpdate: response.body.data.updatedAt,
+      });
+      expect(response.body.data.lastStatusUpdate).not.toBe('2026-04-20');
+      expect(response.body.data.notes).toBe('Original note');
+      expect(response.body.data.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+  });
+
+  it('keeps lastStatusUpdate unchanged when status does not change', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'applied' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.lastStatusUpdate).toBe(created.body.data.lastStatusUpdate);
+    });
+  });
+
+  it('leaves the record fully unchanged for an empty update body', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          notes: 'Original note',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({}),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual(created.body.data);
+    });
+  });
+
+  it('never changes createdAt from update payloads', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          createdAt: '1999-01-01',
+          status: 'interview',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.createdAt).toBe(created.body.data.createdAt);
+      expect(response.body.data.status).toBe('interview');
+    });
+  });
+
+  it('strips archived from update payloads and keeps archived state unchanged', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ archived: false }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual(archived.body.data);
+      expect(response.body.data.archived).toBe(true);
+    });
+  });
+
+  it('clears optional URL and date fields with empty strings', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          applicationDate: '2026-04-26',
+          followUpDate: '2026-04-30',
+          jobPostingUrl: 'https://example.com/job',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          applicationDate: '',
+          followUpDate: '',
+          jobPostingUrl: '',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        applicationDate: '',
+        followUpDate: '',
+        jobPostingUrl: '',
+      });
+    });
+  });
+
+  it('returns validation fields for invalid update URLs', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ jobPostingUrl: 'bad-url' }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          jobPostingUrl: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('returns bad request for invalid ids', async () => {
+    await withServer(async (baseUrl) => {
+      const getResponse = await request(baseUrl, '/api/applications/abc');
+      const patchResponse = await request(baseUrl, '/api/applications/abc', {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+      const archiveResponse = await request(baseUrl, '/api/applications/abc/archive', {
+        method: 'POST',
+      });
+
+      for (const response of [getResponse, patchResponse, archiveResponse]) {
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+          error: {
+            code: 'BAD_REQUEST',
+            message: 'Invalid id',
+          },
+        });
+      }
+    });
+  });
+
+  it('returns not found when updating an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999', {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
+        },
+      });
+    });
+  });
+
+  it('lists only non-archived applications', async () => {
+    await withServer(async (baseUrl, db) => {
+      const active = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+      db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
+
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].id).toBe(active.body.data.id);
+    });
+  });
+
+  it('returns an archived application by id', async () => {
+    await withServer(async (baseUrl, db) => {
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+      db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
+
+      const response = await request(baseUrl, `/api/applications/${archived.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: archived.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('archives an application', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('archives an already archived application idempotently', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('excludes archived applications from the active list', async () => {
+    await withServer(async (baseUrl) => {
+      const active = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${archived.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.map((record) => record.id)).toEqual([active.body.data.id]);
+    });
+  });
+
+  it('returns archived applications by id after archive', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('returns not found when archiving an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999/archive', {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
+        },
+      });
+    });
+  });
+
+  it('persists starred state through the update endpoint', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fav: true }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.fav).toBe(true);
+    });
+  });
+});
