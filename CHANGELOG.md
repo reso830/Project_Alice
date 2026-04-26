@@ -7,9 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-26
+
 ### Added
-- `npm run db:seed` — loads 10 fixed demo records covering all 9 statuses (one archived); clears existing data first
+- Client-side pagination on the application list — visible only when total records exceed 10; 3-page sliding window with first/last anchors and non-clickable ellipsis separators
+- Persistent site footer on every page — brand identity, version info, tech stack credits, and feedback links (GitHub Issues)
+- `src/utils/pagination.js` — `getPaginationModel()` pure function encapsulating the windowing algorithm
+- `src/components/Pagination.js` — page navigation component with full ARIA labelling (`aria-label`, `aria-current="page"`)
+- `src/components/Footer.js` — footer component with inline brand SVG, version/stack sections, and feedback links
+- `src/assets/` — project logo files (`Alice_White.png`, `Alice_Colored.png`); white variant used in header and footer
+- `jsdom` dev dependency for component-level DOM tests
+- Page-change behaviour: scrolls to top and moves keyboard focus to the list region
+- Page preservation on dataset change: current page retained when still valid; clamped to highest valid page when invalid; reset to 1 when pagination disappears
+- Component tests for Pagination and Footer (`tests/components/`)
+- `npm run db:seed` — loads 23 demo records covering all 9 statuses (one archived); clears existing data first
 - `npm run db:clear` — deletes all rows without touching the schema
+
+### Changed
+- Footer and navbar now use `Alice_White.png` logo instead of placeholder SVG/div icons
+- Sticky footer layout: `body` uses flex column with `min-height: 100%`; `#app` takes `flex: 1` to push footer to viewport bottom on short pages
+- Footer reflows to 2-column grid on viewports narrower than 640 px
 
 ## [0.2.0] — 2026-04-26
 
@@ -55,6 +72,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/reso830/Project_Alice/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/reso830/Project_Alice/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/reso830/Project_Alice/releases/tag/v0.1.0

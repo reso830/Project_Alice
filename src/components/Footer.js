@@ -95,7 +95,7 @@ export function render() {
   inner.append(
     createBrand(),
     rule,
-    createSection('VERSION', ['v0.2.0', 'Built Apr 2026']),
+    createSection('VERSION', ['v0.3.0', 'Built Apr 2026']),
     createSection('STACK', ['Vanilla JS \u00b7 Vite', 'Vitest \u00b7 ESLint']),
     createFeedback(),
     createText(

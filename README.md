@@ -8,6 +8,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Full detail view** — modal with all fields including salary, source URL, recruiter, and notes
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
+- **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
+- **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 
 ## Tech Stack
@@ -21,6 +23,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | SQLite database driver |
 | [Zod](https://zod.dev) | API request validation |
 | [Vitest](https://vitest.dev) | Unit and integration tests |
+| [jsdom](https://github.com/jsdom/jsdom) | DOM environment for component tests |
 | [ESLint v9](https://eslint.org) | Linting |
 
 ## Getting Started
@@ -113,19 +116,22 @@ server/
 data/
   alice.db        # SQLite database file (git-ignored)
 src/
-  components/     # Reusable UI components (cards, modals, badges, toolbar)
+  assets/         # Static assets (logo images)
+  components/     # Reusable UI components (cards, modals, badges, toolbar, pagination, footer)
   pages/          # Page-level components (tracker, calendar, profile)
   services/
     api.js        # fetch-based API client
   models/         # Application model and client-side validation
   styles/         # Global styles and design tokens
+  utils/          # Pure utility functions (pagination model, date helpers)
 specs/            # Specification, plan, and task documents per feature branch
 tests/
   server/         # Backend integration tests
   services/       # Frontend service tests
   models/         # Model and validation tests
   data/           # Legacy store tests
-  utils/          # Utility tests
+  utils/          # Utility function tests
+  components/     # Component DOM tests (jsdom)
 ```
 
 ## Versioning
@@ -138,7 +144,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.2.0**
+Current version: **0.3.0**
 
 ## Development Workflow
 
