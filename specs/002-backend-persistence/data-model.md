@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS applications (
 | `follow_up_action` | `followUpAction` | TEXT | — | Free text next action |
 | `follow_up_date` | `followUpDate` | TEXT | — | ISO 8601 date (YYYY-MM-DD) when provided |
 | `last_status_update` | `lastStatusUpdate` | TEXT | system | ISO 8601 date; set on create, updated on status change only |
-| `created_at` | `createdAt` | TEXT | system | ISO 8601 datetime; set once on create; immutable |
-| `updated_at` | `updatedAt` | TEXT | system | ISO 8601 datetime; updated on every write |
+| `created_at` | `createdAt` | TEXT | system | ISO 8601 date (YYYY-MM-DD); set once on create; immutable |
+| `updated_at` | `updatedAt` | TEXT | system | ISO 8601 date (YYYY-MM-DD); updated on every write |
 | `archived` | `archived` | INTEGER (bool) | system | 0 = active, 1 = archived; default 0 |
 | `metadata` | `metadata` | TEXT (JSON) | — | Unstructured JSON value (object, array, or null); reserved for future AI/parsed data |
 

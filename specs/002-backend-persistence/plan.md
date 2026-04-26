@@ -151,7 +151,7 @@ Tasks:
 
 Tasks:
 - Write persistence test in `tests/server/persistence.test.js`: uses `makeTestDb()` (temp file); inserts a record; calls `cleanup()` to close the connection; opens a new `better-sqlite3` connection to the same temp file; queries the record; asserts all field values match; deletes the temp file
-- Add `create(fields)` to `server/db/applications.js`: maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO datetime; runs `INSERT INTO applications`; returns inserted row via `getById(info.lastInsertRowid)`
+- Add `create(fields)` to `server/db/applications.js`: maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO date (YYYY-MM-DD); runs `INSERT INTO applications`; returns inserted row via `getById(info.lastInsertRowid)`
 - Add `getAll()`: `SELECT * FROM applications WHERE archived = 0 ORDER BY created_at DESC`; maps each row with `toRecord()`
 - Add `getById(id)`: `SELECT * FROM applications WHERE id = ?`; returns `toRecord(row)` or `null`
 - Add `POST /` route to `server/routes/applications.js`: validates body with `createSchema`; returns 400 `VALIDATION_ERROR` with `fields` on failure; calls `create()`; returns 201 `{ data: record }`
