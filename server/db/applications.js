@@ -21,6 +21,28 @@ const FIELD_TO_COLUMN = {
 };
 
 const DEFAULT_STATUS = STATUS_VALUES[0];
+const INSERTABLE_COLUMNS = [
+  'company_name',
+  'job_title',
+  'status',
+  'compat',
+  'fav',
+  'source_platform',
+  'application_date',
+  'job_posting_url',
+  'recruiter',
+  'notes',
+  'salary',
+  'responsibilities',
+  'skills',
+  'follow_up_action',
+  'follow_up_date',
+  'last_status_update',
+  'created_at',
+  'updated_at',
+  'archived',
+  'metadata',
+];
 
 function parseJson(value, fallback) {
   if (value == null) {
@@ -88,6 +110,48 @@ export function toRow(fields) {
 
     return row;
   }, {});
+}
+
+function currentDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function getById(id, targetDb = db) {
+  const row = targetDb.prepare('SELECT * FROM applications WHERE id = ?').get(id);
+  return row ? toRecord(row) : null;
+}
+
+export function getAll(targetDb = db) {
+  return targetDb
+    .prepare('SELECT * FROM applications WHERE archived = 0 ORDER BY created_at DESC')
+    .all()
+    .map(toRecord);
+}
+
+export function create(fields, targetDb = db) {
+  const row = {
+    status: DEFAULT_STATUS,
+    compat: 0,
+    fav: 0,
+    skills: JSON.stringify([]),
+    archived: 0,
+    metadata: null,
+    ...toRow(fields),
+  };
+  const now = currentDate();
+  row.created_at = now;
+  row.updated_at = now;
+  row.last_status_update = now;
+
+  const columns = INSERTABLE_COLUMNS.filter((column) => row[column] !== undefined);
+  const placeholders = columns.map((column) => `@${column}`);
+  const statement = targetDb.prepare(`
+    INSERT INTO applications (${columns.join(', ')})
+    VALUES (${placeholders.join(', ')})
+  `);
+  const info = statement.run(row);
+
+  return getById(Number(info.lastInsertRowid), targetDb);
 }
 
 export { db };

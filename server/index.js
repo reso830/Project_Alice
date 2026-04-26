@@ -1,11 +1,11 @@
 import express from 'express';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
-import applicationsRouter from './routes/applications.js';
+import { createApplicationsRouter } from './routes/applications.js';
 
 const PORT = 3001;
 
-export function createApp() {
+export function createApp({ db } = {}) {
   const app = express();
 
   app.use(express.json());
@@ -14,7 +14,7 @@ export function createApp() {
     res.status(200).json({ status: 'ok' });
   });
 
-  app.use('/api/applications', applicationsRouter);
+  app.use('/api/applications', createApplicationsRouter({ db }));
 
   app.use((err, _req, res, _next) => {
     const message = err instanceof Error ? err.message : 'Unexpected server error';

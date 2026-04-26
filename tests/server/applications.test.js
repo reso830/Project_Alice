@@ -1,0 +1,131 @@
+import { describe, expect, it } from 'vitest';
+import { createApp } from '../../server/index.js';
+import { makeMemoryDb } from './helpers.js';
+
+async function withServer(test) {
+  const db = makeMemoryDb();
+  const app = createApp({ db });
+  const server = app.listen(0);
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    await test(baseUrl);
+  } finally {
+    server.close();
+    db.close();
+  }
+}
+
+async function request(baseUrl, path, options = {}) {
+  const response = await globalThis.fetch(`${baseUrl}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {}),
+    },
+    ...options,
+  });
+
+  return {
+    status: response.status,
+    body: await response.json(),
+  };
+}
+
+describe('applications API', () => {
+  it('returns health status', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/health');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok' });
+    });
+  });
+
+  it('returns an empty list for a fresh database', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: [] });
+    });
+  });
+
+  it('creates a minimal application with system fields', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toMatchObject({
+        companyName: 'Acme Corp',
+        jobTitle: 'Frontend Engineer',
+        status: 'applied',
+        compat: 0,
+        fav: false,
+        archived: false,
+        skills: [],
+        metadata: null,
+      });
+      expect(Number.isInteger(response.body.data.id)).toBe(true);
+      expect(response.body.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(response.body.data.updatedAt).toBe(response.body.data.createdAt);
+      expect(response.body.data.lastStatusUpdate).toBe(response.body.data.createdAt);
+    });
+  });
+
+  it('lists a created application', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0]).toMatchObject(created.body.data);
+    });
+  });
+
+  it('returns one application by id', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: created.body.data });
+    });
+  });
+
+  it('returns not found for an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
+        },
+      });
+    });
+  });
+});

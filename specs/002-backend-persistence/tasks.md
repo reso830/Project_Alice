@@ -63,22 +63,22 @@
 
 ### Tests
 
-- [ ] T020 [SP] Create `tests/server/persistence.test.js` — uses `makeTestDb()` (temp file); inserts one record; calls `cleanup()` to close the connection; opens a new `better-sqlite3` connection to the same temp file path; queries the record; asserts all field values match; deletes the temp file
-- [ ] T021 [P] [US1] Create `tests/server/applications.test.js` — add test: `GET /api/health` returns 200 with `{ status: "ok" }`
-- [ ] T022 [P] [US1] Add test: `GET /api/applications` returns `{ data: [] }` on a fresh empty database
-- [ ] T023 [P] [US1] Add test: `POST /api/applications` with valid minimal body (`companyName`, `jobTitle`, `status`) returns 201 with a record containing server-set `id` (integer), `createdAt`, `updatedAt`, `lastStatusUpdate`
-- [ ] T024 [P] [US1] Add test: `GET /api/applications` after a successful POST returns the created record in the `data` array
-- [ ] T025 [P] [US1] Add test: `GET /api/applications/:id` with a valid integer id returns `{ data: { ...record } }`
-- [ ] T026 [P] [US1] Add test: `GET /api/applications/:id` with an unknown id returns 404 with `{ error: { code: "NOT_FOUND" } }`
+- [X] T020 [SP] Create `tests/server/persistence.test.js` — uses `makeTestDb()` (temp file); inserts one record; calls `cleanup()` to close the connection; opens a new `better-sqlite3` connection to the same temp file path; queries the record; asserts all field values match; deletes the temp file
+- [X] T021 [P] [US1] Create `tests/server/applications.test.js` — add test: `GET /api/health` returns 200 with `{ status: "ok" }`
+- [X] T022 [P] [US1] Add test: `GET /api/applications` returns `{ data: [] }` on a fresh empty database
+- [X] T023 [P] [US1] Add test: `POST /api/applications` with valid minimal body (`companyName`, `jobTitle`, `status`) returns 201 with a record containing server-set `id` (integer), `createdAt`, `updatedAt`, `lastStatusUpdate`
+- [X] T024 [P] [US1] Add test: `GET /api/applications` after a successful POST returns the created record in the `data` array
+- [X] T025 [P] [US1] Add test: `GET /api/applications/:id` with a valid integer id returns `{ data: { ...record } }`
+- [X] T026 [P] [US1] Add test: `GET /api/applications/:id` with an unknown id returns 404 with `{ error: { code: "NOT_FOUND" } }`
 
 ### Implementation
 
-- [ ] T027 [US1] Add `create(fields)` to `server/db/applications.js` — maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO datetime; runs `INSERT INTO applications`; returns the inserted row via `getById(info.lastInsertRowid)`
-- [ ] T028 [P] [US1] Add `getAll()` to `server/db/applications.js` — `SELECT * FROM applications WHERE archived = 0 ORDER BY created_at DESC`; maps each row with `toRecord()`
-- [ ] T029 [P] [US1] Add `getById(id)` to `server/db/applications.js` — `SELECT * FROM applications WHERE id = ?`; returns `toRecord(row)` or `null` if not found
-- [ ] T030 [US1] Add `POST /` handler to `server/routes/applications.js` — parse body; validate with `createSchema` (return 400 `{ error: { code: "VALIDATION_ERROR", fields: toApiError(result.error) } }` on failure); call `create()`; return 201 `{ data: record }`
-- [ ] T031 [P] [US1] Add `GET /` handler to `server/routes/applications.js` — call `getAll()`; return 200 `{ data: [...] }`
-- [ ] T032 [P] [US1] Add `GET /:id` handler to `server/routes/applications.js` — call `getById(parseInt(req.params.id, 10))`; return 200 `{ data: record }` or 404 `{ error: { code: "NOT_FOUND", message: "Application not found" } }`
+- [X] T027 [US1] Add `create(fields)` to `server/db/applications.js` — maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO datetime; runs `INSERT INTO applications`; returns the inserted row via `getById(info.lastInsertRowid)`
+- [X] T028 [P] [US1] Add `getAll()` to `server/db/applications.js` — `SELECT * FROM applications WHERE archived = 0 ORDER BY created_at DESC`; maps each row with `toRecord()`
+- [X] T029 [P] [US1] Add `getById(id)` to `server/db/applications.js` — `SELECT * FROM applications WHERE id = ?`; returns `toRecord(row)` or `null` if not found
+- [X] T030 [US1] Add `POST /` handler to `server/routes/applications.js` — parse body; validate with `createSchema` (return 400 `{ error: { code: "VALIDATION_ERROR", fields: toApiError(result.error) } }` on failure); call `create()`; return 201 `{ data: record }`
+- [X] T031 [P] [US1] Add `GET /` handler to `server/routes/applications.js` — call `getAll()`; return 200 `{ data: [...] }`
+- [X] T032 [P] [US1] Add `GET /:id` handler to `server/routes/applications.js` — call `getById(parseInt(req.params.id, 10))`; return 200 `{ data: record }` or 404 `{ error: { code: "NOT_FOUND", message: "Application not found" } }`
 
 **Checkpoint**: Persistence system property verified. MVP backend running. `POST` → restart → `GET` returns the original record.
 

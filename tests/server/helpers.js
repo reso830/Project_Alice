@@ -12,12 +12,21 @@ export function makeTestDb() {
   );
   const db = new Database(dbPath);
   initSchema(db);
+  let closed = false;
+
+  function close() {
+    if (!closed) {
+      db.close();
+      closed = true;
+    }
+  }
 
   return {
     db,
     path: dbPath,
+    close,
     cleanup() {
-      db.close();
+      close();
       fs.rmSync(dbPath, { force: true });
     },
   };
