@@ -97,7 +97,7 @@ export function render(application, callbacks = {}) {
   rowThree.className = 'card__row card__row--details';
 
   idPill.className = 'id-pill';
-  idPill.textContent = displayValue(application.id);
+  idPill.textContent = application.id;
 
   date.className = 'date';
   date.textContent = toDisplayDate(application.lastStatusUpdate);
