@@ -705,6 +705,94 @@ button:focus-visible,
   user-select: none;
 }
 
+/* Footer */
+.site-footer {
+  padding: 28px 20px 24px;
+  background: #1A1A2E;
+  color: rgba(255, 255, 255, .5);
+}
+
+.footer__inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.footer__brand {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.footer__brand-icon {
+  flex-shrink: 0;
+}
+
+.footer__brand-name {
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+.footer__tagline {
+  color: rgba(255, 255, 255, .38);
+  font-size: 11px;
+}
+
+.footer__rule {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.footer__label {
+  margin: 0 0 2px;
+  color: rgba(255, 255, 255, .28);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+}
+
+.footer__value {
+  margin: 0;
+  color: rgba(255, 255, 255, .45);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.footer__link {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, .38);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.footer__link:hover {
+  color: rgba(255, 255, 255, .75);
+}
+
+.footer__copyright {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 4px;
+  color: rgba(255, 255, 255, .22);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+}
+
 @media (min-width: 1024px) {
   .card {
     display: grid;

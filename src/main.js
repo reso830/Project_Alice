@@ -1,4 +1,5 @@
 import './styles/main.css';
+import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
 import { store } from './data/store.js';
 import { Calendar } from './pages/Calendar.js';
@@ -108,8 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const existingRoot = document.querySelector('#app');
+  const existingFooter = document.querySelector('.site-footer');
   const main = document.createElement('main');
   const navbar = Navbar.render('tracker');
+  const footer = Footer.render();
 
   main.id = 'app';
 
@@ -117,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     existingRoot.remove();
   }
 
-  document.body.append(navbar, main);
+  existingFooter?.remove();
+  document.body.append(navbar, main, footer);
 
   for (const button of navbar.querySelectorAll('.nav-btn')) {
     button.addEventListener('click', () => navigate(button.dataset.page));
