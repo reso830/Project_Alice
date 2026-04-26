@@ -128,4 +128,45 @@ describe('applications API', () => {
       });
     });
   });
+
+  it('returns validation fields for an empty create request', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          companyName: expect.any(String),
+          jobTitle: expect.any(String),
+          status: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('returns validation fields for an invalid job posting URL', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          jobPostingUrl: 'not-a-url',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          jobPostingUrl: expect.any(String),
+        },
+      });
+    });
+  });
 });

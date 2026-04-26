@@ -73,7 +73,7 @@
 
 ### Implementation
 
-- [X] T027 [US1] Add `create(fields)` to `server/db/applications.js` — maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO datetime; runs `INSERT INTO applications`; returns the inserted row via `getById(info.lastInsertRowid)`
+- [X] T027 [US1] Add `create(fields)` to `server/db/applications.js` — maps input via `toRow()`; sets `created_at`, `updated_at`, `last_status_update` to current ISO date (YYYY-MM-DD); runs `INSERT INTO applications`; returns the inserted row via `getById(info.lastInsertRowid)`
 - [X] T028 [P] [US1] Add `getAll()` to `server/db/applications.js` — `SELECT * FROM applications WHERE archived = 0 ORDER BY created_at DESC`; maps each row with `toRecord()`
 - [X] T029 [P] [US1] Add `getById(id)` to `server/db/applications.js` — `SELECT * FROM applications WHERE id = ?`; returns `toRecord(row)` or `null` if not found
 - [X] T030 [US1] Add `POST /` handler to `server/routes/applications.js` — parse body; validate with `createSchema` (return 400 `{ error: { code: "VALIDATION_ERROR", fields: toApiError(result.error) } }` on failure); call `create()`; return 201 `{ data: record }`
@@ -92,15 +92,15 @@
 
 ### Tests
 
-- [ ] T033 [US1] Create `tests/server/validation.test.js` — unit test `createSchema`: valid full payload passes; missing `companyName` fails with field error; missing `jobTitle` fails; invalid `status` fails; `jobPostingUrl` with `"ftp://x"` fails; `applicationDate` with `"2026/04/20"` fails; `compat: 150` is clamped to 100; `skills: "JavaScript"` (not array) fails; `metadata: "string"` (not JSON object/array/null) fails; all optional fields omitted passes
-- [ ] T034 [P] [US1] Add integration test: `POST /api/applications` with empty body returns 400 `VALIDATION_ERROR` with `fields` containing `companyName`, `jobTitle`, `status`
-- [ ] T035 [P] [US1] Add integration test: `POST /api/applications` with `jobPostingUrl: "not-a-url"` returns 400 with `fields.jobPostingUrl`
+- [X] T033 [US1] Create `tests/server/validation.test.js` — unit test `createSchema`: valid full payload passes; missing `companyName` fails with field error; missing `jobTitle` fails; invalid `status` fails; `jobPostingUrl` with `"ftp://x"` fails; `applicationDate` with `"2026/04/20"` fails; `compat: 150` is clamped to 100; `skills: "JavaScript"` (not array) fails; `metadata: "string"` (not JSON object/array/null) fails; all optional fields omitted passes
+- [X] T034 [P] [US1] Add integration test: `POST /api/applications` with empty body returns 400 `VALIDATION_ERROR` with `fields` containing `companyName`, `jobTitle`, `status`
+- [X] T035 [P] [US1] Add integration test: `POST /api/applications` with `jobPostingUrl: "not-a-url"` returns 400 with `fields.jobPostingUrl`
 
 ### Implementation
 
-- [ ] T036 [US1] Verify `toApiError()` in `server/validation/application.js` produces camelCase field keys matching the API contract (e.g., `companyName` not `company_name`)
-- [ ] T037 [US1] Create `src/services/api.js` — defines `request(method, path, body)` using `fetch`; on network error (`TypeError`) throws `{ code: "NETWORK_ERROR", message: "Cannot connect to the backend — is the server running?" }`; on non-2xx HTTP response throws `{ code, message, fields }` extracted from the error envelope; exports named API functions
-- [ ] T038 [P] [US1] Add `api.create(fields)` to `src/services/api.js` — `POST /api/applications`, returns `data` from success response
+- [X] T036 [US1] Verify `toApiError()` in `server/validation/application.js` produces camelCase field keys matching the API contract (e.g., `companyName` not `company_name`)
+- [X] T037 [US1] Create `src/services/api.js` — defines `request(method, path, body)` using `fetch`; on network error (`TypeError`) throws `{ code: "NETWORK_ERROR", message: "Cannot connect to the backend — is the server running?" }`; on non-2xx HTTP response throws `{ code, message, fields }` extracted from the error envelope; exports named API functions
+- [X] T038 [P] [US1] Add `api.create(fields)` to `src/services/api.js` — `POST /api/applications`, returns `data` from success response
 
 **Checkpoint**: Full create flow working with correct validation errors. Frontend `api.create()` callable.
 
