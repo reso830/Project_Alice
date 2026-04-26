@@ -731,7 +731,7 @@ button:focus-visible,
 .footer__brand {
   display: flex;
   grid-column: 1 / -1;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 
