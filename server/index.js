@@ -1,0 +1,38 @@
+import express from 'express';
+import process from 'node:process';
+import { pathToFileURL } from 'node:url';
+import applicationsRouter from './routes/applications.js';
+
+const PORT = 3001;
+
+export function createApp() {
+  const app = express();
+
+  app.use(express.json());
+
+  app.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
+  app.use('/api/applications', applicationsRouter);
+
+  app.use((err, _req, res, _next) => {
+    const message = err instanceof Error ? err.message : 'Unexpected server error';
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message,
+      },
+    });
+  });
+
+  return app;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const app = createApp();
+
+  app.listen(PORT, () => {
+    console.log(`Alice API server listening on http://localhost:${PORT}`);
+  });
+}

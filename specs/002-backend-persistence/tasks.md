@@ -18,16 +18,16 @@
 
 **Purpose**: Install dependencies, create server skeleton, configure dev environment.
 
-- [ ] T001 Create `server/` directory with subdirectories `db/`, `routes/`, `validation/`
-- [ ] T002 Install runtime dependencies: `express`, `better-sqlite3`, `zod` — add to `package.json` dependencies
-- [ ] T003 [P] Install dev dependency: `nodemon` — add to `package.json` devDependencies
-- [ ] T004 Add npm scripts to `package.json`: `server:dev` (`nodemon server/index.js`), `server:start` (`node server/index.js`), `db:init` (`node server/db-init.js`)
-- [ ] T005 Create `server/index.js` — Express app with `express.json()` middleware, mounts `/api/applications` router from `server/routes/applications.js`, serves `GET /api/health` returning `{ status: "ok" }`, registers global error handler that returns `{ error: { code: "INTERNAL_ERROR", message: "..." } }`, listens on port 3001
-- [ ] T006 Create `server/routes/applications.js` — empty Express Router, exported; imported and mounted in `server/index.js` at `/api/applications`
-- [ ] T007 Configure Vite proxy in `vite.config.js` — proxy all `/api` requests to `http://localhost:3001`
-- [ ] T008 [P] Add `data/` and `data/*.db` to `.gitignore`; create `data/.gitkeep` to track the empty directory
-- [ ] T009 [P] Create `tests/server/helpers.js` — exports `makeTestDb()` that opens a temp-file SQLite database (using `os.tmpdir()` path), runs schema DDL, and returns `{ db, cleanup }` where `cleanup()` closes and deletes the file; also exports `makeMemoryDb()` (`:memory:`) for tests that do not need restart simulation
-- [ ] T010 Create `server/db-init.js` — imports and calls an explicit `initSchema()` function from `server/db.js`, logs `"Database initialized successfully"` on success, exits with code 0; exits with code 1 and prints the error on failure
+- [X] T001 Create `server/` directory with subdirectories `db/`, `routes/`, `validation/`
+- [X] T002 Install runtime dependencies: `express`, `better-sqlite3`, `zod` — add to `package.json` dependencies
+- [X] T003 [P] Install dev dependency: `nodemon` — add to `package.json` devDependencies
+- [X] T004 Add npm scripts to `package.json`: `server:dev` (`nodemon server/index.js`), `server:start` (`node server/index.js`), `db:init` (`node server/db-init.js`)
+- [X] T005 Create `server/index.js` — Express app with `express.json()` middleware, mounts `/api/applications` router from `server/routes/applications.js`, serves `GET /api/health` returning `{ status: "ok" }`, registers global error handler that returns `{ error: { code: "INTERNAL_ERROR", message: "..." } }`, listens on port 3001
+- [X] T006 Create `server/routes/applications.js` — empty Express Router, exported; imported and mounted in `server/index.js` at `/api/applications`
+- [X] T007 Configure Vite proxy in `vite.config.js` — proxy all `/api` requests to `http://localhost:3001`
+- [X] T008 [P] Add `data/` and `data/*.db` to `.gitignore`; create `data/.gitkeep` to track the empty directory
+- [X] T009 [P] Create `tests/server/helpers.js` — exports `makeTestDb()` that opens a temp-file SQLite database (using `os.tmpdir()` path), runs schema DDL, and returns `{ db, cleanup }` where `cleanup()` closes and deletes the file; also exports `makeMemoryDb()` (`:memory:`) for tests that do not need restart simulation
+- [X] T010 Create `server/db-init.js` — imports and calls an explicit `initSchema()` function from `server/db.js`, logs `"Database initialized successfully"` on success, exits with code 0; exits with code 1 and prints the error on failure
 
 **Checkpoint**: `npm run server:dev` starts without error. `GET /api/health` returns `{ "status": "ok" }`.
 
