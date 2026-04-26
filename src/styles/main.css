@@ -5,6 +5,7 @@
   --indigo-hover: #4338CA;
   --indigo-dim: #EEF2FF;
   --indigo-mid: #818CF8;
+  --indigo-soft: #F4F2FF;
   --bg: #F4F1ED;
   --surface: #FFFFFF;
   --border: #E8E3DA;
@@ -13,6 +14,8 @@
   --t2: #4B5563;
   --t3: #9CA3AF;
   --t4: #C4BDB5;
+  --pagination-text: #555555;
+  --pagination-muted: #BBBBBB;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -296,7 +299,7 @@ button:focus-visible,
 }
 
 .company {
-  color: var(--t2);
+  color: var(--pagination-text);
   font-size: 13px;
   font-weight: 400;
 }
@@ -677,23 +680,23 @@ button:focus-visible,
   height: 32px;
   border: 1.5px solid var(--border, #E0DDD8);
   border-radius: 5px;
-  background: #FFFFFF;
-  color: #555555;
+  background: var(--surface);
+  color: var(--pagination-text);
   font-family: "DM Mono", monospace;
   font-size: 11px;
   cursor: pointer;
 }
 
 .pagination__btn:not(.pagination__btn--active):hover {
-  border-color: #4F46E5;
-  background: #F4F2FF;
-  color: #4F46E5;
+  border-color: var(--indigo);
+  background: var(--indigo-soft);
+  color: var(--indigo);
 }
 
 .pagination__btn--active {
-  border-color: #4F46E5;
-  background: #4F46E5;
-  color: #FFFFFF;
+  border-color: var(--indigo);
+  background: var(--indigo);
+  color: var(--surface);
   font-weight: 600;
 }
 
@@ -703,7 +706,7 @@ button:focus-visible,
   justify-content: center;
   min-width: 28px;
   height: 32px;
-  color: #BBBBBB;
+  color: var(--pagination-muted);
   font-family: "DM Mono", monospace;
   font-size: 12px;
   letter-spacing: 1px;
@@ -714,7 +717,7 @@ button:focus-visible,
 /* Footer */
 .site-footer {
   padding: 28px 20px 24px;
-  background: #1A1A2E;
+  background: var(--navy);
   color: rgba(255, 255, 255, .5);
 }
 
@@ -738,7 +741,7 @@ button:focus-visible,
 }
 
 .footer__brand-name {
-  color: #FFFFFF;
+  color: var(--surface);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: .4px;

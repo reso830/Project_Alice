@@ -100,12 +100,12 @@
 
 **Purpose**: Design token hygiene, code quality, and final verification.
 
-- [ ] T024 [P] Review `:root` in `src/styles/main.css` — replace footer/pagination literal colour values with existing CSS custom properties where a match exists (`--border`, `--indigo`, `--indigo-hover`, `--indigo-dim`, `--navy` etc.); add new tokens only where no match exists
-- [ ] T025 [P] Inspect all new component files — confirm no `style=` inline attributes; all visual styling must be class-based in `src/styles/main.css`
-- [ ] T026 Run `npm run lint` — resolve all ESLint errors in `src/components/Footer.js`, `src/components/Pagination.js`, `src/utils/pagination.js`, `src/pages/Tracker.js`, `src/main.js`
-- [ ] T027 Run `npm run test:run` — all tests pass (unit + both component suites)
+- [x] T024 [P] Review `:root` in `src/styles/main.css` — replace footer/pagination literal colour values with existing CSS custom properties where a match exists (`--border`, `--indigo`, `--indigo-hover`, `--indigo-dim`, `--navy` etc.); add new tokens only where no match exists
+- [x] T025 [P] Inspect all new component files — confirm no `style=` inline attributes; all visual styling must be class-based in `src/styles/main.css`
+- [x] T026 Run `npm run lint` — resolve all ESLint errors in `src/components/Footer.js`, `src/components/Pagination.js`, `src/utils/pagination.js`, `src/pages/Tracker.js`, `src/main.js`
+- [x] T027 Run `npm run test:run` — all tests pass (unit + both component suites)
 - [ ] T028 Full manual verification: run all checks in `specs/005-pagination-footer/quickstart.md`; additionally verify archive regressions: (a) with a valid current page after archive, confirm the current page is preserved; (b) when archive makes the current page invalid, confirm the view moves to the highest valid page; (c) with exactly 11 records on page 1, archive one — confirm pagination bar disappears immediately and page count is no longer shown
-- [ ] T029 Run `git diff --name-only` — confirm no files under `server/` or `shared/` were modified
+- [x] T029 Run `git diff --name-only` — confirm no files under `server/` or `shared/` were modified
 
 **Checkpoint**: All phases complete. Lint clean. All tests pass. Archive regression verified. No backend files changed. Ready for `/speckit.checklist`.
 
