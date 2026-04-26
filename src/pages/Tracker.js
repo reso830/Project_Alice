@@ -1,11 +1,15 @@
 import { Card } from '../components/Card.js';
 import { Modal } from '../components/Modal.js';
+import { Pagination } from '../components/Pagination.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import * as api from '../services/api.js';
+import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 
 let _container = null;
 let _cardList = null;
+let _currentPage = 1;
+let _paginationEl = null;
 let _applications = [];
 
 function coerceId(id) {
@@ -33,6 +37,70 @@ function renderMessage(message, className = 'empty-state') {
   messageEl.className = className;
   messageEl.textContent = message;
   return messageEl;
+}
+
+function clampCurrentPage() {
+  const totalPages = Math.ceil(_applications.length / PAGE_SIZE);
+
+  if (_applications.length <= PAGE_SIZE) {
+    _currentPage = 1;
+    return;
+  }
+
+  _currentPage = Math.max(1, Math.min(_currentPage, totalPages));
+}
+
+function removeEmptyState() {
+  _container?.querySelector('.empty-state')?.remove();
+}
+
+function focusCardList() {
+  if (_cardList) {
+    _cardList.focus({ preventScroll: true });
+  }
+}
+
+function onPageChange(page) {
+  _currentPage = page;
+  renderPage({ moveFocus: true });
+}
+
+function renderPage({ moveFocus = false } = {}) {
+  if (!_container || !_cardList) {
+    return;
+  }
+
+  clampCurrentPage();
+  removeEmptyState();
+  _paginationEl?.remove();
+  _paginationEl = null;
+  _cardList.replaceChildren();
+
+  const startIndex = (_currentPage - 1) * PAGE_SIZE;
+  const endIndex = startIndex + PAGE_SIZE;
+  const visibleApplications = _applications.slice(startIndex, endIndex);
+
+  for (const application of visibleApplications) {
+    _cardList.append(Card.render(application, createCallbacks()));
+  }
+
+  Toolbar.updateCount(_applications.length);
+
+  if (_applications.length === 0) {
+    _container.append(renderMessage('No applications yet. Add your first one!'));
+  }
+
+  const model = getPaginationModel(_currentPage, _applications.length, PAGE_SIZE);
+
+  if (model.hasPagination) {
+    _paginationEl = Pagination.render(_currentPage, _applications.length, onPageChange);
+    _container.append(_paginationEl);
+  }
+
+  if (moveFocus) {
+    window.scrollTo(0, 0);
+    focusCardList();
+  }
 }
 
 function createCallbacks() {
@@ -86,14 +154,7 @@ function createCallbacks() {
       try {
         await api.archive(coerceId(id));
         removeApplication(id);
-
-        const card = _cardList?.querySelector(`[data-id="${coerceId(id)}"]`);
-        card?.remove();
-        Toolbar.updateCount(_applications.length);
-
-        if (_applications.length === 0 && _container && !_container.querySelector('.empty-state')) {
-          _container.append(renderMessage('No applications yet. Add your first one!'));
-        }
+        renderPage();
       } catch {
         Toast.show('Archive failed', 'failure');
       }
@@ -145,6 +206,9 @@ export function refreshCard(id) {
 export async function mount(container) {
   _container = container;
   _container.replaceChildren();
+  _cardList = null;
+  _currentPage = 1;
+  _paginationEl = null;
   _applications = [];
 
   const toolbar = Toolbar.render(0);
@@ -188,12 +252,11 @@ export async function mount(container) {
 
   _cardList = document.createElement('div');
   _cardList.className = 'card-list';
-
-  for (const application of _applications) {
-    _cardList.append(Card.render(application, createCallbacks()));
-  }
+  _cardList.tabIndex = -1;
+  _cardList.setAttribute('aria-label', 'Application list');
 
   _container.append(_cardList);
+  renderPage();
   window.scrollTo(0, 0);
 }
 
@@ -204,6 +267,8 @@ export function unmount() {
 
   _container = null;
   _cardList = null;
+  _currentPage = 1;
+  _paginationEl = null;
   _applications = [];
 }
 

@@ -649,6 +649,62 @@ button:focus-visible,
   font-size: 12px;
 }
 
+/* Pagination */
+.pagination {
+  padding: 0 20px 20px;
+}
+
+.pagination__rule {
+  margin-bottom: 14px;
+  border: none;
+  border-top: 1.5px solid var(--border, #E0DDD8);
+}
+
+.pagination__nav {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pagination__btn {
+  min-width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--border, #E0DDD8);
+  border-radius: 5px;
+  background: #FFFFFF;
+  color: #555555;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pagination__btn:hover {
+  border-color: #4F46E5;
+  background: #F4F2FF;
+  color: #4F46E5;
+}
+
+.pagination__btn--active {
+  border-color: #4F46E5;
+  background: #4F46E5;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.pagination__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 32px;
+  color: #BBBBBB;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: default;
+  user-select: none;
+}
+
 @media (min-width: 1024px) {
   .card {
     display: grid;
