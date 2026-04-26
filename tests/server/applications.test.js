@@ -315,4 +315,118 @@ describe('applications API', () => {
       });
     });
   });
+
+  it('archives an application', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('excludes archived applications from the active list', async () => {
+    await withServer(async (baseUrl) => {
+      const active = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${archived.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.map((record) => record.id)).toEqual([active.body.data.id]);
+    });
+  });
+
+  it('returns archived applications by id after archive', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('returns not found when archiving an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999/archive', {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
+        },
+      });
+    });
+  });
+
+  it('persists starred state through the update endpoint', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fav: true }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.fav).toBe(true);
+    });
+  });
 });

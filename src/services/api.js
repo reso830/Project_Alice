@@ -51,3 +51,7 @@ export function getById(id) {
 export function update(id, fields) {
   return request('PATCH', `/api/applications/${id}`, fields);
 }
+
+export function archive(id) {
+  return request('POST', `/api/applications/${id}/archive`);
+}

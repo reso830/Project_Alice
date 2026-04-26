@@ -165,18 +165,18 @@
 
 ### Tests
 
-- [ ] T058 [US5] Add integration test in `tests/server/applications.test.js`: `POST /api/applications/:id/archive` returns 200 with `archived: true`
-- [ ] T059 [P] [US5] Add integration test: `GET /api/applications` after archive does NOT include the archived record
-- [ ] T060 [P] [US5] Add integration test: `GET /api/applications/:id` after archive returns the record with `archived: true`
-- [ ] T061 [P] [US5] Add integration test: `POST /api/applications/9999/archive` returns 404 `NOT_FOUND`
+- [X] T058 [US5] Add integration test in `tests/server/applications.test.js`: `POST /api/applications/:id/archive` returns 200 with `archived: true`
+- [X] T059 [P] [US5] Add integration test: `GET /api/applications` after archive does NOT include the archived record
+- [X] T060 [P] [US5] Add integration test: `GET /api/applications/:id` after archive returns the record with `archived: true`
+- [X] T061 [P] [US5] Add integration test: `POST /api/applications/9999/archive` returns 404 `NOT_FOUND`
 
 ### Implementation
 
-- [ ] T062 [US5] Add `archive(id)` to `server/db/applications.js` — `UPDATE applications SET archived = 1, updated_at = ? WHERE id = ?`; returns updated row via `getById()` or `null` if not found
-- [ ] T063 [US5] Add `POST /:id/archive` handler to `server/routes/applications.js` — calls `archive(parseInt(req.params.id, 10))`; returns 404 if `null`; returns 200 `{ data: archivedRecord }`
-- [ ] T064 [P] [US5] Add `api.archive(id)` to `src/services/api.js` — `POST /api/applications/:id/archive`, returns `data`
-- [ ] T065 [US5] Update `src/components/Card.js` — wire `onFavToggle` callback to call `api.update(id, { fav: !application.fav })` (fav is now a first-class DB column); show failure toast on error
-- [ ] T066 [US5] Update `src/pages/Tracker.js` — wire the delete/remove card action to call `api.archive(id)` and remove the card from the rendered list on success; show failure toast if API call throws
+- [X] T062 [US5] Add `archive(id)` to `server/db/applications.js` — `UPDATE applications SET archived = 1, updated_at = ? WHERE id = ?`; returns updated row via `getById()` or `null` if not found
+- [X] T063 [US5] Add `POST /:id/archive` handler to `server/routes/applications.js` — calls `archive(parseInt(req.params.id, 10))`; returns 404 if `null`; returns 200 `{ data: archivedRecord }`
+- [X] T064 [P] [US5] Add `api.archive(id)` to `src/services/api.js` — `POST /api/applications/:id/archive`, returns `data`
+- [X] T065 [US5] Update `src/components/Card.js` — wire `onFavToggle` callback to call `api.update(id, { fav: !application.fav })` (fav is now a first-class DB column); show failure toast on error
+- [X] T066 [US5] Update `src/pages/Tracker.js` — wire the delete/remove card action to call `api.archive(id)` and remove the card from the rendered list on success; show failure toast if API call throws
 
 **Checkpoint**: All 5 user stories fully functional. Star state and archive state persisted in DB.
 

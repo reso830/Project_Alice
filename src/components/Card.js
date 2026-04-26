@@ -68,11 +68,13 @@ export function render(application, callbacks = {}) {
   const statusButton = createActionButton('⇄', 'card-btn--status');
   const copyButton = createActionButton('🔗', 'card-btn--copy');
   const starButton = createActionButton('★', 'card-btn--star');
+  const archiveButton = createActionButton('×', 'card-btn--archive');
 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
   starButton.setAttribute('aria-label', 'Star application');
+  archiveButton.setAttribute('aria-label', 'Archive application');
 
   card.className = 'card';
   card.dataset.id = application.id;
@@ -142,6 +144,9 @@ export function render(application, callbacks = {}) {
       callbacks.onFavToggle?.(application.id);
     });
   });
+  archiveButton.addEventListener('click', (event) => {
+    stopAction(event, () => callbacks.onArchive?.(application.id));
+  });
 
   card.addEventListener('click', (event) => {
     if (!event.target.closest('.card-btn')) {
@@ -161,7 +166,7 @@ export function render(application, callbacks = {}) {
   });
 
   rowOneMeta.append(idPill, createStatusBadge(application.status), date);
-  rowOneActions.append(editButton, statusButton, copyButton, starButton);
+  rowOneActions.append(editButton, statusButton, copyButton, starButton, archiveButton);
   rowOne.append(rowOneMeta, rowOneActions);
   rowTwoText.append(jobTitle, company);
   rowTwo.append(rowTwoText, CompatBar.render(application.compat));

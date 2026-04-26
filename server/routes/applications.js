@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, getAll, getById, update } from '../db/applications.js';
+import { archive, create, getAll, getById, update } from '../db/applications.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
 export function createApplicationsRouter({ db } = {}) {
@@ -65,6 +65,24 @@ export function createApplicationsRouter({ db } = {}) {
       }
 
       const record = update(parseInt(req.params.id, 10), result.data, db);
+      if (!record) {
+        return res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Application not found',
+          },
+        });
+      }
+
+      return res.status(200).json({ data: record });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post('/:id/archive', (req, res, next) => {
+    try {
+      const record = archive(parseInt(req.params.id, 10), db);
       if (!record) {
         return res.status(404).json({
           error: {

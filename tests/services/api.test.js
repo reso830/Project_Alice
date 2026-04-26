@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { create, getAll, getById, request, update } from '../../src/services/api.js';
+import { archive, create, getAll, getById, request, update } from '../../src/services/api.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -73,6 +73,26 @@ describe('api service', () => {
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/applications/1', expect.objectContaining({
       method: 'GET',
+    }));
+  });
+
+  it('returns data from archive responses', async () => {
+    const record = {
+      id: 1,
+      companyName: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+      archived: true,
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: record }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(archive(1)).resolves.toEqual(record);
+    expect(fetchMock).toHaveBeenCalledWith('/api/applications/1/archive', expect.objectContaining({
+      method: 'POST',
     }));
   });
 

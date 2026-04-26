@@ -23,6 +23,11 @@ function replaceApplication(application) {
   ));
 }
 
+function removeApplication(id) {
+  const numericId = coerceId(id);
+  _applications = _applications.filter((application) => application.id !== numericId);
+}
+
 function renderMessage(message, className = 'empty-state') {
   const messageEl = document.createElement('div');
   messageEl.className = className;
@@ -61,12 +66,36 @@ function createCallbacks() {
         Toast.show('Status update failed', 'failure');
       }
     },
-    onFavToggle: (id) => {
+    onFavToggle: async (id) => {
       const application = findApplication(id);
 
-      if (application) {
-        replaceApplication({ ...application, fav: !application.fav });
-        refreshCard(application.id);
+      if (!application) {
+        return;
+      }
+
+      try {
+        const updated = await api.update(coerceId(id), { fav: !application.fav });
+        replaceApplication(updated);
+        refreshCard(updated.id);
+      } catch {
+        Toast.show('Star update failed', 'failure');
+        refreshCard(id);
+      }
+    },
+    onArchive: async (id) => {
+      try {
+        await api.archive(coerceId(id));
+        removeApplication(id);
+
+        const card = _cardList?.querySelector(`[data-id="${coerceId(id)}"]`);
+        card?.remove();
+        Toolbar.updateCount(_applications.length);
+
+        if (_applications.length === 0 && _container && !_container.querySelector('.empty-state')) {
+          _container.append(renderMessage('No applications yet. Add your first one!'));
+        }
+      } catch {
+        Toast.show('Archive failed', 'failure');
       }
     },
     onCopyUrl: async (id) => {

@@ -183,4 +183,19 @@ export function update(id, fields, targetDb = db) {
   return getById(id, targetDb);
 }
 
+export function archive(id, targetDb = db) {
+  const current = getById(id, targetDb);
+  if (!current) {
+    return null;
+  }
+
+  targetDb.prepare(`
+    UPDATE applications
+    SET archived = 1, updated_at = @updated_at
+    WHERE id = @id
+  `).run({ id, updated_at: currentDate() });
+
+  return getById(id, targetDb);
+}
+
 export { db };
