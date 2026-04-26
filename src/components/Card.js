@@ -60,7 +60,7 @@ export function render(application, callbacks = {}) {
   const rowThree = document.createElement('div');
   const idPill = document.createElement('span');
   const date = document.createElement('span');
-  const position = document.createElement('span');
+  const jobTitle = document.createElement('span');
   const company = document.createElement('span');
   const responsibilities = document.createElement('div');
   const salary = document.createElement('span');
@@ -79,7 +79,7 @@ export function render(application, callbacks = {}) {
   card.tabIndex = 0;
   card.setAttribute(
     'aria-label',
-    `Open details for ${displayValue(application.position)} at ${displayValue(application.company)}`,
+    `Open details for ${displayValue(application.jobTitle)} at ${displayValue(application.companyName)}`,
   );
   card.style.borderLeft = `4px solid ${config.borderAccent}`;
 
@@ -98,13 +98,13 @@ export function render(application, callbacks = {}) {
   idPill.textContent = displayValue(application.id);
 
   date.className = 'date';
-  date.textContent = toDisplayDate(application.last_status_update);
+  date.textContent = toDisplayDate(application.lastStatusUpdate);
 
-  position.className = 'position';
-  position.textContent = displayValue(application.position);
+  jobTitle.className = 'position';
+  jobTitle.textContent = displayValue(application.jobTitle);
 
   company.className = 'company';
-  company.textContent = displayValue(application.company);
+  company.textContent = displayValue(application.companyName);
 
   responsibilities.className = 'responsibilities';
   responsibilities.textContent = displayValue(application.responsibilities);
@@ -163,7 +163,7 @@ export function render(application, callbacks = {}) {
   rowOneMeta.append(idPill, createStatusBadge(application.status), date);
   rowOneActions.append(editButton, statusButton, copyButton, starButton);
   rowOne.append(rowOneMeta, rowOneActions);
-  rowTwoText.append(position, company);
+  rowTwoText.append(jobTitle, company);
   rowTwo.append(rowTwoText, CompatBar.render(application.compat));
   rowThree.append(
     createDetailCell('Responsibilities', responsibilities, 'resp'),

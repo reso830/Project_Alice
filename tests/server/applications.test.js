@@ -265,4 +265,54 @@ describe('applications API', () => {
       });
     });
   });
+
+  it('lists only non-archived applications', async () => {
+    await withServer(async (baseUrl, db) => {
+      const active = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+      db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
+
+      const response = await request(baseUrl, '/api/applications');
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].id).toBe(active.body.data.id);
+    });
+  });
+
+  it('returns an archived application by id', async () => {
+    await withServer(async (baseUrl, db) => {
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Beta Inc',
+          jobTitle: 'Backend Engineer',
+          status: 'wishlisted',
+        }),
+      });
+      db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
+
+      const response = await request(baseUrl, `/api/applications/${archived.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: archived.body.data.id,
+        archived: true,
+      });
+    });
+  });
 });

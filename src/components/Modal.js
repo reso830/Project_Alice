@@ -131,7 +131,7 @@ export function open(application, { onStatusChange } = {}) {
 
   idPill.textContent = displayValue(application.id);
   title.id = 'modal-title';
-  title.textContent = displayValue(application.position);
+  title.textContent = displayValue(application.jobTitle);
   statusButton.textContent = '⇄';
 
   statusButton.setAttribute('aria-label', 'Change status');
@@ -184,21 +184,21 @@ export function open(application, { onStatusChange } = {}) {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  const statusDateField = createField('Last status update', toDisplayDate(application.last_status_update));
+  const statusDateField = createField('Last status update', toDisplayDate(application.lastStatusUpdate));
   statusDateField.dataset.modalField = 'last-status-update';
 
   headerMeta.append(idPill, createStatusBadge(application.status, { id: 'modal-status-badge' }));
   titleRow.append(title, statusButton);
   header.append(headerMeta, titleRow);
   body.append(
-    createField('Company', application.company),
+    createField('Company', application.companyName),
     createField('Recruiter', application.recruiter),
     createField('Salary', application.salary),
     createField('Compatibility', `${application.compat}%`),
     statusDateField,
     createField('Responsibilities', application.responsibilities, true),
     createSkills(application.skills),
-    createField('URL', application.url, true),
+    createField('URL', application.jobPostingUrl, true),
   );
   panel.append(header, body);
   backdrop.append(panel);

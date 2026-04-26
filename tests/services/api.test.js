@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { create, request, update } from '../../src/services/api.js';
+import { create, getAll, getById, request, update } from '../../src/services/api.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -45,6 +45,34 @@ describe('api service', () => {
     await expect(update(1, { status: 'interview' })).resolves.toEqual(record);
     expect(fetchMock).toHaveBeenCalledWith('/api/applications/1', expect.objectContaining({
       method: 'PATCH',
+    }));
+  });
+
+  it('returns data from list and detail responses', async () => {
+    const records = [{
+      id: 1,
+      companyName: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+    }];
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: records }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: records[0] }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getAll()).resolves.toEqual(records);
+    await expect(getById(1)).resolves.toEqual(records[0]);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/applications', expect.objectContaining({
+      method: 'GET',
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/applications/1', expect.objectContaining({
+      method: 'GET',
     }));
   });
 

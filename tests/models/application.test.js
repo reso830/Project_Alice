@@ -4,18 +4,18 @@ import { toISODate } from '../../src/utils/date.js';
 
 function validRecord(overrides = {}) {
   return {
-    id: '003',
-    position: 'Frontend Engineer',
-    company: 'Acme Corp',
+    id: 3,
+    jobTitle: 'Frontend Engineer',
+    companyName: 'Acme Corp',
     status: 'applied',
-    last_status_update: '2026-04-25',
+    lastStatusUpdate: '2026-04-25',
     compat: 70,
     fav: false,
     responsibilities: 'Build UI',
     skills: ['JavaScript'],
     salary: '$120k',
     recruiter: 'Jane Smith',
-    url: 'https://jobs.example.com/frontend',
+    jobPostingUrl: 'https://jobs.example.com/frontend',
     ...overrides,
   };
 }
@@ -26,8 +26,9 @@ describe('validateApplication', () => {
     expect(validateApplication(validRecord({ id: 'abc' }))._corrupt).toBe(true);
   });
 
-  it('allows digit string ids', () => {
+  it('allows digit string and integer ids', () => {
     expect(validateApplication(validRecord({ id: '003' }))._corrupt).toBeUndefined();
+    expect(validateApplication(validRecord({ id: 3 }))._corrupt).toBeUndefined();
   });
 
   it('coerces unrecognized status and preserves valid status', () => {
@@ -35,11 +36,11 @@ describe('validateApplication', () => {
     expect(validateApplication(validRecord({ status: 'interview' })).status).toBe('interview');
   });
 
-  it('replaces invalid last_status_update with today', () => {
+  it('replaces invalid lastStatusUpdate with today', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 3, 25));
 
-    expect(validateApplication(validRecord({ last_status_update: '2026-13-01' })).last_status_update)
+    expect(validateApplication(validRecord({ lastStatusUpdate: '2026-13-01' })).lastStatusUpdate)
       .toBe(toISODate());
 
     vi.useRealTimers();
@@ -58,16 +59,16 @@ describe('validateApplication', () => {
   });
 
   it('removes invalid URLs', () => {
-    expect(validateApplication(validRecord({ url: 'not-a-url' })).url).toBe('');
+    expect(validateApplication(validRecord({ jobPostingUrl: 'not-a-url' })).jobPostingUrl).toBe('');
   });
 
   it('leaves required fields unchanged on a valid record', () => {
     const record = validateApplication(validRecord());
 
-    expect(record.company).toBe('Acme Corp');
-    expect(record.position).toBe('Frontend Engineer');
+    expect(record.companyName).toBe('Acme Corp');
+    expect(record.jobTitle).toBe('Frontend Engineer');
     expect(record.status).toBe('applied');
-    expect(record.last_status_update).toBe('2026-04-25');
+    expect(record.lastStatusUpdate).toBe('2026-04-25');
   });
 
   it('returns a validated copy without mutating the input record', () => {
@@ -94,12 +95,12 @@ describe('normalizeApplication', () => {
       responsibilities: undefined,
       salary: undefined,
       recruiter: undefined,
-      url: undefined,
+      jobPostingUrl: undefined,
     }));
 
     expect(record.responsibilities).toBe('');
     expect(record.salary).toBe('');
     expect(record.recruiter).toBe('');
-    expect(record.url).toBe('');
+    expect(record.jobPostingUrl).toBe('');
   });
 });

@@ -102,7 +102,7 @@ export function updateStatus(id, newStatus) {
   }
 
   application.status = normalized;
-  application.last_status_update = toISODate();
+  application.lastStatusUpdate = toISODate();
   save();
 
   return true;

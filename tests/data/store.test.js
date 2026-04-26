@@ -34,45 +34,45 @@ function records() {
   return [
     {
       id: '001',
-      position: 'Frontend Engineer',
-      company: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      companyName: 'Acme Corp',
       status: 'wishlisted',
-      last_status_update: '2026-04-20',
+      lastStatusUpdate: '2026-04-20',
       compat: 55,
       fav: false,
       responsibilities: '',
       skills: [],
       salary: '',
       recruiter: '',
-      url: '',
+      jobPostingUrl: '',
     },
     {
       id: '002',
-      position: 'Backend Engineer',
-      company: 'Beta Inc',
+      jobTitle: 'Backend Engineer',
+      companyName: 'Beta Inc',
       status: 'interview',
-      last_status_update: '2026-04-21',
+      lastStatusUpdate: '2026-04-21',
       compat: 80,
       fav: false,
       responsibilities: '',
       skills: [],
       salary: '',
       recruiter: '',
-      url: '',
+      jobPostingUrl: '',
     },
     {
       id: '003',
-      position: 'Product Engineer',
-      company: 'Gamma LLC',
+      jobTitle: 'Product Engineer',
+      companyName: 'Gamma LLC',
       status: 'offer',
-      last_status_update: '2026-04-22',
+      lastStatusUpdate: '2026-04-22',
       compat: 90,
       fav: false,
       responsibilities: '',
       skills: [],
       salary: '',
       recruiter: '',
-      url: '',
+      jobPostingUrl: '',
     },
   ];
 }
@@ -103,16 +103,16 @@ describe('store', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records()));
 
     expect(load()).toHaveLength(3);
-    expect(getById('002').company).toBe('Beta Inc');
+    expect(getById('002').companyName).toBe('Beta Inc');
   });
 
-  it('updates status and last_status_update for a matching id', () => {
+  it('updates status and lastStatusUpdate for a matching id', () => {
     save(records());
 
     expect(updateStatus('002', 'applied')).toBe(true);
 
     expect(getById('002').status).toBe('applied');
-    expect(getById('002').last_status_update).toBe(toISODate());
+    expect(getById('002').lastStatusUpdate).toBe(toISODate());
   });
 
   it('coerces invalid status updates to wishlisted', () => {
@@ -121,7 +121,7 @@ describe('store', () => {
     expect(updateStatus('002', 'not-real')).toBe(true);
 
     expect(getById('002').status).toBe('wishlisted');
-    expect(getById('002').last_status_update).toBe(toISODate());
+    expect(getById('002').lastStatusUpdate).toBe(toISODate());
   });
 
   it('does not save or update the date when status is unchanged', () => {
@@ -130,7 +130,7 @@ describe('store', () => {
     expect(updateStatus('002', 'interview')).toBe(false);
 
     expect(getById('002').status).toBe('interview');
-    expect(getById('002').last_status_update).toBe('2026-04-21');
+    expect(getById('002').lastStatusUpdate).toBe('2026-04-21');
   });
 
   it('does nothing when updating a missing id', () => {
@@ -154,7 +154,7 @@ describe('store', () => {
   it('finds records by id', () => {
     save(records());
 
-    expect(getById('003').company).toBe('Gamma LLC');
+    expect(getById('003').companyName).toBe('Gamma LLC');
     expect(getById('999')).toBeUndefined();
   });
 
@@ -162,10 +162,10 @@ describe('store', () => {
     save(records());
 
     const application = getById('001');
-    application.company = 'Mutated';
+    application.companyName = 'Mutated';
     application.skills.push('Mutation');
 
-    expect(getById('001').company).toBe('Acme Corp');
+    expect(getById('001').companyName).toBe('Acme Corp');
     expect(getById('001').skills).toEqual([]);
   });
 });

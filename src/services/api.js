@@ -40,6 +40,14 @@ export function create(fields) {
   return request('POST', '/api/applications', fields);
 }
 
+export function getAll() {
+  return request('GET', '/api/applications');
+}
+
+export function getById(id) {
+  return request('GET', `/api/applications/${id}`);
+}
+
 export function update(id, fields) {
   return request('PATCH', `/api/applications/${id}`, fields);
 }

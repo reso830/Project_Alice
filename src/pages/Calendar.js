@@ -9,8 +9,8 @@ function getCurrentMonthMarkerDays(date = new Date()) {
 
   return new Set(
     store.getAll()
-      .filter((application) => application.last_status_update?.startsWith(monthPrefix))
-      .map((application) => Number(application.last_status_update.slice(8, 10))),
+      .filter((application) => application.lastStatusUpdate?.startsWith(monthPrefix))
+      .map((application) => Number(application.lastStatusUpdate.slice(8, 10))),
   );
 }
 

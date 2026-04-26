@@ -139,19 +139,19 @@
 
 ### Tests
 
-- [ ] T048 [P] [US2] Add integration test: `GET /api/applications` returns only non-archived records
-- [ ] T049 [P] [US3] Add integration test: `GET /api/applications/:id` for an archived record still returns the full record (direct lookup is not filtered)
+- [X] T048 [P] [US2] Add integration test: `GET /api/applications` returns only non-archived records
+- [X] T049 [P] [US3] Add integration test: `GET /api/applications/:id` for an archived record still returns the full record (direct lookup is not filtered)
 
 ### Implementation
 
-- [ ] T050 [US2] Add `api.getAll()` to `src/services/api.js` — `GET /api/applications`, returns `data` array
-- [ ] T051 [P] [US3] Add `api.getById(id)` to `src/services/api.js` — `GET /api/applications/:id`, returns `data` object
-- [ ] T052 [US2] Update `src/pages/Tracker.js` — replace `store.getAll()` with `await api.getAll()`; add loading state (disable toolbar while fetching); on `NETWORK_ERROR` show a persistent error message "Cannot connect to the backend — is the server running?" instead of the card list; on other errors show a failure toast; render empty state correctly when `data` is an empty array
-- [ ] T053 [US3] Update `src/components/Modal.js` — replace `store.getById(id)` with `await api.getById(id)` where applicable; show error toast if fetch fails
-- [ ] T054 [US2] Update `src/components/Card.js` — rename all field references: `application.position` → `application.jobTitle`; `application.company` → `application.companyName`; `application.url` → `application.jobPostingUrl`; `application.last_status_update` → `application.lastStatusUpdate`; `application.fav` and `application.compat` and `application.skills` and `application.responsibilities` already match — verify they render correctly with real data
-- [ ] T055 [P] [US2] Update `src/components/Modal.js` field references to match new API names: `position` → `jobTitle`, `company` → `companyName`, `url` → `jobPostingUrl`, `last_status_update` → `lastStatusUpdate`, `recruiter` already matches
-- [ ] T056 [US2] Update `src/pages/Tracker.js` — fix copy-URL action: `application.url` → `application.jobPostingUrl`; add integer ID coercion for all `api.*` call sites: `parseInt(card.dataset.id, 10)` — and update `store.getById(id)` references to `api.getById()`
-- [ ] T057 [P] [US2] Update `src/models/application.js` — replace `position`, `company`, `url` references in `normalizeApplication` and `validateApplication` with `jobTitle`, `companyName`, `jobPostingUrl` to match the new API field names; update `isDigitString(id)` check to also accept integers (or remove it, since the backend now owns ID assignment)
+- [X] T050 [US2] Add `api.getAll()` to `src/services/api.js` — `GET /api/applications`, returns `data` array
+- [X] T051 [P] [US3] Add `api.getById(id)` to `src/services/api.js` — `GET /api/applications/:id`, returns `data` object
+- [X] T052 [US2] Update `src/pages/Tracker.js` — replace `store.getAll()` with `await api.getAll()`; add loading state (disable toolbar while fetching); on `NETWORK_ERROR` show a persistent error message "Cannot connect to the backend — is the server running?" instead of the card list; on other errors show a failure toast; render empty state correctly when `data` is an empty array
+- [X] T053 [US3] Update `src/components/Modal.js` — replace `store.getById(id)` with `await api.getById(id)` where applicable; show error toast if fetch fails
+- [X] T054 [US2] Update `src/components/Card.js` — rename all field references: `application.position` → `application.jobTitle`; `application.company` → `application.companyName`; `application.url` → `application.jobPostingUrl`; `application.last_status_update` → `application.lastStatusUpdate`; `application.fav` and `application.compat` and `application.skills` and `application.responsibilities` already match — verify they render correctly with real data
+- [X] T055 [P] [US2] Update `src/components/Modal.js` field references to match new API names: `position` → `jobTitle`, `company` → `companyName`, `url` → `jobPostingUrl`, `last_status_update` → `lastStatusUpdate`, `recruiter` already matches
+- [X] T056 [US2] Update `src/pages/Tracker.js` — fix copy-URL action: `application.url` → `application.jobPostingUrl`; add integer ID coercion for all `api.*` call sites: `parseInt(card.dataset.id, 10)` — and update `store.getById(id)` references to `api.getById()`
+- [X] T057 [P] [US2] Update `src/models/application.js` — replace `position`, `company`, `url` references in `normalizeApplication` and `validateApplication` with `jobTitle`, `companyName`, `jobPostingUrl` to match the new API field names; update `isDigitString(id)` check to also accept integers (or remove it, since the backend now owns ID assignment)
 
 **Checkpoint**: Frontend fully reads from API. localStorage is no longer the source of truth for reads. All field names aligned.
 
