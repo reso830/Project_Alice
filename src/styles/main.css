@@ -5,6 +5,7 @@
   --indigo-hover: #4338CA;
   --indigo-dim: #EEF2FF;
   --indigo-mid: #818CF8;
+  --indigo-soft: #F4F2FF;
   --bg: #F4F1ED;
   --surface: #FFFFFF;
   --border: #E8E3DA;
@@ -13,6 +14,8 @@
   --t2: #4B5563;
   --t3: #9CA3AF;
   --t4: #C4BDB5;
+  --pagination-text: #555555;
+  --pagination-muted: #BBBBBB;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -43,11 +46,17 @@ html {
 }
 
 body {
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
   background: var(--bg);
   color: var(--t1);
   font-family: Sora, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#app {
+  flex: 1;
 }
 
 button,
@@ -110,11 +119,10 @@ button:focus-visible,
 }
 
 .navbar__logo-mark {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
-  border-radius: 7px;
-  background: var(--indigo);
+  object-fit: contain;
 }
 
 .navbar__logo-text {
@@ -649,6 +657,154 @@ button:focus-visible,
   font-size: 12px;
 }
 
+/* Pagination */
+.pagination {
+  padding: 0 20px 20px;
+}
+
+.pagination__rule {
+  margin-bottom: 14px;
+  border: none;
+  border-top: 1.5px solid var(--border, #E0DDD8);
+}
+
+.pagination__nav {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pagination__btn {
+  min-width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--border, #E0DDD8);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--pagination-text);
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pagination__btn:not(.pagination__btn--active):hover {
+  border-color: var(--indigo);
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.pagination__btn--active {
+  border-color: var(--indigo);
+  background: var(--indigo);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.pagination__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 32px;
+  color: var(--pagination-muted);
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: default;
+  user-select: none;
+}
+
+/* Footer */
+.site-footer {
+  padding: 28px 20px 24px;
+  background: var(--navy);
+  color: rgba(255, 255, 255, .5);
+}
+
+.footer__inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.footer__brand {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer__brand-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.footer__brand-name {
+  color: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+.footer__tagline {
+  color: rgba(255, 255, 255, .38);
+  font-size: 11px;
+}
+
+.footer__rule {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.footer__label {
+  margin: 0 0 2px;
+  color: rgba(255, 255, 255, .28);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+}
+
+.footer__value {
+  margin: 0;
+  color: rgba(255, 255, 255, .45);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.footer__link {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, .38);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  line-height: 1.6;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.footer__link:hover {
+  color: rgba(255, 255, 255, .75);
+}
+
+.footer__copyright {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 4px;
+  color: rgba(255, 255, 255, .22);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+}
+
 @media (min-width: 1024px) {
   .card {
     display: grid;
@@ -732,6 +888,15 @@ button:focus-visible,
   .calendar-page,
   .profile-page {
     padding: 14px;
+  }
+
+  .footer__inner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer__brand,
+  .footer__copyright {
+    grid-column: 1 / -1;
   }
 
   .month-grid {
