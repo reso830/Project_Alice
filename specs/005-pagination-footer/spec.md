@@ -18,9 +18,9 @@ A user with more than 10 tracked job applications can move through their list in
 **Acceptance Scenarios**:
 
 1. **Given** 11 or more application records exist, **When** the user views the application list, **Then** page navigation controls are visible below the list.
-2. **Given** pagination is visible, **When** the user clicks a page number, **Then** the list updates to show only that page's records and the view scrolls to the top.
+2. **Given** pagination is visible, **When** the user clicks a page number, **Then** the list updates to show only that page's records, the view scrolls to the top, and keyboard focus moves to the top of the list region.
 3. **Given** 10 or fewer application records exist, **When** the user views the application list, **Then** no pagination controls are shown.
-4. **Given** the user is on page 3, **When** a search or filter is applied, **Then** the view resets to page 1 showing the filtered results.
+4. **Given** the user is on page 3, **When** a search, filter, archive, or reload changes the displayed dataset, **Then** the view preserves page 3 if that page is still valid; otherwise it moves to the highest valid page, or page 1 when pagination is no longer needed.
 5. **Given** pagination is visible with many pages, **When** the user views the controls, **Then** first and last pages are always accessible, and non-adjacent ranges are separated by a non-clickable ellipsis.
 
 ---
@@ -35,8 +35,8 @@ A user visiting any page of the application sees a persistent footer with brand 
 
 **Acceptance Scenarios**:
 
-1. **Given** the user is on any page, **When** they scroll to the bottom, **Then** the footer is visible with brand name, version, technology credits, and feedback buttons.
-2. **Given** the footer is visible, **When** the user clicks a feedback button, **Then** the button responds to the click (placeholder behavior is acceptable for this release).
+1. **Given** the user is on any page, **When** they scroll to the bottom, **Then** the footer is visible with brand name, version, technology credits, and feedback links.
+2. **Given** the footer is visible, **When** the user clicks a feedback link, **Then** the project's GitHub new-issue page opens in a new browser tab.
 3. **Given** the footer is visible, **When** the user views the copyright line, **Then** it reads "© 2026 Project Alice. All rights reserved. · Part of reso's Project Series."
 
 ---
@@ -60,7 +60,8 @@ A user on a small-screen device can navigate between pages and see the footer wi
 
 - What happens when total records is exactly 10? — Pagination is hidden; all 10 records appear on one page.
 - What happens when total records is exactly 11? — Pagination appears showing 2 pages.
-- What happens when the user is on page 3 and a filter reduces results to 5? — Pagination hides, page resets to 1, and all 5 filtered results are shown.
+- What happens when the user is on page 3 and a filter reduces results to 5? — Pagination hides, page becomes 1, and all 5 filtered results are shown.
+- What happens when the user is on page 3 and an archive or filter reduces the list to 2 pages? — The current page becomes invalid, so the view moves to page 2 rather than rendering an empty page.
 - What happens when navigating to the first page? — No ellipsis before page 1; the window starts at page 1.
 - What happens when navigating to the last page? — No ellipsis after the last page; the window ends at the last page.
 - What happens when ellipsis elements are clicked? — Nothing; they are non-interactive.
@@ -77,12 +78,12 @@ A user on a small-screen device can navigate between pages and see the footer wi
 - **FR-004**: System MUST display page navigation as a centered row of page buttons, separated from the card list by a horizontal divider.
 - **FR-005**: System MUST display a windowed page sequence of up to 3 consecutive page numbers, always including the first and last pages, with non-clickable ellipsis separating non-adjacent page ranges.
 - **FR-006**: System MUST visually distinguish the currently active page from all other page buttons.
-- **FR-007**: System MUST scroll the view to the top when the user navigates to a new page, and also when pagination resets due to a dataset change.
-- **FR-008**: System MUST reset pagination to page 1 whenever the displayed dataset changes (e.g., an application is archived or data is reloaded).
+- **FR-007**: System MUST scroll the view to the top and move keyboard focus to the top of the list region when the user navigates to a new page, and also when pagination adjusts due to a dataset change.
+- **FR-008**: System MUST preserve the current page when the displayed dataset changes and that page is still valid; if the current page is no longer valid, the system MUST move to the highest valid page, or page 1 when pagination is no longer needed.
 - **FR-009**: Ellipsis elements MUST be non-interactive — they must not respond to clicks or hover.
 - **FR-010**: All pagination page buttons MUST include descriptive accessible labels; the active page MUST be identified for assistive technology.
 - **FR-011**: System MUST render a persistent footer on every page of the application.
-- **FR-012**: Footer MUST include the following sections: brand identity, version information, technology stack credits, feedback links, and a copyright notice.
+- **FR-012**: Footer MUST include the following sections: brand identity, version information, actual project technology stack credits, feedback links, and a copyright notice.
 - **FR-013**: Feedback links in the footer MUST open the project's GitHub issue tracker in a new browser tab when clicked. Both "Report an issue" and "Request a feature" link to the new-issue page. No backend integration is required.
 - **FR-013a**: The footer MUST remain visually positioned at the bottom of the viewport on all pages, including pages with minimal content.
 - **FR-014**: Footer MUST adapt to screen size: multi-column layout on desktop (≥ 640px), condensed layout on mobile (< 640px).
@@ -105,7 +106,7 @@ A user on a small-screen device can navigate between pages and see the footer wi
 
 - **SC-001**: Users with more than 10 application records can navigate through all records using visible page controls on the list view.
 - **SC-002**: Users with 10 or fewer records see the full list without pagination controls present.
-- **SC-003**: Navigating to a new page shows the correct slice of records and returns focus to the top of the list.
+- **SC-003**: Navigating to a new page shows the correct slice of records, scrolls to the top of the view, and moves keyboard focus to the top of the list region.
 - **SC-004**: Pagination controls are not shown when the application list contains 10 or fewer records at load or after an application is archived.
 - **SC-005**: Users on all pages see a consistent footer with brand, version, stack, feedback, and copyright content.
 - **SC-006**: Clicking a feedback link in the footer opens the project's issue tracker in a new browser tab.
@@ -119,7 +120,8 @@ A user on a small-screen device can navigate between pages and see the footer wi
 - The application list continues to be fetched from the existing backend; this feature does not change how data is retrieved or stored.
 - All existing filter and search functionality continues to work as today; pagination reacts to whatever result set those operations produce.
 - Feedback links open the GitHub Issues new-issue page in a new tab; no backend integration is required.
-- The version number displayed in the footer is a static value maintained in the codebase.
+- The version number displayed in the footer is a static value maintained in the codebase and should match the project's actual package version at implementation time.
+- Footer stack credits should reflect the actual project stack: vanilla JavaScript ES modules, Vite, Vitest, and ESLint. The footer must not claim React or Babel unless those technologies become real project dependencies.
 - Visual styling conventions (typography, color palette) are already partially in use in the project; this feature extends their use to the pagination and footer components.
 - No new authentication, data persistence, or API requirements are introduced by this feature.
 - Application data is private and local-first; no data is shared externally by this feature.

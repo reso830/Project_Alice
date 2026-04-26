@@ -5,14 +5,14 @@
 
 ## Summary
 
-Add client-side pagination to the application list (visible only when total records exceed 10) and a persistent site footer across all pages. The pagination algorithm is implemented as a pure utility function isolated from rendering. Both components are built in the existing vanilla JavaScript component pattern — no new dependencies required. The footer mounts once at the app-shell level; pagination state lives in the Tracker module alongside the existing application list state.
+Add client-side pagination to the application list (visible only when total records exceed 10) and a persistent site footer across all pages. The pagination algorithm is implemented as a pure utility function isolated from rendering. Both components are built in the existing vanilla JavaScript component pattern. The only dependency change is dev-only `jsdom` for DOM component tests. The footer mounts once at the app-shell level; pagination state lives in the Tracker module alongside the existing application list state.
 
 ---
 
 ## Technical Context
 
 **Language/Version**: JavaScript (ES2022 modules)
-**Primary Dependencies**: Vite 5.4 (build), Vitest 1.6 (tests), ESLint 9 (lint) — no new dependencies for this feature
+**Primary Dependencies**: Vite 5.4 (build), Vitest 1.6 (tests), ESLint 9 (lint); add `jsdom` as a dev-only test dependency
 **Storage**: N/A — purely a display feature; the Express/SQLite backend is unchanged
 **Testing**: Vitest 1.6 — `npm run test:run` / `npm run test:ci`
 **Target Platform**: Desktop and mobile browsers (evergreen)
@@ -35,7 +35,7 @@ Add client-side pagination to the application list (visible only when total reco
 | Add / edit / search / filter / review workflows | ✅ — pagination integrates with the existing application list; no workflow removed |
 | Automated tests for core logic | ✅ — `getPaginationModel` unit tests planned; visibility + navigation UI tests planned |
 | Privacy: no external data sharing | ✅ — no analytics, no external calls |
-| Desktop + mobile responsive, keyboard nav, non-color status | ✅ — responsive footer layout, semantic `<button>` elements, `aria-label` + `aria-current` |
+| Desktop + mobile responsive, keyboard nav, non-color status | ✅ — responsive footer layout, semantic `<button>` elements, `aria-label` + `aria-current`, and focus movement to the list region after page changes |
 | Data model extensibility not overbuilt | ✅ — no data model changes |
 
 **Verdict**: All gates pass. No violations to justify.
@@ -63,7 +63,7 @@ src/
 │   ├── Footer.js         ← NEW: persistent footer component
 │   └── Pagination.js     ← NEW: page navigation component
 ├── pages/
-│   └── Tracker.js        ← MODIFIED: add _currentPage state, renderPage(), reset logic
+│   └── Tracker.js        ← MODIFIED: add _currentPage state, renderPage(), invalid-page clamp logic, focus management
 ├── styles/
 │   └── main.css          ← MODIFIED: pagination + footer styles appended
 ├── utils/

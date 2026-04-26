@@ -17,7 +17,7 @@
 
 **Purpose**: Confirm working environment and scope.
 
-- [ ] T001 Confirm active branch is `005-pagination-footer`; review `specs/005-pagination-footer/plan.md` file change map and confirm no files in `server/` or `shared/` are in scope
+- [x] T001 Confirm active branch is `005-pagination-footer`; review `specs/005-pagination-footer/plan.md` file change map and confirm no files in `server/` or `shared/` are in scope
 
 **Checkpoint**: Scope confirmed. Ready to begin.
 
@@ -41,17 +41,17 @@
 
 ## Phase 3: User Story 1 — Navigate Large Application Lists via Pagination (P1) 🎯 MVP
 
-**Goal**: Users with >10 applications can navigate through pages; correct 10-record slice shown per page; pagination hides for ≤10 records; page resets and scrolls to top on dataset change; archiving the boundary record removes the pagination bar.
+**Goal**: Users with >10 applications can navigate through pages; correct 10-record slice shown per page; pagination hides for ≤10 records; page changes scroll and move focus to the list region; dataset changes preserve the current page while valid and clamp only when invalid; archiving the boundary record removes the pagination bar.
 
-**Independent Test**: Seed >10 records. Pagination controls appear. Click page 2 — different records shown, view scrolled to top. Archive until ≤10 records remain — pagination disappears and view is on page 1.
+**Independent Test**: Seed >10 records. Pagination controls appear. Click page 2 — different records shown, view scrolls to top, and keyboard focus moves to the list region. Archive records while the current page remains valid — the current page is preserved. Archive enough records to make the current page invalid — the view moves to the highest valid page, or page 1 when pagination disappears.
 
 ### Application List Integration
 
 - [ ] T007 [US1] Add `let _currentPage = 1` and `let _paginationEl = null` module-level variables to `src/pages/Tracker.js`; reset both to initial values in `unmount()`; also reset both to initial values at the start of `mount()` before any rendering begins (guards against mount-without-unmount edge case)
 - [ ] T008 [US1] Extract `renderPage()` in `src/pages/Tracker.js` — add `import { PAGE_SIZE } from '../utils/pagination.js'` at the top of Tracker.js (do NOT declare a local constant); compute `startIndex = (_currentPage - 1) * PAGE_SIZE`, `endIndex = startIndex + PAGE_SIZE`; slice `_applications` without mutating it; clear and rebuild `_cardList` with sliced records; replace the existing inline card-rendering loop in `mount()` with a call to `renderPage()`
-- [ ] T009 [US1] In `renderPage()` in `src/pages/Tracker.js`, call `getPaginationModel(_currentPage, _applications.length, PAGE_SIZE)`; if `hasPagination`, create a Pagination element via `Pagination.render()` and store in `_paginationEl`, then append after `_cardList`; remove any existing `_paginationEl` before re-rendering; if `!hasPagination`, ensure no pagination element is in the DOM
-- [ ] T010 [US1] Add `onPageChange(page)` in `src/pages/Tracker.js` — sets `_currentPage = page`, calls `window.scrollTo(0, 0)`, calls `renderPage()`; pass as callback to `Pagination.render()`
-- [ ] T011 [US1] Update `onArchive` in `src/pages/Tracker.js` — after `removeApplication(id)` and the surgical card DOM removal, call `renderPage()` instead of only updating the toolbar count; this ensures pagination re-evaluates after the dataset shrinks (e.g., archiving the 11th record must make the pagination bar disappear)
+- [ ] T009 [US1] In `renderPage()` in `src/pages/Tracker.js`, call `getPaginationModel(_currentPage, _applications.length, PAGE_SIZE)` after clamping `_currentPage` to a valid page for the current dataset; if `hasPagination`, create a Pagination element via `Pagination.render()` and store in `_paginationEl`, then append after `_cardList`; remove any existing `_paginationEl` before re-rendering; if `!hasPagination`, ensure no pagination element is in the DOM and `_currentPage` is `1`
+- [ ] T010 [US1] Add `onPageChange(page)` and a small focus helper in `src/pages/Tracker.js` — `onPageChange` sets `_currentPage = page`, calls `renderPage({ moveFocus: true })`, then the render path calls `window.scrollTo(0, 0)` and moves keyboard focus to the top of the card list region (use a programmatic focus target such as `_cardList` with `tabindex="-1"`); pass `onPageChange` as callback to `Pagination.render()`
+- [ ] T011 [US1] Update `onArchive` in `src/pages/Tracker.js` — after `removeApplication(id)`, call `renderPage()` instead of only updating the toolbar count; preserve the current page when it is still valid, clamp to the highest valid page when it becomes invalid, and hide pagination with `_currentPage = 1` when the dataset shrinks to `PAGE_SIZE` or fewer records
 
 ### Pagination Component
 
@@ -73,7 +73,7 @@
 ### Footer Component
 
 - [ ] T016 [US2] Create `src/components/Footer.js` stub with empty `render()` returning `null`; create `tests/components/Footer.test.js` with `// @vitest-environment jsdom` at top — write tests for: (a) footer element exists in DOM; (b) both feedback links have `href` containing `github.com/reso830/Project_Alice/issues` and `target="_blank"`; (c) both feedback links have `aria-label`; (d) copyright text contains `© 2026 Project Alice`; run `npm run test:run` and confirm these tests **fail**
-- [ ] T017 [US2] Implement `Footer.render()` in `src/components/Footer.js` — return `<footer class="site-footer">` containing `<div class="footer__inner">`; add brand section (inline SVG icon from `design/pagination_footer.md` § 2.4, name "Project Alice", tagline "Your job search, organized."); add `<hr class="footer__rule">`; add VERSION section (label "VERSION", values "v0.1.0 — wireframe" and "Built Apr 2026"); add STACK section (label "STACK", values "React 18 · Babel" and "Sora · DM Mono"); add FEEDBACK section (label "FEEDBACK") with two `<a>` elements: "Report an issue" and "Request a feature", both with `href="https://github.com/reso830/Project_Alice/issues/new"`, `target="_blank"`, `rel="noopener noreferrer"`, and matching `aria-label`; add `<p class="footer__copyright">© 2026 Project Alice. All rights reserved. · Part of reso's Project Series.</p>`
+- [ ] T017 [US2] Implement `Footer.render()` in `src/components/Footer.js` — return `<footer class="site-footer">` containing `<div class="footer__inner">`; add brand section (inline SVG icon from `design/pagination_footer.md` § 2.4, name "Project Alice", tagline "Your job search, organized."); add `<hr class="footer__rule">`; add VERSION section (label "VERSION", values "v0.2.0" and "Built Apr 2026"); add STACK section (label "STACK", values "Vanilla JS · Vite" and "Vitest · ESLint"); add FEEDBACK section (label "FEEDBACK") with two `<a>` elements: "Report an issue" and "Request a feature", both with `href="https://github.com/reso830/Project_Alice/issues/new"`, `target="_blank"`, `rel="noopener noreferrer"`, and matching `aria-label`; add `<p class="footer__copyright">© 2026 Project Alice. All rights reserved. · Part of reso's Project Series.</p>`
 - [ ] T018 [US2] In `src/main.js`, import `{ Footer }` from `./components/Footer.js`; inside `DOMContentLoaded`, call `Footer.render()` and append to `document.body` after the `<main>` element; footer mounts once, never unmounts
 - [ ] T019 [US2] Add footer desktop styles to `src/styles/main.css`: `.site-footer` (`background: #1a1a2e; color: rgba(255,255,255,0.5); padding: 28px 20px 24px`); `.footer__inner` (`display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px 32px; max-width: 900px; margin: 0 auto`); brand flex row (`align-items: baseline; gap: 8px`); brand name (`color: #fff; font-size: 13px; font-weight: 600; letter-spacing: 0.4px`); tagline (`font-size: 11px; color: rgba(255,255,255,0.38)`); section label (`font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.9px; color: rgba(255,255,255,0.28); margin-bottom: 2px`); value text (DM Mono 10px, `rgba(255,255,255,0.45); line-height: 1.6`); `.footer__link` default (DM Mono 10px, `color: rgba(255,255,255,0.38); background: none; border: none; padding: 0; cursor: pointer; display: block; text-decoration: none`); `.footer__link:hover` (`color: rgba(255,255,255,0.75)`); `.footer__rule` (`border: none; border-top: 1px solid rgba(255,255,255,0.08); grid-column: 1 / -1`); `.footer__copyright` (DM Mono 9px, `color: rgba(255,255,255,0.22); grid-column: 1 / -1; padding-top: 4px`) — all values from `design/pagination_footer.md` § 2.4
 - [ ] T020 [US2] Run `npm run test:run` — Footer component tests from T016 must pass; fix any failures
@@ -104,7 +104,7 @@
 - [ ] T025 [P] Inspect all new component files — confirm no `style=` inline attributes; all visual styling must be class-based in `src/styles/main.css`
 - [ ] T026 Run `npm run lint` — resolve all ESLint errors in `src/components/Footer.js`, `src/components/Pagination.js`, `src/utils/pagination.js`, `src/pages/Tracker.js`, `src/main.js`
 - [ ] T027 Run `npm run test:run` — all tests pass (unit + both component suites)
-- [ ] T028 Full manual verification: run all checks in `specs/005-pagination-footer/quickstart.md`; additionally verify the archive regression: with exactly 11 records on page 1, archive one — confirm pagination bar disappears immediately and page count is no longer shown
+- [ ] T028 Full manual verification: run all checks in `specs/005-pagination-footer/quickstart.md`; additionally verify archive regressions: (a) with a valid current page after archive, confirm the current page is preserved; (b) when archive makes the current page invalid, confirm the view moves to the highest valid page; (c) with exactly 11 records on page 1, archive one — confirm pagination bar disappears immediately and page count is no longer shown
 - [ ] T029 Run `git diff --name-only` — confirm no files under `server/` or `shared/` were modified
 
 **Checkpoint**: All phases complete. Lint clean. All tests pass. Archive regression verified. No backend files changed. Ready for `/speckit.checklist`.
@@ -173,7 +173,7 @@ T015 run Pagination tests
 1. T001 — confirm scope
 2. T002–T006 — pagination model + tests
 3. T007–T015 — integrate pagination into Tracker
-4. **STOP**: seed >10 records, test end-to-end including archive regression
+4. **STOP**: seed >10 records, test end-to-end including focus movement and archive regressions
 5. Proceed to US2 only after US1 validated
 
 ### Incremental Delivery
@@ -190,8 +190,8 @@ T015 run Pagination tests
 
 - `'ellipsis'` is a string sentinel in `pagesToRender` — never compare against a page number
 - `_applications` must never be mutated — always derive the visible slice as a computed value
-- `window.scrollTo(0, 0)` is already used in existing `Tracker.js` — this is the established scroll pattern
-- Footer content strings (stack credits, version) are static values in `Footer.js`, not loaded from config
+- `window.scrollTo(0, 0)` is already used in existing `Tracker.js` — keep that scroll pattern and pair it with programmatic focus movement to the card list region after page changes
+- Footer content strings (stack credits, version) are static values in `Footer.js`, not loaded from config; use the actual project stack (`v0.2.0`, Vanilla JS, Vite, Vitest, ESLint), not the older React/Babel wireframe text
 - Feedback links use `<a>` elements with `target="_blank"` and `rel="noopener noreferrer"`, not `<button>`
 - jsdom is a dev dependency only — it is not bundled into the production build
 - **Total tasks**: 29 (T001–T029)

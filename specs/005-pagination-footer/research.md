@@ -68,20 +68,30 @@ No external research was required. All decisions were resolved by reading the ex
 
 ---
 
-### 7. Scroll-to-top mechanism
+### 7. Scroll and focus mechanism
 
-**Decision**: `window.scrollTo(0, 0)` called at the start of `renderPage()` when triggered by a page change.
+**Decision**: `window.scrollTo(0, 0)` is paired with programmatic focus movement to the top of the list region when `renderPage()` is triggered by a page change.
 
-**Rationale**: `window.scrollTo(0, 0)` is already used in the existing `Tracker.mount()` function (lines 172, 185, 197 of Tracker.js), making this the established pattern in the codebase.
+**Rationale**: `window.scrollTo(0, 0)` is already used in the existing `Tracker.mount()` function, making this the established scroll pattern in the codebase. Moving keyboard focus as well keeps keyboard and assistive-technology users aligned with the visible page change.
 
 **Alternatives considered**: Element `ref.scrollIntoView()` — rejected for consistency with the existing implementation.
 
 ---
 
-### 8. Testing approach
+### 8. Dataset change page preservation
 
-**Decision**: Vitest unit tests for `getPaginationModel()` in `tests/utils/pagination.test.js`. Test cases cover all page positions documented in the design spec (page 1, 2, 3, 4, 5, 9, 10 of a 10-page set), boundary conditions (exactly 10 entries, exactly 11 entries), and the `hasPagination` flag.
+**Decision**: Preserve `_currentPage` when the displayed dataset changes and the page still exists. If the current page becomes invalid, clamp to the highest valid page; if pagination disappears, use page `1`.
 
-**Rationale**: The windowing algorithm is the only non-trivial logic in this feature. All other concerns (DOM construction, styling) are better verified visually in the browser than through unit tests.
+**Rationale**: This avoids unnecessary jumps for users who are reviewing a page that remains valid, while preventing empty pages after archives, filters, or reloads shrink the result set.
 
-**Alternatives considered**: DOM-level component tests — deferred because the project currently has no DOM testing setup (Vitest is configured with `environment: 'node'`).
+**Alternatives considered**: Resetting to page `1` on every dataset change — rejected because it loses useful user context when the current page remains valid.
+
+---
+
+### 9. Testing approach
+
+**Decision**: Vitest unit tests cover `getPaginationModel()` in `tests/utils/pagination.test.js`, and jsdom component tests cover the Pagination and Footer DOM renderers. Pagination model cases cover all page positions documented in the design spec (page 1, 2, 3, 4, 5, 9, 10 of a 10-page set), boundary conditions (exactly 10 entries, exactly 11 entries), and the `hasPagination` flag. Component tests cover pagination visibility, active-page accessibility attributes, non-interactive ellipses, footer links, and footer copyright text.
+
+**Rationale**: The windowing algorithm is the highest-risk logic and needs deterministic unit coverage. Lightweight jsdom tests add confidence that the new DOM factories expose the required accessibility attributes and links without requiring a browser for every assertion.
+
+**Alternatives considered**: Manual-only DOM verification — rejected because footer link targets and pagination accessibility attributes are cheap to verify automatically once `jsdom` is installed as a dev-only dependency.

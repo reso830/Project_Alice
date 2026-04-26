@@ -1,5 +1,5 @@
 # Design Spec — Pagination & Footer
-**Project Alice · Wireframe v0.1.0 · Apr 2026**
+**Project Alice · v0.2.0 · Apr 2026**
 
 ---
 
@@ -54,10 +54,10 @@ winEnd   = winStart + 2
 | 10 | `1` `···` `8` `9` `10` |
 
 ### 1.5 Behaviour
-- Clicking a page button sets the current page and **scrolls the view to the top**.
+- Clicking a page button sets the current page, **scrolls the view to the top**, and moves keyboard focus to the top of the list region.
 - The active page button is visually distinguished (filled accent background).
 - Ellipsis items (`···`) are non-interactive — no cursor pointer, no hover state.
-- Page state is local UI state; it resets to `1` if the dataset changes (e.g. filters applied).
+- Page state is local UI state. If the dataset changes, preserve the current page when it is still valid; otherwise move to the highest valid page, or page `1` when pagination is no longer needed.
 
 ### 1.6 Visual Spec
 
@@ -127,8 +127,8 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 │  [✓] Project Alice    Your job search, organized.   │  ← brand (full width)
 │ ─────────────────────────────────────────────────── │  ← <hr>
 │  VERSION         STACK            FEEDBACK          │
-│  v0.1.0          React 18 · Babel  Report an issue  │
-│  Built Apr 2026  Sora · DM Mono    Request a feature│
+│  v0.2.0          Vanilla JS · Vite Report an issue  │
+│  Built Apr 2026  Vitest · ESLint   Request a feature│
 │                                   Contact support   │
 │ ─────────────────────────────────────────────────── │
 │  © 2026 AppTracker. All rights reserved.            │  ← copyright (full width)
@@ -144,12 +144,12 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 | Section | Label | Content | Interactive? |
 |---|---|---|---|
 | Brand | — | Icon + "Project Alice" + "Your job search, organized." | No |
-| Version | `VERSION` | `v0.1.0 — wireframe`, `Built Apr 2026` | No |
-| Stack | `STACK` | `React 18 · Babel`, `Sora · DM Mono` | No |
-| Feedback | `FEEDBACK` | "Report an issue", "Request a feature" | Yes (buttons) |
+| Version | `VERSION` | `v0.2.0`, `Built Apr 2026` | No |
+| Stack | `STACK` | `Vanilla JS · Vite`, `Vitest · ESLint` | No |
+| Feedback | `FEEDBACK` | "Report an issue", "Request a feature" | Yes (links) |
 | Copyright | — | `© 2026 Project Alice. All rights reserved. · Part of reso's Project Series.` | No |
 
-> **Implementation note:** feedback buttons are placeholders in the wireframe. Wire them to modal/form flows in production.
+> **Implementation note:** feedback links open `https://github.com/reso830/Project_Alice/issues/new` in a new tab for this release.
 
 > **Brand attribution:** "Part of reso's Project Series" is appended to the copyright line, separated by a `·` middot. Keep it on the same line — do not promote it to the brand section.
 
@@ -271,5 +271,5 @@ Content: `© 2026 Project Alice. All rights reserved. · Part of reso's Project 
 
 - Pagination `<button>` elements must have descriptive `aria-label` attributes: e.g. `aria-label="Go to page 4"`, `aria-label="Current page, page 5"` (with `aria-current="page"`).
 - Ellipsis spans should use `aria-hidden="true"` — they carry no navigational meaning.
-- Footer feedback buttons require accessible labels even without visible icon context.
+- Footer feedback links require accessible labels even without visible icon context.
 - Ensure 4.5:1 contrast ratio on all footer text against `#1a1a2e`.

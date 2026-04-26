@@ -76,14 +76,14 @@ ESLint covers `src/`, `tests/`, `server/`, and `shared/`.
 
 1. Ensure more than 10 application records exist (use seed or add via UI)
 2. Confirm pagination controls appear below the card list
-3. Click page 2 — list should show records 11–20, view scrolls to top
+3. Click page 2 — list should show records 11–20, view scrolls to top, and keyboard focus moves to the list region
 4. Click page 1 — list should show records 1–10
-5. Navigate to a middle page, then reload — pagination resets to page 1
-6. Delete records until ≤10 remain — pagination controls should disappear
+5. Navigate to a middle page, then archive or filter records while that page is still valid — pagination should preserve the current page
+6. Archive or filter enough records that the current page no longer exists — pagination should move to the highest valid page, or page 1 if pagination disappears
 
 ## Verifying Footer Manually
 
 1. Open the app on desktop — confirm 3-column footer layout at bottom
 2. Resize browser to < 640px — confirm footer reflows to 2-column layout
-3. Click "Report an issue" and "Request a feature" — buttons must respond to clicks
+3. Click "Report an issue" and "Request a feature" — each link opens `https://github.com/reso830/Project_Alice/issues/new` in a new tab
 4. Navigate between Tracker, Calendar, and Profile — footer must persist across all pages
