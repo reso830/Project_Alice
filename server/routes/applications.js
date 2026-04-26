@@ -2,6 +2,20 @@ import { Router } from 'express';
 import { archive, create, getAll, getById, update } from '../db/applications.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
+function parseIdParam(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function sendInvalidId(res) {
+  return res.status(400).json({
+    error: {
+      code: 'BAD_REQUEST',
+      message: 'Invalid id',
+    },
+  });
+}
+
 export function createApplicationsRouter({ db } = {}) {
   const router = Router();
 
@@ -35,7 +49,12 @@ export function createApplicationsRouter({ db } = {}) {
 
   router.get('/:id', (req, res, next) => {
     try {
-      const record = getById(parseInt(req.params.id, 10), db);
+      const id = parseIdParam(req.params.id);
+      if (id === null) {
+        return sendInvalidId(res);
+      }
+
+      const record = getById(id, db);
       if (!record) {
         return res.status(404).json({
           error: {
@@ -53,6 +72,11 @@ export function createApplicationsRouter({ db } = {}) {
 
   router.patch('/:id', (req, res, next) => {
     try {
+      const id = parseIdParam(req.params.id);
+      if (id === null) {
+        return sendInvalidId(res);
+      }
+
       const result = updateSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({
@@ -64,7 +88,7 @@ export function createApplicationsRouter({ db } = {}) {
         });
       }
 
-      const record = update(parseInt(req.params.id, 10), result.data, db);
+      const record = update(id, result.data, db);
       if (!record) {
         return res.status(404).json({
           error: {
@@ -82,7 +106,12 @@ export function createApplicationsRouter({ db } = {}) {
 
   router.post('/:id/archive', (req, res, next) => {
     try {
-      const record = archive(parseInt(req.params.id, 10), db);
+      const id = parseIdParam(req.params.id);
+      if (id === null) {
+        return sendInvalidId(res);
+      }
+
+      const record = archive(id, db);
       if (!record) {
         return res.status(404).json({
           error: {
@@ -100,7 +129,3 @@ export function createApplicationsRouter({ db } = {}) {
 
   return router;
 }
-
-const router = createApplicationsRouter();
-
-export default router;

@@ -53,15 +53,6 @@ function parseJson(value, fallback) {
   return JSON.parse(value);
 }
 
-function clampCompat(value) {
-  const number = Number(value);
-  if (Number.isNaN(number)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(100, number));
-}
-
 export function toRecord(row) {
   return {
     id: row.id,
@@ -97,8 +88,6 @@ export function toRow(fields) {
 
     if (field === 'fav') {
       row[column] = value ? 1 : 0;
-    } else if (field === 'compat') {
-      row[column] = clampCompat(value);
     } else if (field === 'skills') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'metadata') {

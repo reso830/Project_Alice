@@ -21,13 +21,13 @@ function validRecord(overrides = {}) {
 }
 
 describe('validateApplication', () => {
-  it('marks missing and non-digit ids as corrupt', () => {
+  it('marks missing and non-integer ids as corrupt', () => {
     expect(validateApplication(validRecord({ id: '' }))._corrupt).toBe(true);
     expect(validateApplication(validRecord({ id: 'abc' }))._corrupt).toBe(true);
+    expect(validateApplication(validRecord({ id: '003' }))._corrupt).toBe(true);
   });
 
-  it('allows digit string and integer ids', () => {
-    expect(validateApplication(validRecord({ id: '003' }))._corrupt).toBeUndefined();
+  it('allows positive integer ids', () => {
     expect(validateApplication(validRecord({ id: 3 }))._corrupt).toBeUndefined();
   });
 

@@ -170,6 +170,21 @@ describe('applications API', () => {
     });
   });
 
+  it('returns validation error for a non-object create request body', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify('not-an-object'),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+      });
+    });
+  });
+
   it('updates status and lastStatusUpdate while preserving other fields', async () => {
     await withServer(async (baseUrl, db) => {
       const created = await request(baseUrl, '/api/applications', {
@@ -293,6 +308,37 @@ describe('applications API', () => {
     });
   });
 
+  it('clears optional URL and date fields with empty strings', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          applicationDate: '2026-04-26',
+          followUpDate: '2026-04-30',
+          jobPostingUrl: 'https://example.com/job',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          applicationDate: '',
+          followUpDate: '',
+          jobPostingUrl: '',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        applicationDate: '',
+        followUpDate: '',
+        jobPostingUrl: '',
+      });
+    });
+  });
+
   it('returns validation fields for invalid update URLs', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
@@ -315,6 +361,29 @@ describe('applications API', () => {
           jobPostingUrl: expect.any(String),
         },
       });
+    });
+  });
+
+  it('returns bad request for invalid ids', async () => {
+    await withServer(async (baseUrl) => {
+      const getResponse = await request(baseUrl, '/api/applications/abc');
+      const patchResponse = await request(baseUrl, '/api/applications/abc', {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+      const archiveResponse = await request(baseUrl, '/api/applications/abc/archive', {
+        method: 'POST',
+      });
+
+      for (const response of [getResponse, patchResponse, archiveResponse]) {
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+          error: {
+            code: 'BAD_REQUEST',
+            message: 'Invalid id',
+          },
+        });
+      }
     });
   });
 
@@ -396,6 +465,32 @@ describe('applications API', () => {
         }),
       });
 
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        id: created.body.data.id,
+        archived: true,
+      });
+    });
+  });
+
+  it('archives an already archived application idempotently', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
         method: 'POST',
       });

@@ -60,8 +60,8 @@ export const STATUS_CONFIG = {
 
 export { STATUS_VALUES };
 
-function isDigitString(value) {
-  return (typeof value === 'string' || typeof value === 'number') && /^\d+$/.test(String(value));
+function isPositiveInteger(value) {
+  return Number.isInteger(value) && value > 0;
 }
 
 function isValidUrl(value) {
@@ -101,7 +101,7 @@ export function normalizeApplication(record) {
 export function validateApplication(record) {
   const validated = { ...record };
 
-  if (!isDigitString(validated.id)) {
+  if (!isPositiveInteger(validated.id)) {
     validated._corrupt = true;
   }
 

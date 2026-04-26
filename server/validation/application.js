@@ -8,21 +8,20 @@ const requiredString = (fieldLabel) => z.string({
 }).trim().min(1, `${fieldLabel} is required`);
 
 const optionalText = z.string().optional();
+const emptyString = z.literal('');
 
 const dateField = (fieldLabel) => z.string()
   .regex(datePattern, `${fieldLabel} must use YYYY-MM-DD format`)
+  .or(emptyString)
   .optional();
 
 const jobPostingUrl = z.string()
   .url('Job posting URL must be a valid URL')
-  .refine((value) => {
-    try {
-      const parsed = new URL(value);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }, 'Job posting URL must be a valid http or https URL')
+  .refine(
+    (value) => value.startsWith('http://') || value.startsWith('https://'),
+    'Job posting URL must be a valid http or https URL',
+  )
+  .or(emptyString)
   .optional();
 
 const compat = z.number()

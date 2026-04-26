@@ -64,6 +64,18 @@ describe('createSchema', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('allows empty URL and date fields for clearing optional values', () => {
+    const result = createSchema.parse(validPayload({
+      jobPostingUrl: '',
+      applicationDate: '',
+      followUpDate: '',
+    }));
+
+    expect(result.jobPostingUrl).toBe('');
+    expect(result.applicationDate).toBe('');
+    expect(result.followUpDate).toBe('');
+  });
 });
 
 describe('updateSchema', () => {
@@ -84,6 +96,18 @@ describe('updateSchema', () => {
 
     expect(result.success).toBe(false);
     expect(toApiError(result.error).followUpDate).toEqual(expect.any(String));
+  });
+
+  it('allows empty URL and date fields on updates', () => {
+    expect(updateSchema.parse({
+      jobPostingUrl: '',
+      applicationDate: '',
+      followUpDate: '',
+    })).toEqual({
+      jobPostingUrl: '',
+      applicationDate: '',
+      followUpDate: '',
+    });
   });
 
   it('accepts empty objects as valid no-op updates', () => {

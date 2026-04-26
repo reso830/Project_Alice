@@ -143,12 +143,12 @@ describe('application row mapping', () => {
   it('maps only supplied API fields to SQL row fields', () => {
     expect(toRow({
       fav: true,
-      compat: 150,
+      compat: 72,
       skills: ['React'],
       metadata: null,
     })).toEqual({
       fav: 1,
-      compat: 100,
+      compat: 72,
       skills: '["React"]',
       metadata: null,
     });

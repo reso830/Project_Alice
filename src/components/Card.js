@@ -74,7 +74,7 @@ export function render(application, callbacks = {}) {
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
   starButton.setAttribute('aria-label', 'Star application');
-  archiveButton.setAttribute('aria-label', 'Archive application');
+  archiveButton.setAttribute('aria-label', 'Archive application permanently from active list');
 
   card.className = 'card';
   card.dataset.id = application.id;

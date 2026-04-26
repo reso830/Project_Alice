@@ -17,8 +17,17 @@ export function createApp({ db } = {}) {
   app.use('/api/applications', createApplicationsRouter({ db }));
 
   app.use((err, _req, res, _next) => {
+    if (err?.status === 400 && err?.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Validation failed',
+        },
+      });
+    }
+
     const message = err instanceof Error ? err.message : 'Unexpected server error';
-    res.status(500).json({
+    return res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',
         message,
