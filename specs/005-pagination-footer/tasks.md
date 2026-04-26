@@ -88,9 +88,9 @@
 
 **Independent Test**: Open Calendar with no data (short page) — footer at bottom, not floating mid-screen. Resize to 375px — footer 2-column, no horizontal overflow.
 
-- [ ] T021 [US3] Add sticky footer CSS to `src/styles/main.css` — `body { display: flex; flex-direction: column; min-height: 100vh; }` and `#app { flex: 1; }` — this pushes the footer to the bottom of the viewport when content is short; confirm existing layout is unaffected on content-rich pages
-- [ ] T022 [US3] Add responsive footer CSS in `src/styles/main.css` inside the existing `@media (max-width: 639px)` block: `.footer__inner { grid-template-columns: 1fr 1fr }` (2-column); `.footer__brand, .footer__copyright { grid-column: 1 / -1 }` (full width)
-- [ ] T023 [US3] Manual check: (a) open Calendar page with no data — confirm footer is at viewport bottom, not floating; (b) set viewport to 375px — confirm footer is 2-column; (c) seed >10 records, navigate to Tracker — confirm pagination buttons are fully visible and no horizontal scrollbar appears
+- [x] T021 [US3] Add sticky footer CSS to `src/styles/main.css` — `body { display: flex; flex-direction: column; min-height: 100vh; }` and `#app { flex: 1; }` — this pushes the footer to the bottom of the viewport when content is short; confirm existing layout is unaffected on content-rich pages
+- [x] T022 [US3] Add responsive footer CSS in `src/styles/main.css` inside the existing `@media (max-width: 639px)` block: `.footer__inner { grid-template-columns: 1fr 1fr }` (2-column); `.footer__brand, .footer__copyright { grid-column: 1 / -1 }` (full width)
+- [x] T023 [US3] Manual check: (a) open Calendar page with no data — confirm footer is at viewport bottom, not floating; (b) set viewport to 375px — confirm footer is 2-column; (c) seed >10 records, navigate to Tracker — confirm pagination buttons are fully visible and no horizontal scrollbar appears
 
 **Checkpoint**: Footer pinned to bottom on all pages. 2-column layout at 375px. Pagination accessible on mobile.
 
