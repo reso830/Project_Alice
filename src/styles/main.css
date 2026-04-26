@@ -48,7 +48,7 @@ html {
 body {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 100vh;
   margin: 0;
   background: var(--bg);
   color: var(--t1);
@@ -119,8 +119,8 @@ button:focus-visible,
 }
 
 .navbar__logo-mark {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -736,8 +736,8 @@ button:focus-visible,
 }
 
 .footer__brand-icon {
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -787,6 +787,7 @@ button:focus-visible,
   color: rgba(255, 255, 255, .38);
   font-family: "DM Mono", monospace;
   font-size: 10px;
+  line-height: 1.6;
   text-decoration: none;
   cursor: pointer;
 }
