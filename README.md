@@ -93,7 +93,7 @@ npm run db:clear      # reset when done
 
 ## Continuous Integration
 
-GitHub Actions runs Node.js CI on every push to `main` and every pull request targeting `main`. The workflow tests Node.js 18.x, 20.x, and 22.x, then runs install, lint, build, and CI test-result generation.
+GitHub Actions runs Node.js CI on every push to `main` and every pull request targeting `main`. The workflow tests Node.js 20.x and 22.x, then runs install, lint, build, and CI test-result generation.
 
 Local runtime logs and generated test reports belong under ignored output folders:
 
