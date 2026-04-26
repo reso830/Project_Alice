@@ -298,7 +298,7 @@ button:focus-visible,
 }
 
 .company {
-  color: var(--pagination-text);
+  color: var(--t2);
   font-size: 13px;
   font-weight: 400;
 }

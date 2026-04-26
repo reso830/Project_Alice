@@ -28,6 +28,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 
 ## Getting Started
 
+**Requires Node.js 20.19 or later** (jsdom 29, used for component tests, does not support Node 18).
+
 Two processes are required — the backend API and the frontend dev server:
 
 ```bash
