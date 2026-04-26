@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `npm run db:seed` — loads 10 fixed demo records covering all 9 statuses (one archived); clears existing data first
+- `npm run db:clear` — deletes all rows without touching the schema
+
 ## [0.2.0] — 2026-04-26
 
 ### Added

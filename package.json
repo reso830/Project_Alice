@@ -10,6 +10,8 @@
     "server:dev": "nodemon server/index.js",
     "server:start": "node server/index.js",
     "db:init": "node server/db-init.js",
+    "db:seed": "node server/db-seed.js",
+    "db:clear": "node server/db-clear.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest/results.xml",
