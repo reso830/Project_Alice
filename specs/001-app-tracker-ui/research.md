@@ -51,7 +51,7 @@
 ## Decision 5: CSS Approach
 
 **Decision**: Vanilla CSS with custom properties (design tokens)  
-**Rationale**: `Tracker_Design.md` already defines all color tokens, spacing, shadow, and typography values as CSS custom properties. Implementing them directly as CSS variables in a single `main.css` is the most direct path and requires no additional tooling. Responsive breakpoints are implemented with standard media queries.  
+**Rationale**: `design/tracker.md` already defines all color tokens, spacing, shadow, and typography values as CSS custom properties. Implementing them directly as CSS variables in a single `main.css` is the most direct path and requires no additional tooling. Responsive breakpoints are implemented with standard media queries.  
 **Alternatives considered**:
 - Tailwind CSS — rejected; design system is already fully specified as custom properties; Tailwind would add a build step and fight with the existing token names
 - CSS Modules — rejected; unnecessary module isolation for a single-page app with bounded component scope
