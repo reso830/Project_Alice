@@ -155,6 +155,7 @@ function createCallbacks() {
         await api.archive(coerceId(id));
         removeApplication(id);
         renderPage();
+        focusCardList();
       } catch {
         Toast.show('Archive failed', 'failure');
       }

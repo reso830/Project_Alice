@@ -36,4 +36,17 @@ describe('Pagination', () => {
 
     expect(onPageChange).not.toHaveBeenCalled();
   });
+
+  it('calls onPageChange with the selected page number', () => {
+    const onPageChange = vi.fn();
+    const pagination = Pagination.render(1, 25, onPageChange);
+    const pageTwo = [...pagination.querySelectorAll('.pagination__btn')].find(
+      (button) => button.textContent === '2',
+    );
+
+    pageTwo.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onPageChange).toHaveBeenCalledOnce();
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
 });

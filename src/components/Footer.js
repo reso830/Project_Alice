@@ -13,7 +13,7 @@ function createText(className, text) {
 
 function createSection(labelText, values) {
   const section = document.createElement('section');
-  const label = document.createElement('h2');
+  const label = document.createElement('p');
 
   section.className = 'footer__section';
   label.className = 'footer__label';
@@ -69,7 +69,7 @@ function createFeedbackLink(text, label) {
 
 function createFeedback() {
   const section = document.createElement('section');
-  const label = document.createElement('h2');
+  const label = document.createElement('p');
 
   section.className = 'footer__section footer__feedback';
   label.className = 'footer__label';
