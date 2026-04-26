@@ -114,4 +114,13 @@ describe('api service', () => {
       fields: { companyName: 'Required' },
     });
   });
+
+  it('throws a network error when fetch cannot reach the backend', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    await expect(request('GET', '/api/applications')).rejects.toEqual({
+      code: 'NETWORK_ERROR',
+      message: 'Cannot connect to the backend — is the server running?',
+    });
+  });
 });

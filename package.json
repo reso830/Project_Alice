@@ -13,7 +13,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest/results.xml",
-    "lint": "eslint src tests"
+    "lint": "eslint src tests server shared"
   },
   "devDependencies": {
     "eslint": "^9.0.0",

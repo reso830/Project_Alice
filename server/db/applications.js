@@ -162,6 +162,10 @@ export function update(id, fields, targetDb = db) {
   }
 
   const row = toRow(fields);
+  if (Object.keys(row).length === 0) {
+    return current;
+  }
+
   const now = currentDate();
   row.updated_at = now;
 
@@ -197,5 +201,3 @@ export function archive(id, targetDb = db) {
 
   return getById(id, targetDb);
 }
-
-export { db };

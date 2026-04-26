@@ -224,6 +224,75 @@ describe('applications API', () => {
     });
   });
 
+  it('leaves the record fully unchanged for an empty update body', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          notes: 'Original note',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({}),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual(created.body.data);
+    });
+  });
+
+  it('never changes createdAt from update payloads', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          createdAt: '1999-01-01',
+          status: 'interview',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.createdAt).toBe(created.body.data.createdAt);
+      expect(response.body.data.status).toBe('interview');
+    });
+  });
+
+  it('strips archived from update payloads and keeps archived state unchanged', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const archived = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ archived: false }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual(archived.body.data);
+      expect(response.body.data.archived).toBe(true);
+    });
+  });
+
   it('returns validation fields for invalid update URLs', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
