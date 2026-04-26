@@ -46,10 +46,10 @@ function createCallbacks() {
               const updated = await api.update(coerceId(applicationId), { status: newStatus });
               replaceApplication(updated);
               refreshCard(updated.id);
-              return true;
+              return updated;
             } catch {
               Toast.show('Status update failed', 'failure');
-              return false;
+              return null;
             }
           },
         });
@@ -169,6 +169,10 @@ export async function mount(container) {
     }
 
     window.scrollTo(0, 0);
+    return;
+  }
+
+  if (_container !== container) {
     return;
   }
 

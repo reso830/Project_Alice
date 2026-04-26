@@ -1,5 +1,5 @@
 import { STATUS_CONFIG } from '../models/application.js';
-import { toDisplayDate, toISODate } from '../utils/date.js';
+import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
@@ -25,11 +25,11 @@ function updateStatusBadge(status) {
   badge.style.color = config.badgeText;
 }
 
-function updateStatusDate() {
+function updateStatusDate(lastStatusUpdate) {
   const dateValue = document.querySelector('[data-modal-field="last-status-update"] .modal-field__value');
 
   if (dateValue) {
-    dateValue.textContent = toDisplayDate(toISODate());
+    dateValue.textContent = toDisplayDate(lastStatusUpdate);
   }
 }
 
@@ -129,7 +129,7 @@ export function open(application, { onStatusChange } = {}) {
   statusButton.type = 'button';
   body.className = 'modal-body';
 
-  idPill.textContent = displayValue(application.id);
+  idPill.textContent = application.id;
   title.id = 'modal-title';
   title.textContent = displayValue(application.jobTitle);
   statusButton.textContent = '⇄';
@@ -138,15 +138,15 @@ export function open(application, { onStatusChange } = {}) {
 
   statusButton.addEventListener('click', () => {
     StatusDropdown.open(statusButton, currentStatus, async (newStatus) => {
-      const didChange = await (onStatusChange?.(application.id, newStatus) ?? true);
+      const updated = await (onStatusChange?.(application.id, newStatus) ?? null);
 
-      if (!didChange) {
+      if (!updated) {
         return;
       }
 
       currentStatus = newStatus;
       updateStatusBadge(newStatus);
-      updateStatusDate();
+      updateStatusDate(updated.lastStatusUpdate);
     });
   });
 
