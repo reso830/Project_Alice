@@ -47,7 +47,7 @@ Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests 
 | Script | Description |
 |---|---|
 | `npm run db:init` | Initialize (or re-initialize) the SQLite database |
-| `npm run db:seed` | Clear the database and load 10 demo records |
+| `npm run db:seed` | Clear the database and load 23 demo records |
 | `npm run db:clear` | Delete all records from the database |
 | `npm run server:dev` | Start backend API in watch mode (nodemon, port 3001) |
 | `npm run server:start` | Start backend API without watch mode |
@@ -64,14 +64,14 @@ Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests 
 Two scripts are provided for demos and local development:
 
 ```bash
-# Load 10 pre-written records (clears any existing data first)
+# Load 23 pre-written records (clears any existing data first)
 npm run db:seed
 
 # Remove all records without touching the schema
 npm run db:clear
 ```
 
-`db:seed` inserts 10 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Rejected, Withdrawn, and Ghosted — plus one archived record. Records have varied dates, compatibility scores, notes, skills, and salary ranges so the UI renders a representative view.
+`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Rejected, Withdrawn, and Ghosted — plus one archived record. Records have varied dates, compatibility scores, notes, skills, and salary ranges so the UI renders a representative view.
 
 `db:clear` is a hard delete of all rows. The schema (tables and indexes) is left intact, so the server keeps running and `db:seed` can be run again without `db:init`.
 
