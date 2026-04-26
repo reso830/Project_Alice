@@ -1,4 +1,5 @@
 import { isValidISODate, toISODate } from '../utils/date.js';
+import { STATUS_VALUES } from '../../shared/constants.js';
 
 export const STATUS_CONFIG = {
   wishlisted: {
@@ -57,7 +58,7 @@ export const STATUS_CONFIG = {
   },
 };
 
-export const STATUS_VALUES = Object.keys(STATUS_CONFIG);
+export { STATUS_VALUES };
 
 function isDigitString(value) {
   return typeof value === 'string' && /^\d+$/.test(value);
