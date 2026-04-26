@@ -3,6 +3,7 @@ import { Modal } from '../components/Modal.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import { store } from '../data/store.js';
+import * as api from '../services/api.js';
 
 let _container = null;
 let _cardList = null;
@@ -11,23 +12,22 @@ function createCallbacks() {
   return {
     onOpen: (id) => {
       Modal.open(store.getById(id), {
-        onStatusChange: (applicationId, newStatus) => {
-          const didChange = store.updateStatus(applicationId, newStatus);
-
-          if (didChange) {
-            refreshCard(applicationId);
+        onStatusChange: async (applicationId, newStatus) => {
+          try {
+            await api.update(applicationId, { status: newStatus });
+            return true;
+          } catch {
+            Toast.show('Status update failed', 'failure');
+            return false;
           }
-
-          return didChange;
         },
       });
     },
-    onStatusChange: (id, newStatus) => {
-      const didChange = store.updateStatus(id, newStatus);
-
-      if (didChange) {
-        refreshCard(id);
-        Toolbar.updateCount(store.getAll().length);
+    onStatusChange: async (id, newStatus) => {
+      try {
+        await api.update(id, { status: newStatus });
+      } catch {
+        Toast.show('Status update failed', 'failure');
       }
     },
     onFavToggle: (id) => {

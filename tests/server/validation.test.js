@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSchema, toApiError } from '../../server/validation/application.js';
+import { createSchema, toApiError, updateSchema } from '../../server/validation/application.js';
 
 function validPayload(overrides = {}) {
   return {
@@ -63,5 +63,30 @@ describe('createSchema', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe('updateSchema', () => {
+  it('accepts partial status updates', () => {
+    expect(updateSchema.parse({ status: 'interview' })).toEqual({ status: 'interview' });
+  });
+
+  it('strips client-managed fields silently', () => {
+    expect(updateSchema.parse({
+      id: 1,
+      createdAt: '2026-04-20',
+      status: 'interview',
+    })).toEqual({ status: 'interview' });
+  });
+
+  it('rejects invalid follow-up dates', () => {
+    const result = updateSchema.safeParse({ followUpDate: '2026/04/20' });
+
+    expect(result.success).toBe(false);
+    expect(toApiError(result.error).followUpDate).toEqual(expect.any(String));
+  });
+
+  it('accepts empty objects as valid no-op updates', () => {
+    expect(updateSchema.parse({})).toEqual({});
   });
 });

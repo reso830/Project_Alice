@@ -39,3 +39,7 @@ export async function request(method, path, body) {
 export function create(fields) {
   return request('POST', '/api/applications', fields);
 }
+
+export function update(id, fields) {
+  return request('PATCH', `/api/applications/${id}`, fields);
+}

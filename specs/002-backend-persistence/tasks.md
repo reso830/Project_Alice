@@ -114,18 +114,18 @@
 
 ### Tests
 
-- [ ] T039 [US4] Add unit tests in `tests/server/validation.test.js` for `updateSchema`: partial payload with only `status` passes; payload with `id` is stripped silently; payload with `createdAt` is stripped silently; invalid `followUpDate` format fails; empty object `{}` passes (valid no-op)
-- [ ] T040 [P] [US4] Add integration test: `PATCH /api/applications/:id` with `{ status: "interview" }` returns 200 with updated `status` and changed `lastStatusUpdate`; all other fields unchanged
-- [ ] T041 [P] [US4] Add integration test: `PATCH` with the same `status` as current returns 200 but does NOT change `lastStatusUpdate`
-- [ ] T042 [P] [US4] Add integration test: `PATCH` with `jobPostingUrl: "bad-url"` returns 400 `VALIDATION_ERROR`
-- [ ] T043 [P] [US4] Add integration test: `PATCH /api/applications/9999` returns 404 `NOT_FOUND`
+- [X] T039 [US4] Add unit tests in `tests/server/validation.test.js` for `updateSchema`: partial payload with only `status` passes; payload with `id` is stripped silently; payload with `createdAt` is stripped silently; invalid `followUpDate` format fails; empty object `{}` passes (valid no-op)
+- [X] T040 [P] [US4] Add integration test: `PATCH /api/applications/:id` with `{ status: "interview" }` returns 200 with updated `status` and changed `lastStatusUpdate`; all other fields unchanged
+- [X] T041 [P] [US4] Add integration test: `PATCH` with the same `status` as current returns 200 but does NOT change `lastStatusUpdate`
+- [X] T042 [P] [US4] Add integration test: `PATCH` with `jobPostingUrl: "bad-url"` returns 400 `VALIDATION_ERROR`
+- [X] T043 [P] [US4] Add integration test: `PATCH /api/applications/9999` returns 404 `NOT_FOUND`
 
 ### Implementation
 
-- [ ] T044 [US4] Add `update(id, fields)` to `server/db/applications.js` — fetches current record via `getById()`; returns `null` if not found; merges only supplied fields (no overwrite of unspecified fields); always sets `updated_at` to now; sets `last_status_update` to now only when `status` is present in the update AND differs from the current value; builds dynamic `UPDATE SET` from supplied keys only, validated against a fixed `UPDATABLE_COLUMNS` whitelist; returns updated row via `getById()`. **Note**: call `toRow()` only on the supplied subset of fields — do NOT pass the full merged record through `toRow()`, because `JSON.stringify(undefined)` on absent optional fields (e.g. `skills`) produces `undefined`, which `better-sqlite3` will reject as a parameter binding
-- [ ] T045 [US4] Add `PATCH /:id` handler to `server/routes/applications.js` — validates body with `updateSchema`; returns 400 on validation failure; calls `update(parseInt(req.params.id, 10), validatedFields)`; returns 404 if `null`; returns 200 `{ data: updatedRecord }`
-- [ ] T046 [P] [US4] Add `api.update(id, fields)` to `src/services/api.js` — `PATCH /api/applications/:id`, returns `data` from response
-- [ ] T047 [US4] Update `src/pages/Tracker.js` — wire `onStatusChange` callback to call `api.update(id, { status })` instead of `store.updateStatus()`; show failure toast if API call throws
+- [X] T044 [US4] Add `update(id, fields)` to `server/db/applications.js` — fetches current record via `getById()`; returns `null` if not found; merges only supplied fields (no overwrite of unspecified fields); always sets `updated_at` to now; sets `last_status_update` to now only when `status` is present in the update AND differs from the current value; builds dynamic `UPDATE SET` from supplied keys only, validated against a fixed `UPDATABLE_COLUMNS` whitelist; returns updated row via `getById()`. **Note**: call `toRow()` only on the supplied subset of fields — do NOT pass the full merged record through `toRow()`, because `JSON.stringify(undefined)` on absent optional fields (e.g. `skills`) produces `undefined`, which `better-sqlite3` will reject as a parameter binding
+- [X] T045 [US4] Add `PATCH /:id` handler to `server/routes/applications.js` — validates body with `updateSchema`; returns 400 on validation failure; calls `update(parseInt(req.params.id, 10), validatedFields)`; returns 404 if `null`; returns 200 `{ data: updatedRecord }`
+- [X] T046 [P] [US4] Add `api.update(id, fields)` to `src/services/api.js` — `PATCH /api/applications/:id`, returns `data` from response
+- [X] T047 [US4] Update `src/pages/Tracker.js` — wire `onStatusChange` callback to call `api.update(id, { status })` instead of `store.updateStatus()`; show failure toast if API call throws
 
 **Checkpoint**: US1 + US4 functional. Status changes persisted to DB. `lastStatusUpdate` logic verified.
 

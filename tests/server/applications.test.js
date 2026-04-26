@@ -10,7 +10,7 @@ async function withServer(test) {
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    await test(baseUrl);
+    await test(baseUrl, db);
   } finally {
     server.close();
     db.close();
@@ -165,6 +165,102 @@ describe('applications API', () => {
         code: 'VALIDATION_ERROR',
         fields: {
           jobPostingUrl: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('updates status and lastStatusUpdate while preserving other fields', async () => {
+    await withServer(async (baseUrl, db) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          notes: 'Original note',
+        }),
+      });
+      const original = created.body.data;
+      db.prepare(`
+        UPDATE applications
+        SET last_status_update = '2026-04-20', updated_at = '2026-04-20'
+        WHERE id = ?
+      `).run(original.id);
+      const response = await request(baseUrl, `/api/applications/${original.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        ...original,
+        status: 'interview',
+        lastStatusUpdate: response.body.data.updatedAt,
+      });
+      expect(response.body.data.lastStatusUpdate).not.toBe('2026-04-20');
+      expect(response.body.data.notes).toBe('Original note');
+      expect(response.body.data.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+  });
+
+  it('keeps lastStatusUpdate unchanged when status does not change', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'applied' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.lastStatusUpdate).toBe(created.body.data.lastStatusUpdate);
+    });
+  });
+
+  it('returns validation fields for invalid update URLs', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ jobPostingUrl: 'bad-url' }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          jobPostingUrl: expect.any(String),
+        },
+      });
+    });
+  });
+
+  it('returns not found when updating an unknown id', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/9999', {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'interview' }),
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Application not found',
         },
       });
     });

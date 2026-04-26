@@ -43,6 +43,7 @@ const INSERTABLE_COLUMNS = [
   'archived',
   'metadata',
 ];
+const UPDATABLE_COLUMNS = new Set(Object.values(FIELD_TO_COLUMN));
 
 function parseJson(value, fallback) {
   if (value == null) {
@@ -152,6 +153,34 @@ export function create(fields, targetDb = db) {
   const info = statement.run(row);
 
   return getById(Number(info.lastInsertRowid), targetDb);
+}
+
+export function update(id, fields, targetDb = db) {
+  const current = getById(id, targetDb);
+  if (!current) {
+    return null;
+  }
+
+  const row = toRow(fields);
+  const now = currentDate();
+  row.updated_at = now;
+
+  if (Object.hasOwn(fields, 'status') && fields.status !== current.status) {
+    row.last_status_update = now;
+  }
+
+  const columns = Object.keys(row).filter((column) => UPDATABLE_COLUMNS.has(column)
+    || column === 'updated_at'
+    || column === 'last_status_update');
+  const assignments = columns.map((column) => `${column} = @${column}`);
+
+  targetDb.prepare(`
+    UPDATE applications
+    SET ${assignments.join(', ')}
+    WHERE id = @id
+  `).run({ ...row, id });
+
+  return getById(id, targetDb);
 }
 
 export { db };

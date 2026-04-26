@@ -137,8 +137,8 @@ export function open(application, { onStatusChange } = {}) {
   statusButton.setAttribute('aria-label', 'Change status');
 
   statusButton.addEventListener('click', () => {
-    StatusDropdown.open(statusButton, currentStatus, (newStatus) => {
-      const didChange = onStatusChange?.(application.id, newStatus) ?? true;
+    StatusDropdown.open(statusButton, currentStatus, async (newStatus) => {
+      const didChange = await (onStatusChange?.(application.id, newStatus) ?? true);
 
       if (!didChange) {
         return;
