@@ -1,3 +1,5 @@
+import aliceWhite from '../assets/Alice_White.png';
+
 const pages = [
   { id: 'tracker', label: 'Tracker' },
   { id: 'calendar', label: 'Calendar' },
@@ -19,13 +21,15 @@ export function setActive(page) {
 export function render(activePage) {
   const navbar = document.createElement('header');
   const logo = document.createElement('div');
-  const logoMark = document.createElement('div');
+  const logoMark = document.createElement('img');
   const logoText = document.createElement('span');
   const navActions = document.createElement('nav');
 
   navbar.className = 'navbar';
   logo.className = 'navbar__logo';
   logoMark.className = 'navbar__logo-mark';
+  logoMark.src = aliceWhite;
+  logoMark.alt = '';
   logoText.className = 'navbar__logo-text';
   logoText.textContent = 'Project Alice';
   navActions.className = 'navbar__actions';

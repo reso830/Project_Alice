@@ -1,3 +1,5 @@
+import aliceWhite from '../assets/Alice_White.png';
+
 const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 
 function createText(className, text) {
@@ -26,33 +28,14 @@ function createSection(labelText, values) {
 }
 
 function createBrandIcon() {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const img = document.createElement('img');
 
-  svg.classList.add('footer__brand-icon');
-  svg.setAttribute('width', '20');
-  svg.setAttribute('height', '20');
-  svg.setAttribute('viewBox', '0 0 20 20');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('aria-hidden', 'true');
+  img.className = 'footer__brand-icon';
+  img.src = aliceWhite;
+  img.alt = '';
+  img.setAttribute('aria-hidden', 'true');
 
-  rect.setAttribute('x', '1');
-  rect.setAttribute('y', '1');
-  rect.setAttribute('width', '18');
-  rect.setAttribute('height', '18');
-  rect.setAttribute('rx', '4');
-  rect.setAttribute('fill', '#4F46E5');
-
-  path.setAttribute('d', 'M6 10.5L9 13.5L14 7');
-  path.setAttribute('stroke', 'white');
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-
-  svg.append(rect, path);
-
-  return svg;
+  return img;
 }
 
 function createBrand() {

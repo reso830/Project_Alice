@@ -122,8 +122,7 @@ button:focus-visible,
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border-radius: 7px;
-  background: var(--indigo);
+  object-fit: contain;
 }
 
 .navbar__logo-text {
@@ -737,7 +736,10 @@ button:focus-visible,
 }
 
 .footer__brand-icon {
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .footer__brand-name {
