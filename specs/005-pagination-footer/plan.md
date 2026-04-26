@@ -18,7 +18,7 @@ Add client-side pagination to the application list (visible only when total reco
 **Target Platform**: Desktop and mobile browsers (evergreen)
 **Project Type**: Vanilla JS SPA — manual DOM construction, no framework
 **Performance Goals**: Page transitions are synchronous DOM operations; sub-16ms render budget
-**Constraints**: No new npm dependencies; no backend changes; styling must extend existing CSS custom-property tokens; no mutation of the fetched applications array
+**Constraints**: No new production npm dependencies (jsdom added as dev-only test dependency); no backend changes; styling must extend existing CSS custom-property tokens; no mutation of the fetched applications array
 **Scale/Scope**: Tracker page with one list view; pagination applies when list length exceeds 10
 
 ---

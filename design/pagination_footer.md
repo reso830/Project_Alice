@@ -129,7 +129,6 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 │  VERSION         STACK            FEEDBACK          │
 │  v0.2.0          Vanilla JS · Vite Report an issue  │
 │  Built Apr 2026  Vitest · ESLint   Request a feature│
-│                                   Contact support   │
 │ ─────────────────────────────────────────────────── │
 │  © 2026 AppTracker. All rights reserved.            │  ← copyright (full width)
 └─────────────────────────────────────────────────────┘
