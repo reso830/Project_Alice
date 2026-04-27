@@ -20,8 +20,8 @@
 
 **Purpose**: Confirm paths and design tokens before writing any new files
 
-- [ ] T001 Locate the project CSS stylesheet — find the file linked in `index.html` (or equivalent entry point) that styles `.toolbar`, `.card-list`, and `.empty-state`; note the path for use in all CSS tasks below
-- [ ] T002 Verify the CSS custom properties referenced in `design/quickfilter_sort.md §10` exist in the stylesheet found in T001: `--color-accent`, `--color-border`, `--color-accent-light`, `--color-accent-tint`, `--color-danger`, `--color-danger-bg`, `--color-bg-dark`, `--font-ui`, `--font-mono`; add any missing ones
+- [X] T001 Locate the project CSS stylesheet — find the file linked in `index.html` (or equivalent entry point) that styles `.toolbar`, `.card-list`, and `.empty-state`; note the path for use in all CSS tasks below (`src/styles/main.css`, imported by `src/main.js`)
+- [X] T002 Verify the CSS custom properties referenced in `design/quickfilter_sort.md §10` exist in the stylesheet found in T001: `--color-accent`, `--color-border`, `--color-accent-light`, `--color-accent-tint`, `--color-danger`, `--color-danger-bg`, `--color-bg-dark`, `--font-ui`, `--font-mono`; add any missing ones
 
 ---
 

@@ -17,6 +17,16 @@
   --pagination-text: #555555;
   --pagination-muted: #BBBBBB;
 
+  --color-accent: #4F46E5;
+  --color-border: #E0DDD8;
+  --color-accent-light: #F4F2FF;
+  --color-accent-tint: #EEF2FF;
+  --color-danger: #EF4444;
+  --color-danger-bg: #FFF5F5;
+  --color-bg-dark: #1A1A2E;
+  --font-ui: 'Sora', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 10px;
