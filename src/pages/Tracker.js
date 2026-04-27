@@ -4,6 +4,14 @@ import { Pagination } from '../components/Pagination.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import * as api from '../services/api.js';
+import {
+  DEFAULT_FILTER_STATE,
+  DEFAULT_SORT_STATE,
+  applyFilters,
+  getSalaryBounds,
+  isAnyFilterActive,
+  sortApplications,
+} from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 
 let _container = null;
@@ -11,6 +19,12 @@ let _cardList = null;
 let _currentPage = 1;
 let _paginationEl = null;
 let _applications = [];
+let _filterState = { ...DEFAULT_FILTER_STATE };
+let _sortState = { ...DEFAULT_SORT_STATE };
+// Phase 03 reads this when the quick-filter toolbar replaces the legacy toolbar.
+// eslint-disable-next-line no-unused-vars
+let _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
+let _toolbarEl = null;
 
 function coerceId(id) {
   return typeof id === 'number' ? id : parseInt(id, 10);
@@ -39,15 +53,9 @@ function renderMessage(message, className = 'empty-state') {
   return messageEl;
 }
 
-function clampCurrentPage() {
-  const totalPages = Math.ceil(_applications.length / PAGE_SIZE);
-
-  if (_applications.length <= PAGE_SIZE) {
-    _currentPage = 1;
-    return;
-  }
-
-  _currentPage = Math.max(1, Math.min(_currentPage, totalPages));
+function clampCurrentPage(filteredCount) {
+  const maxPage = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE));
+  _currentPage = Math.min(_currentPage, maxPage);
 }
 
 function removeEmptyState() {
@@ -65,12 +73,22 @@ function onPageChange(page) {
   renderPage({ moveFocus: true });
 }
 
+function renderFilterEmptyState() {
+  const emptyState = document.createElement('div');
+  emptyState.className = 'empty-state empty-state--filter';
+  emptyState.innerHTML = 'No applications match<br>the active filters.';
+  return emptyState;
+}
+
 function renderPage({ moveFocus = false } = {}) {
   if (!_container || !_cardList) {
     return;
   }
 
-  clampCurrentPage();
+  const filteredApplications = applyFilters(_applications, _filterState);
+  const sortedApplications = sortApplications(filteredApplications, _sortState);
+
+  clampCurrentPage(sortedApplications.length);
   removeEmptyState();
   _paginationEl?.remove();
   _paginationEl = null;
@@ -78,22 +96,26 @@ function renderPage({ moveFocus = false } = {}) {
 
   const startIndex = (_currentPage - 1) * PAGE_SIZE;
   const endIndex = startIndex + PAGE_SIZE;
-  const visibleApplications = _applications.slice(startIndex, endIndex);
+  const visibleApplications = sortedApplications.slice(startIndex, endIndex);
 
   for (const application of visibleApplications) {
     _cardList.append(Card.render(application, createCallbacks()));
   }
 
-  Toolbar.updateCount(_applications.length);
+  if (_toolbarEl) {
+    Toolbar.updateCount(filteredApplications.length);
+  }
 
-  if (_applications.length === 0) {
+  if (sortedApplications.length === 0 && isAnyFilterActive(_filterState)) {
+    _container.append(renderFilterEmptyState());
+  } else if (sortedApplications.length === 0) {
     _container.append(renderMessage('No applications yet. Add your first one!'));
   }
 
-  const model = getPaginationModel(_currentPage, _applications.length, PAGE_SIZE);
+  const model = getPaginationModel(_currentPage, sortedApplications.length, PAGE_SIZE);
 
   if (model.hasPagination) {
-    _paginationEl = Pagination.render(_currentPage, _applications.length, onPageChange);
+    _paginationEl = Pagination.render(_currentPage, sortedApplications.length, onPageChange);
     _container.append(_paginationEl);
   }
 
@@ -211,14 +233,19 @@ export async function mount(container) {
   _currentPage = 1;
   _paginationEl = null;
   _applications = [];
+  _filterState = { ...DEFAULT_FILTER_STATE };
+  _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
+  _toolbarEl = null;
 
   const toolbar = Toolbar.render(0);
+  _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
   _container.append(toolbar);
 
   try {
     _applications = await api.getAll();
+    _salaryBounds = getSalaryBounds(_applications);
   } catch (error) {
     toolbar.removeAttribute('aria-busy');
     toolbar.removeAttribute('aria-disabled');
@@ -271,6 +298,9 @@ export function unmount() {
   _currentPage = 1;
   _paginationEl = null;
   _applications = [];
+  _filterState = { ...DEFAULT_FILTER_STATE };
+  _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
+  _toolbarEl = null;
 }
 
 export const Tracker = { mount, unmount };
