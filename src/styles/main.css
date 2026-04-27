@@ -248,6 +248,17 @@ button:focus-visible,
   pointer-events: none;
 }
 
+.erase-btn {
+  border: 1.5px solid #FCA5A5;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.erase-btn:hover {
+  border-color: var(--color-danger);
+  background: #FEE2E2;
+}
+
 .filter-panel {
   position: absolute;
   top: calc(100% + 8px);

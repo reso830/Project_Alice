@@ -273,4 +273,27 @@ describe('QuickFiltersToolbar', () => {
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_SORT_STATE);
     expect(sortedToolbar.querySelector('.sort-panel')).toBeNull();
   });
+
+  it('shows erase-all for active filters and calls onClearAll', () => {
+    const onClearAll = vi.fn();
+    const { toolbar } = renderToolbar({ onClearAll });
+
+    expect(toolbar.querySelector('.erase-btn')).toBeNull();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: 1,
+      filterState: { ...DEFAULT_FILTER_STATE, statuses: ['applied'] },
+      sortState: DEFAULT_SORT_STATE,
+    });
+
+    const eraseButton = toolbar.querySelector('.erase-btn');
+
+    expect(eraseButton).not.toBeNull();
+
+    eraseButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onClearAll).toHaveBeenCalledOnce();
+  });
 });

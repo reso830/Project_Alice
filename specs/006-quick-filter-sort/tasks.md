@@ -193,10 +193,10 @@
 
 **Independent Test**: Apply Status + Company filters → click erase-all → list shows all non-archived apps, toolbar reads "All Applications (N)", erase-all button is gone, sort is unchanged.
 
-- [ ] T062 [US4] Add erase-all button element to `src/components/QuickFiltersToolbar.js` — `.erase-btn` (28×28px); rendered in the DOM only when `isAnyFilterActive(filterState)` is true (toggle via `hidden` attribute or conditional DOM insertion); positioned between `div.toolbar__filters` and the sort button; `aria-label="Clear all filters"`; on click: calls `onClearAll()`; store reference as `_eraseBtn`; `QuickFiltersToolbar.update()` must show/hide it based on current `filterState`
+- [X] T062 [US4] Add erase-all button element to `src/components/QuickFiltersToolbar.js` — `.erase-btn` (28×28px); rendered in the DOM only when `isAnyFilterActive(filterState)` is true (toggle via `hidden` attribute or conditional DOM insertion); positioned between `div.toolbar__filters` and the sort button; `aria-label="Clear all filters"`; on click: calls `onClearAll()`; store reference as `_eraseBtn`; `QuickFiltersToolbar.update()` must show/hide it based on current `filterState`
 - [X] T063 [US4] Add `onClearAll()` callback to `src/pages/Tracker.js` — resets `_filterState = { ...DEFAULT_FILTER_STATE }` (sort state is preserved), sets `_currentPage = 1`, calls `renderPage()` and `updateToolbar()`; wire it into `QuickFiltersToolbar.render()` `onClearAll` option (update the empty stub added in T040)
-- [ ] T064 [US4] Add erase-all button CSS — `.erase-btn`: `border: 1.5px solid #fca5a5; background: var(--color-danger-bg); color: var(--color-danger)`; hover: `background: #fee2e2; border-color: var(--color-danger)`
-- [ ] T065 [P] [US4] Add tests to `tests/components/QuickFiltersToolbar.test.js` — erase-all button not in DOM when `filterState = DEFAULT_FILTER_STATE`; erase-all button present after `update()` with active filter; clicking erase-all calls `onClearAll` once
+- [X] T064 [US4] Add erase-all button CSS — `.erase-btn`: `border: 1.5px solid #fca5a5; background: var(--color-danger-bg); color: var(--color-danger)`; hover: `background: #fee2e2; border-color: var(--color-danger)`
+- [X] T065 [P] [US4] Add tests to `tests/components/QuickFiltersToolbar.test.js` — erase-all button not in DOM when `filterState = DEFAULT_FILTER_STATE`; erase-all button present after `update()` with active filter; clicking erase-all calls `onClearAll` once
 
 **Checkpoint**: US4 independently testable — apply filters, verify erase-all appears, click it, verify full list is restored and erase-all disappears.
 

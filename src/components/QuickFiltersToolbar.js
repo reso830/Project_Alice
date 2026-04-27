@@ -15,11 +15,14 @@ let _allApps = [];
 let _toolbarEl = null;
 let _labelEl = null;
 let _countEl = null;
+let _actionsEl = null;
 let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
 let _companyButton = null;
 let _sortButton = null;
+let _sortTrigger = null;
+let _eraseBtn = null;
 let _openPanel = null;
 let _openButton = null;
 let _openPanelType = null;
@@ -265,15 +268,44 @@ function createFilterButton({ className, label, title, icon, onClick }) {
   return { trigger, button };
 }
 
+function createEraseButton() {
+  const button = document.createElement('button');
+
+  button.className = 'filter-btn erase-btn';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Clear all filters');
+  button.setAttribute('aria-disabled', 'false');
+  button.append(createSvgIcon('M5 5l14 14M19 5 5 19'));
+  button.addEventListener('click', () => {
+    _callbacks.onClearAll?.();
+  });
+
+  return button;
+}
+
+function updateEraseButton(activeFilters) {
+  if (!_actionsEl || !_eraseBtn || !_sortTrigger) {
+    return;
+  }
+
+  if (activeFilters && !_eraseBtn.isConnected) {
+    _actionsEl.insertBefore(_eraseBtn, _sortTrigger);
+  } else if (!activeFilters) {
+    _eraseBtn.remove();
+  }
+}
+
 function updateButtons(totalCount, filterState) {
   const disabled = totalCount === 0;
   const salaryDisabled = disabled || !_salaryBounds?.hasSalaryData;
+  const activeFilters = isAnyFilterActive(filterState);
 
   setButtonDisabled(_statusButton, disabled);
   setButtonDisabled(_salaryButton, salaryDisabled);
   setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
   setButtonDisabled(_sortButton, disabled);
+  setButtonDisabled(_eraseBtn, disabled);
   setPressed(_statusButton, (filterState.statuses?.length ?? 0) > 0);
   setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
   setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
@@ -283,6 +315,7 @@ function updateButtons(totalCount, filterState) {
     'aria-label',
     _salaryBounds?.hasSalaryData ? 'Filter by Salary' : 'Filter by Salary (no salary data)',
   );
+  updateEraseButton(activeFilters);
 
   if (
     disabled
@@ -360,6 +393,7 @@ export function render(options = {}) {
     icon: createSvgIcon('M7 6h10M7 12h7M7 18h4m7-2 3 3 3-3m-3 3V5'),
     onClick: (button) => openPanel('sort', button, renderSortPanel()),
   });
+  const erase = createEraseButton();
 
   toolbar.className = 'toolbar';
   label.className = 'toolbar__label';
@@ -375,11 +409,14 @@ export function render(options = {}) {
   _toolbarEl = toolbar;
   _labelEl = label;
   _countEl = count;
+  _actionsEl = actions;
   _statusButton = status.button;
   _salaryButton = salary.button;
   _compatButton = compat.button;
   _companyButton = company.button;
   _sortButton = sort.button;
+  _sortTrigger = sort.trigger;
+  _eraseBtn = erase;
 
   update(toolbar, {
     apps: _allApps,
