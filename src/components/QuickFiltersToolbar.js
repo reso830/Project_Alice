@@ -315,7 +315,7 @@ function updateButtons(totalCount, filterState) {
     'aria-label',
     _salaryBounds?.hasSalaryData ? 'Filter by Salary' : 'Filter by Salary (no salary data)',
   );
-  updateEraseButton(activeFilters);
+  updateEraseButton(activeFilters && !disabled);
 
   if (
     disabled

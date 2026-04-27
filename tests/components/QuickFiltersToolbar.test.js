@@ -296,4 +296,15 @@ describe('QuickFiltersToolbar', () => {
 
     expect(onClearAll).toHaveBeenCalledOnce();
   });
+
+  it('keeps erase-all absent when total count is zero even with active filters', () => {
+    const { toolbar } = renderToolbar({
+      apps: [],
+      totalCount: 0,
+      filteredCount: 0,
+      filterState: { ...DEFAULT_FILTER_STATE, statuses: ['applied'] },
+    });
+
+    expect(toolbar.querySelector('.erase-btn')).toBeNull();
+  });
 });
