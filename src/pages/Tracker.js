@@ -103,6 +103,13 @@ function onSortChange(newSortState) {
   updateToolbar();
 }
 
+function onClearAll() {
+  _filterState = { ...DEFAULT_FILTER_STATE };
+  _currentPage = 1;
+  renderPage();
+  updateToolbar();
+}
+
 function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
   emptyState.className = 'empty-state empty-state--filter';
@@ -273,7 +280,7 @@ export async function mount(container) {
     salaryBounds: _salaryBounds,
     onFilterChange,
     onSortChange,
-    onClearAll: () => {},
+    onClearAll,
     onAddApplication: () => {},
   });
   _toolbarEl = toolbar;

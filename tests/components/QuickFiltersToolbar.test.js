@@ -83,6 +83,8 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Company"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
   });
 
@@ -100,6 +102,21 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results');
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe('1');
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
+      .toBe('true');
+  });
+
+  it('updates sort pressed state when sort changes', () => {
+    const { toolbar } = renderToolbar();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: apps.length,
+      filterState: DEFAULT_FILTER_STATE,
+      sortState: { field: 'compat', direction: 'desc' },
+    });
+
+    expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
       .toBe('true');
   });
 
@@ -127,7 +144,7 @@ describe('QuickFiltersToolbar', () => {
     });
     const buttons = [...toolbar.querySelectorAll('.filter-btn')];
 
-    expect(buttons).toHaveLength(4);
+    expect(buttons).toHaveLength(5);
     expect(buttons.every((button) => button.disabled)).toBe(true);
     expect(buttons.every((button) => button.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
@@ -222,5 +239,38 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('[aria-label="Filter by Status"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Compatibility"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Company"]').disabled).toBe(false);
+  });
+
+  it('calls onSortChange from the sort panel and restores default sort', () => {
+    const onSortChange = vi.fn();
+    const { toolbar } = renderToolbar({
+      sortState: { field: 'id', direction: 'asc' },
+      onSortChange,
+    });
+    const sortButton = toolbar.querySelector('[aria-label="Sort"]');
+
+    sortButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    [...toolbar.querySelectorAll('.sort-panel__option')]
+      .find((option) => option.textContent === 'Compatibility')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onSortChange).toHaveBeenCalledWith({ field: 'compat', direction: 'asc' });
+
+    document.body.replaceChildren();
+    onSortChange.mockClear();
+
+    const { toolbar: sortedToolbar } = renderToolbar({
+      sortState: { field: 'compat', direction: 'desc' },
+      onSortChange,
+    });
+
+    sortedToolbar.querySelector('[aria-label="Sort"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    [...sortedToolbar.querySelectorAll('.sort-panel__option')]
+      .find((option) => option.textContent === 'Restore default')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onSortChange).toHaveBeenCalledWith(DEFAULT_SORT_STATE);
+    expect(sortedToolbar.querySelector('.sort-panel')).toBeNull();
   });
 });

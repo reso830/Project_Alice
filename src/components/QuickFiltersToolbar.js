@@ -1,12 +1,15 @@
 import { STATUS_CONFIG } from '../models/application.js';
 import {
+  DEFAULT_SORT_STATE,
   SALARY_STEP,
   getAvailableCompanies,
   getAvailableStatuses,
+  isDefaultSort,
   isAnyFilterActive,
 } from '../utils/filterSort.js';
 import { FilterPanel } from './FilterPanel.js';
 import { RangeSlider } from './RangeSlider.js';
+import { SortPanel } from './SortPanel.js';
 
 let _allApps = [];
 let _toolbarEl = null;
@@ -16,6 +19,7 @@ let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
 let _companyButton = null;
+let _sortButton = null;
 let _openPanel = null;
 let _openButton = null;
 let _openPanelType = null;
@@ -226,6 +230,19 @@ function renderCompatPanel() {
   }));
 }
 
+function renderSortPanel() {
+  return SortPanel.render({
+    sortState: _sortState,
+    onChange: (sortState) => {
+      _callbacks.onSortChange?.(sortState);
+    },
+    onRestoreDefault: () => {
+      _callbacks.onSortChange?.({ ...DEFAULT_SORT_STATE });
+      closePanel();
+    },
+  });
+}
+
 function createFilterButton({ className, label, title, icon, onClick }) {
   const trigger = document.createElement('span');
   const button = document.createElement('button');
@@ -256,10 +273,12 @@ function updateButtons(totalCount, filterState) {
   setButtonDisabled(_salaryButton, salaryDisabled);
   setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
+  setButtonDisabled(_sortButton, disabled);
   setPressed(_statusButton, (filterState.statuses?.length ?? 0) > 0);
   setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
   setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
   setPressed(_companyButton, (filterState.companies?.length ?? 0) > 0);
+  setPressed(_sortButton, !isDefaultSort(_sortState));
   _salaryButton?.setAttribute(
     'aria-label',
     _salaryBounds?.hasSalaryData ? 'Filter by Salary' : 'Filter by Salary (no salary data)',
@@ -282,6 +301,8 @@ function refreshOpenPanel() {
     replaceOpenPanel(renderSalaryPanel());
   } else if (_openPanelType === 'compat') {
     replaceOpenPanel(renderCompatPanel());
+  } else if (_openPanelType === 'sort') {
+    replaceOpenPanel(renderSortPanel());
   }
 }
 
@@ -332,6 +353,13 @@ export function render(options = {}) {
     icon: createSvgIcon('M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M9 7h1M9 11h1M9 15h1'),
     onClick: (button) => openPanel('company', button, renderCompanyPanel()),
   });
+  const sort = createFilterButton({
+    className: 'filter-btn--sort',
+    label: 'Sort',
+    title: 'Sort',
+    icon: createSvgIcon('M7 6h10M7 12h7M7 18h4m7-2 3 3 3-3m-3 3V5'),
+    onClick: (button) => openPanel('sort', button, renderSortPanel()),
+  });
 
   toolbar.className = 'toolbar';
   label.className = 'toolbar__label';
@@ -341,6 +369,7 @@ export function render(options = {}) {
   actions.className = 'toolbar__actions';
 
   filters.append(status.trigger, salary.trigger, compat.trigger, company.trigger);
+  actions.append(sort.trigger);
   toolbar.append(label, count, filters, actions);
 
   _toolbarEl = toolbar;
@@ -350,6 +379,7 @@ export function render(options = {}) {
   _salaryButton = salary.button;
   _compatButton = compat.button;
   _companyButton = company.button;
+  _sortButton = sort.button;
 
   update(toolbar, {
     apps: _allApps,
