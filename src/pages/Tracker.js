@@ -1,8 +1,8 @@
 import { Card } from '../components/Card.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
+import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
-import { Toolbar } from '../components/Toolbar.js';
 import * as api from '../services/api.js';
 import {
   DEFAULT_FILTER_STATE,
@@ -11,6 +11,7 @@ import {
   getSalaryBounds,
   isAnyFilterActive,
   sortApplications,
+  syncDynamicSelections,
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 
@@ -21,8 +22,6 @@ let _paginationEl = null;
 let _applications = [];
 let _filterState = { ...DEFAULT_FILTER_STATE };
 let _sortState = { ...DEFAULT_SORT_STATE };
-// Phase 03 reads this when the quick-filter toolbar replaces the legacy toolbar.
-// eslint-disable-next-line no-unused-vars
 let _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
 let _toolbarEl = null;
 
@@ -73,6 +72,36 @@ function onPageChange(page) {
   renderPage({ moveFocus: true });
 }
 
+function updateToolbar() {
+  if (!_toolbarEl) {
+    return;
+  }
+
+  const filteredApplications = applyFilters(_applications, _filterState);
+
+  QuickFiltersToolbar.update(_toolbarEl, {
+    apps: _applications,
+    totalCount: _applications.length,
+    filteredCount: filteredApplications.length,
+    filterState: _filterState,
+    sortState: _sortState,
+  });
+}
+
+function onFilterChange(newFilterState) {
+  _filterState = syncDynamicSelections(newFilterState, _applications);
+  _currentPage = 1;
+  renderPage();
+  updateToolbar();
+}
+
+function onSortChange(newSortState) {
+  _sortState = newSortState;
+  _currentPage = 1;
+  renderPage();
+  updateToolbar();
+}
+
 function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
   emptyState.className = 'empty-state empty-state--filter';
@@ -100,10 +129,6 @@ function renderPage({ moveFocus = false } = {}) {
 
   for (const application of visibleApplications) {
     _cardList.append(Card.render(application, createCallbacks()));
-  }
-
-  if (_toolbarEl) {
-    Toolbar.updateCount(filteredApplications.length);
   }
 
   if (sortedApplications.length === 0 && isAnyFilterActive(_filterState)) {
@@ -177,6 +202,7 @@ function createCallbacks() {
         await api.archive(coerceId(id));
         removeApplication(id);
         renderPage();
+        updateToolbar();
         focusCardList();
       } catch {
         Toast.show('Archive failed', 'failure');
@@ -237,7 +263,18 @@ export async function mount(container) {
   _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
   _toolbarEl = null;
 
-  const toolbar = Toolbar.render(0);
+  const toolbar = QuickFiltersToolbar.render({
+    apps: _applications,
+    totalCount: 0,
+    filteredCount: 0,
+    filterState: _filterState,
+    sortState: _sortState,
+    salaryBounds: _salaryBounds,
+    onFilterChange,
+    onSortChange,
+    onClearAll: () => {},
+    onAddApplication: () => {},
+  });
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
@@ -270,7 +307,7 @@ export async function mount(container) {
 
   toolbar.removeAttribute('aria-busy');
   toolbar.removeAttribute('aria-disabled');
-  Toolbar.updateCount(_applications.length);
+  updateToolbar();
 
   if (_applications.length === 0) {
     _container.append(renderMessage('No applications yet. Add your first one!'));
