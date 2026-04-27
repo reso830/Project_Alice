@@ -14,7 +14,7 @@
 
 **Alternatives considered**:
 - Structured salary field on the backend — rejected; the spec explicitly prohibits database changes.
-- Displaying salary filter only for applications that have salary data — rejected; the slider should always appear; applications without salary simply don't match a constrained range.
+- Displaying salary filter only for applications that have salary data — revised; the Salary filter button is always visible but is rendered disabled (with an accessible label) when no applications have parseable salary data. Applications without salary data do not match a constrained range when the filter is active.
 
 ---
 
@@ -22,7 +22,7 @@
 
 **Question**: Is there a configured salary step constant? What should slider bounds be?
 
-**Decision**: No existing salary step constant exists in the codebase. Per `design/quickfilter_sort.md` §5.5, step = **$1,000**. Export `SALARY_STEP = 1000` from `filterSort.js`. Slider bounds are derived from the dataset at mount time via `getSalaryBounds(applications)`, rounded to the nearest $1,000. Default fallback: `{ min: 0, max: 200_000 }`.
+**Decision**: No existing salary step constant exists in the codebase. Per `design/quickfilter_sort.md` §5.5, step = **$1,000**. Export `SALARY_STEP = 1000` from `filterSort.js`. Slider bounds are derived from the dataset at mount time via `getSalaryBounds(applications)`, rounded to the nearest $1,000. Return shape: `{ min, max, hasSalaryData: boolean }`. Default fallback: `{ min: 0, max: 200_000, hasSalaryData: false }` when no parseable salary data exists.
 
 **Rationale**: Design spec is explicit about $1k step. Dataset-derived bounds ensure the slider is always relevant to the actual data without requiring a config file.
 
@@ -92,9 +92,9 @@
 
 **Question**: Should filter state survive a page refresh? Should sort state use `sessionStorage`?
 
-**Decision**: Filter state is **in-memory only** (no sessionStorage, no localStorage). Sort state is also **in-memory only**. Both reset on page refresh.
+**Decision**: Filter state is **in-memory only** (no sessionStorage, no localStorage) and resets on unmount. Sort state is also module-level in-memory, but is **intentionally not reset on unmount** — this gives SPA-session persistence without sessionStorage. Both reset on browser page refresh when the module reloads.
 
-**Rationale**: The spec says "Filters are local UI state only" and "Sort state only needs to persist for the current session." For a single-page application that loads fresh on each visit, in-memory state is equivalent to session-level persistence. The design spec §8 notes: "Filters are local UI state — they do not persist across sessions." `sessionStorage` would be a premature addition given the spec does not require it.
+**Rationale**: Filters are "temporary narrowing" that users expect to start fresh when they navigate away. Sort is a "review preference" that should survive navigating away and back within the same tab session. Since ES module singletons persist for the lifetime of the page, omitting the `_sortState` reset from `unmount()` is sufficient — no sessionStorage required. `sessionStorage` would be a premature addition given the spec does not require cross-tab or cross-refresh persistence.
 
 ---
 

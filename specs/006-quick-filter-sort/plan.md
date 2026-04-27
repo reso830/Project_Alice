@@ -318,7 +318,7 @@ QuickFiltersToolbar.render(options) → HTMLElement
     filteredCount,   // number — filtered result count
     filterState,     // object
     sortState,       // object
-    salaryBounds,    // { min, max } — dataset bounds for slider
+    salaryBounds,    // { min, max, hasSalaryData } — dataset bounds for slider
     onFilterChange,  // (filterState) => void
     onSortChange,    // (sortState) => void
     onClearAll,      // () => void
@@ -379,7 +379,7 @@ Panel management (module-level):
 ```js
 let _filterState = { ...DEFAULT_FILTER_STATE };
 let _sortState = { ...DEFAULT_SORT_STATE };
-let _salaryBounds = { min: 0, max: 200_000 };
+let _salaryBounds = { min: 0, max: 200_000, hasSalaryData: false };
 let _toolbarEl = null;
 ```
 

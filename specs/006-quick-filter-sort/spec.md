@@ -3,7 +3,7 @@
 **Feature Branch**: `006-quick-filter-sort`  
 **Created**: 2026-04-27  
 **Status**: Draft  
-**Design Reference**: `designs/QuickFilter_Sort.md`
+**Design Reference**: `design/quickfilter_sort.md`
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -90,7 +90,7 @@ A job seeker applies filters that match no applications. The list view communica
 
 **Acceptance Scenarios**:
 
-1. **Given** active filters that match zero applications, **Then** the empty state defined in `designs/QuickFilter_Sort.md` is displayed instead of the application list.
+1. **Given** active filters that match zero applications, **Then** the empty state defined in `design/quickfilter_sort.md` is displayed instead of the application list.
 2. **Given** the empty state is visible, **Then** the toolbar still shows `Results (0)` and the clear-all control is visible.
 3. **Given** the empty state is visible, **When** the user clears all filters, **Then** the application list reappears and the empty state is dismissed.
 
@@ -211,7 +211,7 @@ A job seeker applies filters that match no applications. The list view communica
 - Applications without a salary value are treated as outside any active Salary filter range (they do not match a constrained salary range but do match when the filter is empty).
 - Compatibility scores missing or invalid in the source data are normalized to 0 by `normalizeApplication()` in the existing data model. This feature treats any `app.compat` value of 0 as 0, whether it represents a genuine score of zero or a normalized missing value.
 - The `companyName` field is the canonical field key used for company-related filter and sort operations throughout this feature.
-- The design reference file `designs/QuickFilter_Sort.md` defines the visual layout, empty state messaging, and interaction patterns; the spec defers visual decisions to that document.
+- The design reference file `design/quickfilter_sort.md` defines the visual layout, empty state messaging, and interaction patterns; the spec defers visual decisions to that document.
 - Archived applications are excluded from all filter, sort, and count operations.
 - Filter state resets on page refresh. Sort state persists within the SPA session (module-level) and also resets on page refresh.
 - Job application data is private and local-first; no external services are involved in this feature.
