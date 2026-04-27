@@ -99,11 +99,12 @@ A job seeker applies filters that match no applications. The list view communica
 ### Edge Cases
 
 - What happens when a selected Status or Company value becomes unavailable because another filter was applied? → That value is silently removed from the active filter state.
-- What happens when all non-archived applications have no salary data? → The Salary filter applies no constraint (treated as inactive).
+- What happens when all non-archived applications have no salary data? → The Salary filter button is visible but disabled with an accessible label indicating no salary data is available.
 - What happens when the filtered result count is exactly 0? → The empty state from the design reference is shown.
 - What happens when a user rapidly changes filters? → Each change produces a consistent result; intermediate states do not persist.
 - What happens when there is only one application in the list? → Filters and sort function normally; the single application appears if it matches.
-- What happens when all applications are archived? → The toolbar shows `All Applications (0)` with no filter or sort controls needed to convey state; this is an existing empty state condition.
+- What happens when all applications are archived (total count is 0)? → The toolbar shows `All Applications (0)`; all filter and sort buttons are visible but disabled.
+- What happens when a compatibility score is missing or invalid? → The data model normalizes it to 0; it is treated as 0 for all filter and sort operations.
 - What happens when the page number is beyond the new filtered result count? → The page resets to 1 when a filter change reduces results below the current page.
 
 ## Requirements *(mandatory)*
@@ -115,6 +116,7 @@ A job seeker applies filters that match no applications. The list view communica
 - **FR-001**: The toolbar MUST display `All Applications (N)` when no filters are active, where N is the total count of non-archived applications.
 - **FR-002**: The toolbar MUST display `Results (X)` when one or more filters are active, where X is the count of applications matching all active filters.
 - **FR-003**: The toolbar MUST show a clear-all control only when at least one filter is active.
+- **FR-003a**: When the total non-archived application count is 0, all filter and sort buttons MUST be visible but disabled (with `aria-disabled="true"`). The clear-all control remains hidden.
 - **FR-004**: Activating the clear-all control MUST remove all active filters and reset the current page to 1, while preserving the current sort.
 
 **Filter Controls**
@@ -122,6 +124,7 @@ A job seeker applies filters that match no applications. The list view communica
 - **FR-005**: Users MUST be able to filter by Status using a multi-select control; selecting multiple values shows applications matching any of the selected statuses.
 - **FR-006**: Users MUST be able to filter by Company using a multi-select control; selecting multiple values shows applications from any of the selected companies.
 - **FR-007**: Users MUST be able to filter by Salary using a min/max range control. An application matches the Salary filter if its salary range overlaps the filter range (i.e., the application's lower bound ≤ filter max AND the application's upper bound ≥ filter min). Applications with no parseable salary value are excluded when the filter is active.
+- **FR-007a**: When no applications in the dataset have parseable salary data, the Salary filter button MUST be visible but disabled. Its `aria-label` MUST communicate that no salary data is available (e.g., "Filter by Salary (no salary data)").
 - **FR-008**: Users MUST be able to filter by Compatibility using a min/max range control.
 - **FR-009**: All active filters MUST stack using AND logic: a result must satisfy every active filter to appear.
 - **FR-010**: An empty filter (no value selected, range at full extent) MUST apply no constraint to results.
@@ -171,7 +174,7 @@ A job seeker applies filters that match no applications. The list view communica
 **Scope**
 
 - **FR-038**: Filter state MUST be local to the current UI session and MUST NOT be persisted to storage, synced to URL query parameters, or sent to any backend.
-- **FR-039**: Sort state MUST persist for the duration of the current browser session only.
+- **FR-039**: Sort state MUST persist for the current SPA session — it MUST survive navigating away from and back to the Tracker view within the same browser tab (achieved via module-level state that is not reset on unmount). It MUST reset on browser page refresh.
 - **FR-040**: The feature MUST NOT introduce backend persistence, URL query syncing, or database changes.
 
 **Constitutional Requirements**
@@ -184,7 +187,7 @@ A job seeker applies filters that match no applications. The list view communica
 
 - **Job Application**: A tracked application record with required company name, job title, status, and created date; optional source platform, job posting URL, application date, salary range, compatibility score, notes, follow-up action, and follow-up date.
 - **Filter State**: The set of currently active filter values for each filter dimension (Status selections, Company selections, Salary range, Compatibility range). Local to the current UI session.
-- **Sort State**: The currently active sort field and direction. Persists for the browser session only.
+- **Sort State**: The currently active sort field and direction. Persists for the current SPA session via module-level state; resets on browser refresh.
 - **Derived Result Set**: The ordered, paginated subset of non-archived applications produced by applying filter state, then sort state, then pagination to the full application dataset.
 
 ## Success Criteria *(mandatory)*
@@ -206,8 +209,9 @@ A job seeker applies filters that match no applications. The list view communica
 - A "configured salary step" for slider snapping is an existing application-level setting (e.g., $5,000 increments); if no configuration exists, a sensible default step will be established during planning.
 - Compatibility scores are numeric values between 0 and 100 representing a percentage.
 - Applications without a salary value are treated as outside any active Salary filter range (they do not match a constrained salary range but do match when the filter is empty).
-- Applications without a compatibility score are treated as outside any active Compatibility filter range when a constraint is set.
+- Compatibility scores missing or invalid in the source data are normalized to 0 by `normalizeApplication()` in the existing data model. This feature treats any `app.compat` value of 0 as 0, whether it represents a genuine score of zero or a normalized missing value.
+- The `companyName` field is the canonical field key used for company-related filter and sort operations throughout this feature.
 - The design reference file `designs/QuickFilter_Sort.md` defines the visual layout, empty state messaging, and interaction patterns; the spec defers visual decisions to that document.
 - Archived applications are excluded from all filter, sort, and count operations.
-- Filter and sort state do not need to survive a page refresh; session-level persistence is sufficient for sort state.
+- Filter state resets on page refresh. Sort state persists within the SPA session (module-level) and also resets on page refresh.
 - Job application data is private and local-first; no external services are involved in this feature.

@@ -11,7 +11,7 @@ Add inline filter and sort controls to the Tracker toolbar, allowing users to na
 
 **Language/Version**: JavaScript (ES Modules), no TypeScript  
 **Primary Dependencies**: Vitest (tests), jsdom (test environment) — no new runtime dependencies required  
-**Storage**: N/A — filter state is session-local (in-memory). Sort state is also in-memory (session only, no sessionStorage needed unless the feature later adds persistence).  
+**Storage**: Filter state is session-local (in-memory, resets on unmount and on page refresh). Sort state uses module-level in-memory state and is intentionally NOT reset on unmount — this gives SPA-session persistence (survives Tracker unmount/remount within the same browser tab) without requiring sessionStorage. Both reset on browser page refresh when the module is reloaded.  
 **Testing**: Vitest with jsdom (`vitest run`)  
 **Target Platform**: Desktop and mobile browsers  
 **Project Type**: Single-page web application (vanilla JS, DOM-based components)  
@@ -142,9 +142,11 @@ parseSalaryRange(salaryStr) → { min: number, max: number } | null
   - splits on '-', parses both bounds
   - returns null if lower bound fails; uses lower as upper if upper fails
 
-getSalaryBounds(applications) → { min: number, max: number }
+getSalaryBounds(applications) → { min: number, max: number, hasSalaryData: boolean }
   - scans all applications, finds dataset min/max salary
-  - rounds bounds to nearest $1k; defaults to { min: 0, max: 200000 } if no data
+  - rounds bounds to nearest $1k
+  - returns { min: 0, max: 200_000, hasSalaryData: false } when no parseable salary data exists
+  - hasSalaryData: true when at least one application has a parseable salary string
 ```
 
 **Filter helpers (pure, accept apps[] + filterState, return apps[]):**
@@ -341,6 +343,8 @@ Each filter icon button:
 - `aria-label="Filter by {Name}"`, `aria-pressed="{true|false}"`
 - Click toggles associated panel; only one panel open at a time
 - Panel is absolutely positioned below the button
+- Disabled state (applied when `totalCount === 0`): `disabled` attribute + `aria-disabled="true"`; no panel opens on click
+- Salary button additionally disabled (with `aria-label="Filter by Salary (no salary data)"`) when `!salaryBounds.hasSalaryData`
 
 Erase-all button:
 - Only rendered when `isAnyFilterActive(filterState)` is true
@@ -351,6 +355,7 @@ Sort icon button:
 - Always visible
 - `aria-pressed` reflects `!isDefaultSort(sortState)`
 - Opens `SortPanel`
+- Disabled state (applied when `totalCount === 0`): `disabled` + `aria-disabled="true"`
 
 Label section:
 - No filters active: `All Applications <strong>N</strong>`
@@ -467,7 +472,7 @@ function clampCurrentPage(filteredCount) {
 }
 ```
 
-**Updated `unmount()`:** reset `_filterState`, `_sortState`, `_salaryBounds`, `_toolbarEl` to defaults.
+**Updated `unmount()`:** reset `_filterState = { ...DEFAULT_FILTER_STATE }`, `_salaryBounds = { min: 0, max: 200_000, hasSalaryData: false }`, `_toolbarEl = null`. **Do NOT reset `_sortState`** — module-level sort state must survive SPA navigation (FR-039). It resets naturally on browser refresh when the module is reloaded.
 
 **Filter empty state renderer:**
 
