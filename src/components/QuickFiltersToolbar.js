@@ -1,16 +1,20 @@
 import { STATUS_CONFIG } from '../models/application.js';
 import {
+  SALARY_STEP,
   getAvailableCompanies,
   getAvailableStatuses,
   isAnyFilterActive,
 } from '../utils/filterSort.js';
 import { FilterPanel } from './FilterPanel.js';
+import { RangeSlider } from './RangeSlider.js';
 
 let _allApps = [];
 let _toolbarEl = null;
 let _labelEl = null;
 let _countEl = null;
 let _statusButton = null;
+let _salaryButton = null;
+let _compatButton = null;
 let _companyButton = null;
 let _openPanel = null;
 let _openButton = null;
@@ -101,12 +105,11 @@ function closePanel({ restoreFocus = false } = {}) {
   const button = _openButton;
 
   _openPanel?.remove();
+  _openButton?.classList.remove('filter-btn--open');
   _openPanel = null;
   _openButton = null;
   _openPanelType = null;
   detachPanelListeners();
-  _statusButton?.classList.remove('filter-btn--open');
-  _companyButton?.classList.remove('filter-btn--open');
 
   if (restoreFocus) {
     button?.focus();
@@ -170,6 +173,59 @@ function renderCompanyPanel() {
   });
 }
 
+function createRangePanel(slider) {
+  const panel = document.createElement('div');
+
+  panel.className = 'filter-panel range-panel';
+  panel.append(slider);
+
+  return panel;
+}
+
+function formatSalary(value) {
+  return `$${value / 1000}k`;
+}
+
+function renderSalaryPanel() {
+  return createRangePanel(RangeSlider.render({
+    min: _salaryBounds.min,
+    max: _salaryBounds.max,
+    valueMin: _filterState.salaryMin ?? _salaryBounds.min,
+    valueMax: _filterState.salaryMax ?? _salaryBounds.max,
+    step: SALARY_STEP,
+    formatValue: formatSalary,
+    ariaLabelMin: 'Minimum salary',
+    ariaLabelMax: 'Maximum salary',
+    onCommit: (min, max) => {
+      _callbacks.onFilterChange?.({
+        ..._filterState,
+        salaryMin: min === _salaryBounds.min ? null : min,
+        salaryMax: max === _salaryBounds.max ? null : max,
+      });
+    },
+  }));
+}
+
+function renderCompatPanel() {
+  return createRangePanel(RangeSlider.render({
+    min: 0,
+    max: 100,
+    valueMin: _filterState.compatMin ?? 0,
+    valueMax: _filterState.compatMax ?? 100,
+    step: 1,
+    formatValue: (value) => `${value}%`,
+    ariaLabelMin: 'Minimum compatibility',
+    ariaLabelMax: 'Maximum compatibility',
+    onCommit: (min, max) => {
+      _callbacks.onFilterChange?.({
+        ..._filterState,
+        compatMin: min === 0 ? null : min,
+        compatMax: max === 100 ? null : max,
+      });
+    },
+  }));
+}
+
 function createFilterButton({ className, label, title, icon, onClick }) {
   const trigger = document.createElement('span');
   const button = document.createElement('button');
@@ -194,13 +250,25 @@ function createFilterButton({ className, label, title, icon, onClick }) {
 
 function updateButtons(totalCount, filterState) {
   const disabled = totalCount === 0;
+  const salaryDisabled = disabled || !_salaryBounds?.hasSalaryData;
 
   setButtonDisabled(_statusButton, disabled);
+  setButtonDisabled(_salaryButton, salaryDisabled);
+  setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
   setPressed(_statusButton, (filterState.statuses?.length ?? 0) > 0);
+  setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
+  setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
   setPressed(_companyButton, (filterState.companies?.length ?? 0) > 0);
+  _salaryButton?.setAttribute(
+    'aria-label',
+    _salaryBounds?.hasSalaryData ? 'Filter by Salary' : 'Filter by Salary (no salary data)',
+  );
 
-  if (disabled) {
+  if (
+    disabled
+    || (_openPanelType === 'salary' && salaryDisabled)
+  ) {
     closePanel();
   }
 }
@@ -210,6 +278,10 @@ function refreshOpenPanel() {
     replaceOpenPanel(renderStatusPanel());
   } else if (_openPanelType === 'company') {
     replaceOpenPanel(renderCompanyPanel());
+  } else if (_openPanelType === 'salary') {
+    replaceOpenPanel(renderSalaryPanel());
+  } else if (_openPanelType === 'compat') {
+    replaceOpenPanel(renderCompatPanel());
   }
 }
 
@@ -219,7 +291,7 @@ export function render(options = {}) {
   _allApps = options.apps ?? [];
   _filterState = options.filterState;
   _sortState = options.sortState;
-  _salaryBounds = options.salaryBounds;
+  _salaryBounds = options.salaryBounds ?? { min: 0, max: 200000, hasSalaryData: false };
   _callbacks = {
     onFilterChange: options.onFilterChange,
     onSortChange: options.onSortChange,
@@ -239,6 +311,20 @@ export function render(options = {}) {
     icon: createSvgIcon('M12 8v5l3 2m5-3a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'),
     onClick: (button) => openPanel('status', button, renderStatusPanel()),
   });
+  const salary = createFilterButton({
+    className: 'filter-btn--salary',
+    label: 'Filter by Salary',
+    title: 'Salary',
+    icon: createSvgIcon('M6 7h12M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M5 7h14v12H5V7Zm7 3v6M9.5 12h4'),
+    onClick: (button) => openPanel('salary', button, renderSalaryPanel()),
+  });
+  const compat = createFilterButton({
+    className: 'filter-btn--compat',
+    label: 'Filter by Compatibility',
+    title: 'Compatibility',
+    icon: createSvgIcon('M4 19V5m0 14h16M7 15l3-3 3 2 4-6'),
+    onClick: (button) => openPanel('compat', button, renderCompatPanel()),
+  });
   const company = createFilterButton({
     className: 'filter-btn--company',
     label: 'Filter by Company',
@@ -254,13 +340,15 @@ export function render(options = {}) {
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
 
-  filters.append(status.trigger, company.trigger);
+  filters.append(status.trigger, salary.trigger, compat.trigger, company.trigger);
   toolbar.append(label, count, filters, actions);
 
   _toolbarEl = toolbar;
   _labelEl = label;
   _countEl = count;
   _statusButton = status.button;
+  _salaryButton = salary.button;
+  _compatButton = compat.button;
   _companyButton = company.button;
 
   update(toolbar, {
@@ -282,6 +370,7 @@ export function update(el, options = {}) {
   _allApps = options.apps ?? _allApps;
   _filterState = options.filterState ?? _filterState;
   _sortState = options.sortState ?? _sortState;
+  _salaryBounds = options.salaryBounds ?? _salaryBounds;
 
   const totalCount = options.totalCount ?? _allApps.length;
   const filteredCount = options.filteredCount ?? totalCount;

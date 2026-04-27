@@ -85,6 +85,7 @@ function updateToolbar() {
     filteredCount: filteredApplications.length,
     filterState: _filterState,
     sortState: _sortState,
+    salaryBounds: _salaryBounds,
   });
 }
 

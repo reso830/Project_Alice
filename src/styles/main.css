@@ -79,7 +79,8 @@ textarea {
 button:focus-visible,
 .card:focus-visible,
 .status-option:focus-visible,
-.filter-panel__option:focus-visible {
+.filter-panel__option:focus-visible,
+.range-thumb:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, .3);
 }
@@ -338,6 +339,74 @@ button:focus-visible,
 .filter-panel__option-label {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.range-panel {
+  padding: 14px 14px 12px;
+}
+
+.range-slider {
+  width: 220px;
+}
+
+.range-values {
+  position: relative;
+  height: 18px;
+}
+
+.range-value {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  color: #555555;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.range-track {
+  position: relative;
+  height: 4px;
+  margin: 18px 0;
+  border-radius: 2px;
+  background: var(--color-border);
+}
+
+.range-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+.range-thumb {
+  position: absolute;
+  top: -7px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+  cursor: grab;
+  transform: translateX(-50%);
+}
+
+.range-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, .12);
+}
+
+.range-thumb--active {
+  cursor: grabbing;
+  box-shadow: 0 0 0 5px rgba(79, 70, 229, .18);
+}
+
+.range-bounds {
+  display: flex;
+  justify-content: space-between;
+  color: #AAAAAA;
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .count-badge {
