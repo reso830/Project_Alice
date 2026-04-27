@@ -77,12 +77,13 @@ DEFAULT_SORT_STATE = { field: 'id', direction: 'asc' }
 
 ```js
 {
-  min: number,   // dataset minimum salary lower bound, rounded to $1k; defaults to 0
-  max: number,   // dataset maximum salary upper bound, rounded to $1k; defaults to 200_000
+  min:           number,   // dataset minimum salary lower bound, rounded to $1k; defaults to 0
+  max:           number,   // dataset maximum salary upper bound, rounded to $1k; defaults to 200_000
+  hasSalaryData: boolean,  // true when at least one app has a parseable salary string
 }
 ```
 
-Stored in `_salaryBounds` in Tracker.js. Recomputed on each `mount()`. Passed to `QuickFiltersToolbar` for slider initialization.
+Stored in `_salaryBounds` in Tracker.js. Recomputed on each `mount()`. Passed to `QuickFiltersToolbar` for slider initialization. When `hasSalaryData` is `false`, the Salary filter button is rendered disabled with an accessible label.
 
 ### ParsedSalary (internal to filterSort.js, not exported)
 
@@ -127,9 +128,9 @@ Pipeline is computed on demand in `renderPage()`. No intermediate results are ca
 
 | Event | Transition |
 |---|---|
-| User selects sort field | `field` updated; `_currentPage` unchanged |
-| User selects sort direction | `direction` updated; `_currentPage` unchanged |
-| User activates "Restore default" | `field = 'id'`, `direction = 'asc'`; panel closes |
+| User selects sort field | `field` updated; `_currentPage = 1` |
+| User selects sort direction | `direction` updated; `_currentPage = 1` |
+| User activates "Restore default" | `field = 'id'`, `direction = 'asc'`; `_currentPage = 1`; panel closes |
 
 ---
 
@@ -149,7 +150,7 @@ Pipeline is computed on demand in `renderPage()`. No intermediate results are ca
 // Salary
 parseSalaryLower(salaryStr: string): number | null
 parseSalaryRange(salaryStr: string): { min: number, max: number } | null
-getSalaryBounds(apps: App[]): { min: number, max: number }
+getSalaryBounds(apps: App[]): { min: number, max: number, hasSalaryData: boolean }
 
 // Filtering
 filterByStatus(apps: App[], statuses: string[]): App[]

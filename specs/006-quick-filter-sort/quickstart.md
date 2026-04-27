@@ -74,9 +74,12 @@ npx vitest
 
 - **Salary is a string** (`"$110k-$130k"`). Parse it in `filterSort.js`; never store parsed values on the record.
 - **Filter pipeline order**: `applyFilters` → `sortApplications` → paginate. This order is mandatory per FR-028–029.
-- **Page reset on filter change**: set `_currentPage = 1` in the `onFilterChange` and `onClearAll` callbacks, before calling `renderPage()`. Sort change does NOT reset the page.
+- **Page reset on filter or sort change**: set `_currentPage = 1` in the `onFilterChange`, `onSortChange`, and `onClearAll` callbacks, before calling `renderPage()`. Every user-initiated change resets to page 1.
 - **Dynamic narrowing**: call `syncDynamicSelections(newFilterState, _applications)` in `onFilterChange` before storing state. This removes status/company selections that are no longer available.
 - **Salary slider snaps on release only**: `RangeSlider` maintains local drag state; commits to parent via `onCommit` only on `mouseup`/`touchend`.
+- **Sort state persists across SPA navigation**: `_sortState` is module-level and intentionally NOT reset in `unmount()`. Navigating away from Tracker and back preserves the sort. Browser refresh resets it.
+- **Filter state resets on navigation**: `_filterState` IS reset in `unmount()`. Navigating away clears active filters.
+- **Disabled controls**: all filter and sort buttons are rendered `disabled` / `aria-disabled="true"` when `totalCount === 0`. The Salary button is also disabled (with a descriptive aria-label) when `getSalaryBounds` returns `hasSalaryData: false`.
 - **One panel at a time**: `QuickFiltersToolbar` closes any open panel before opening a new one.
 - **Design token reference**: all colors, sizes, and font specs are in `design/quickfilter_sort.md` §10. Use the existing CSS custom properties (`--color-accent`, `--color-border`, etc.) where they map.
 
@@ -91,7 +94,7 @@ After implementation, verify manually:
 3. Open Status filter while Company filter is active → only statuses present in Company-filtered results appear
 4. Apply Salary range filter → "Interviewing" status disappears from Status option list if no Interviewing apps in salary range; if "Interviewing" was selected, it auto-clears
 5. Drag salary slider → list doesn't change during drag; changes on release
-6. Sort by Compatibility descending → list reorders; sort icon shows active state; page does not reset
+6. Sort by Compatibility descending → list reorders; sort icon shows active state; page resets to 1
 7. Click erase-all → full list restored, toolbar shows "All Applications (N)", page resets to 1, sort preserved
 8. Apply filters that match nothing → filter empty state appears
 9. Keyboard: Tab to filter button, Enter/Space to open, Escape to close, focus returns to button
