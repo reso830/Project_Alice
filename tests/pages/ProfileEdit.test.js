@@ -109,6 +109,32 @@ describe('ProfileEdit page', () => {
     expect(getFieldInput(summary, 'Summary').value).toBe('');
   });
 
+  it('pre-populates basic info and summary from an existing profile', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      firstName: 'Alex',
+      lastName: 'Ng',
+      city: 'Austin',
+      email: 'alex@example.com',
+      phone: '555-0100',
+      summary: 'Frontend engineer.',
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const basic = getCard(container, 'BASIC INFO');
+    const summary = getCard(container, 'SUMMARY');
+
+    expect(getFieldInput(basic, 'First Name').value).toBe('Alex');
+    expect(getFieldInput(basic, 'Last Name').value).toBe('Ng');
+    expect(getFieldInput(basic, 'City/Location').value).toBe('Austin');
+    expect(getFieldInput(basic, 'Email').value).toBe('alex@example.com');
+    expect(getFieldInput(basic, 'Phone').value).toBe('555-0100');
+    expect(getFieldInput(summary, 'Summary').value).toBe('Frontend engineer.');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+  });
+
   it('keeps both save buttons disabled until the form is dirty', async () => {
     const container = createAppShell();
 
@@ -188,6 +214,31 @@ describe('ProfileEdit page', () => {
     }));
     expect(navigate).toHaveBeenCalledWith('profile');
     expect(Toast.show).toHaveBeenCalledWith('Profile saved.', 'success');
+  });
+
+  it('saves updated state from a pre-loaded profile', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      firstName: 'Alex',
+      lastName: 'Ng',
+      city: 'Austin',
+      summary: 'Frontend engineer.',
+    }));
+    api.saveProfile.mockResolvedValue(createProfile({ city: 'Seattle' }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Seattle');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({
+      firstName: 'Alex',
+      lastName: 'Ng',
+      city: 'Seattle',
+      summary: 'Frontend engineer.',
+    }));
   });
 
   it('shows an error toast and preserves form state when save fails', async () => {

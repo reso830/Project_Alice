@@ -61,13 +61,26 @@ describe('Profile page', () => {
       email: 'alex@example.com',
       phone: '555-0100',
       summary: 'Frontend engineer.',
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2022',
+        currentWork: true,
+      }],
+      education: [{
+        degreeMajor: 'BS Computer Science',
+        university: 'State University',
+        yearCompleted: '2020',
+      }],
       skills: ['JavaScript'],
-      languages: [],
-      certifications: [],
-      awards: [],
+      languages: [{ language: 'English', proficiency: 'Fluent' }],
+      certifications: [{ name: 'AWS Developer', issuingBody: 'Amazon', issuanceDate: '02/2023' }],
+      awards: [{ awardName: 'Top Performer', issuingBody: 'Acme', date: '03/2024' }],
       links: [
-        { platform: 'Portfolio', label: 'alex.dev', url: 'https://alex.dev' },
-        { platform: 'Unsafe', label: 'bad link', url: 'javascript:alert(1)' },
+        { friendlyName: 'Portfolio', url: 'https://alex.dev' },
+        { friendlyName: '', url: 'https://github.com/alex' },
+        { friendlyName: 'bad link', url: 'javascript:alert(1)' },
       ],
     });
     api.getAll.mockResolvedValue([createApplication({ status: 'offer' })]);
@@ -77,9 +90,18 @@ describe('Profile page', () => {
     expect(container.querySelector('h1')?.textContent).toBe('Welcome back, Alex.');
     expect(container.querySelector('.profile-basic__name')?.textContent).toBe('Alex Rivera');
     expect(container.textContent).toContain('Frontend engineer.');
+    expect(container.textContent).toContain('Build dashboards.');
+    expect(container.textContent).toContain('01/2022 - Present');
+    expect(container.textContent).toContain('BS Computer Science');
+    expect(container.textContent).toContain('State University | 2020');
     expect(container.textContent).toContain('JavaScript');
+    expect(container.textContent).toContain('AWS Developer | Amazon | 02/2023');
+    expect(container.textContent).toContain('Top Performer | Acme | 03/2024');
+    expect(container.textContent).toContain('English | Fluent');
     expect(container.querySelectorAll('.link-chip')[0].getAttribute('href')).toBe('https://alex.dev/');
-    expect(container.querySelectorAll('.link-chip')[1].getAttribute('href')).toBe('#');
+    expect(container.querySelectorAll('.link-chip')[0].textContent).toBe('Portfolio');
+    expect(container.querySelectorAll('.link-chip')[1].textContent).toBe('github.com');
+    expect(container.querySelectorAll('.link-chip')[2].getAttribute('href')).toBe('#');
 
     getButton(container, 'Edit Profile').click();
 
