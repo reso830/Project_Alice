@@ -17,18 +17,15 @@
 
 ---
 
-## Decision 2: Profile Data Storage — localStorage
+## Decision 2: Profile Data Storage - SQLite-backed API
 
-**Decision**: Store the profile JSON object under the key `apptracker_profile` in `localStorage`.
+**Decision**: Store the single profile record in the existing local SQLite database and expose it through `GET /api/profile` and `PUT /api/profile`.
 
-**Rationale**: Profile data is local-first per the project constitution. The spec explicitly defers backend persistence for profile to a later iteration. The Calendar page already reads application data from localStorage, establishing precedent for localStorage as a local data store. A `profileStore.js` module mirrors the pattern of the existing `store.js`, making the approach immediately recognisable.
+**Rationale**: Profile data is user data and should follow the same durable local persistence model as applications. The feature must not save profile data in browser `localStorage`, `sessionStorage`, or browser-only memory. Reusing the existing Express + SQLite stack keeps the app local-first without introducing a new database or external service.
 
-**Migration path**: When a future iteration adds a `/api/profile` backend endpoint, `profileStore.js` is the only module that changes — UI components and the Profile page are unaffected.
-
-**Alternatives considered**:
-- **New `/api/profile` backend endpoint** — deferred; out of scope per spec constraint "do not implement backend persistence if not yet implemented".
-- **In-memory only** — rejected; profile would be lost on page refresh.
-
+**Rejected alternatives**:
+- **Browser storage (`localStorage` / `sessionStorage`)** - rejected; profile data should not be saved in browser-managed storage.
+- **In-memory only** - rejected; profile would be lost on page refresh.
 ---
 
 ## Decision 3: Routing — Extend `navigate()` with `'profile-edit'` Key

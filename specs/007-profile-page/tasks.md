@@ -4,7 +4,7 @@
 **Branch**: `007-profile-page`  
 **Prerequisites**: plan.md ✓, spec.md ✓, research.md ✓, data-model.md ✓, contracts/ ✓
 
-**Tests**: `tests/models/profile.test.js` and `tests/data/profileStore.test.js` are REQUIRED by the project constitution — this feature introduces form validation and localStorage persistence. Write tests before implementing the functions they cover.
+**Tests**: `tests/models/profile.test.js`, `tests/server/profile.test.js`, and `tests/services/api.test.js` profile coverage are REQUIRED by the project constitution � this feature introduces form validation and SQLite-backed profile persistence. Write tests before implementing the functions they cover.
 
 **Note on nav**: The topbar already has a Profile button (`data-page="profile"`) and `Navbar.setActive()` already handles the active state. No nav changes are needed.
 
@@ -20,23 +20,24 @@
 
 **Purpose**: Extend the router and wire the navigate callback that every page depends on.
 
-- [ ] T001 Extend `src/main.js`: import `ProfileEdit` from `./pages/ProfileEdit.js`; update the existing `Profile.mount(appRoot)` call to `Profile.mount(appRoot, { navigate })`; add a `'profile-edit'` branch that calls `ProfileEdit.mount(appRoot, { navigate })` and `return`s before `Navbar.setActive()` — the navigate function is already in scope as a local function and can be passed by reference
+- [X] T001 Extend `src/main.js`: import `ProfileEdit` from `./pages/ProfileEdit.js`; update the existing `Profile.mount(appRoot)` call to `Profile.mount(appRoot, { navigate })`; add a `'profile-edit'` branch that calls `ProfileEdit.mount(appRoot, { navigate })` and `return`s before `Navbar.setActive()` — the navigate function is already in scope as a local function and can be passed by reference
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Pure-function logic, localStorage store, tests for both, and CSS layout tokens. All user stories depend on this phase.
+**Purpose**: Pure-function logic, SQLite-backed profile persistence, API client coverage, and CSS layout tokens. All user stories depend on this phase.
 
-**⚠️ CRITICAL**: Write the test files (T002, T064) and make them fail before implementing the model (T003) and store (T004).
+**CRITICAL**: Write the test files (T002, T064, T067) and make them fail before implementing the model, server persistence, and API client changes they cover.
 
 - [ ] T002 [P] Write `tests/models/profile.test.js`: unit tests for `validateProfile` (missing firstName, missing lastName, bad email format, valid full object), `normaliseProfile` (trimming, undefined arrays → `[]`), `computeAppCounts` (counts each status slug), and `computeStats` (`phone_screen + interview + assessment` = active; `applied` = pending; `offer` = offer; `wishlisted` counts toward total; empty input = all zeros) — tests MUST FAIL before T003
 - [ ] T003 Create `src/models/profile.js`: implement `validateProfile`, `normaliseProfile`, `computeAppCounts`, `computeStats` to make T002 pass; also export `STATUS_COLORS` (`{ wishlisted: '#9333ea', applied: '#3b82f6', phone_screen: '#ea580c', interview: '#d97706', assessment: '#7c3aed', offer: '#16a34a', rejected: '#dc2626', withdrawn: '#64748b', ghosted: '#94a3b8' }`) and `STATUS_LABELS` (`{ phone_screen: 'Screening', wishlisted: 'Wishlist', applied: 'Applied', interview: 'Interview', assessment: 'Assessment', offer: 'Offer', rejected: 'Rejected', withdrawn: 'Withdrawn', ghosted: 'Ghosted' }`)
-- [ ] T004 [P] Create `src/data/profileStore.js`: `get()` reads `localStorage.getItem('apptracker_profile')` — returns parsed object or `null` (must not throw on missing or malformed JSON); `save(data)` calls `validateProfile`, on failure returns `{ ok: false, errors }` without writing, on success calls `normaliseProfile`, serialises and writes to `localStorage`, returns `{ ok: true }`
-- [ ] T064 [P] Write `tests/data/profileStore.test.js`: unit tests for `get()` (empty localStorage → `null`; valid JSON → parsed object; malformed JSON → `null` without throwing), `save()` with valid data (writes parseable JSON to localStorage, returns `{ ok: true }`), and `save()` with missing `firstName` (returns `{ ok: false, errors }`, does not write to localStorage) — tests MUST FAIL before T004 implementation is complete
+- [ ] T004 [P] Create SQLite-backed profile persistence and routes: add `server/db/profile.js` with get/upsert helpers, add `server/routes/profile.js` with `GET /api/profile` and `PUT /api/profile`, wire the route in `server/index.js`, validate with `validateProfile()` before writes, return `null` when no profile exists, and do not use browser `localStorage` or `sessionStorage` for profile data
+- [ ] T064 [P] Write `tests/server/profile.test.js`: tests for missing profile returning `null`, valid profile save/read round trip through SQLite/API, invalid missing `firstName` returning `{ ok: false, errors }` without writing, and profile persistence after reopening the SQLite database � tests MUST FAIL before T004 implementation is complete
+- [ ] T067 [P] Update `src/services/api.js` and `tests/services/api.test.js`: add `getProfile()` and `saveProfile(data)` wrappers for `/api/profile`; tests verify request methods, JSON handling, validation error propagation, and no browser storage use � tests MUST FAIL before API wrapper implementation is complete
 - [ ] T005 [P] Add CSS layout foundation in `src/styles/main.css`: `.profile-page` (max-width 1120px, margin auto, horizontal padding 28px desktop / 14px mobile), `.profile-edit-page` (max-width 680px), `.section-card` (background `#fff`, border `1px solid #e0ddd8`, border-radius 10px, padding 22px desktop / 16px mobile), `.section-card__header` (flex row, align-items center), gap between section cards 24px desktop / 18px mobile; add `@media (max-width: 639px)` rules for responsive switching
 
-**Checkpoint**: Run `npm run test:run` — `tests/models/profile.test.js` and `tests/data/profileStore.test.js` must both pass before proceeding.
+**Checkpoint**: Run `npm run test:run` � `tests/models/profile.test.js`, `tests/server/profile.test.js`, and profile API service tests must pass before proceeding.
 
 ---
 
@@ -44,14 +45,14 @@
 
 **Goal**: A user with no profile saved sees the Profile page: welcome heading without name, an applications summary showing counts from the API, and a profile card with an empty state and a "Set Up Profile" CTA.
 
-**Independent Test**: Run the app with no `apptracker_profile` key in localStorage. Navigate to Profile. Heading must read "Welcome back.", applications card must show stat chips with counts matching the Tracker (including wishlisted in Total), profile card must show empty state with "Set Up Profile" button. Clicking "Set Up Profile" must open the edit page.
+**Independent Test**: Run the app with `GET /api/profile` returning no saved profile. Navigate to Profile. Heading must read "Welcome back.", applications card must show stat chips with counts matching the Tracker (including wishlisted in Total), profile card must show empty state with "Set Up Profile" button. Clicking "Set Up Profile" must open the edit page.
 
-- [ ] T006 [US1] Create `src/pages/Profile.js` (full rewrite): `mount(container, { navigate })` fetches `api.getAll()`, reads `profileStore.get()`, renders `.profile-page` wrapper, then calls internal render helpers; module-level `_container = null` and `_dismissTimer = null`; `unmount()` clears `_container` and cancels `_dismissTimer`; all user-supplied text rendered via `textContent` only
+- [ ] T006 [US1] Create `src/pages/Profile.js` (full rewrite): `mount(container, { navigate })` fetches `api.getAll()` and `api.getProfile()`, renders `.profile-page` wrapper, then calls internal render helpers; module-level `_container = null` and `_dismissTimer = null`; `unmount()` clears `_container` and cancels `_dismissTimer`; all user-supplied text rendered via `textContent` only
 - [ ] T007 [P] [US1] Add welcome heading in `src/pages/Profile.js`: if no profile, render `<h1>Welcome back.</h1>`; if profile exists, render `<h1>Welcome back, {firstName}.</h1>` with `<p class="profile-subline">Here's where things stand today.</p>` below it (font Sora 28px/22px mobile, weight 700; subline 13px muted `#999`)
 - [ ] T008 [US1] Add Applications section card in `src/pages/Profile.js`: `.section-card` with header row (`APPLICATIONS` label 11px uppercase weight 700 + right-aligned "Go to Tracker" primary button); below header, a stat chips row — call `computeAppCounts(applications)` then `computeStats(counts)` and render four `.stat-chip` elements for Total (navy, includes wishlisted), Active (amber `#d97706`), Pending (blue `#3b82f6`), Offer (green `#16a34a`) with numeric value and label; while `api.getAll()` is in flight, show a loading indicator in place of stat chips
 - [ ] T009 [US1] Wire "Go to Tracker" button in `src/pages/Profile.js`: button click calls `navigate('tracker')` using the injected callback received in `mount`
 - [ ] T010 [US1] Add Profile section card skeleton in `src/pages/Profile.js`: `.section-card` with header row (`PROFILE` label 11px uppercase weight 700; right side empty when no profile, "Edit Profile" outline button when profile exists)
-- [ ] T011 [US1] Render empty state inside profile section card when `profileStore.get() === null` in `src/pages/Profile.js`: 52px circle muted person icon, `<p>No profile set up yet.</p>` (weight 700), `<p>Add your background to strengthen your applications.</p>` (muted), primary "Set Up Profile" button; center all items; render text via `textContent`
+- [ ] T011 [US1] Render empty state inside profile section card when the profile API returns `null` in `src/pages/Profile.js`: 52px circle muted person icon, `<p>No profile set up yet.</p>` (weight 700), `<p>Add your background to strengthen your applications.</p>` (muted), primary "Set Up Profile" button; center all items; render text via `textContent`
 - [ ] T012 [US1] Wire "Set Up Profile" and "Edit Profile" buttons in `src/pages/Profile.js` to call `navigate('profile-edit')` via the injected callback
 - [ ] T013 [US1] Handle `api.getAll()` failure in `src/pages/Profile.js`: if the fetch rejects or returns an empty array, show stat chips with zeros and a brief empty-state message in the chart area; do not crash or leave the applications card blank
 
@@ -85,9 +86,9 @@
 
 **Goal**: When a profile is saved, the page shows "Welcome back, {firstName}.", the profile section renders the basic info block and all populated sub-sections. "Edit Profile" button is visible.
 
-**Independent Test**: Save a profile via `localStorage.setItem('apptracker_profile', JSON.stringify({firstName:'Alex',...}))`. Reload Profile page. Heading reads "Welcome back, Alex." All non-empty profile sub-sections render with correct content. "Edit Profile" button is visible.
+**Independent Test**: Save a profile through `PUT /api/profile` or a mocked `api.getProfile()` response. Reload Profile page. Heading reads "Welcome back, Alex." All non-empty profile sub-sections render with correct content. "Edit Profile" button is visible.
 
-- [ ] T024 [US2] Refactor profile section rendering in `src/pages/Profile.js` to branch on `profileStore.get() !== null`: in the profile-exists path, render the Basic Info block and all sub-sections; in the no-profile path, render the existing empty state from T011
+- [ ] T024 [US2] Refactor profile section rendering in `src/pages/Profile.js` to branch on API profile result: in the profile-exists path, render the Basic Info block and all sub-sections; in the no-profile path, render the existing empty state from T011
 - [ ] T025 [US2] Build Basic Info block in `src/pages/Profile.js`: 52×52px initials avatar (`.profile-avatar`, `background #4F46E5`, `border-radius 50%`, `DM Mono` weight 700 uppercase initials from `firstName[0] + lastName[0]`); name set via `textContent` (16px weight 700); city (📍), phone (📞), email (✉) each set via `textContent` (11px `DM Mono` muted); omit any field that is empty
 - [ ] T026 [P] [US2] Build reusable sub-section renderer in `src/pages/Profile.js`: function `renderSubSection(label, contentEl)` returns a `.profile-subsection` div with a `.profile-subsection__label` row (label text set via `textContent`, 11px uppercase weight 700 Sora) and a `.profile-subsection__content` area; add `1px solid #f5f3f0` top border between sub-sections
 - [ ] T027 [P] [US2] Render Summary sub-section using `renderSubSection()`: content is a `<p>` with `textContent = profile.summary`; skip section if `profile.summary` is empty
@@ -99,7 +100,7 @@
 - [ ] T033 [P] [US2] Render Languages sub-section using `renderSubSection()`: content is a flex-wrap row of `.pill-tag` spans for each string in `profile.languages` — text via `textContent`; skip if empty
 - [ ] T034 [US2] Render Links sub-section using `renderSubSection()`: content is a flex-wrap row of `.link-chip` anchors for each `{ platform, label, url }` entry; platform text via `textContent` (9px uppercase muted `#bbb`), URL label via `textContent` (11px `DM Mono`); `target="_blank" rel="noopener noreferrer"`; skip if `profile.links` is empty
 - [ ] T035 [US2] Wire "Edit Profile" outline button in `src/pages/Profile.js` profile section header to call `navigate('profile-edit')` via the injected callback
-- [ ] T036 [US2] Verify welcome heading switches correctly: run Profile.js with a profile in localStorage — heading uses `{firstName}`; remove localStorage key — heading reverts to "Welcome back." with no sub-line; no console errors in either state
+- [ ] T036 [US2] Verify welcome heading switches correctly: run Profile.js with a mocked or API-backed saved profile � heading uses `{firstName}`; run with no saved profile � heading reverts to "Welcome back." with no sub-line; no console errors in either state
 
 **Checkpoint**: User Story 2 fully functional. Profile-exists state renders all sections. Empty sub-sections are hidden. All text rendered via textContent. "Edit Profile" navigates correctly.
 
@@ -109,18 +110,18 @@
 
 **Goal**: Both "Set Up Profile" and "Edit Profile" navigate to the same Edit Profile page with a custom topbar (back button + title), stacked section cards, and real inputs for Basic Info and Summary. Saving any card uses the read-merge-write pattern so other profile fields are never overwritten.
 
-**Independent Test**: Navigate to Edit Profile from both CTA buttons. Custom topbar renders (no primary nav visible). Fill First Name + Last Name in Basic Info card, click Save — profile is written to localStorage and the page stays. Click "← Back to Profile" — returns to Profile page. Profile page now shows "Welcome back, {firstName}."
+**Independent Test**: Navigate to Edit Profile from both CTA buttons. Custom topbar renders (no primary nav visible). Fill First Name + Last Name in Basic Info card, click Save � profile is written through `PUT /api/profile` and the page stays. Click "Back to Profile" � returns to Profile page. Profile page now shows "Welcome back, {firstName}."
 
 - [ ] T037 [US4] Create `src/pages/ProfileEdit.js` skeleton: `mount(container, { navigate })` hides `document.querySelector('.navbar')` (set `style.display = 'none'`), inserts `<header class="profile-edit-nav">` as `document.body.insertBefore(header, document.querySelector('#app'))`, renders edit page body into `container`; `unmount()` removes the custom header, restores navbar display, clears container
 - [ ] T038 [US4] Build edit-page custom topbar in `src/pages/ProfileEdit.js`: `<header class="profile-edit-nav">` with ghost button `← Back to Profile` (left-aligned, text via `textContent`) and `<span>Edit Profile</span>` title text; match navbar height (48px) and dark navy background (`#1a1a2e`)
 - [ ] T039 [US4] Wire "← Back to Profile" button in `src/pages/ProfileEdit.js` to call `navigate('profile')` via the injected callback
 - [ ] T040 [US4] Add edit page body in `src/pages/ProfileEdit.js`: `.profile-edit-page` wrapper (max-width 680px, centered); `<div class="edit-notice">` with text set via `textContent`: "This page is a placeholder — details to be designed in a later iteration."; stacked `.section-card` elements below
-- [ ] T041 [US4] Create Basic Info form card in `src/pages/ProfileEdit.js`: `.section-card` with 11px uppercase title "BASIC INFO"; labeled `<input>` fields for First Name, Last Name, City/Location, Email, Phone; pre-populate input `.value` from `profileStore.get()` if a profile exists
+- [ ] T041 [US4] Create Basic Info form card in `src/pages/ProfileEdit.js`: `.section-card` with 11px uppercase title "BASIC INFO"; labeled `<input>` fields for First Name, Last Name, City/Location, Email, Phone; pre-populate input `.value` from `api.getProfile()` if a profile exists
 - [ ] T042 [US4] Create Summary form card in `src/pages/ProfileEdit.js`: `.section-card` with title "SUMMARY"; `<textarea>` with `.value` pre-populated from `profile.summary`
 - [ ] T043 [P] [US4] Create Skills form card in `src/pages/ProfileEdit.js`: `.section-card` with title "SKILLS"; `<input type="text">` pre-populated from `profile.skills.join(', ')`
 - [ ] T044 [P] [US4] Create Languages form card in `src/pages/ProfileEdit.js`: `.section-card` with title "LANGUAGES"; `<input type="text">` pre-populated from `profile.languages.join(', ')`
 - [ ] T045 [P] [US4] Create placeholder section cards in `src/pages/ProfileEdit.js` for Professional Experience, Education, Certifications, Awards, and Links: each card shows title + placeholder text via `textContent`
-- [ ] T046 [US4] Add Cancel and Save buttons to Basic Info and Summary cards in `src/pages/ProfileEdit.js`: Save uses the **read-merge-write** pattern — read `profileStore.get()` (default to `{}`), spread it, overwrite only this card's fields (e.g. `{ ...existing, firstName, lastName, city, email, phone }` for Basic Info), call `profileStore.save(merged)`; show field-level errors inline on failure; show no-op feedback on success (no navigation); Cancel resets input `.value` to stored profile values (or empty if none)
+- [ ] T046 [US4] Add Cancel and Save buttons to Basic Info and Summary cards in `src/pages/ProfileEdit.js`: Save uses the **read-merge-write** pattern � read `api.getProfile()` (default to `{}`), spread it, overwrite only this card's fields (e.g. `{ ...existing, firstName, lastName, city, email, phone }` for Basic Info), call `api.saveProfile(merged)`; show field-level errors inline on failure; show no-op feedback on success (no navigation); Cancel resets input `.value` to stored profile values (or empty if none)
 - [ ] T047 [US4] Validate Basic Info Save in `src/pages/ProfileEdit.js`: show `.field-error` (text via `textContent`) below First Name when blank, below Last Name when blank, below Email when non-empty and invalid format; clear all field errors before re-validating on each Save attempt
 - [ ] T048 [P] [US4] Add Cancel and Save buttons (no-op Save, reset-to-stored Cancel) to Skills and Languages cards in `src/pages/ProfileEdit.js` (placeholder behavior per spec constraint — skills/languages parsing deferred)
 - [ ] T049 [P] [US4] Add Cancel and Save buttons (no-op) to all placeholder section cards in `src/pages/ProfileEdit.js`
@@ -154,9 +155,10 @@
 - [ ] T057 [P] Apply link chip styles in `src/styles/main.css`: `.link-chip` (display inline-flex, flex-direction column, background `#f7f6f3`, border `1.5px solid #e0ddd8`, border-radius 6px, padding 6px 10px, text-decoration none, cursor pointer); `.link-chip:hover` (border-color `#4F46E5`, background `#f0eeff`); `.link-chip__platform` (9px uppercase `#bbb`); `.link-chip__url` (11px DM Mono `#555`)
 - [ ] T058 [P] Apply avatar styles in `src/styles/main.css`: `.profile-avatar` (width/height 52px, border-radius 50%, background `#4F46E5`, color `#fff`, display flex, align-items center, justify-content center, font DM Mono 700 16px)
 - [ ] T059 Verify no horizontal overflow on mobile: test all three page states — no-profile Profile, profile-exists Profile, and ProfileEdit — at 375px width; fix any overflow in `src/styles/main.css`
-- [ ] T060 Validate edge cases in `src/pages/Profile.js` and `src/pages/ProfileEdit.js`: empty Tracker (all stats = 0, no chart crash); profile with only firstName+lastName set (missing optional fields omitted from basic info block); profile with empty arrays (sub-sections hidden); pre-population of edit form when no profile saved (all inputs empty); read-merge-write on a second save preserves fields from the first save
+- [ ] T060 Validate edge cases in `src/pages/Profile.js` and `src/pages/ProfileEdit.js`: empty Tracker (all stats = 0, no chart crash); profile with only firstName+lastName set (missing optional fields omitted from basic info block); profile with empty arrays (sub-sections hidden); pre-population of edit form when no profile saved (all inputs empty); read-merge-write on a second API save preserves fields from the first save
 - [ ] T061 Verify Tracker and Calendar pages still work: navigate to Tracker — applications list loads; navigate to Calendar — calendar renders; navigate back to Profile — page works; no console errors across pages
-- [ ] T062 Run `npm run test:run` — all tests pass including `tests/models/profile.test.js`, `tests/data/profileStore.test.js`, `tests/components/DonutChart.test.js`, and the existing test suite
+- [ ] T066 [P] Write `tests/pages/Profile.test.js`: page-level tests for Profile mount/unmount covering no-profile state, profile-exists state, injected navigation callbacks for "Go to Tracker" and "Set Up Profile" / "Edit Profile", and graceful handling when `api.getAll()` rejects
+- [ ] T062 Run `npm run test:run` � all tests pass including `tests/models/profile.test.js`, `tests/server/profile.test.js`, profile coverage in `tests/services/api.test.js`, `tests/components/DonutChart.test.js`, `tests/pages/Profile.test.js`, and the existing test suite
 - [ ] T063 Run `npm run lint` — no lint errors across all modified and new files
 
 ---
@@ -182,9 +184,10 @@
 
 ### Within Each Phase
 
-- T002 and T064 (tests) must be written and failing before T003 and T004 implement the functions
-- T003 (model) before T004 (store) — store imports validateProfile from model
+- T002, T064, and T067 (tests) must be written and failing before T003, T004, and API wrapper implementation
+- T003 (model) before T004 (server persistence) � server route imports validateProfile from model
 - T065 (DonutChart tests) must fail before T014 implements arc math
+- T066 (Profile page tests) depends on T006 Profile.js skeleton and can be written before or alongside the Profile.js behavior tasks it covers
 - Profile.js skeleton (T006) before adding content (T007–T013)
 - DonutChart (T014) and StackedBar (T015) before wiring into Profile.js (T016, T017)
 - `renderSubSection` helper (T026) before individual sub-section renderers (T027–T034)
@@ -192,11 +195,11 @@
 
 ### Parallel Opportunities
 
-- T002 (model tests), T064 (store tests), T005 (CSS) all parallel in Phase 2
+- T002 (model tests), T064 (server profile tests), T067 (API service tests), and T005 (CSS) all parallel in Phase 2
 - T065 (DonutChart tests), T014 (DonutChart), T015 (StackedBar) parallel in Phase 4
 - T027–T033 (profile sub-sections) all parallel once T026 helper exists
 - T043, T044, T045, T048, T049 (edit cards) parallel within US4
-- T054–T058 (style tasks) parallel within Phase 8
+- T054–T058 and T066 (style tasks and Profile page test) parallel within Phase 8
 
 ---
 
@@ -264,7 +267,7 @@ Parallel start (once T026 renderSubSection helper exists):
 
 - Full CRUD for Experience / Education entries (placeholder cards only in US4)
 - Avatar photo upload (initials avatar only)
-- Backend persistence for profile (localStorage only in this iteration)
+- Multi-user authentication or remote sync for profile data
 - Unsaved-change confirmation dialog on Edit page
 - Advanced entry row management (add/remove rows with date pickers etc.)
 
@@ -272,9 +275,9 @@ Parallel start (once T026 renderSubSection helper exists):
 
 ## Notes
 
-- Total tasks: **65** (+2 from original: T064 profileStore tests, T065 DonutChart arc tests)
-- Tasks by phase: Setup 1, Foundational 5, US1 8, US3 11, US2 13, US4 13, US5 4, Polish 10
-- Parallel opportunities: 24 tasks marked [P]
-- Constitution-required tests: T002 (models/profile.test.js), T064 (data/profileStore.test.js)
-- Architectural-safety tests: T065 (DonutChart arc math)
+- Total tasks: **67** (+4 from original: T064 profile persistence tests, T065 DonutChart arc tests, T066 Profile page tests, T067 profile API client tests)
+- Tasks by phase: Setup 1, Foundational 6, US1 8, US3 11, US2 13, US4 13, US5 4, Polish 11
+- Parallel opportunities: 26 tasks marked [P]
+- Constitution-required tests: T002 (models/profile.test.js), T064 (server/profile.test.js), T067 (services/api profile tests)
+- Architectural-safety tests: T065 (DonutChart arc math), T066 (Profile page mount/navigation/error states)
 - Suggested MVP: Complete through Phase 3 (US1) — 14 tasks for a fully navigable Profile page with real stats

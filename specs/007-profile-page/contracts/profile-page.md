@@ -12,7 +12,7 @@ Replaces the existing statistics stub. Full rewrite.
 
 ```js
 // mount(container: HTMLElement, options: { navigate: (page: string) => void }) → void
-// Fetches api.getAll(), reads profileStore.get(), renders the complete
+// Fetches api.getAll(), reads api.getProfile(), renders the complete
 // profile page (welcome heading, applications section, profile section)
 // into `container`. Both DonutChart and StackedBar are rendered; CSS media
 // queries control which is visible. navigate is used for all cross-page CTAs.
@@ -47,24 +47,18 @@ export const ProfileEdit = { mount, unmount };
 
 ---
 
-## `src/data/profileStore.js`
+## Profile API persistence
 
-New module. Mirrors the pattern of `src/data/store.js`.
+Profile data is persisted through the existing Express + SQLite app backend. No profile data is saved in browser storage.
 
 ```js
-const PROFILE_KEY = 'apptracker_profile';
+// src/services/api.js
+export async function getProfile();
+export async function saveProfile(profileData);
 
-// get() → Profile | null
-// Returns the stored profile object, or null if none is saved.
-export function get() { ... }
-
-// save(profile: Profile) → { ok: boolean, errors?: object }
-// Validates the profile via models/profile.js. If valid, serialises and
-// writes to localStorage. Returns { ok: true } on success or
-// { ok: false, errors: { field: message } } on validation failure.
-export function save(profileData) { ... }
-
-export const profileStore = { get, save };
+// server routes
+GET /api/profile  // returns { data: profileOrNull }
+PUT /api/profile  // validates and upserts the single profile record
 ```
 
 ---
@@ -161,10 +155,10 @@ Add `profile-edit` to the `navigate()` switch. Import `ProfileEdit`.
 
 // After:
 } else if (page === 'profile') {
-  Profile.mount(appRoot);
+  Profile.mount(appRoot, { navigate });
   _currentUnmount = Profile.unmount;
 } else if (page === 'profile-edit') {
-  ProfileEdit.mount(appRoot);
+  ProfileEdit.mount(appRoot, { navigate });
   _currentUnmount = ProfileEdit.unmount;
   // Do NOT call Navbar.setActive() for this key — navbar is hidden on this page.
   return;

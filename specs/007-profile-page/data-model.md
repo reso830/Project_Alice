@@ -8,7 +8,7 @@
 
 ### Profile
 
-Stored in `localStorage` under key `apptracker_profile`. The value is a JSON-serialised object or `null` when no profile exists.
+Stored in the app's local SQLite database and exposed through `/api/profile`. The API returns the profile object or `null` when no profile exists.
 
 | Field           | Type                  | Required | Notes                                      |
 |-----------------|-----------------------|----------|--------------------------------------------|
@@ -102,7 +102,7 @@ Offer   = counts['offer']
 
 ## Validation Rules
 
-Defined in `src/models/profile.js` and enforced in `src/data/profileStore.js` before writing.
+Defined in `src/models/profile.js` and enforced by the `/api/profile` persistence path before writing.
 
 | Field       | Rule                                                             |
 |-------------|------------------------------------------------------------------|
@@ -122,12 +122,12 @@ Defined in `src/models/profile.js` and enforced in `src/data/profileStore.js` be
 
 ## Write Pattern (Read-Merge-Write)
 
-`profileStore.save()` always receives the **complete** Profile object. When a single edit card (e.g. Basic Info) saves, the edit page must:
+`api.saveProfile()` always receives the **complete** Profile object. When a single edit card (e.g. Basic Info) saves, the edit page must:
 
-1. Read the current stored profile via `profileStore.get()` (may be `null` for a first save).
+1. Read the current stored profile via ``api.getProfile()`` (may be `null` for a first save).
 2. Spread the existing profile (or an empty default object if `null`).
 3. Overwrite only the fields belonging to that card's form inputs.
-4. Call `profileStore.save(mergedProfile)` with the full merged object.
+4. Call ``api.saveProfile(mergedProfile)`` with the full merged object.
 
 This ensures that saving Basic Info never discards an already-saved Summary, and that saving Skills never clears existing experience entries.
 
@@ -147,5 +147,5 @@ Profile has no status machine. The only state transition is:
 
 | Data             | Storage          | Key / Endpoint             |
 |------------------|------------------|----------------------------|
-| Profile object   | `localStorage`   | `apptracker_profile`       |
+| Profile object   | SQLite via API  | `/api/profile`              |
 | Application list | SQLite via API   | `GET /api/applications`    |

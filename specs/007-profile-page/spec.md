@@ -95,7 +95,7 @@ A mobile user viewing a profile with many sub-sections can tap any sub-section h
 - What happens when a profile field (e.g. city, phone) is empty? That field is omitted from the basic info block rather than showing a blank entry.
 - What happens when a profile sub-section (e.g. certifications) has no entries? That sub-section is hidden rather than rendering an empty list.
 - What happens if a profile link URL is malformed? The chip still renders; clicking it attempts to open the URL in a new tab without crashing the page.
-- How does the page handle slow data loading? While `api.getAll()` is in flight, the applications section shows a loading indicator (skeleton or spinner). The profile section renders immediately from localStorage — no loading state is needed for the profile section, as the read is synchronous.
+- How does the page handle slow data loading? While application or profile API reads are in flight, the relevant sections show loading indicators (skeleton or spinner) rather than rendering stale or blank content.
 
 ---
 
@@ -133,16 +133,17 @@ A mobile user viewing a profile with many sub-sections can tap any sub-section h
 - **FR-028**: Each edit card MUST include a Cancel button and a Save button.
 - **FR-029**: The Profile feature MUST NOT cause regressions in existing Tracker or Calendar pages.
 - **FR-030**: Required profile fields (First Name, Last Name) MUST be validated before a save is accepted.
-- **FR-031**: System MUST preserve all required job application fields: company name, job title, status, and created date.
+- **FR-031**: System MUST preserve all required job application fields: company name, job title, status, and last_status_update date.
 - **FR-032**: System MUST provide clear user-facing errors for invalid profile data.
 - **FR-033**: System MUST avoid external analytics, tracking, or data sharing.
 - **FR-034**: System MUST support desktop and mobile browsers with no horizontal scrolling on mobile viewports.
 - **FR-035**: All user-supplied profile text (name, summary, role titles, etc.) MUST be rendered via `textContent`, not `innerHTML`, to prevent injection attacks.
+- **FR-036**: Profile data MUST be persisted through the app's existing local SQLite-backed backend API, and MUST NOT be saved in browser `localStorage`, `sessionStorage`, or in-memory browser-only state.
 
 ### Key Entities
 
 - **Profile**: A user's optional professional background record containing basic contact info, a written summary, and structured lists for experience, education, skills, certifications, awards, languages, and external links. Its presence or absence drives the two page states.
-- **Job Application**: An existing tracked record (company, title, status, created date) used to calculate the applications summary. Sourced from the Tracker data store — not owned by this feature.
+- **Job Application**: An existing tracked record (company, title, status, last_status_update date) used to calculate the applications summary. Sourced from the Tracker data store — not owned by this feature.
 - **Application Summary Counts**: Derived aggregations of Job Application statuses, grouped into Total, Active, Pending, and Offer display buckets.
 - **Experience Entry**: One position in a work history, comprising a role title, company name, period string, and description.
 - **Education Entry**: One academic credential comprising a degree, school name, and year.
@@ -167,9 +168,9 @@ A mobile user viewing a profile with many sub-sections can tap any sub-section h
 
 ## Assumptions
 
-- The existing Tracker data layer is available to the Profile page without introducing a new backend API — the same data access pattern used by the Tracker is reused.
-- A single user profile is supported per session. If no profile record is found, the no-profile state renders.
-- Profile data is stored locally, consistent with the project's local-first, no-external-tracking principle.
+- The existing Tracker data layer is available to the Profile page; application counts continue to use the Tracker API.
+- A single user profile is supported per app database. If no profile record is found, the no-profile state renders.
+- Profile data is stored locally in the app's SQLite database via backend API routes, consistent with the project's local-first, no-external-tracking principle.
 - The app routing system can accommodate two new routes (`/profile` and `/profile/edit`) without architectural changes.
 - No avatar photo upload is included in this iteration; the avatar displays generated initials only.
 - No unsaved-change confirmation dialog is required on the Edit Profile page in this iteration.

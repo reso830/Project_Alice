@@ -38,8 +38,10 @@ API: `http://localhost:3001` (proxied at `/api` by Vite)
 | `src/pages/ProfileEdit.js` | New Edit / Setup Profile page |
 | `src/components/DonutChart.js` | SVG donut chart component |
 | `src/components/StackedBar.js` | Horizontal stacked bar component |
-| `src/data/profileStore.js` | Profile localStorage read/write |
+| `src/services/api.js` | Profile API read/write (`getProfile`, `saveProfile`) |
 | `src/models/profile.js` | Validation, normalisation, AppCounts helpers |
+| `server/db/profile.js` | SQLite profile persistence helpers (get/upsert) |
+| `server/routes/profile.js` | Express routes: `GET /api/profile`, `PUT /api/profile` |
 
 ## Verify the Feature
 
@@ -60,7 +62,9 @@ npm run test:run
 
 New test files:
 - `tests/models/profile.test.js` — validation and AppCounts helpers
-- `tests/pages/Profile.test.js` — page-level tests
+- `tests/server/profile.test.js` — SQLite/API profile persistence
+- `tests/services/api.test.js` — `getProfile`/`saveProfile` client wrappers (profile coverage)
+- `tests/pages/Profile.test.js` — page-level mount/unmount and navigation
 
 ## Linting
 
@@ -68,10 +72,6 @@ New test files:
 npm run lint
 ```
 
-## localStorage Key
+## Profile Storage
 
-Profile data is stored under `apptracker_profile`. To reset the profile during testing, run in browser DevTools:
-
-```js
-localStorage.removeItem('apptracker_profile');
-```
+Profile data is stored in the app's local SQLite database through `/api/profile`. Do not use browser `localStorage` or `sessionStorage` for profile data. To reset during testing, clear the profile row/table through the SQLite test setup or a dedicated backend helper when implemented.

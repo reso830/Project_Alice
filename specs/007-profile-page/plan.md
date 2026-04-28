@@ -4,18 +4,18 @@
 
 ## Summary
 
-Replace the existing statistics stub in `src/pages/Profile.js` with a full-featured Profile page that displays an applications pipeline summary (derived from the existing SQLite-backed API) and a professional profile section (two states: empty vs populated). Add a companion Edit / Setup Profile page at `src/pages/ProfileEdit.js`. Profile data is stored in `localStorage` under `apptracker_profile`. The existing string-key client-side router in `main.js` is extended with a `'profile-edit'` key. All charting (donut chart, horizontal stacked bar) is rendered as custom SVG/DOM with no new library dependencies.
+Replace the existing statistics stub in `src/pages/Profile.js` with a full-featured Profile page that displays an applications pipeline summary (derived from the existing SQLite-backed API) and a professional profile section (two states: empty vs populated). Add a companion Edit / Setup Profile page at `src/pages/ProfileEdit.js`. Profile data is persisted through a new SQLite-backed `/api/profile` endpoint in the existing Express backend; no profile data is saved in browser `localStorage`, `sessionStorage`, or browser-only memory. The existing string-key client-side router in `main.js` is extended with a `'profile-edit'` key. All charting (donut chart, horizontal stacked bar) is rendered as custom SVG/DOM with no new library dependencies.
 
 ## Technical Context
 
 **Language/Version**: JavaScript (ES modules), Node.js 20.x  
 **Primary Dependencies**: Vite 8.0.10, Express 4.22.1, Zod 4.3.6 (no new deps required)  
-**Storage**: SQLite via `GET /api/applications` for AppCounts; `localStorage` key `apptracker_profile` for Profile  
+**Storage**: SQLite via `GET /api/applications` for AppCounts; SQLite via `/api/profile` for Profile
 **Testing**: Vitest 4.1.5 (node environment, `tests/**/*.test.js`)  
 **Target Platform**: Modern desktop and mobile browsers (Chrome, Firefox, Safari, Edge)  
 **Project Type**: Single-page vanilla JS web application (frontend + Express backend)  
 **Performance Goals**: Chart hover interactions respond instantaneously; page mount completes within one API round-trip  
-**Constraints**: No new npm dependencies; local-first for profile data; no horizontal scrolling on mobile; no backend persistence for profile in this iteration  
+**Constraints**: No new npm dependencies; local-first SQLite persistence for profile data; no browser storage for profile data; no horizontal scrolling on mobile
 **Scale/Scope**: Single-user SPA; 3 pages + 1 sub-page after this feature
 
 ## Constitution Check
@@ -23,11 +23,11 @@ Replace the existing statistics stub in `src/pages/Profile.js` with a full-featu
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - **Application records (company, job title, status, last_status_update)**: ✅ PASS — Profile page reads application data read-only; no application record modifications. Required fields are untouched.
-- **Business logic separated from UI rendering; centralised validation**: ✅ PASS — `src/models/profile.js` holds all validation and computation logic (pure functions). `src/data/profileStore.js` handles persistence. UI pages consume these as imports.
-- **Required field, URL, date, overwrite/corruption validation before save**: ✅ PASS — `validateProfile()` enforces `firstName` and `lastName` as required and validates email format before any `localStorage` write. No application record is written by this feature.
+- **Business logic separated from UI rendering; centralised validation**: PASS - `src/models/profile.js` holds all validation and computation logic (pure functions). Server-side profile database helpers and client API wrappers handle persistence. UI pages consume these as imports.
+- **Required field, URL, date, overwrite/corruption validation before save**: PASS - `validateProfile()` enforces `firstName` and `lastName` as required and validates email format before any SQLite write. No application record is written by this feature.
 - **Main workflows: add, edit, search, filter, review, stale, follow-ups; empty/loading/error states**: ✅ PASS — Profile page is additive; all existing Tracker workflows are unaffected. Profile page itself handles empty (no profile), loading (API fetch in progress), and error states for the applications section.
 - **Automated tests for validation, status transitions, URL validation, date handling**: ✅ PASS — `tests/models/profile.test.js` covers `validateProfile()`, `normaliseProfile()`, `computeAppCounts()`, and `computeStats()`. Existing tests are not broken.
-- **Privacy: local-first, no external analytics or tracking**: ✅ PASS — Profile stored in `localStorage`. Application counts from existing local API. No external service calls.
+- **Privacy: local-first, no external analytics or tracking**: PASS - Profile is stored in the existing local SQLite database through the app backend. Application counts come from the existing local API. No external service calls.
 - **Desktop and mobile; labeled forms; keyboard navigation; non-color-only status**: ✅ PASS — Responsive layout at 640px breakpoint; form fields in Edit page are labeled; status chips use label text alongside color; keyboard navigation supported through standard button elements.
 - **Data model future extensibility**: ✅ PASS — Profile is a new entity that does not alter the `applications` table or existing model. The `Profile` shape supports future expansion (links, certifications, etc.) without requiring schema migrations on application records.
 
@@ -52,36 +52,36 @@ specs/007-profile-page/
 
 ```text
 src/
-├── components/
-│   ├── DonutChart.js        (NEW) SVG donut chart, hover interactions
-│   ├── StackedBar.js        (NEW) Horizontal stacked bar, tap interactions
-│   ├── Navbar.js            (unchanged)
-│   └── [existing components unchanged]
-├── data/
-│   ├── profileStore.js      (NEW) Profile localStorage CRUD
-│   └── store.js             (unchanged)
-├── models/
-│   ├── profile.js           (NEW) validateProfile, normaliseProfile,
-│   │                              computeAppCounts, computeStats
-│   └── application.js       (unchanged)
-├── pages/
-│   ├── Profile.js           (REWRITE) Full new implementation
-│   ├── ProfileEdit.js       (NEW) Edit / Setup Profile page
-│   ├── Tracker.js           (unchanged)
-│   └── Calendar.js          (unchanged)
-├── styles/
-│   └── main.css             (EXTEND) Profile page layout tokens and rules
-└── main.js                  (MODIFY) Add 'profile-edit' to navigate()
+  components/
+    DonutChart.js        (NEW) SVG donut chart, hover interactions
+    StackedBar.js        (NEW) Horizontal stacked bar, tap interactions
+    Navbar.js            (unchanged)
+  models/
+    profile.js           (NEW) validateProfile, normaliseProfile, computeAppCounts, computeStats
+    application.js       (unchanged)
+  pages/
+    Profile.js           (REWRITE) Full new implementation
+    ProfileEdit.js       (NEW) Edit / Setup Profile page
+    Tracker.js           (unchanged)
+    Calendar.js          (unchanged)
+  services/
+    api.js               (MODIFY) Add getProfile/saveProfile
+  styles/
+    main.css             (EXTEND) Profile page layout tokens and rules
+  main.js                (MODIFY) Add profile-edit to navigate()
+
+server/
+  db/profile.js          (NEW) Profile SQLite persistence helpers
+  routes/profile.js      (NEW) Express profile API routes
+  index.js               (MODIFY) Mount profile route
 
 tests/
-├── models/
-│   └── profile.test.js      (NEW) validateProfile, normaliseProfile,
-│                                  computeAppCounts, computeStats
-└── pages/
-    └── Profile.test.js      (NEW) Profile page mount/unmount
+  models/profile.test.js (NEW) validateProfile, normaliseProfile, computeAppCounts, computeStats
+  server/profile.test.js (NEW) profile SQLite/API persistence
+  pages/Profile.test.js  (NEW) Profile page mount/unmount
 ```
 
-**Structure decision**: Single-project layout (Option 1) — consistent with the existing codebase structure. No new top-level directories needed. The profile feature slots into existing `components/`, `data/`, `models/`, and `pages/` folders following established conventions.
+**Structure decision**: Single-project layout (Option 1) — consistent with the existing codebase structure. No new top-level directories needed. The profile feature slots into existing `components/`, `models/`, `pages/`, `services/`, and `server/` folders following established conventions.
 
 ### Key Implementation Notes
 
