@@ -213,6 +213,7 @@ function createCallbacks() {
       try {
         await api.archive(coerceId(id));
         removeApplication(id);
+        _salaryBounds = getSalaryBounds(_applications);
         renderPage();
         updateToolbar();
         focusCardList();

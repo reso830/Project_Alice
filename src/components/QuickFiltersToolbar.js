@@ -93,6 +93,7 @@ function handleDocumentClick(event) {
     _openPanel
     && !_openPanel.contains(event.target)
     && !_openButton?.contains(event.target)
+    && document.contains(event.target)
   ) {
     closePanel();
   }
