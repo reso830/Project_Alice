@@ -670,6 +670,15 @@ button:focus-visible,
   text-align: center;
 }
 
+.empty-state--filter {
+  padding: 48px 20px;
+  color: #BBBBBB;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: center;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed;

@@ -208,9 +208,9 @@
 
 **Independent Test**: Apply a Status filter for a status with no existing applications → empty state message appears in place of the card list → "Results (0)" in toolbar → erase-all visible.
 
-- [ ] T066 [US5] Add `.empty-state--filter` CSS to the project stylesheet — `text-align: center; padding: 48px 20px; color: #bbbbbb; font-family: var(--font-mono); font-size: 12px; line-height: 1.8` (per `design/quickfilter_sort.md §9`)
-- [ ] T067 [P] [US5] Add tests to `tests/components/QuickFiltersToolbar.test.js` — call `QuickFiltersToolbar.update(el, { totalCount: 5, filteredCount: 0, filterState: activeFilter, ... })`; assert label reads "Results", count shows "0", erase-all button is present
-- [ ] T068 [P] [US5] Add test for filter empty state in Tracker context — set up app with `_applications = [fixtures]`, set `_filterState.statuses = ['nonexistent']`, call `renderPage()`; assert `.empty-state--filter` is in the container and the card list is empty
+- [X] T066 [US5] Add `.empty-state--filter` CSS to the project stylesheet — `text-align: center; padding: 48px 20px; color: #bbbbbb; font-family: var(--font-mono); font-size: 12px; line-height: 1.8` (per `design/quickfilter_sort.md §9`)
+- [X] T067 [P] [US5] Add tests to `tests/components/QuickFiltersToolbar.test.js` — call `QuickFiltersToolbar.update(el, { totalCount: 5, filteredCount: 0, filterState: activeFilter, ... })`; assert label reads "Results", count shows "0", erase-all button is present
+- [X] T068 [P] Add test for filter empty state in Tracker context — set up app with `_applications = [fixtures]`, set `_filterState.statuses = ['nonexistent']`, call `renderPage()`; assert `.empty-state--filter` is in the container and the card list is empty
 
 **Checkpoint**: US5 independently testable — apply a filter that matches nothing → empty state text appears, toolbar shows "Results (0)", erase-all visible, clicking it restores the full list.
 

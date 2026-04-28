@@ -102,4 +102,26 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(toolbarUpdateOptions.at(-1).sortState).toEqual(sortState);
   });
+
+  it('renders the filter empty state when active filters match no applications', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([createApplication(1, { salary: '$80k-$90k' })]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      statuses: [],
+      companies: [],
+      salaryMin: 200000,
+      salaryMax: null,
+      compatMin: null,
+      compatMax: null,
+    });
+
+    expect(container.querySelector('.empty-state--filter')).not.toBeNull();
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No applications match<br>the active filters.');
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+  });
 });

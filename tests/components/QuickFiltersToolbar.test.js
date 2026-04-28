@@ -307,4 +307,20 @@ describe('QuickFiltersToolbar', () => {
 
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
   });
+
+  it('shows zero-result filter state with erase-all available', () => {
+    const { toolbar } = renderToolbar();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: 0,
+      filterState: { ...DEFAULT_FILTER_STATE, statuses: ['applied'] },
+      sortState: DEFAULT_SORT_STATE,
+    });
+
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results');
+    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('0');
+    expect(toolbar.querySelector('.erase-btn')).not.toBeNull();
+  });
 });
