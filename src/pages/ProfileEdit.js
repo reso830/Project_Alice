@@ -203,6 +203,20 @@ function getLinkLabel(url, friendlyName = '') {
   }
 }
 
+function getSafeExternalHref(url) {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    return '#';
+  }
+
+  return '#';
+}
+
 function updateField(fieldName, value) {
   _formState[fieldName] = value;
   clearBasicInfoErrors();
@@ -631,7 +645,7 @@ function renderLinksCard(page) {
         render();
       });
 
-      anchor.href = entry.url;
+      anchor.href = getSafeExternalHref(entry.url);
       anchor.target = '_blank';
       anchor.rel = 'noopener noreferrer';
       anchor.textContent = getLinkLabel(entry.url, entry.friendlyName);

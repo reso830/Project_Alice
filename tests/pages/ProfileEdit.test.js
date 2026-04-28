@@ -514,6 +514,24 @@ describe('ProfileEdit page', () => {
       .toEqual(['Portfolio', 'github.com']);
   });
 
+  it('sanitizes rendered link hrefs from loaded profile data', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      links: [
+        { url: 'https://example.com/profile', friendlyName: 'Portfolio' },
+        { url: 'javascript:alert(1)', friendlyName: 'Unsafe' },
+      ],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const links = getCard(container, 'LINKS');
+
+    expect(links.querySelectorAll('a')[0].getAttribute('href')).toBe('https://example.com/profile');
+    expect(links.querySelectorAll('a')[1].getAttribute('href')).toBe('#');
+  });
+
   it('routes the subheader back action through cancel behavior', async () => {
     const container = createAppShell();
     const navigate = vi.fn();
