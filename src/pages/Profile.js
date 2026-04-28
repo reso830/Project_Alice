@@ -268,9 +268,9 @@ function renderBasicInfo(profile) {
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
 
   details.append(createElement('div', 'profile-basic__name', fullName));
-  appendMeta(details, 'Location', profile.city);
-  appendMeta(details, 'Phone', profile.phone);
-  appendMeta(details, 'Email', profile.email);
+  appendMeta(details, '📍', profile.city);
+  appendMeta(details, '📞', profile.phone);
+  appendMeta(details, '✉', profile.email);
   basic.append(avatar, details);
 
   return basic;
