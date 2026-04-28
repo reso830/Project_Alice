@@ -1,8 +1,12 @@
 import { getAll, getProfile } from '../services/api.js';
 import { computeAppCounts, computeStats } from '../models/profile.js';
+import { STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
+import { calculateSegments, DonutChart } from '../components/DonutChart.js';
+import { StackedBar } from '../components/StackedBar.js';
 
 let _container = null;
 let _dismissTimer = null;
+let _tooltip = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -67,29 +71,161 @@ function renderStatChip(label, value, modifier) {
   return chip;
 }
 
-function renderStatChips(container, applications) {
+function getStatusEntries(counts) {
+  return Object.keys(STATUS_LABELS)
+    .filter((status) => (counts[status] ?? 0) > 0)
+    .map((status) => ({
+      status,
+      count: counts[status],
+      label: STATUS_LABELS[status],
+      color: STATUS_COLORS[status],
+    }));
+}
+
+function createStatChipRow(applications) {
+  const row = createElement('div', 'stat-chip-row');
   const counts = computeAppCounts(applications);
   const stats = computeStats(counts);
 
-  container.replaceChildren(
+  row.append(
     renderStatChip('Total', stats.total, 'total'),
     renderStatChip('Active', stats.active, 'active'),
     renderStatChip('Pending', stats.pending, 'pending'),
     renderStatChip('Offer', stats.offer, 'offer'),
   );
+
+  return row;
 }
 
 function renderApplicationsSection(page, navigate) {
   const { section, actions } = createSection('APPLICATIONS');
-  const stats = createElement('div', 'stat-chip-row');
+  const body = createElement('div', 'applications-body');
   const message = createElement('p', 'apps-empty-message');
 
   actions.append(createButton('Go to Tracker', 'profile-btn profile-btn--primary', () => navigate('tracker')));
-  stats.append(createElement('div', 'profile-loading', 'Loading applications...'));
-  section.append(stats, message);
+  body.append(createElement('div', 'profile-loading', 'Loading applications...'));
+  section.append(body, message);
   page.append(section);
 
-  return { stats, message };
+  return { body, message };
+}
+
+function getTooltip() {
+  if (!_tooltip) {
+    _tooltip = createElement('div', 'chart-tooltip');
+    document.body.append(_tooltip);
+  }
+
+  return _tooltip;
+}
+
+function hideTooltip() {
+  if (_tooltip) {
+    _tooltip.hidden = true;
+  }
+}
+
+function formatInteractionLabel(status, count, pct) {
+  return `${STATUS_LABELS[status] ?? status} \u00b7 ${count} (${pct}%)`;
+}
+
+function renderLegend(entries, { onHover, onLeave, onClick } = {}) {
+  const legend = createElement('div', 'chart-legend');
+
+  for (const entry of entries) {
+    const item = document.createElement('button');
+    const swatch = createElement('span', 'chart-legend__swatch');
+    const label = createElement('span', 'chart-legend__label', entry.label);
+
+    item.type = 'button';
+    item.className = 'chart-legend__item';
+    swatch.style.background = entry.color;
+    item.append(swatch, label);
+    item.addEventListener('mouseover', () => onHover?.(entry.status));
+    item.addEventListener('mouseleave', () => onLeave?.());
+    item.addEventListener('click', () => onClick?.(entry.status, entry.count));
+    legend.append(item);
+  }
+
+  return legend;
+}
+
+function renderApplicationsVisuals(body, applications) {
+  const counts = computeAppCounts(applications);
+  const entries = getStatusEntries(counts);
+  const segments = calculateSegments(counts);
+  const desktop = createElement('div', 'apps-desktop-vis');
+  const desktopStats = createElement('div', 'apps-desktop-vis__stats');
+  const desktopChart = createElement('div', 'apps-desktop-vis__chart');
+  const mobile = createElement('div', 'apps-mobile-vis');
+  const mobileLabel = createElement('div', 'bar-tap-label');
+  let donutChart;
+
+  function handleDonutHover(status, _el, pct, event) {
+    if (!status) {
+      donutChart.update(null);
+      hideTooltip();
+      return;
+    }
+
+    donutChart.update(status);
+    const tooltip = getTooltip();
+
+    tooltip.textContent = formatInteractionLabel(status, counts[status] ?? 0, pct);
+    tooltip.style.left = `${event.clientX + 12}px`;
+    tooltip.style.top = `${event.clientY - 28}px`;
+    tooltip.hidden = false;
+  }
+
+  function handleTap(status, count, pct) {
+    mobileLabel.textContent = formatInteractionLabel(status, count, pct);
+
+    if (_dismissTimer) {
+      clearTimeout(_dismissTimer);
+    }
+
+    _dismissTimer = setTimeout(() => {
+      mobileLabel.textContent = '';
+      _dismissTimer = null;
+    }, 2000);
+  }
+
+  donutChart = DonutChart.render({
+    counts,
+    colors: STATUS_COLORS,
+    labels: STATUS_LABELS,
+    onHover: handleDonutHover,
+  });
+
+  desktopStats.append(createStatChipRow(applications));
+  desktopChart.append(
+    donutChart.el,
+    renderLegend(entries, {
+      onHover: (status) => donutChart.update(status),
+      onLeave: () => donutChart.update(null),
+    }),
+  );
+  desktop.append(desktopStats, desktopChart);
+
+  mobile.append(
+    createStatChipRow(applications),
+    StackedBar.render({
+      counts,
+      colors: STATUS_COLORS,
+      labels: STATUS_LABELS,
+      onTap: handleTap,
+    }),
+    mobileLabel,
+    renderLegend(entries, {
+      onClick: (status, count) => {
+        const segment = segments.find((item) => item.status === status);
+
+        handleTap(status, count, segment?.pct ?? 0);
+      },
+    }),
+  );
+
+  body.replaceChildren(desktop, mobile);
 }
 
 function renderEmptyProfile(section, navigate) {
@@ -121,13 +257,6 @@ function renderProfileSection(page, profile, navigate) {
   page.append(section);
 }
 
-function renderProfileError(page, navigate) {
-  const { section } = createSection('PROFILE');
-
-  renderEmptyProfile(section, navigate);
-  page.append(section);
-}
-
 export async function mount(container, { navigate } = {}) {
   const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
   const page = createElement('div', 'profile-page');
@@ -151,12 +280,12 @@ export async function mount(container, { navigate } = {}) {
     const applications = await applicationsPromise;
     const safeApplications = Array.isArray(applications) ? applications : [];
 
-    renderStatChips(applicationsSection.stats, safeApplications);
+    renderApplicationsVisuals(applicationsSection.body, safeApplications);
     applicationsSection.message.textContent = safeApplications.length === 0
       ? 'No applications yet.'
       : '';
   } catch {
-    renderStatChips(applicationsSection.stats, []);
+    renderApplicationsVisuals(applicationsSection.body, []);
     applicationsSection.message.textContent = 'Application data is unavailable right now.';
   }
 
@@ -164,11 +293,7 @@ export async function mount(container, { navigate } = {}) {
     return;
   }
 
-  if (profile || profile === null) {
-    renderProfileSection(page, profile, safeNavigate);
-  } else {
-    renderProfileError(page, safeNavigate);
-  }
+  renderProfileSection(page, profile, safeNavigate);
 }
 
 export function unmount() {
@@ -181,6 +306,8 @@ export function unmount() {
     _container.replaceChildren();
   }
 
+  _tooltip?.remove();
+  _tooltip = null;
   _container = null;
 }
 
