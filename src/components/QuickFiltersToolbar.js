@@ -79,7 +79,7 @@ function updateLabel(totalCount, filteredCount, filterState) {
   }
 
   if (_countEl) {
-    _countEl.textContent = `(${active ? filteredCount : totalCount})`;
+    _countEl.textContent = String(active ? filteredCount : totalCount);
   }
 }
 
