@@ -61,6 +61,198 @@ describe('profile model', () => {
     });
   });
 
+  it('normalises legacy profile entry shapes into the new model', () => {
+    expect(normaliseProfile({
+      experience: [{
+        role: ' Engineer ',
+        company: ' Acme ',
+        desc: ' Built things ',
+      }],
+      education: [{
+        degree: ' BS Computer Science ',
+        school: ' State University ',
+        year: ' 2020 ',
+      }],
+      certifications: [' AWS Developer '],
+      awards: [' Innovation Award '],
+      languages: [' English '],
+      links: [{
+        platform: 'GitHub',
+        label: ' Code ',
+        url: ' https://github.com/ana ',
+      }],
+    })).toMatchObject({
+      experience: [{
+        role: 'Engineer',
+        company: 'Acme',
+        responsibilities: 'Built things',
+        dateStarted: '',
+        dateEnded: '',
+        currentWork: false,
+      }],
+      education: [{
+        degreeMajor: 'BS Computer Science',
+        university: 'State University',
+        yearCompleted: '2020',
+      }],
+      certifications: [{
+        name: 'AWS Developer',
+        issuingBody: '',
+        certificateId: '',
+        issuanceDate: '',
+        expiryDate: '',
+      }],
+      awards: [{
+        awardName: 'Innovation Award',
+        issuingBody: '',
+        details: '',
+        date: '',
+      }],
+      languages: [{
+        language: 'English',
+        proficiency: '',
+      }],
+      links: [{
+        url: 'https://github.com/ana',
+        friendlyName: 'Code',
+      }],
+    });
+  });
+
+  it('normalises new profile entry shapes without dropping data', () => {
+    expect(normaliseProfile({
+      experience: [{
+        role: 'Engineer',
+        company: 'Acme',
+        responsibilities: 'Build apps',
+        dateStarted: '01/2020',
+        dateEnded: '02/2024',
+        currentWork: false,
+      }],
+      education: [{
+        degreeMajor: 'MS Data Science',
+        university: 'Tech University',
+        yearCompleted: '2022',
+      }],
+      certifications: [{
+        name: 'Security Plus',
+        issuingBody: 'CompTIA',
+        certificateId: 'ABC',
+        issuanceDate: '03/2023',
+        expiryDate: '03/2026',
+      }],
+      awards: [{
+        awardName: 'Top Performer',
+        issuingBody: 'Acme',
+        details: 'Quarterly award',
+        date: '04/2024',
+      }],
+      languages: [{
+        language: 'Spanish',
+        proficiency: 'Fluent',
+      }],
+      links: [{
+        url: 'https://example.com',
+        friendlyName: 'Portfolio',
+      }],
+    })).toMatchObject({
+      experience: [{
+        role: 'Engineer',
+        company: 'Acme',
+        responsibilities: 'Build apps',
+        dateStarted: '01/2020',
+        dateEnded: '02/2024',
+        currentWork: false,
+      }],
+      education: [{
+        degreeMajor: 'MS Data Science',
+        university: 'Tech University',
+        yearCompleted: '2022',
+      }],
+      certifications: [{
+        name: 'Security Plus',
+        issuingBody: 'CompTIA',
+        certificateId: 'ABC',
+        issuanceDate: '03/2023',
+        expiryDate: '03/2026',
+      }],
+      awards: [{
+        awardName: 'Top Performer',
+        issuingBody: 'Acme',
+        details: 'Quarterly award',
+        date: '04/2024',
+      }],
+      languages: [{
+        language: 'Spanish',
+        proficiency: 'Fluent',
+      }],
+      links: [{
+        url: 'https://example.com',
+        friendlyName: 'Portfolio',
+      }],
+    });
+  });
+
+  it('validates entry-level required fields after migration', () => {
+    const result = validateProfile({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      experience: [{ company: 'Acme', responsibilities: 'Build apps' }],
+      education: [{ degreeMajor: 'BS' }],
+      certifications: ['AWS Developer'],
+      awards: ['Innovation Award'],
+      languages: ['English'],
+      links: ['not a url'],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toMatchObject({
+      'experience[0].role': 'Role is required.',
+      'experience[0].dateStarted': 'Date Started is required.',
+      'experience[0].dateEnded': 'Date Ended is required.',
+      'education[0].university': 'University is required.',
+      'education[0].yearCompleted': 'Year Completed is required.',
+      'certifications[0].issuanceDate': 'Issuance Date is required.',
+      'awards[0].issuingBody': 'Issuing Body is required.',
+      'languages[0].proficiency': 'Proficiency is required.',
+      'links[0].url': 'URL must be a valid http or https URL.',
+    });
+  });
+
+  it('accepts valid structured profile entries', () => {
+    expect(validateProfile({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      experience: [{
+        role: 'Engineer',
+        company: 'Acme',
+        responsibilities: 'Build apps',
+        dateStarted: '01/2020',
+        currentWork: true,
+      }],
+      education: [{
+        degreeMajor: 'BS Computer Science',
+        university: 'State University',
+        yearCompleted: '2020',
+      }],
+      certifications: [{
+        name: 'AWS Developer',
+        issuanceDate: '02/2022',
+      }],
+      awards: [{
+        awardName: 'Innovation Award',
+        issuingBody: 'Acme',
+      }],
+      languages: [{
+        language: 'English',
+        proficiency: 'Fluent',
+      }],
+      links: [{
+        url: 'https://example.com',
+      }],
+    })).toEqual({ valid: true, errors: {} });
+  });
+
   it('counts applications by status slug', () => {
     expect(computeAppCounts([
       { status: 'applied' },

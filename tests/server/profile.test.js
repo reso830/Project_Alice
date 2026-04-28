@@ -103,7 +103,7 @@ describe('profile API', () => {
     const profile = getProfile(reopened);
 
     expect(profile).toMatchObject(saved);
-    expect(profile.languages).toEqual(['English']);
+    expect(profile.languages).toEqual([{ language: 'English', proficiency: '' }]);
 
     reopened.close();
     testDb.cleanup();
