@@ -7,6 +7,13 @@ import {
 } from '../../src/models/profile.js';
 
 describe('profile model', () => {
+  it('treats null, arrays, and primitives as empty input without throwing', () => {
+    for (const bad of [null, [], 42, 'string', true]) {
+      expect(() => normaliseProfile(bad)).not.toThrow();
+      expect(normaliseProfile(bad)).toMatchObject({ firstName: '', lastName: '', skills: [] });
+    }
+  });
+
   it('requires first and last name', () => {
     expect(validateProfile({ lastName: 'Rivera' })).toEqual({
       valid: false,

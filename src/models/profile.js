@@ -61,17 +61,18 @@ function normaliseEntryArray(value) {
 }
 
 export function normaliseProfile(data = {}) {
+  const safe = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
   const profile = {};
 
   for (const field of STRING_FIELDS) {
-    profile[field] = cleanString(data[field]);
+    profile[field] = cleanString(safe[field]);
   }
 
   for (const field of ARRAY_FIELDS) {
     if (['skills', 'certifications', 'awards', 'languages'].includes(field)) {
-      profile[field] = normaliseStringArray(data[field]);
+      profile[field] = normaliseStringArray(safe[field]);
     } else {
-      profile[field] = normaliseEntryArray(data[field]);
+      profile[field] = normaliseEntryArray(safe[field]);
     }
   }
 

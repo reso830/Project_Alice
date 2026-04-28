@@ -549,7 +549,7 @@ textarea.edit-field__control {
 }
 
 .profile-subsection__content {
-  max-height: 600px;
+  max-height: 4000px;
   overflow: hidden;
   transition: max-height .25s ease;
 }
@@ -570,7 +570,7 @@ textarea.edit-field__control {
 
 @media (min-width: 640px) {
   .profile-subsection.is-collapsed .profile-subsection__content {
-    max-height: 600px;
+    max-height: 4000px;
   }
 
   .subsection-chevron {
