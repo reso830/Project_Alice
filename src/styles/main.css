@@ -521,11 +521,11 @@ button:focus-visible,
   display: inline-flex;
   align-items: center;
   border-radius: var(--r-pill);
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  font-size: inherit;
-  font-weight: 600;
+  padding: 3px 10px;
+  background: var(--indigo-dim);
+  color: var(--indigo);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* Card */
