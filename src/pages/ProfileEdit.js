@@ -76,14 +76,16 @@ function createEditCard(title) {
 function createActions(onCancel, onSave) {
   const actions = createElement('div', 'edit-card__actions');
   const feedback = createElement('span', 'edit-card__feedback');
+  const cancelButton = createButton('Cancel', 'profile-btn profile-btn--outline', onCancel);
+  const saveButton = createButton('Save', 'profile-btn profile-btn--primary', onSave);
 
   actions.append(
     feedback,
-    createButton('Cancel', 'profile-btn profile-btn--outline', onCancel),
-    createButton('Save', 'profile-btn profile-btn--primary', onSave),
+    cancelButton,
+    saveButton,
   );
 
-  return { actions, feedback };
+  return { actions, feedback, saveButton };
 }
 
 function currentProfile() {
@@ -95,8 +97,12 @@ function applyProfile(profile) {
 }
 
 async function refreshProfile() {
-  applyProfile(await getProfile().catch(() => null));
-  return currentProfile();
+  try {
+    applyProfile(await getProfile());
+    return { ok: true, profile: currentProfile() };
+  } catch {
+    return { ok: false, profile: currentProfile() };
+  }
 }
 
 function renderTopbar(navigate) {
@@ -140,33 +146,50 @@ function renderBasicInfoCard(page) {
     clearFieldErrors(fields);
   }
 
-  const { actions, feedback } = createActions(reset, async () => {
-    clearFieldErrors(fields);
-    feedback.textContent = '';
-
-    const merged = {
-      ...await refreshProfile(),
-      firstName: firstName.input.value,
-      lastName: lastName.input.value,
-      city: city.input.value,
-      email: email.input.value,
-      phone: phone.input.value,
-    };
-    const result = await saveProfile(merged).then(
-      (saved) => ({ ok: true, saved }),
-      (error) => ({ ok: false, errors: error.fields ?? {} }),
-    );
-
-    if (!result.ok) {
-      setFieldError(firstName, result.errors.firstName ?? '');
-      setFieldError(lastName, result.errors.lastName ?? '');
-      setFieldError(email, result.errors.email ?? '');
+  const { actions, feedback, saveButton } = createActions(reset, async () => {
+    if (saveButton.disabled) {
       return;
     }
 
-    applyProfile(result.saved);
-    reset();
-    feedback.textContent = 'Saved.';
+    saveButton.disabled = true;
+
+    try {
+      clearFieldErrors(fields);
+      feedback.textContent = '';
+
+      const latest = await refreshProfile();
+
+      if (!latest.ok) {
+        feedback.textContent = 'Unable to reach server. Please try again.';
+        return;
+      }
+
+      const merged = {
+        ...latest.profile,
+        firstName: firstName.input.value,
+        lastName: lastName.input.value,
+        city: city.input.value,
+        email: email.input.value,
+        phone: phone.input.value,
+      };
+      const result = await saveProfile(merged).then(
+        (saved) => ({ ok: true, saved }),
+        (error) => ({ ok: false, errors: error.fields ?? {} }),
+      );
+
+      if (!result.ok) {
+        setFieldError(firstName, result.errors.firstName ?? '');
+        setFieldError(lastName, result.errors.lastName ?? '');
+        setFieldError(email, result.errors.email ?? '');
+        return;
+      }
+
+      applyProfile(result.saved);
+      reset();
+      feedback.textContent = 'Saved.';
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 
   body.append(...fields.map((field) => field.wrapper), actions);
@@ -181,26 +204,43 @@ function renderSummaryCard(page) {
     summary.input.value = currentProfile().summary ?? '';
   }
 
-  const { actions, feedback } = createActions(reset, async () => {
-    feedback.textContent = '';
-
-    const merged = {
-      ...await refreshProfile(),
-      summary: summary.input.value,
-    };
-    const result = await saveProfile(merged).then(
-      (saved) => ({ ok: true, saved }),
-      (error) => ({ ok: false, message: error.message ?? 'Unable to save summary.' }),
-    );
-
-    if (!result.ok) {
-      feedback.textContent = result.message;
+  const { actions, feedback, saveButton } = createActions(reset, async () => {
+    if (saveButton.disabled) {
       return;
     }
 
-    applyProfile(result.saved);
-    reset();
-    feedback.textContent = 'Saved.';
+    saveButton.disabled = true;
+
+    try {
+      feedback.textContent = '';
+
+      const latest = await refreshProfile();
+
+      if (!latest.ok) {
+        feedback.textContent = 'Unable to reach server. Please try again.';
+        return;
+      }
+
+      const merged = {
+        ...latest.profile,
+        summary: summary.input.value,
+      };
+      const result = await saveProfile(merged).then(
+        (saved) => ({ ok: true, saved }),
+        (error) => ({ ok: false, message: error.message ?? 'Unable to save summary.' }),
+      );
+
+      if (!result.ok) {
+        feedback.textContent = result.message;
+        return;
+      }
+
+      applyProfile(result.saved);
+      reset();
+      feedback.textContent = 'Saved.';
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 
   body.append(summary.wrapper, actions);

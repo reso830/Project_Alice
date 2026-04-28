@@ -19,7 +19,6 @@ export function render({
     item.style.background = colors[segment.status] ?? '#64748b';
     item.textContent = labels[segment.status] ?? segment.status;
     item.addEventListener('click', () => onTap(segment.status, segment.count, segment.pct));
-    item.addEventListener('touchend', () => onTap(segment.status, segment.count, segment.pct));
     bar.append(item);
   }
 
