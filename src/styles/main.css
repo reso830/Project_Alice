@@ -235,6 +235,7 @@ textarea.edit-field__control {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .profile-btn {
@@ -289,6 +290,7 @@ textarea.edit-field__control {
   color: var(--t3);
   font-family: var(--font-ui);
   font-size: 11px;
+  text-transform: uppercase;
 }
 
 .stat-chip--active .stat-chip__value {
@@ -543,6 +545,7 @@ textarea.edit-field__control {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .profile-subsection__content {
@@ -659,6 +662,7 @@ textarea.edit-field__control {
 .link-chip__platform {
   color: #BBBBBB;
   font-size: 9px;
+  text-transform: uppercase;
 }
 
 .link-chip__url {

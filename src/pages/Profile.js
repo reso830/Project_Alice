@@ -261,6 +261,24 @@ function appendMeta(parent, label, value) {
   parent.append(item);
 }
 
+function getSafeExternalHref(url) {
+  if (!url) {
+    return '#';
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    return '#';
+  }
+
+  return '#';
+}
+
 function renderBasicInfo(profile) {
   const basic = createElement('div', 'profile-basic');
   const avatar = createElement('div', 'profile-avatar', getInitials(profile));
@@ -279,7 +297,7 @@ function renderBasicInfo(profile) {
 function renderSubSection(label, contentEl) {
   const section = createElement('div', 'profile-subsection');
   const labelRow = createElement('div', 'profile-subsection__label', label);
-  const chevron = createElement('span', 'subsection-chevron', '>');
+  const chevron = createElement('span', 'subsection-chevron', '›');
   const content = createElement('div', 'profile-subsection__content');
 
   chevron.setAttribute('aria-hidden', 'true');
@@ -381,7 +399,7 @@ function renderLinks(profile, container) {
     const chip = document.createElement('a');
 
     chip.className = 'link-chip';
-    chip.href = link.url || '#';
+    chip.href = getSafeExternalHref(link.url);
     chip.target = '_blank';
     chip.rel = 'noopener noreferrer';
     chip.append(
