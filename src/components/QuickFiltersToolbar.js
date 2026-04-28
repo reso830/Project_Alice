@@ -75,10 +75,11 @@ function updateLabel(totalCount, filteredCount, filterState) {
 
   if (_labelEl) {
     _labelEl.textContent = active ? 'Results' : 'All Applications';
+    _labelEl.append(' ', _countEl);
   }
 
   if (_countEl) {
-    _countEl.textContent = String(active ? filteredCount : totalCount);
+    _countEl.textContent = `(${active ? filteredCount : totalCount})`;
   }
 }
 
@@ -285,6 +286,19 @@ function createEraseButton() {
   return button;
 }
 
+function createAddButton() {
+  const button = document.createElement('button');
+
+  button.className = 'toolbar__add';
+  button.type = 'button';
+  button.textContent = '+ New application';
+  button.addEventListener('click', () => {
+    _callbacks.onAddApplication?.();
+  });
+
+  return button;
+}
+
 function updateEraseButton(activeFilters) {
   if (!_actionsEl || !_eraseBtn || !_sortTrigger) {
     return;
@@ -358,6 +372,7 @@ export function render(options = {}) {
   const toolbar = document.createElement('div');
   const label = document.createElement('span');
   const count = document.createElement('span');
+  const controls = document.createElement('div');
   const filters = document.createElement('div');
   const actions = document.createElement('div');
   const status = createFilterButton({
@@ -396,17 +411,20 @@ export function render(options = {}) {
     onClick: (button) => openPanel('sort', button, renderSortPanel()),
   });
   const erase = createEraseButton();
+  const addButton = createAddButton();
 
   toolbar.className = 'toolbar';
   label.className = 'toolbar__label';
   count.className = 'count-badge';
   count.setAttribute('aria-live', 'polite');
+  controls.className = 'toolbar__controls';
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
 
   filters.append(status.trigger, salary.trigger, compat.trigger, company.trigger);
   actions.append(sort.trigger);
-  toolbar.append(label, count, filters, actions);
+  controls.append(filters, actions);
+  toolbar.append(label, controls, addButton);
 
   _toolbarEl = toolbar;
   _labelEl = label;

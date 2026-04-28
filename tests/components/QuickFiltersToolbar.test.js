@@ -73,8 +73,10 @@ describe('QuickFiltersToolbar', () => {
   it('renders the default label, count, and inactive filter buttons', () => {
     const { toolbar } = renderToolbar();
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toContain('All Applications');
-    expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`All Applications (${apps.length})`);
+    expect(toolbar.querySelector('.count-badge')?.textContent).toBe(`(${apps.length})`);
+    expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
+    expect(toolbar.querySelector('.toolbar__add')?.textContent).toBe('+ New application');
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Salary"]')?.getAttribute('aria-pressed'))
@@ -99,8 +101,8 @@ describe('QuickFiltersToolbar', () => {
       sortState: DEFAULT_SORT_STATE,
     });
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results');
-    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('1');
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results (1)');
+    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('(1)');
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
       .toBe('true');
   });
@@ -134,6 +136,16 @@ describe('QuickFiltersToolbar', () => {
       ...DEFAULT_FILTER_STATE,
       statuses: ['applied'],
     });
+  });
+
+  it('calls onAddApplication from the primary toolbar action', () => {
+    const onAddApplication = vi.fn();
+    const { toolbar } = renderToolbar({ onAddApplication });
+
+    toolbar.querySelector('.toolbar__add')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onAddApplication).toHaveBeenCalledOnce();
   });
 
   it('disables filter buttons when there are no applications and re-enables on update', () => {
@@ -343,8 +355,8 @@ describe('QuickFiltersToolbar', () => {
       sortState: DEFAULT_SORT_STATE,
     });
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results');
-    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('0');
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results (0)');
+    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('(0)');
     expect(toolbar.querySelector('.erase-btn')).not.toBeNull();
   });
 
