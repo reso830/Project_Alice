@@ -9,6 +9,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
 - **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
+- **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections
+- **Profile editing** — section-by-section edit forms that save independently without overwriting unrelated fields
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 
@@ -52,8 +54,10 @@ Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests 
 | Script | Description |
 |---|---|
 | `npm run db:init` | Initialize (or re-initialize) the SQLite database |
-| `npm run db:seed` | Clear the database and load 23 demo records |
-| `npm run db:clear` | Delete all records from the database |
+| `npm run db:seed` | Clear the database and load 23 demo application records |
+| `npm run db:clear` | Delete all application records from the database |
+| `npm run db:seed:profile` | Populate the profile table with demo profile data |
+| `npm run db:clear:profile` | Clear the profile table (resets to no-profile state) |
 | `npm run server:dev` | Start backend API in watch mode (nodemon, port 3001) |
 | `npm run server:start` | Start backend API without watch mode |
 | `npm run dev` | Start frontend development server (port 5173) |
@@ -80,15 +84,21 @@ npm run db:clear
 
 `db:clear` is a hard delete of all rows. The schema (tables and indexes) is left intact, so the server keeps running and `db:seed` can be run again without `db:init`.
 
+`db:seed:profile` writes a single demo profile (Alex Rivera) with experience, education, skills, languages, certifications, awards, and links. Run it to see the Profile page fully populated.
+
+`db:clear:profile` removes the profile row, returning the Profile page to its empty state.
+
 **Typical demo flow:**
 
 ```bash
-npm run db:init       # first time only
-npm run db:seed       # load demo data
-npm run server:dev    # terminal 1
-npm run dev           # terminal 2 — open http://localhost:5173
+npm run db:init              # first time only
+npm run db:seed              # load demo applications
+npm run db:seed:profile      # load demo profile
+npm run server:dev           # terminal 1
+npm run dev                  # terminal 2 — open http://localhost:5173
 # ... demo ...
-npm run db:clear      # reset when done
+npm run db:clear             # reset applications
+npm run db:clear:profile     # reset profile
 ```
 
 ## Continuous Integration
@@ -109,21 +119,26 @@ server/
   index.js        # Express app factory and entry point
   db.js           # Database connection and schema initializer
   db-init.js      # Standalone init script (npm run db:init)
+  db-seed.js      # Demo application records (npm run db:seed)
+  db-seed-profile.js   # Demo profile data (npm run db:seed:profile)
+  db-clear-profile.js  # Clear profile table (npm run db:clear:profile)
   db/
-    applications.js  # SQL queries (repository layer)
+    applications.js  # SQL queries — applications repository
+    profile.js       # SQL queries — profile repository (UPSERT)
   routes/
-    applications.js  # Route handlers
+    applications.js  # Route handlers — applications
+    profile.js       # Route handlers — profile
   validation/
     application.js   # Zod schemas
 data/
   alice.db        # SQLite database file (git-ignored)
 src/
   assets/         # Static assets (logo images)
-  components/     # Reusable UI components (cards, modals, badges, toolbar, pagination, footer)
-  pages/          # Page-level components (tracker, calendar, profile)
+  components/     # Reusable UI components (cards, modals, badges, toolbar, pagination, footer, charts)
+  pages/          # Page-level components (Tracker, Calendar, Profile, ProfileEdit)
   services/
     api.js        # fetch-based API client
-  models/         # Application model and client-side validation
+  models/         # Application and profile models, client-side validation
   styles/         # Global styles and design tokens
   utils/          # Pure utility functions (pagination model, date helpers)
 specs/            # Specification, plan, and task documents per feature branch
@@ -134,6 +149,7 @@ tests/
   data/           # Legacy store tests
   utils/          # Utility function tests
   components/     # Component DOM tests (jsdom)
+  pages/          # Page-level DOM tests (jsdom)
 ```
 
 ## Versioning
@@ -146,7 +162,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.3.0**
+Current version: **0.4.0**
 
 ## Development Workflow
 

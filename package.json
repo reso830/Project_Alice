@@ -1,6 +1,6 @@
 {
   "name": "project-alice",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,8 @@
     "db:init": "node server/db-init.js",
     "db:seed": "node server/db-seed.js",
     "db:clear": "node server/db-clear.js",
+    "db:seed:profile": "node server/db-seed-profile.js",
+    "db:clear:profile": "node server/db-clear-profile.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest/results.xml",

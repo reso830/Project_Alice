@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-28
+
+### Added
+- Profile page — welcome header personalised with first name, application stats (total, active, pending, offer) with an interactive donut chart and collapsible legend, and a full profile card with collapsible subsections (Summary, Experience, Education, Skills, Languages, Certifications, Awards, Links)
+- Profile edit page — section-by-section editing; each card saves independently using a read-merge-write pattern so unedited fields are never overwritten
+- `GET /api/profile` and `PUT /api/profile` — SQLite-backed profile persistence; profile stored as a single JSON record
+- `server/db/profile.js` — profile repository with UPSERT logic
+- `server/routes/profile.js` — `createProfileRouter()` factory matching the existing applications router pattern
+- `src/models/profile.js` — `validateProfile`, `normaliseProfile`, `computeAppCounts`, `computeStats`, `STATUS_COLORS`, `STATUS_LABELS`
+- `src/components/DonutChart.js` — SVG donut chart with per-segment hover tooltips; Largest Remainder Method for exact integer percentages; degenerate 100% case handled as two arcs to avoid invalid SVG paths
+- `src/components/StackedBar.js` — horizontal proportional bar with tap-to-label interaction for mobile
+- Responsive chart layout — desktop shows donut + legend, mobile shows stacked bar + tap labels; both always in DOM, toggled via CSS `@media`
+- Collapsible profile subsections — expanded on desktop, collapsible on mobile via `.is-collapsed` class toggle
+- XSS-safe external link rendering — only `http:`/`https:` hrefs are passed through; `javascript:` and all other schemes fall back to `#`
+- `npm run db:seed:profile` — populate the profile table with demo data
+- `npm run db:clear:profile` — clear the profile table (returns the profile page to the no-profile state)
+- Server integration tests for the profile API (`tests/server/profile.test.js`)
+- Page-level tests for the Profile page (`tests/pages/Profile.test.js`)
+- Component tests for DonutChart (`tests/components/DonutChart.test.js`)
+
 ## [0.3.0] — 2026-04-26
 
 ### Added
@@ -72,7 +92,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/reso830/Project_Alice/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/reso830/Project_Alice/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/reso830/Project_Alice/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/reso830/Project_Alice/releases/tag/v0.1.0
