@@ -1,6 +1,5 @@
 import { getAll, getProfile } from '../services/api.js';
-import { computeAppCounts, computeStats } from '../models/profile.js';
-import { STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
+import { computeAppCounts, computeStats, STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
 
@@ -245,11 +244,171 @@ function renderEmptyProfile(section, navigate) {
   section.append(empty);
 }
 
+function getInitials(profile) {
+  return `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase();
+}
+
+function appendMeta(parent, label, value) {
+  if (!value) {
+    return;
+  }
+
+  const item = createElement('div', 'profile-basic__meta');
+  const labelEl = createElement('span', 'profile-basic__meta-label', label);
+  const valueEl = createElement('span', 'profile-basic__meta-value', value);
+
+  item.append(labelEl, valueEl);
+  parent.append(item);
+}
+
+function renderBasicInfo(profile) {
+  const basic = createElement('div', 'profile-basic');
+  const avatar = createElement('div', 'profile-avatar', getInitials(profile));
+  const details = createElement('div', 'profile-basic__details');
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+
+  details.append(createElement('div', 'profile-basic__name', fullName));
+  appendMeta(details, 'Location', profile.city);
+  appendMeta(details, 'Phone', profile.phone);
+  appendMeta(details, 'Email', profile.email);
+  basic.append(avatar, details);
+
+  return basic;
+}
+
+function renderSubSection(label, contentEl) {
+  const section = createElement('div', 'profile-subsection');
+  const labelRow = createElement('div', 'profile-subsection__label', label);
+  const content = createElement('div', 'profile-subsection__content');
+
+  content.append(contentEl);
+  section.append(labelRow, content);
+
+  return section;
+}
+
+function renderSummary(profile, container) {
+  if (!profile.summary) {
+    return;
+  }
+
+  container.append(renderSubSection('SUMMARY', createElement('p', 'profile-summary', profile.summary)));
+}
+
+function renderExperience(profile, container) {
+  if (!Array.isArray(profile.experience) || profile.experience.length === 0) {
+    return;
+  }
+
+  const list = createElement('div', 'profile-entry-list');
+
+  for (const entry of profile.experience) {
+    const item = createElement('div', 'profile-entry');
+
+    item.append(
+      createElement('div', 'profile-entry__title', entry.role),
+      createElement('div', 'profile-entry__meta', [entry.company, entry.period].filter(Boolean).join(' | ')),
+      createElement('p', 'profile-entry__desc', entry.desc),
+    );
+    list.append(item);
+  }
+
+  container.append(renderSubSection('PROFESSIONAL EXPERIENCE', list));
+}
+
+function renderEducation(profile, container) {
+  if (!Array.isArray(profile.education) || profile.education.length === 0) {
+    return;
+  }
+
+  const list = createElement('div', 'profile-entry-list');
+
+  for (const entry of profile.education) {
+    const item = createElement('div', 'profile-entry');
+
+    item.append(
+      createElement('div', 'profile-entry__title', entry.degree),
+      createElement('div', 'profile-entry__meta', [entry.school, entry.year].filter(Boolean).join(' | ')),
+    );
+    list.append(item);
+  }
+
+  container.append(renderSubSection('EDUCATION', list));
+}
+
+function renderPills(label, values, container) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return;
+  }
+
+  const pills = createElement('div', 'pill-row');
+
+  for (const value of values) {
+    pills.append(createElement('span', 'pill-tag', value));
+  }
+
+  container.append(renderSubSection(label, pills));
+}
+
+function renderBulletList(label, values, className, container) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return;
+  }
+
+  const list = createElement('ul', `profile-bullet-list ${className}`);
+
+  for (const value of values) {
+    list.append(createElement('li', null, value));
+  }
+
+  container.append(renderSubSection(label, list));
+}
+
+function renderLinks(profile, container) {
+  if (!Array.isArray(profile.links) || profile.links.length === 0) {
+    return;
+  }
+
+  const links = createElement('div', 'link-chip-row');
+
+  for (const link of profile.links) {
+    const chip = document.createElement('a');
+
+    chip.className = 'link-chip';
+    chip.href = link.url || '#';
+    chip.target = '_blank';
+    chip.rel = 'noopener noreferrer';
+    chip.append(
+      createElement('span', 'link-chip__platform', link.platform),
+      createElement('span', 'link-chip__url', link.label || link.url),
+    );
+    links.append(chip);
+  }
+
+  container.append(renderSubSection('LINKS', links));
+}
+
+function renderPopulatedProfile(section, profile) {
+  const content = createElement('div', 'profile-content');
+
+  content.append(renderBasicInfo(profile));
+  renderSummary(profile, content);
+  renderExperience(profile, content);
+  renderEducation(profile, content);
+  renderPills('SKILLS', profile.skills, content);
+  renderBulletList('CERTIFICATIONS', profile.certifications, 'profile-bullet-list--indigo', content);
+  renderBulletList('AWARDS', profile.awards, 'profile-bullet-list--amber', content);
+  renderPills('LANGUAGES', profile.languages, content);
+  renderLinks(profile, content);
+  section.append(content);
+}
+
 function renderProfileSection(page, profile, navigate) {
   const { section, actions } = createSection('PROFILE');
 
   if (profile) {
     actions.append(createButton('Edit Profile', 'profile-btn profile-btn--outline', () => navigate('profile-edit')));
+    renderPopulatedProfile(section, profile);
   } else {
     renderEmptyProfile(section, navigate);
   }
