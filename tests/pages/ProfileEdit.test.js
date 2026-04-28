@@ -6,6 +6,13 @@ vi.mock('../../src/services/api.js', () => ({
   saveProfile: vi.fn(),
 }));
 
+vi.mock('../../src/components/Toast.js', () => ({
+  Toast: {
+    show: vi.fn(),
+  },
+}));
+
+import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
 import { ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
@@ -23,10 +30,12 @@ function createProfile(overrides = {}) {
     email: '',
     phone: '',
     summary: '',
+    experience: [],
+    education: [],
     skills: [],
-    languages: [],
     certifications: [],
     awards: [],
+    languages: [],
     links: [],
     ...overrides,
   };
@@ -54,9 +63,25 @@ function getFieldInput(card, label) {
     .querySelector('.edit-field__control');
 }
 
-function getSaveButton(card) {
-  return [...card.querySelectorAll('button')]
-    .find((button) => button.textContent === 'Save');
+function getTopControls(container) {
+  return container.querySelector('.page-controls');
+}
+
+function getBottomControls(container) {
+  return [...container.querySelectorAll('.page-controls')].at(-1);
+}
+
+function getSaveButton(controls) {
+  return controls.querySelector('.page-controls__save');
+}
+
+function getCancelButton(controls) {
+  return controls.querySelector('.page-controls__cancel');
+}
+
+function inputValue(input, value) {
+  input.value = value;
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
 }
 
 async function flushPromises() {
@@ -66,108 +91,262 @@ async function flushPromises() {
 }
 
 describe('ProfileEdit page', () => {
-  it('saves basic info and reflects the saved profile', async () => {
+  it('renders a blank form when no profile exists', async () => {
     const container = createAppShell();
-    const initialProfile = createProfile({ firstName: 'Ana' });
-    const savedProfile = createProfile({ firstName: 'Anika', city: 'Seattle' });
 
-    api.getProfile
-      .mockResolvedValueOnce(initialProfile)
-      .mockResolvedValueOnce(initialProfile);
-    api.saveProfile.mockResolvedValue(savedProfile);
+    api.getProfile.mockResolvedValue(null);
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const card = getCard(container, 'BASIC INFO');
+    const basic = getCard(container, 'BASIC INFO');
+    const summary = getCard(container, 'SUMMARY');
 
-    getFieldInput(card, 'First Name').value = 'Anika';
-    getFieldInput(card, 'City/Location').value = 'Seattle';
-    getSaveButton(card).click();
-    await flushPromises();
-
-    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({
-      firstName: 'Anika',
-      city: 'Seattle',
-      summary: '',
-    }));
-    expect(card.querySelector('.edit-card__feedback')?.textContent).toBe('Saved.');
-    expect(getFieldInput(card, 'First Name').value).toBe('Anika');
-    expect(getFieldInput(card, 'City/Location').value).toBe('Seattle');
+    expect(getFieldInput(basic, 'First Name').value).toBe('');
+    expect(getFieldInput(basic, 'Last Name').value).toBe('');
+    expect(getFieldInput(basic, 'City/Location').value).toBe('');
+    expect(getFieldInput(basic, 'Email').value).toBe('');
+    expect(getFieldInput(basic, 'Phone').value).toBe('');
+    expect(getFieldInput(summary, 'Summary').value).toBe('');
   });
 
-  it('surfaces basic info validation errors from the API', async () => {
+  it('keeps both save buttons disabled until the form is dirty', async () => {
     const container = createAppShell();
 
-    api.getProfile
-      .mockResolvedValueOnce(createProfile())
-      .mockResolvedValueOnce(createProfile());
-    api.saveProfile.mockRejectedValue({
-      fields: { firstName: 'First name is required.' },
-    });
+    api.getProfile.mockResolvedValue(createProfile());
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const card = getCard(container, 'BASIC INFO');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getBottomControls(container)).disabled).toBe(true);
 
-    getFieldInput(card, 'First Name').value = '';
-    getSaveButton(card).click();
-    await flushPromises();
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Seattle');
 
-    const error = [...card.querySelectorAll('.field-error')]
-      .find((fieldError) => fieldError.textContent === 'First name is required.');
-
-    expect(error).toBeTruthy();
-    expect(error.hidden).toBe(false);
-    expect(card.querySelector('.edit-card__feedback')?.textContent).toBe('');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+    expect(getSaveButton(getBottomControls(container)).disabled).toBe(false);
   });
 
-  it('aborts saves when profile refresh fails to avoid clobbering sections', async () => {
+  it('disables save again when edits are reverted to the loaded value', async () => {
     const container = createAppShell();
+    const basicProfile = createProfile({ firstName: 'Ana' });
 
-    api.getProfile
-      .mockResolvedValueOnce(createProfile({ summary: 'Existing summary' }))
-      .mockRejectedValueOnce(new Error('offline'));
+    api.getProfile.mockResolvedValue(basicProfile);
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const card = getCard(container, 'SUMMARY');
+    const firstName = getFieldInput(getCard(container, 'BASIC INFO'), 'First Name');
 
-    getFieldInput(card, 'Summary').value = 'New summary';
-    getSaveButton(card).click();
-    await flushPromises();
+    inputValue(firstName, 'Anika');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
 
-    expect(api.saveProfile).not.toHaveBeenCalled();
-    expect(card.querySelector('.edit-card__feedback')?.textContent)
-      .toBe('Unable to reach server. Please try again.');
+    inputValue(firstName, 'Ana');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
-  it('ignores duplicate basic info saves while a save is already running', async () => {
+  it('shows saving state on both save buttons while save is in progress', async () => {
     const container = createAppShell();
     let resolveSave;
     const savePromise = new Promise((resolve) => {
       resolveSave = resolve;
     });
 
-    api.getProfile
-      .mockResolvedValueOnce(createProfile())
-      .mockResolvedValueOnce(createProfile());
+    api.getProfile.mockResolvedValue(createProfile());
     api.saveProfile.mockReturnValue(savePromise);
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const card = getCard(container, 'BASIC INFO');
-    const saveButton = getSaveButton(card);
-
-    saveButton.click();
-    await flushPromises();
-    saveButton.click();
-
-    expect(api.saveProfile).toHaveBeenCalledTimes(1);
-    expect(saveButton.disabled).toBe(true);
-
-    resolveSave(createProfile({ firstName: 'Ana' }));
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
+    getSaveButton(getTopControls(container)).click();
     await flushPromises();
 
-    expect(saveButton.disabled).toBe(false);
+    expect(getSaveButton(getTopControls(container)).textContent).toBe('Saving…');
+    expect(getSaveButton(getBottomControls(container)).textContent).toBe('Saving…');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getBottomControls(container)).disabled).toBe(true);
+
+    resolveSave(createProfile({ phone: '555-0100' }));
+    await flushPromises();
+  });
+
+  it('saves successfully, navigates to profile, and shows a success toast', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+    api.saveProfile.mockResolvedValue(createProfile({ city: 'Seattle' }));
+
+    await ProfileEdit.mount(container, { navigate });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Seattle');
+    getSaveButton(getBottomControls(container)).click();
+    await flushPromises();
+
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      city: 'Seattle',
+      summary: '',
+    }));
+    expect(navigate).toHaveBeenCalledWith('profile');
+    expect(Toast.show).toHaveBeenCalledWith('Profile saved.', 'success');
+  });
+
+  it('shows an error toast and preserves form state when save fails', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+    api.saveProfile.mockRejectedValue(new Error('offline'));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const phone = getFieldInput(getCard(container, 'BASIC INFO'), 'Phone');
+
+    inputValue(phone, '555-0100');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    expect(Toast.show).toHaveBeenCalledWith('Could not save profile. Please try again.', 'error');
+    expect(phone.value).toBe('555-0100');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+  });
+
+  it('surfaces first and last name validation errors before save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const basic = getCard(container, 'BASIC INFO');
+
+    inputValue(getFieldInput(basic, 'First Name'), '');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    const error = [...basic.querySelectorAll('.field-error')]
+      .find((fieldError) => fieldError.textContent === 'First Name is required.');
+
+    expect(api.saveProfile).not.toHaveBeenCalled();
+    expect(error).toBeTruthy();
+    expect(error.hidden).toBe(false);
+  });
+
+  it('navigates directly when cancelling a clean form', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate });
+
+    getCancelButton(getTopControls(container)).click();
+
+    expect(navigate).toHaveBeenCalledWith('profile');
+    expect(document.querySelector('.confirm-backdrop')).toBeNull();
+  });
+
+  it('shows discard modal when cancelling a dirty form', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Seattle');
+    getCancelButton(getBottomControls(container)).click();
+
+    expect(document.querySelector('.confirm-backdrop')).toBeTruthy();
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
+  it('discards dirty edits from the modal', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Seattle');
+    getCancelButton(getTopControls(container)).click();
+    [...document.querySelectorAll('.confirm-modal button')]
+      .find((button) => button.textContent === 'Discard')
+      .click();
+
+    expect(navigate).toHaveBeenCalledWith('profile');
+    expect(Toast.show).toHaveBeenCalledWith('Edits discarded.', 'success');
+    expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('keeps edits when the discard modal is dismissed', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const city = getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location');
+
+    inputValue(city, 'Seattle');
+    getCancelButton(getTopControls(container)).click();
+    [...document.querySelectorAll('.confirm-modal button')]
+      .find((button) => button.textContent === 'Keep Editing')
+      .click();
+
+    expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    expect(city.value).toBe('Seattle');
+  });
+
+  it('blocks save when an inline entry form is open', async () => {
+    const container = createAppShell();
+    const openForm = document.createElement('div');
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
+    openForm.className = 'inline-entry-form';
+    getCard(container, 'SKILLS').append(openForm);
+    getSaveButton(getTopControls(container)).click();
+
+    expect(api.saveProfile).not.toHaveBeenCalled();
+    expect(document.querySelector('.open-form-error')?.previousElementSibling)
+      .toBe(getTopControls(container));
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('routes the subheader back action through cancel behavior', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate });
+
+    document.querySelector('.profile-edit-subheader__back').click();
+    expect(navigate).toHaveBeenCalledWith('profile');
+
+    navigate.mockClear();
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
+    document.querySelector('.profile-edit-subheader__back').click();
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.querySelector('.confirm-backdrop')).toBeTruthy();
+  });
+
+  it('removes the subheader on unmount', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    expect(document.querySelector('.profile-edit-subheader')).toBeTruthy();
+
+    ProfileEdit.unmount();
+
+    expect(document.querySelector('.profile-edit-subheader')).toBeNull();
+    expect(container.children).toHaveLength(0);
   });
 });

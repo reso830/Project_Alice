@@ -1,10 +1,15 @@
+import { Toast } from '../components/Toast.js';
+import { normaliseProfile, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 
 let _container = null;
-let _header = null;
-let _navbar = null;
-let _previousNavbarDisplay = '';
-let _profile = null;
+let _navigate = () => {};
+let _subheader = null;
+let _formState = null;
+let _initialState = null;
+let _saving = false;
+let _basicInfoFields = {};
+let _discardKeyHandler = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -31,6 +36,25 @@ function createButton(label, className, onClick) {
   return button;
 }
 
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function isDirty() {
+  return JSON.stringify(_formState) !== JSON.stringify(_initialState);
+}
+
+function updateControlsState() {
+  const dirty = isDirty();
+
+  for (const button of document.querySelectorAll('.page-controls__save')) {
+    button.disabled = !dirty || _saving;
+    if (!_saving) {
+      button.textContent = 'Save';
+    }
+  }
+}
+
 function createField(label, value = '', multiline = false) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
@@ -40,7 +64,7 @@ function createField(label, value = '', multiline = false) {
   input.className = 'edit-field__control';
   input.value = value ?? '';
   if (multiline) {
-    input.rows = 5;
+    input.rows = 6;
   } else {
     input.type = 'text';
   }
@@ -51,12 +75,16 @@ function createField(label, value = '', multiline = false) {
 }
 
 function setFieldError(field, message) {
+  if (!field) {
+    return;
+  }
+
   field.error.textContent = message;
   field.error.hidden = !message;
 }
 
-function clearFieldErrors(fields) {
-  for (const field of fields) {
+function clearBasicInfoErrors() {
+  for (const field of Object.values(_basicInfoFields)) {
     setFieldError(field, '');
   }
 }
@@ -73,255 +101,243 @@ function createEditCard(title) {
   return { card, body };
 }
 
-function createActions(onCancel, onSave) {
-  const actions = createElement('div', 'edit-card__actions');
-  const feedback = createElement('span', 'edit-card__feedback');
-  const cancelButton = createButton('Cancel', 'profile-btn profile-btn--outline', onCancel);
-  const saveButton = createButton('Save', 'profile-btn profile-btn--primary', onSave);
+function createPlaceholderCard(title) {
+  const { card, body } = createEditCard(title);
 
-  actions.append(
-    feedback,
-    cancelButton,
-    saveButton,
-  );
+  body.append(createElement('p', 'edit-placeholder', 'This section will be editable in a later phase.'));
 
-  return { actions, feedback, saveButton };
+  return card;
 }
 
-function currentProfile() {
-  return _profile ?? {};
+function updateField(fieldName, value) {
+  _formState[fieldName] = value;
+  clearBasicInfoErrors();
+  updateControlsState();
 }
 
-function applyProfile(profile) {
-  _profile = profile ?? null;
+function hasOpenInlineForm() {
+  return document.querySelector('.inline-entry-form') !== null;
 }
 
-async function refreshProfile() {
-  try {
-    applyProfile(await getProfile());
-    return { ok: true, profile: currentProfile() };
-  } catch {
-    return { ok: false, profile: currentProfile() };
-  }
+function renderOpenFormError() {
+  const topControls = document.querySelector('.page-controls');
+  const err = createElement('p', 'open-form-error', 'Please finish or cancel the open form before saving.');
+
+  topControls?.after(err);
 }
 
-function renderTopbar(navigate) {
-  const header = createElement('header', 'profile-edit-nav');
-  const back = createButton('\u2190 Back to Profile', 'profile-edit-nav__back', () => navigate('profile'));
-  const title = createElement('span', 'profile-edit-nav__title', 'Edit Profile');
+function renderSubheader() {
+  const navbar = document.querySelector('.navbar');
+  const bar = createElement('div', 'profile-edit-subheader');
+  const back = createButton('\u2190 Profile', 'profile-edit-subheader__back', handleCancel);
+  const title = createElement('span', 'profile-edit-subheader__title', 'Edit Profile');
 
-  header.append(back, title);
-  document.body.insertBefore(header, document.querySelector('#app'));
-  _header = header;
-}
+  bar.append(back, title);
 
-function hideNavbar() {
-  _navbar = document.querySelector('.navbar');
-  if (!_navbar) {
-    return;
+  if (navbar) {
+    navbar.insertAdjacentElement('afterend', bar);
+  } else {
+    document.body.insertBefore(bar, document.querySelector('#app'));
   }
 
-  _previousNavbarDisplay = _navbar.style.display;
-  _navbar.style.display = 'none';
+  _subheader = bar;
+}
+
+function renderPageControls() {
+  const controls = createElement('div', 'page-controls');
+  const cancel = createButton('Cancel', 'profile-btn profile-btn--outline page-controls__cancel', handleCancel);
+  const save = createButton('Save', 'profile-btn profile-btn--primary page-controls__save', handleSave);
+
+  save.disabled = true;
+  controls.append(cancel, save);
+
+  return controls;
 }
 
 function renderBasicInfoCard(page) {
   const { card, body } = createEditCard('BASIC INFO');
-  const profile = currentProfile();
-  const firstName = createField('First Name', profile.firstName);
-  const lastName = createField('Last Name', profile.lastName);
-  const city = createField('City/Location', profile.city);
-  const email = createField('Email', profile.email);
-  const phone = createField('Phone', profile.phone);
-  const fields = [firstName, lastName, city, email, phone];
+  const grid = createElement('div', 'edit-fields-grid');
+  const firstName = createField('First Name', _formState.firstName);
+  const lastName = createField('Last Name', _formState.lastName);
+  const city = createField('City/Location', _formState.city);
+  const email = createField('Email', _formState.email);
+  const phone = createField('Phone', _formState.phone);
 
-  function reset() {
-    const latest = currentProfile();
+  city.wrapper.classList.add('edit-field--full');
+  _basicInfoFields = { firstName, lastName, city, email, phone };
 
-    firstName.input.value = latest.firstName ?? '';
-    lastName.input.value = latest.lastName ?? '';
-    city.input.value = latest.city ?? '';
-    email.input.value = latest.email ?? '';
-    phone.input.value = latest.phone ?? '';
-    clearFieldErrors(fields);
+  for (const [fieldName, field] of Object.entries(_basicInfoFields)) {
+    field.input.addEventListener('input', () => updateField(fieldName, field.input.value));
   }
 
-  const { actions, feedback, saveButton } = createActions(reset, async () => {
-    if (saveButton.disabled) {
-      return;
-    }
-
-    saveButton.disabled = true;
-
-    try {
-      clearFieldErrors(fields);
-      feedback.textContent = '';
-
-      const latest = await refreshProfile();
-
-      if (!latest.ok) {
-        feedback.textContent = 'Unable to reach server. Please try again.';
-        return;
-      }
-
-      const merged = {
-        ...latest.profile,
-        firstName: firstName.input.value,
-        lastName: lastName.input.value,
-        city: city.input.value,
-        email: email.input.value,
-        phone: phone.input.value,
-      };
-      const result = await saveProfile(merged).then(
-        (saved) => ({ ok: true, saved }),
-        (error) => ({ ok: false, errors: error.fields ?? {} }),
-      );
-
-      if (!result.ok) {
-        setFieldError(firstName, result.errors.firstName ?? '');
-        setFieldError(lastName, result.errors.lastName ?? '');
-        setFieldError(email, result.errors.email ?? '');
-        return;
-      }
-
-      applyProfile(result.saved);
-      reset();
-      feedback.textContent = 'Saved.';
-    } finally {
-      saveButton.disabled = false;
-    }
-  });
-
-  body.append(...fields.map((field) => field.wrapper), actions);
+  grid.append(firstName.wrapper, lastName.wrapper, city.wrapper, email.wrapper, phone.wrapper);
+  body.append(grid);
   page.append(card);
 }
 
 function renderSummaryCard(page) {
   const { card, body } = createEditCard('SUMMARY');
-  const summary = createField('Summary', currentProfile().summary, true);
+  const summary = createField('Summary', _formState.summary, true);
 
-  function reset() {
-    summary.input.value = currentProfile().summary ?? '';
-  }
-
-  const { actions, feedback, saveButton } = createActions(reset, async () => {
-    if (saveButton.disabled) {
-      return;
-    }
-
-    saveButton.disabled = true;
-
-    try {
-      feedback.textContent = '';
-
-      const latest = await refreshProfile();
-
-      if (!latest.ok) {
-        feedback.textContent = 'Unable to reach server. Please try again.';
-        return;
-      }
-
-      const merged = {
-        ...latest.profile,
-        summary: summary.input.value,
-      };
-      const result = await saveProfile(merged).then(
-        (saved) => ({ ok: true, saved }),
-        (error) => ({ ok: false, message: error.message ?? 'Unable to save summary.' }),
-      );
-
-      if (!result.ok) {
-        feedback.textContent = result.message;
-        return;
-      }
-
-      applyProfile(result.saved);
-      reset();
-      feedback.textContent = 'Saved.';
-    } finally {
-      saveButton.disabled = false;
-    }
-  });
-
-  body.append(summary.wrapper, actions);
-  page.append(card);
-}
-
-function renderTextCard(page, title, fieldName) {
-  const { card, body } = createEditCard(title);
-  const values = currentProfile()[fieldName];
-  const field = createField(title, Array.isArray(values) ? values.join(', ') : '');
-
-  function reset() {
-    const latest = currentProfile()[fieldName];
-
-    field.input.value = Array.isArray(latest) ? latest.join(', ') : '';
-  }
-
-  const { actions, feedback } = createActions(reset, () => {
-    feedback.textContent = 'Not saved in this iteration.';
-  });
-
-  body.append(field.wrapper, actions);
-  page.append(card);
-}
-
-function renderPlaceholderCard(page, title) {
-  const { card, body } = createEditCard(title);
-  const placeholder = createElement('p', 'edit-placeholder', 'Placeholder content for a later iteration.');
-  const { actions, feedback } = createActions(() => {
-    feedback.textContent = '';
-  }, () => {
-    feedback.textContent = 'Not saved in this iteration.';
-  });
-
-  body.append(placeholder, actions);
+  summary.input.addEventListener('input', () => updateField('summary', summary.input.value));
+  body.append(summary.wrapper);
   page.append(card);
 }
 
 function renderEditPage(container) {
   const page = createElement('div', 'profile-edit-page');
-  const notice = createElement('div', 'edit-notice', 'This page is a placeholder \u2014 details to be designed in a later iteration.');
 
-  page.append(notice);
+  page.append(renderPageControls());
   renderBasicInfoCard(page);
   renderSummaryCard(page);
-  renderTextCard(page, 'SKILLS', 'skills');
-  renderTextCard(page, 'LANGUAGES', 'languages');
 
-  for (const title of ['PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'AWARDS', 'LINKS']) {
-    renderPlaceholderCard(page, title);
+  for (const title of ['SKILLS', 'LANGUAGES', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'AWARDS', 'LINKS']) {
+    page.append(createPlaceholderCard(title));
   }
 
+  page.append(renderPageControls());
   container.replaceChildren(page);
+  updateControlsState();
+}
+
+function surfaceValidationErrors(errors) {
+  clearBasicInfoErrors();
+  setFieldError(_basicInfoFields.firstName, errors.firstName ?? '');
+  setFieldError(_basicInfoFields.lastName, errors.lastName ?? '');
+}
+
+async function handleSave() {
+  if (!isDirty() || _saving) {
+    return;
+  }
+
+  document.querySelector('.open-form-error')?.remove();
+
+  if (hasOpenInlineForm()) {
+    renderOpenFormError();
+    return;
+  }
+
+  const validation = validateProfile(_formState);
+
+  if (!validation.valid) {
+    surfaceValidationErrors(validation.errors);
+    return;
+  }
+
+  _saving = true;
+  for (const button of document.querySelectorAll('.page-controls__save')) {
+    button.disabled = true;
+    button.textContent = 'Saving…';
+  }
+
+  try {
+    await saveProfile(_formState);
+    _initialState = deepClone(_formState);
+    updateControlsState();
+    _navigate('profile');
+    Toast.show('Profile saved.', 'success');
+  } catch {
+    Toast.show('Could not save profile. Please try again.', 'error');
+  } finally {
+    _saving = false;
+    for (const button of document.querySelectorAll('.page-controls__save')) {
+      button.textContent = 'Save';
+    }
+    updateControlsState();
+  }
+}
+
+function handleCancel() {
+  if (!isDirty()) {
+    _navigate('profile');
+    return;
+  }
+
+  showDiscardModal();
+}
+
+function closeDiscardModal(backdrop) {
+  if (_discardKeyHandler) {
+    document.removeEventListener('keydown', _discardKeyHandler);
+    _discardKeyHandler = null;
+  }
+
+  document.body.style.overflow = '';
+  backdrop?.remove();
+}
+
+function showDiscardModal() {
+  if (document.querySelector('.confirm-backdrop')) {
+    return;
+  }
+
+  const backdrop = createElement('div', 'confirm-backdrop');
+  const modal = createElement('div', 'confirm-modal');
+  const title = createElement('h2', 'confirm-modal__title', 'Discard changes?');
+  const body = createElement('p', 'confirm-modal__body', 'Your edits will be lost.');
+  const actions = createElement('div', 'confirm-modal__actions');
+  const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => closeDiscardModal(backdrop));
+  const discard = createButton('Discard', 'profile-btn profile-btn--primary', () => {
+    closeDiscardModal(backdrop);
+    _navigate('profile');
+    Toast.show('Edits discarded.', 'success');
+  });
+
+  actions.append(keepEditing, discard);
+  modal.append(title, body, actions);
+  backdrop.append(modal);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) {
+      closeDiscardModal(backdrop);
+    }
+  });
+
+  _discardKeyHandler = (event) => {
+    if (event.key === 'Escape') {
+      closeDiscardModal(backdrop);
+    }
+  };
+  document.addEventListener('keydown', _discardKeyHandler);
+  document.body.style.overflow = 'hidden';
+  document.body.append(backdrop);
 }
 
 export async function mount(container, { navigate } = {}) {
-  const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
-
   _container = container;
-  hideNavbar();
-  renderTopbar(safeNavigate);
+  _navigate = typeof navigate === 'function' ? navigate : () => {};
   container.replaceChildren(createElement('div', 'profile-loading', 'Loading profile...'));
-  await refreshProfile();
 
-  if (_container === container) {
-    renderEditPage(container);
+  const profile = await getProfile().catch(() => null);
+
+  if (_container !== container) {
+    return;
   }
+
+  _formState = deepClone(normaliseProfile(profile ?? {}));
+  _initialState = deepClone(_formState);
+  renderSubheader();
+  renderEditPage(container);
 }
 
 export function unmount() {
-  _header?.remove();
-  _header = null;
-
-  if (_navbar) {
-    _navbar.style.display = _previousNavbarDisplay;
+  document.querySelector('.confirm-backdrop')?.remove();
+  if (_discardKeyHandler) {
+    document.removeEventListener('keydown', _discardKeyHandler);
+    _discardKeyHandler = null;
   }
-  _navbar = null;
-  _previousNavbarDisplay = '';
+  document.body.style.overflow = '';
+
+  _subheader?.remove();
+  _subheader = null;
 
   _container?.replaceChildren();
   _container = null;
+  _navigate = () => {};
+  _formState = null;
+  _initialState = null;
+  _saving = false;
+  _basicInfoFields = {};
 }
 
 export const ProfileEdit = { mount, unmount };
