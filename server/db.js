@@ -42,5 +42,11 @@ export function initSchema(targetDb = db) {
       ON applications(archived);
     CREATE INDEX IF NOT EXISTS idx_applications_created
       ON applications(created_at);
+
+    CREATE TABLE IF NOT EXISTS profile (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      data        TEXT    NOT NULL,
+      updated_at  TEXT    NOT NULL
+    );
   `);
 }

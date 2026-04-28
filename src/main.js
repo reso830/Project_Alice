@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar.js';
 import { store } from './data/store.js';
 import { Calendar } from './pages/Calendar.js';
 import { Profile } from './pages/Profile.js';
+import { ProfileEdit } from './pages/ProfileEdit.js';
 import { Tracker } from './pages/Tracker.js';
 import { toISODate } from './utils/date.js';
 
@@ -147,8 +148,13 @@ function navigate(page) {
     Calendar.mount(appRoot);
     _currentUnmount = Calendar.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot);
+    Profile.mount(appRoot, { navigate });
     _currentUnmount = Profile.unmount;
+  } else if (page === 'profile-edit') {
+    ProfileEdit.mount(appRoot, { navigate });
+    _currentUnmount = ProfileEdit.unmount;
+    _currentPage = page;
+    return;
   } else {
     Tracker.mount(appRoot);
     _currentUnmount = Tracker.unmount;
