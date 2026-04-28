@@ -16,8 +16,8 @@
 
 **Purpose**: Create new utility modules that have no dependencies and unblock all later phases.
 
-- [ ] T001 [P] Create `src/utils/validate.js` with exports: `validateRequired`, `validateMonthYear`, `validateUrl`, `validateEmail` — each returns `null` on pass or an error string on fail; `validateMonthYear` rejects non-MM/YYYY, month outside 01–12, year < 1900; `validateUrl` uses `new URL()` and rejects any protocol other than `http:` or `https:`
-- [ ] T002 [P] Create `src/utils/sort.js` with exports: `sortEducation(entries)` (by `yearCompleted` desc, non-numeric to end) and `sortExperience(entries)` (`currentWork === true` first, then `dateEnded` desc parsed as YYYY×100+MM, then `dateStarted` desc as fallback; treat empty string `dateEnded` as absent, sorting to end of non-current group)
+- [X] T001 [P] Create `src/utils/validate.js` with exports: `validateRequired`, `validateMonthYear`, `validateUrl`, `validateEmail` — each returns `null` on pass or an error string on fail; `validateMonthYear` rejects non-MM/YYYY, month outside 01–12, year < 1900; `validateUrl` uses `new URL()` and rejects any protocol other than `http:` or `https:`
+- [X] T002 [P] Create `src/utils/sort.js` with exports: `sortEducation(entries)` (by `yearCompleted` desc, non-numeric to end) and `sortExperience(entries)` (`currentWork === true` first, then `dateEnded` desc parsed as YYYY×100+MM, then `dateStarted` desc as fallback; treat empty string `dateEnded` as absent, sorting to end of non-current group)
 
 ---
 
