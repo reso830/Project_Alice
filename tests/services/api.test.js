@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { archive, create, getAll, getById, request, update } from '../../src/services/api.js';
+import {
+  archive,
+  create,
+  getAll,
+  getById,
+  getProfile,
+  request,
+  saveProfile,
+  update,
+} from '../../src/services/api.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -93,6 +102,34 @@ describe('api service', () => {
     await expect(archive(1)).resolves.toEqual(record);
     expect(fetchMock).toHaveBeenCalledWith('/api/applications/1/archive', expect.objectContaining({
       method: 'POST',
+    }));
+  });
+
+  it('returns data from profile responses', async () => {
+    const profile = {
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      skills: ['JavaScript'],
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: profile }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: profile }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getProfile()).resolves.toEqual(profile);
+    await expect(saveProfile(profile)).resolves.toEqual(profile);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/profile', expect.objectContaining({
+      method: 'GET',
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/profile', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify(profile),
     }));
   });
 

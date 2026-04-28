@@ -1,6 +1,7 @@
 let _container = null;
 
-export function mount(container) {
+export function mount(container, { navigate } = {}) {
+  void navigate;
   _container = container;
 }
 

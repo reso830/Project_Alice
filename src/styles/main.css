@@ -69,6 +69,52 @@ body {
   flex: 1;
 }
 
+.profile-page {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.profile-edit-page {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.section-card {
+  border: 1px solid #E0DDD8;
+  border-radius: 10px;
+  padding: 22px;
+  background: #FFFFFF;
+}
+
+.section-card + .section-card {
+  margin-top: 24px;
+}
+
+.section-card__header {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 639px) {
+  .profile-page,
+  .profile-edit-page {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .section-card {
+    padding: 16px;
+  }
+
+  .section-card + .section-card {
+    margin-top: 18px;
+  }
+}
+
 button,
 input,
 select,
