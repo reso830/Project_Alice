@@ -228,6 +228,29 @@ describe('QuickFiltersToolbar', () => {
     });
   });
 
+  it('rounds salary and compatibility labels during drag', () => {
+    const { toolbar } = renderToolbar();
+
+    toolbar.querySelector('[aria-label="Filter by Salary"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    setRangeTrackRect(toolbar, { width: 100 });
+    toolbar.querySelector('.range-thumb--max')
+      .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 100, bubbles: true }));
+    document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 55, bubbles: true }));
+
+    expect(toolbar.querySelector('.range-value--max').textContent).toBe('$118k');
+
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    toolbar.querySelector('[aria-label="Filter by Compatibility"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    setRangeTrackRect(toolbar, { width: 100 });
+    toolbar.querySelector('.range-thumb--min')
+      .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 0, bubbles: true }));
+    document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 33.4, bubbles: true }));
+
+    expect(toolbar.querySelector('.range-value--min').textContent).toBe('33%');
+  });
+
   it('disables only the salary button when there is no salary data', () => {
     const { toolbar } = renderToolbar({
       salaryBounds: { min: 0, max: 200000, hasSalaryData: false },
@@ -291,6 +314,7 @@ describe('QuickFiltersToolbar', () => {
     const eraseButton = toolbar.querySelector('.erase-btn');
 
     expect(eraseButton).not.toBeNull();
+    expect(eraseButton.title).toBe('Clear all filters');
 
     eraseButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 

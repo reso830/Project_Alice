@@ -113,7 +113,11 @@ function onClearAll() {
 function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
   emptyState.className = 'empty-state empty-state--filter';
-  emptyState.innerHTML = 'No applications match<br>the active filters.';
+  emptyState.append(
+    'No applications match',
+    document.createElement('br'),
+    'the active filters.',
+  );
   return emptyState;
 }
 

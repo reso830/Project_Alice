@@ -189,11 +189,13 @@ export function getAvailableCompanies(apps, filterState) {
 }
 
 export function syncDynamicSelections(filterState, apps) {
+  const availableStatuses = getAvailableStatuses(apps, filterState);
+  const availableCompanies = getAvailableCompanies(apps, filterState);
   const statuses = filterState.statuses.filter((status) => (
-    getAvailableStatuses(apps, filterState).includes(status)
+    availableStatuses.includes(status)
   ));
   const companies = filterState.companies.filter((company) => (
-    getAvailableCompanies(apps, filterState).includes(company)
+    availableCompanies.includes(company)
   ));
 
   if (

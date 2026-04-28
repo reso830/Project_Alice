@@ -190,7 +190,7 @@ function createRangePanel(slider) {
 }
 
 function formatSalary(value) {
-  return `$${value / 1000}k`;
+  return `$${Math.round(value / 1000)}k`;
 }
 
 function renderSalaryPanel() {
@@ -220,7 +220,7 @@ function renderCompatPanel() {
     valueMin: _filterState.compatMin ?? 0,
     valueMax: _filterState.compatMax ?? 100,
     step: 1,
-    formatValue: (value) => `${value}%`,
+    formatValue: (value) => `${Math.round(value)}%`,
     ariaLabelMin: 'Minimum compatibility',
     ariaLabelMax: 'Maximum compatibility',
     onCommit: (min, max) => {
@@ -273,6 +273,7 @@ function createEraseButton() {
 
   button.className = 'filter-btn erase-btn';
   button.type = 'button';
+  button.title = 'Clear all filters';
   button.setAttribute('aria-label', 'Clear all filters');
   button.setAttribute('aria-disabled', 'false');
   button.append(createSvgIcon('M5 5l14 14M19 5 5 19'));

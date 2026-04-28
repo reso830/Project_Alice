@@ -76,6 +76,7 @@ describe('filter helpers', () => {
     expect(ids(filterBySalary(apps, 100000, 120000))).toEqual([1, 2, 6, 9, 10]);
     expect(ids(filterBySalary(apps, 90000, 100000))).toEqual([2, 3, 9, 10]);
     expect(ids(filterBySalary(apps, 140000, 160000))).toEqual([4, 5]);
+    expect(ids(filterBySalary(apps, 140000, null))).toEqual([4, 5]);
     expect(ids(filterBySalary(apps, 180000, 190000))).toEqual([]);
   });
 
