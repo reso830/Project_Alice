@@ -323,4 +323,56 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe('0');
     expect(toolbar.querySelector('.erase-btn')).not.toBeNull();
   });
+
+  it('renders required ARIA attributes for toolbar controls and panels', () => {
+    const { toolbar } = renderToolbar();
+
+    for (const label of [
+      'Filter by Status',
+      'Filter by Salary',
+      'Filter by Compatibility',
+      'Filter by Company',
+      'Sort',
+    ]) {
+      const button = toolbar.querySelector(`[aria-label="${label}"]`);
+
+      expect(button).not.toBeNull();
+      expect(button.hasAttribute('aria-pressed')).toBe(true);
+    }
+
+    toolbar.querySelector('[aria-label="Filter by Status"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const checkbox = toolbar.querySelector('[data-value="applied"]');
+
+    expect(checkbox.getAttribute('role')).toBe('checkbox');
+    expect(checkbox.hasAttribute('aria-checked')).toBe(true);
+
+    toolbar.querySelector('[aria-label="Sort"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(toolbar.querySelector('[aria-label="Restore default sort"]')).not.toBeNull();
+  });
+
+  it('returns focus to each trigger when Escape closes an open panel', () => {
+    const { toolbar } = renderToolbar();
+
+    for (const label of [
+      'Filter by Status',
+      'Filter by Salary',
+      'Filter by Compatibility',
+      'Filter by Company',
+      'Sort',
+    ]) {
+      const button = toolbar.querySelector(`[aria-label="${label}"]`);
+
+      button.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      expect(toolbar.querySelector('.filter-panel, .sort-panel')).not.toBeNull();
+
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(toolbar.querySelector('.filter-panel, .sort-panel')).toBeNull();
+      expect(document.activeElement).toBe(button);
+    }
+  });
 });

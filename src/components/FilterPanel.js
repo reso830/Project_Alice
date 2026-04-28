@@ -24,10 +24,11 @@ function createOptionRow(value, selected, options) {
   row.className = 'filter-panel__option';
   row.tabIndex = 0;
   row.dataset.value = value;
+  row.setAttribute('role', 'checkbox');
+  row.setAttribute('aria-checked', String(isSelected));
 
   checkbox.className = 'filter-panel__checkbox';
-  checkbox.setAttribute('role', 'checkbox');
-  checkbox.setAttribute('aria-checked', String(isSelected));
+  checkbox.setAttribute('aria-hidden', 'true');
 
   if (isSelected) {
     checkbox.classList.add('filter-panel__checkbox--checked');

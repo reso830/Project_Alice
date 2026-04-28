@@ -206,6 +206,7 @@ button:focus-visible,
 }
 
 .filter-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -217,6 +218,29 @@ button:focus-visible,
   background: #FFFFFF;
   color: #888888;
   cursor: pointer;
+}
+
+.filter-btn[title]::before {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 600;
+  border-radius: 4px;
+  padding: 3px 8px;
+  background: var(--color-bg-dark);
+  color: #FFFFFF;
+  content: attr(title);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.filter-btn[title]:hover::before,
+.filter-btn[title]:focus-visible::before {
+  opacity: 1;
 }
 
 .filter-btn:hover {
@@ -1190,7 +1214,39 @@ button:focus-visible,
   }
 
   .toolbar {
+    flex-wrap: wrap;
     padding: 10px 14px;
+  }
+
+  .toolbar__label {
+    flex: 1 1 auto;
+    order: 1;
+  }
+
+  .count-badge {
+    order: 1;
+  }
+
+  .toolbar__filters,
+  .toolbar__actions,
+  .filter-trigger {
+    display: contents;
+  }
+
+  .filter-btn {
+    order: 2;
+  }
+
+  .filter-panel,
+  .sort-panel {
+    position: static;
+    order: 3;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .range-slider {
+    width: 100%;
   }
 
   .card-list {

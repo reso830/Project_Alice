@@ -28,12 +28,15 @@ function createDivider() {
   return divider;
 }
 
-function createOptionRow({ label, selected, onClick, className = '' }) {
+function createOptionRow({ label, selected, onClick, className = '', ariaLabel = null }) {
   const row = document.createElement('button');
 
   row.className = `sort-panel__option${selected ? ' sort-panel__option--selected' : ''}${className}`;
   row.type = 'button';
   row.textContent = `${selected ? '✓ ' : ''}${label}`;
+  if (ariaLabel) {
+    row.setAttribute('aria-label', ariaLabel);
+  }
   row.addEventListener('click', onClick);
 
   return row;
@@ -71,6 +74,7 @@ export function render(options = {}) {
       label: 'Restore default',
       selected: false,
       className: ' sort-panel__option--restore',
+      ariaLabel: 'Restore default sort',
       onClick: () => options.onRestoreDefault?.(),
     }),
   );
