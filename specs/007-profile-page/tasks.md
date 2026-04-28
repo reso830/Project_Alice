@@ -136,10 +136,10 @@
 
 **Independent Test**: On a viewport <640px with a profile saved, tap a sub-section header — content collapses and chevron rotates. Tap again — expands. Switch to ≥640px — no chevron, all sections always expanded.
 
-- [ ] T050 [US5] Add collapse toggle to sub-section label rows in `src/pages/Profile.js`: clicking a `.profile-subsection__label` toggles `.is-collapsed` class on the parent `.profile-subsection`; the toggle listener is always attached (CSS handles the desktop no-op via force-expand rule in T053)
-- [ ] T051 [US5] Add chevron indicator to sub-section label rows in `src/pages/Profile.js`: append a `<span class="subsection-chevron" aria-hidden="true">›</span>` inside each label row; CSS controls its visibility and rotation
-- [ ] T052 [US5] Add CSS collapse animation in `src/styles/main.css`: `.profile-subsection__content { max-height: 600px; overflow: hidden; transition: max-height 0.25s ease; }`; `.profile-subsection.is-collapsed .profile-subsection__content { max-height: 0; }`; `.subsection-chevron { display: inline-block; transition: transform 0.2s; transform: rotate(90deg); }`; `.profile-subsection.is-collapsed .subsection-chevron { transform: rotate(0deg); }`
-- [ ] T053 [US5] Add desktop guard in `src/styles/main.css`: inside `@media (min-width: 640px)`, `.profile-subsection.is-collapsed .profile-subsection__content { max-height: 600px; }` (force-expand overrides is-collapsed) and `.subsection-chevron { display: none; }`
+- [X] T050 [US5] Add collapse toggle to sub-section label rows in `src/pages/Profile.js`: clicking a `.profile-subsection__label` toggles `.is-collapsed` class on the parent `.profile-subsection`; the toggle listener is always attached (CSS handles the desktop no-op via force-expand rule in T053)
+- [X] T051 [US5] Add chevron indicator to sub-section label rows in `src/pages/Profile.js`: append a `<span class="subsection-chevron" aria-hidden="true">›</span>` inside each label row; CSS controls its visibility and rotation
+- [X] T052 [US5] Add CSS collapse animation in `src/styles/main.css`: `.profile-subsection__content { max-height: 600px; overflow: hidden; transition: max-height 0.25s ease; }`; `.profile-subsection.is-collapsed .profile-subsection__content { max-height: 0; }`; `.subsection-chevron { display: inline-block; transition: transform 0.2s; transform: rotate(90deg); }`; `.profile-subsection.is-collapsed .subsection-chevron { transform: rotate(0deg); }`
+- [X] T053 [US5] Add desktop guard in `src/styles/main.css`: inside `@media (min-width: 640px)`, `.profile-subsection.is-collapsed .profile-subsection__content { max-height: 600px; }` (force-expand overrides is-collapsed) and `.subsection-chevron { display: none; }`
 
 **Checkpoint**: User Story 5 functional. Mobile collapse/expand works on all sub-sections. Desktop sub-sections always show regardless of is-collapsed state.
 

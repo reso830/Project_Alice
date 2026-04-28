@@ -279,8 +279,14 @@ function renderBasicInfo(profile) {
 function renderSubSection(label, contentEl) {
   const section = createElement('div', 'profile-subsection');
   const labelRow = createElement('div', 'profile-subsection__label', label);
+  const chevron = createElement('span', 'subsection-chevron', '>');
   const content = createElement('div', 'profile-subsection__content');
 
+  chevron.setAttribute('aria-hidden', 'true');
+  labelRow.append(chevron);
+  labelRow.addEventListener('click', () => {
+    section.classList.toggle('is-collapsed');
+  });
   content.append(contentEl);
   section.append(labelRow, content);
 
