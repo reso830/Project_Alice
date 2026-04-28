@@ -17,53 +17,84 @@ const DEMO_PROFILE = {
     {
       role: 'Senior Software Engineer',
       company: 'Acme Corp',
-      period: 'Jan 2022 – Present',
-      desc:
+      responsibilities:
         'Led migration of monolithic Rails app to a service-oriented architecture. ' +
         'Reduced p99 API latency by 40% and mentored a team of 4 engineers.',
+      dateStarted: '01/2022',
+      dateEnded: '',
+      currentWork: true,
     },
     {
       role: 'Software Engineer',
       company: 'Bright Labs',
-      period: 'Jun 2019 – Dec 2021',
-      desc:
+      responsibilities:
         'Built real-time collaboration features in React and Node.js. ' +
         'Owned the deployment pipeline and reduced release time from 2 hours to 15 minutes.',
+      dateStarted: '06/2019',
+      dateEnded: '12/2021',
+      currentWork: false,
     },
     {
       role: 'Junior Developer',
       company: 'Pixel Studio',
-      period: 'Aug 2018 – May 2019',
-      desc: 'Developed marketing landing pages and internal tools using Vue and Python.',
+      responsibilities: 'Developed marketing landing pages and internal tools using Vue and Python.',
+      dateStarted: '08/2018',
+      dateEnded: '05/2019',
+      currentWork: false,
     },
   ],
 
   education: [
     {
-      degree: 'B.S. Computer Science',
-      school: 'University of Texas at Austin',
-      year: '2018',
+      degreeMajor: 'B.S. Computer Science',
+      university: 'University of Texas at Austin',
+      yearCompleted: '2018',
     },
   ],
 
   skills: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'PostgreSQL', 'SQLite', 'Docker', 'AWS', 'Git'],
 
-  languages: ['English', 'Spanish'],
+  languages: [
+    { language: 'English', proficiency: 'Fluent' },
+    { language: 'Spanish', proficiency: 'Professional' },
+  ],
 
   certifications: [
-    'AWS Certified Developer – Associate (2023)',
-    'Google Cloud Professional Cloud Developer (2022)',
+    {
+      name: 'AWS Certified Developer - Associate',
+      issuingBody: 'Amazon Web Services',
+      certificateId: 'AWS-DEV-2023',
+      issuanceDate: '03/2023',
+      expiryDate: '03/2026',
+    },
+    {
+      name: 'Google Cloud Professional Cloud Developer',
+      issuingBody: 'Google Cloud',
+      certificateId: 'GCP-CD-2022',
+      issuanceDate: '08/2022',
+      expiryDate: '08/2024',
+    },
   ],
 
   awards: [
-    'Acme Corp Hackathon — 1st Place (2023)',
-    "Dean's List, UT Austin (2016, 2017)",
+    {
+      awardName: 'Acme Corp Hackathon - 1st Place',
+      issuingBody: 'Acme Corp',
+      details: 'Won internal hackathon for an application tracking prototype.',
+      date: '11/2023',
+    },
+    {
+      awardName: "Dean's List",
+      issuingBody: 'University of Texas at Austin',
+      details: 'Academic recognition for 2016 and 2017.',
+      date: '05/2017',
+    },
   ],
 
   links: [
-    { platform: 'GitHub', label: 'github.com/alexrivera', url: 'https://github.com/alexrivera' },
-    { platform: 'LinkedIn', label: 'linkedin.com/in/alexrivera', url: 'https://www.linkedin.com/in/alexrivera' },
-    { platform: 'Portfolio', label: 'alexrivera.dev', url: 'https://alexrivera.dev' },
+    { friendlyName: 'GitHub', url: 'https://github.com/alexrivera' },
+    { friendlyName: 'LinkedIn', url: 'https://www.linkedin.com/in/alexrivera' },
+    { friendlyName: 'Portfolio', url: 'https://alexrivera.dev' },
   ],
 };
 
