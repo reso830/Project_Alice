@@ -2,7 +2,7 @@
 
 **Feature Branch**: `009-profile-page-refinement`  
 **Created**: 2026-04-29  
-**Status**: Draft  
+**Status**: Approved  
 **Design Reference**: `design/profile_page.md` · `specs/008-edit-profile-full/spec.md`
 
 ---
@@ -295,7 +295,7 @@ A user viewing the Profile page on an iPad Mini (approximately 768 px wide) sees
 **Non-Regression**
 
 - **FR-063**: All changes MUST NOT cause regressions in the Tracker or Calendar.
-- **FR-064**: All existing automated tests MUST continue to pass after this feature is implemented.
+- **FR-064**: All existing automated tests MUST continue to pass (no regressions). New tests may be added to existing test files; existing assertions must not fail.
 
 ### Key Entities
 

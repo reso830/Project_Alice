@@ -65,19 +65,19 @@
 
 - [ ] T007 [US3] Implement `createStructuredEntryRow(display, { onEdit, onRemove } = {})` in `src/pages/ProfileEdit.js` — creates `entry-row entry-row--structured` containing `entry-row__content` (holds `profile-entry__title` div if `display.title` provided; `profile-entry__meta` div if `display.meta` provided and non-empty; `profile-entry__desc` `<p>` if `display.desc` provided and non-empty) and `entry-row__actions` (holds Edit button `'✎'` with class `entry-row__edit` and `aria-label="Edit entry"` when `onEdit` provided; always holds Remove button `'×'` with class `entry-row__remove` and `aria-label="Remove entry"`).
 
-- [ ] T008 [P] [US3] Update `renderExperienceCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow([...], onRemove)` calls with `createStructuredEntryRow({ title: entry.role, meta: [entry.company, [entry.dateStarted, entry.currentWork ? 'Present' : entry.dateEnded].filter(Boolean).join(' – ')].filter(Boolean).join(' | '), desc: entry.responsibilities }, { onRemove: () => { const idx = _formState.experience.indexOf(entry); _formState.experience.splice(idx, 1); commitListChange(); render(); } })`. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T024).
+- [ ] T008 [P] [US3] Update `renderExperienceCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow([...], onRemove)` calls with `createStructuredEntryRow({ title: entry.role, meta: [entry.company, [entry.dateStarted, entry.currentWork ? 'Present' : entry.dateEnded].filter(Boolean).join(' – ')].filter(Boolean).join(' | '), desc: entry.responsibilities }, { onEdit: () => {}, onRemove: () => { const idx = _formState.experience.indexOf(entry); _formState.experience.splice(idx, 1); commitListChange(); render(); } })`. The `onEdit: () => {}` noop causes the Edit icon to render visibly but do nothing — the real callback is wired in Phase 7 (T024).
 
-- [ ] T009 [P] [US3] Update `renderEducationCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.degreeMajor, meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | ') }, { onRemove: () => { ... } })`. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T025).
+- [ ] T009 [P] [US3] Update `renderEducationCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.degreeMajor, meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | ') }, { onEdit: () => {}, onRemove: () => { ... } })`. Edit icon renders visibly but inert — wired in Phase 7 (T025).
 
-- [ ] T010 [P] [US3] Update `renderCertificationsCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.name, meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | ') }, { onRemove: () => { ... } })`. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T026).
+- [ ] T010 [P] [US3] Update `renderCertificationsCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.name, meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | ') }, { onEdit: () => {}, onRemove: () => { ... } })`. Edit icon renders visibly but inert — wired in Phase 7 (T026).
 
-- [ ] T011 [P] [US3] Update `renderAwardsCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.awardName, meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '), desc: entry.details || '' }, { onRemove: () => { ... } })`. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T027).
+- [ ] T011 [P] [US3] Update `renderAwardsCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.awardName, meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '), desc: entry.details || '' }, { onEdit: () => {}, onRemove: () => { ... } })`. Edit icon renders visibly but inert — wired in Phase 7 (T027).
 
-- [ ] T012 [P] [US3] Update `renderLanguagesCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.language, meta: entry.proficiency }, { onRemove: () => { ... } })`. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T028).
+- [ ] T012 [P] [US3] Update `renderLanguagesCard()` in `src/pages/ProfileEdit.js` — replace `createEntryRow` calls with `createStructuredEntryRow({ title: entry.language, meta: entry.proficiency }, { onEdit: () => {}, onRemove: () => { ... } })`. Edit icon renders visibly but inert — wired in Phase 7 (T028).
 
-- [ ] T013 [P] [US3] Update `renderLinksCard()` in `src/pages/ProfileEdit.js` — replace the custom anchor-row DOM code with `createStructuredEntryRow({ title: getLinkLabel(entry.url, entry.friendlyName), meta: entry.url }, { onRemove: () => { ... } })`. Note: the anchor tag in the view-only Profile page is preserved; the edit page entry row shows the friendly name / hostname as plain title text with the URL as meta. Do NOT pass `onEdit` — the Edit icon is not rendered until Phase 7 (T029).
+- [ ] T013 [P] [US3] Update `renderLinksCard()` in `src/pages/ProfileEdit.js` — replace the custom anchor-row DOM code with `createStructuredEntryRow({ title: getLinkLabel(entry.url, entry.friendlyName), meta: entry.url }, { onEdit: () => {}, onRemove: () => { ... } })`. Note: the anchor tag in the view-only Profile page is preserved; the edit page entry row shows the friendly name / hostname as plain title text with the URL as meta. Edit icon renders visibly but inert — wired in Phase 7 (T029).
 
-**Checkpoint**: Edit page sections are in the correct order. All structured entries show a title/meta/desc hierarchy with Edit and Remove icons. Every section header has a right-aligned "Add" button with primary styling. US2, US3, and US4 are independently verifiable at this point.
+**Checkpoint**: Edit page sections are in the correct order. All structured entries show a title/meta/desc hierarchy with Edit and Remove icons (Edit icon is visible but inert until Phase 7). Every section header has a right-aligned "Add" button with primary styling. US2, US3, and US4 are independently verifiable at this point.
 
 ---
 
@@ -98,6 +98,8 @@
   - `close()`: removes backdrop and overlay from DOM, restores `document.body.style.overflow = ''`, sets `_openOverlay = null`
   - ESC keydown on `document` → `handleCancel` (listener cleaned up in `close()`)
   - Backdrop click → `handleCancel`
+  - Focus trap: add `keydown` listener on the overlay element; on Tab (and Shift+Tab), query all focusable elements inside the overlay (`button, input, select, textarea, [tabindex]:not([tabindex="-1"])`), clamp focus to first/last element in the list; listener cleaned up in `close()`
+  - On open, move focus to the first focusable element inside the overlay
   - Stores `_openOverlay = { close }` on open; returns `{ close }`
   - Add `let _openOverlay = null` to module-level state in `ProfileEdit.js`
 
@@ -220,7 +222,7 @@
 - [ ] T033 [P] [US3+US4] Add structural UI tests to `tests/pages/ProfileEdit.test.js`:
   - `"Experience entries use structured hierarchy with title and meta"` — mount with a profile containing one experience entry; assert the Experience card contains `.profile-entry__title` with the role text and `.profile-entry__meta` with company info
   - `"Add button appears in section header with primary styling"` — assert each section card header (Experience, Education, Skills, Certifications, Awards, Languages, Links) contains a button with textContent `'Add'` and class `profile-btn--primary`
-  - `"each structured entry has a Remove icon button"` — mount with a profile containing one experience entry; assert the entry row has a button with `aria-label="Remove entry"`. (Note: the Edit icon is NOT rendered yet in Phase 3 — `onEdit` is not passed to `createStructuredEntryRow` until Phase 7. The Edit icon accessibility test is in T037.)
+  - `"each structured entry has accessible Edit and Remove icon buttons"` — mount with a profile containing one experience entry; assert the entry row has a button with `aria-label="Edit entry"` and a button with `aria-label="Remove entry"`. (The Edit icon renders in Phase 3 via the `onEdit: () => {}` noop; it is functional in Phase 7. This test only asserts presence, not behavior.)
 
 - [ ] T034 [P] [US5] Add overlay integration tests to `tests/pages/ProfileEdit.test.js`:
   - `"opens modal on desktop when Add is clicked in Experience section"` — set `window.innerWidth = 1024`, click the header Add button in the Experience card, assert `.entry-modal` exists in `document.body` and `.entry-overlay__title` contains 'Add Experience'
@@ -230,6 +232,7 @@
   - `"invalid MM/YYYY date in overlay shows inline error"` — open Experience Add overlay, fill Role and Company, enter `'baddate'` in the Date Started field, click Save; assert a `.field-error` element is visible inside the overlay with a date validation message and the overlay remains open
   - `"committed entry appears in Experience section after overlay Save"` — fill required fields, Save, assert a `.profile-entry__title` with the role appears in the Experience card
   - `"clicking Add while an overlay is open has no effect"` — open an Experience overlay, click the Education Add button, assert only one overlay exists in the DOM
+  - `"Tab key stays trapped inside the open overlay"` — open an Experience overlay; collect all focusable elements inside it; dispatch a Tab keydown while the last focusable element is focused; assert focus wraps back to the first focusable element inside the overlay
 
 - [ ] T035 [P] [US6] Add Skills staging tests to `tests/pages/ProfileEdit.test.js`:
   - `"Skills Add button opens overlay with staging input and empty pill area"` — click Skills Add, assert overlay contains a text input and an empty `.skills-pills-wrap`
@@ -249,8 +252,7 @@
   - `"ESC triggers Cancel behavior"` — open dirty overlay, dispatch Escape keydown on document, assert discard dialog appears
 
 - [ ] T037 [P] [US8] Add Edit icon flow tests to `tests/pages/ProfileEdit.test.js`:
-  - **Testing strategy note**: Edit overlay testing is deferred to this task because `onEdit` callbacks are not wired until T024–T029 (Phase 7). Phase 3 tests (T033) only assert Remove icons and structured row DOM structure. T037 runs after Phase 7 completes, when real `onEdit` callbacks exist and Edit icons are rendered.
-  - `"each structured entry has accessible Edit and Remove icon buttons after Phase 7 wiring"` — mount with a profile containing one experience entry; assert the entry row has a button with `aria-label="Edit entry"` and a button with `aria-label="Remove entry"`
+  - **Testing strategy note**: Edit icon *presence* is asserted in T033 (Phase 3). Edit overlay *behavior* is tested here because real `onEdit` callbacks are not wired until T024–T029 (Phase 7). T037 tests what happens when the Edit icon is clicked — pre-fill, in-place update, and discard flow — all of which require Phase 7 wiring to be in place.
   - `"Edit icon opens overlay pre-filled with entry data"` — mount with a profile containing one experience entry (role 'Senior Engineer'); click the Edit icon on that entry, assert overlay opens with the Role input value equal to 'Senior Engineer'
   - `"Save from edit overlay updates entry in-place"` — in the pre-filled edit overlay, change the role to 'Staff Engineer', Save; assert the Experience section shows 'Staff Engineer' and the entry count is unchanged (no duplicate)
   - `"Edit then Cancel with changed value shows discard dialog"` — open edit overlay, change role, click Cancel, assert discard dialog
