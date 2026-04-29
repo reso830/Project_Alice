@@ -110,6 +110,21 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
+function openExperienceOverlay(container) {
+  window.innerWidth = 1024;
+  getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+  return document.querySelector('.entry-modal');
+}
+
+function fillValidExperience(overlay, role = 'Platform Engineer') {
+  inputValue(getFieldInput(overlay, 'Role'), role);
+  inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+  inputValue(getFieldInput(overlay, 'Responsibilities'), 'Built dashboards.');
+  inputValue(getFieldInput(overlay, 'Date Started'), '01/2024');
+  inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+}
+
 describe('ProfileEdit page', () => {
   it('creates a desktop entry modal, saves form data, and restores scroll', () => {
     window.innerWidth = 1024;
@@ -189,6 +204,231 @@ describe('ProfileEdit page', () => {
 
     expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
     expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('opens modal on desktop when Add is clicked in Experience section', async () => {
+    const container = createAppShell();
+
+    window.innerWidth = 1024;
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+    expect(document.body.querySelector('.entry-modal')).toBeTruthy();
+    expect(document.body.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+  });
+
+  it('opens bottom sheet on mobile when Add is clicked in Experience section', async () => {
+    const container = createAppShell();
+
+    window.innerWidth = 375;
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+    expect(document.body.querySelector('.entry-sheet')).toBeTruthy();
+    expect(document.body.querySelector('.entry-modal')).toBeNull();
+  });
+
+  it('closes overlay and restores body scroll after successful Save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    fillValidExperience(overlay);
+    getButton(overlay, 'Save').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('validates required fields inside overlay and keeps overlay open on failure', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    getButton(overlay, 'Save').click();
+
+    expect(overlay.querySelector('.field-error')?.textContent).toBe('This field is required.');
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('invalid MM/YYYY date in overlay shows inline error', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Build');
+    inputValue(getFieldInput(overlay, 'Date Started'), 'baddate');
+    inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('committed entry appears in Experience section after overlay Save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    fillValidExperience(overlay, 'Staff Engineer');
+    getButton(overlay, 'Save').click();
+
+    expect(getCard(container, 'PROFESSIONAL EXPERIENCE').querySelector('.profile-entry__title')?.textContent)
+      .toBe('Staff Engineer');
+  });
+
+  it('clicking Add while an overlay is open has no effect', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    openExperienceOverlay(container);
+    getHeaderAddButton(getCard(container, 'EDUCATION')).click();
+
+    expect(document.querySelectorAll('.entry-modal, .entry-sheet')).toHaveLength(1);
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+  });
+
+  it('Tab key stays trapped inside the open overlay', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+    const focusable = [...overlay.querySelectorAll('button, input, select, textarea')]
+      .filter((el) => !el.disabled);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    last.focus();
+    overlay.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('Cancel on blank add overlay closes immediately', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getButton(openExperienceOverlay(container), 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('Cancel on dirty add overlay shows discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('dirty-state revert closes overlay immediately on Cancel', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+    const role = getFieldInput(overlay, 'Role');
+
+    inputValue(role, 'Engineer');
+    inputValue(role, '');
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('Discard closes overlay and shows toast', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Discard').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith('Changes discarded.', 'success');
+  });
+
+  it('Keep Editing closes dialog and preserves overlay and form state', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Keep Editing').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+    expect(getFieldInput(overlay, 'Role').value).toBe('Engineer');
+  });
+
+  it('ESC triggers Cancel behavior', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
   });
 
   it('renders a blank form when no profile exists', async () => {

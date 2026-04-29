@@ -214,7 +214,7 @@
 
 **Purpose**: Automated test coverage for all user stories. Lint and test suite must be clean before this feature is considered complete.
 
-- [ ] T031 [P] [US1] Tests are already added in T004 (Phase 2). Verify `tests/pages/Profile.test.js` passes with all four new assertions covering certifications structured display and awards structured display. Also confirm the existing `"renders a saved profile and wires edit navigation"` test still passes — it asserts Experience, Education, and Skills content via `container.textContent` and serves as the non-regression guard for those unchanged sections after the certifications/awards refactor.
+- [X] T031 [P] [US1] Tests are already added in T004 (Phase 2). Verify `tests/pages/Profile.test.js` passes with all four new assertions covering certifications structured display and awards structured display. Also confirm the existing `"renders a saved profile and wires edit navigation"` test still passes — it asserts Experience, Education, and Skills content via `container.textContent` and serves as the non-regression guard for those unchanged sections after the certifications/awards refactor.
 
 - [X] T032 [P] [US2] Add section order test to `tests/pages/ProfileEdit.test.js`:
   - `"Edit Profile section cards appear in View Profile order"` — mount with a full profile, collect the `textContent` of all `.section-label` elements in DOM order; assert the sequence matches the expected order (Basic Info → Summary → Professional Experience → Education → Skills → Certifications → Awards → Languages → Links)
@@ -224,7 +224,7 @@
   - `"Add button appears in section header with primary styling"` — assert each section card header (Experience, Education, Skills, Certifications, Awards, Languages, Links) contains a button with textContent `'Add'` and class `profile-btn--primary`
   - `"each structured entry has accessible Edit and Remove icon buttons"` — mount with a profile containing one experience entry; assert the entry row has a button with `aria-label="Edit entry"` and a button with `aria-label="Remove entry"`. (The Edit icon renders in Phase 3 via the `onEdit: () => {}` noop; it is functional in Phase 7. This test only asserts presence, not behavior.)
 
-- [ ] T034 [P] [US5] Add overlay integration tests to `tests/pages/ProfileEdit.test.js`:
+- [X] T034 [P] [US5] Add overlay integration tests to `tests/pages/ProfileEdit.test.js`:
   - `"opens modal on desktop when Add is clicked in Experience section"` — set `window.innerWidth = 1024`, click the header Add button in the Experience card, assert `.entry-modal` exists in `document.body` and `.entry-overlay__title` contains 'Add Experience'
   - `"opens bottom sheet on mobile when Add is clicked in Experience section"` — set `window.innerWidth = 375`, click Add, assert `.entry-sheet` exists and `.entry-modal` does not
   - `"closes overlay and restores body scroll after successful Save"` — fill required Experience fields, click Save, assert `.entry-modal` is gone and `document.body.style.overflow === ''`
@@ -234,7 +234,7 @@
   - `"clicking Add while an overlay is open has no effect"` — open an Experience overlay, click the Education Add button, assert only one overlay exists in the DOM
   - `"Tab key stays trapped inside the open overlay"` — open an Experience overlay; collect all focusable elements inside it; dispatch a Tab keydown while the last focusable element is focused; assert focus wraps back to the first focusable element inside the overlay
 
-- [ ] T035 [P] [US6] Add Skills staging tests to `tests/pages/ProfileEdit.test.js`:
+- [X] T035 [P] [US6] Add Skills staging tests to `tests/pages/ProfileEdit.test.js`:
   - `"Skills Add button opens overlay with staging input and empty pill area"` — click Skills Add, assert overlay contains a text input and an empty `.skills-pills-wrap`
   - `"staging a skill adds it as a pill inside the overlay only"` — type 'Python', click inline Add, assert `.skill-pill` with 'Python' exists inside the overlay; assert 'Python' is NOT yet in the Skills section in the page body
   - `"pressing Enter in skill input stages the skill"` — type 'Go', dispatch Enter keydown on the input, assert 'Go' staged as pill
@@ -243,7 +243,7 @@
   - `"Cancel with staged skill triggers discard dialog"` — stage 'Python', click overlay Cancel, assert `.overlay-discard-dialog` appears
   - `"Cancel with no staged skills closes overlay immediately"` — open Skills overlay, click Cancel without staging, assert overlay is gone and no discard dialog appears
 
-- [ ] T036 [P] [US7] Add overlay discard tests to `tests/pages/ProfileEdit.test.js`:
+- [X] T036 [P] [US7] Add overlay discard tests to `tests/pages/ProfileEdit.test.js`:
   - `"Cancel on blank add overlay closes immediately"` — open Experience overlay, click Cancel with all fields empty, assert overlay is gone and no discard dialog
   - `"Cancel on dirty add overlay shows discard dialog"` — open Experience overlay, fill Role field, click Cancel, assert `.overlay-discard-dialog` is visible
   - `"dirty-state revert closes overlay immediately on Cancel"` — open Experience overlay, fill the Role field, then clear it back to empty; click Cancel; assert the overlay closes immediately with no discard dialog (form has returned to its initial empty state, so `isDirty()` returns false)
@@ -251,16 +251,16 @@
   - `"Keep Editing closes dialog and preserves overlay and form state"` — in discard dialog click 'Keep Editing', assert dialog is gone, overlay is still open, Role field still has its value
   - `"ESC triggers Cancel behavior"` — open dirty overlay, dispatch Escape keydown on document, assert discard dialog appears
 
-- [ ] T037 [P] [US8] Add Edit icon flow tests to `tests/pages/ProfileEdit.test.js`:
+- [X] T037 [P] [US8] Add Edit icon flow tests to `tests/pages/ProfileEdit.test.js`:
   - **Testing strategy note**: Edit icon *presence* is asserted in T033 (Phase 3). Edit overlay *behavior* is tested here because real `onEdit` callbacks are not wired until T024–T029 (Phase 7). T037 tests what happens when the Edit icon is clicked — pre-fill, in-place update, and discard flow — all of which require Phase 7 wiring to be in place.
   - `"Edit icon opens overlay pre-filled with entry data"` — mount with a profile containing one experience entry (role 'Senior Engineer'); click the Edit icon on that entry, assert overlay opens with the Role input value equal to 'Senior Engineer'
   - `"Save from edit overlay updates entry in-place"` — in the pre-filled edit overlay, change the role to 'Staff Engineer', Save; assert the Experience section shows 'Staff Engineer' and the entry count is unchanged (no duplicate)
   - `"Edit then Cancel with changed value shows discard dialog"` — open edit overlay, change role, click Cancel, assert discard dialog
   - `"Remove icon still removes the entry"` — click Remove on an experience entry, assert the section no longer contains that entry
 
-- [ ] T038 Run `npm run lint` — must pass with no errors or warnings across `src/`, `tests/`, `server/`, and `shared/`.
+- [X] T038 Run `npm run lint` — must pass with no errors or warnings across `src/`, `tests/`, `server/`, and `shared/`.
 
-- [ ] T039 Run `npm run test:run` — all 205+ tests must pass. Confirm no regressions in Tracker, Calendar, or any existing Profile / ProfileEdit tests.
+- [X] T039 Run `npm run test:run` — all 205+ tests must pass. Confirm no regressions in Tracker, Calendar, or any existing Profile / ProfileEdit tests.
 
 **Checkpoint**: All new tests pass, lint is clean, and no regressions exist. Feature is ready for PR.
 
