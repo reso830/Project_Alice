@@ -13,6 +13,7 @@ let _initialState = null;
 let _saving = false;
 let _basicInfoFields = {};
 let _discardKeyHandler = null;
+let _discardAction = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -28,12 +29,15 @@ function createElement(tag, className, text) {
   return el;
 }
 
-function createButton(label, className, onClick) {
+function createButton(label, className, onClick, ariaLabel = '') {
   const button = document.createElement('button');
 
   button.type = 'button';
   button.className = className;
   button.textContent = label;
+  if (ariaLabel) {
+    button.setAttribute('aria-label', ariaLabel);
+  }
   button.addEventListener('click', onClick);
 
   return button;
@@ -58,12 +62,15 @@ function updateControlsState() {
   }
 }
 
-function createField(label, value = '', multiline = false) {
+function createField(label, value = '', multiline = false, { required = false } = {}) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
   const input = document.createElement(multiline ? 'textarea' : 'input');
   const error = createElement('span', 'field-error');
 
+  if (required) {
+    wrapper.classList.add('edit-field--required');
+  }
   input.className = 'edit-field__control';
   input.value = value ?? '';
   if (multiline) {
@@ -77,13 +84,16 @@ function createField(label, value = '', multiline = false) {
   return { wrapper, input, error };
 }
 
-function createSelectField(label, options, value = '') {
+function createSelectField(label, options, value = '', { required = false } = {}) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
   const select = document.createElement('select');
   const error = createElement('span', 'field-error');
   const placeholder = document.createElement('option');
 
+  if (required) {
+    wrapper.classList.add('edit-field--required');
+  }
   select.className = 'edit-field__control';
   placeholder.value = '';
   placeholder.textContent = 'Select';
@@ -151,7 +161,7 @@ function canOpenInlineForm() {
 function createEntryRow(parts, onRemove) {
   const row = createElement('div', 'entry-row');
   const text = createElement('span', 'entry-row__text', parts.filter(Boolean).join(' | '));
-  const remove = createButton('Remove', 'entry-row__remove', onRemove);
+  const remove = createButton('x', 'entry-row__remove', onRemove, 'Remove entry');
 
   row.append(text, remove);
 
@@ -213,19 +223,19 @@ function hasOpenInlineForm() {
 }
 
 function renderOpenFormError() {
-  const topControls = document.querySelector('.page-controls');
   const err = createElement('p', 'open-form-error', 'Please finish or cancel the open form before saving.');
 
-  topControls?.after(err);
+  _subheader?.after(err);
 }
 
 function renderSubheader() {
   const navbar = document.querySelector('.navbar');
   const bar = createElement('div', 'profile-edit-subheader');
-  const back = createButton('\u2190 Profile', 'profile-edit-subheader__back', handleCancel);
   const title = createElement('span', 'profile-edit-subheader__title', 'Edit Profile');
+  const controls = renderPageControls();
 
-  bar.append(back, title);
+  controls.classList.add('page-controls--subheader');
+  bar.append(title, controls);
 
   if (navbar) {
     navbar.insertAdjacentElement('afterend', bar);
@@ -250,8 +260,8 @@ function renderPageControls() {
 function renderBasicInfoCard(page) {
   const { card, body } = createEditCard('BASIC INFO');
   const grid = createElement('div', 'edit-fields-grid');
-  const firstName = createField('First Name', _formState.firstName);
-  const lastName = createField('Last Name', _formState.lastName);
+  const firstName = createField('First Name', _formState.firstName, false, { required: true });
+  const lastName = createField('Last Name', _formState.lastName, false, { required: true });
   const city = createField('City/Location', _formState.city);
   const email = createField('Email', _formState.email);
   const phone = createField('Phone', _formState.phone);
@@ -300,6 +310,12 @@ function renderSkillsCard(page) {
   input.type = 'text';
   input.className = 'edit-field__control';
   input.setAttribute('aria-label', 'Skill');
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      add.click();
+    }
+  });
   inputRow.append(input, add);
 
   function render() {
@@ -349,9 +365,10 @@ function renderLanguagesCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const language = createField('Language');
-    const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS);
+    const form = createElement('div', 'inline-entry-form inline-entry-form--language');
+    const language = createField('Language', '', false, { required: true });
+    const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS, '', { required: true });
+    const row = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
     const actions = createElement('div', 'inline-entry-form__actions');
     const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
       if (!validateFields([
@@ -376,7 +393,8 @@ function renderLanguagesCard(page) {
     });
 
     actions.append(cancel, add);
-    form.append(language.wrapper, proficiency.wrapper, actions);
+    row.append(language.wrapper, proficiency.wrapper);
+    form.append(row, actions);
     body.append(form);
   }
 
@@ -407,12 +425,13 @@ function renderCertificationsCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const name = createField('Certification Name');
-    const issuingBody = createField('Issuing Body');
+    const form = createElement('div', 'inline-entry-form inline-entry-form--certification');
+    const name = createField('Certification Name', '', false, { required: true });
+    const issuingBody = createField('Issuing Body', '', false, { required: true });
     const certificateId = createField('Certificate ID');
-    const issuanceDate = createField('Issuance Date');
+    const issuanceDate = createField('Issuance Date', '', false, { required: true });
     const expiryDate = createField('Expiry Date');
+    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
     const actions = createElement('div', 'inline-entry-form__actions');
     const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
       if (!validateFields([
@@ -442,7 +461,8 @@ function renderCertificationsCard(page) {
     });
 
     actions.append(cancel, add);
-    form.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, issuanceDate.wrapper, expiryDate.wrapper, actions);
+    dateRow.append(issuanceDate.wrapper, expiryDate.wrapper);
+    form.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, dateRow, actions);
     body.append(form);
   }
 
@@ -475,10 +495,10 @@ function renderEducationCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const degreeMajor = createField('Degree & Major');
-    const university = createField('University');
-    const yearCompleted = createField('Year Completed');
+    const form = createElement('div', 'inline-entry-form inline-entry-form--education');
+    const degreeMajor = createField('Degree & Major', '', false, { required: true });
+    const university = createField('University', '', false, { required: true });
+    const yearCompleted = createField('Year Completed', '', false, { required: true });
     const actions = createElement('div', 'inline-entry-form__actions');
     const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
       if (!validateFields([
@@ -540,19 +560,21 @@ function renderExperienceCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const role = createField('Role');
-    const company = createField('Company');
-    const responsibilities = createField('Responsibilities', '', true);
-    const dateStarted = createField('Date Started');
-    const dateEnded = createField('Date Ended');
+    const form = createElement('div', 'inline-entry-form inline-entry-form--experience');
+    const role = createField('Role', '', false, { required: true });
+    const company = createField('Company', '', false, { required: true });
+    const responsibilities = createField('Responsibilities', '', true, { required: true });
+    const dateStarted = createField('Date Started', '', false, { required: true });
+    const dateEnded = createField('Date Ended', '', false, { required: true });
     const currentWorkWrapper = createElement('label', 'edit-field');
     const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
     const currentWork = document.createElement('input');
+    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--dates');
     const actions = createElement('div', 'inline-entry-form__actions');
 
     currentWork.type = 'checkbox';
     currentWork.className = 'edit-field__checkbox';
+    currentWorkWrapper.classList.add('edit-field--checkbox');
     currentWorkWrapper.append(currentWorkLabel, currentWork);
 
     function syncDateEnded() {
@@ -599,15 +621,8 @@ function renderExperienceCard(page) {
     });
 
     actions.append(cancel, add);
-    form.append(
-      role.wrapper,
-      company.wrapper,
-      responsibilities.wrapper,
-      dateStarted.wrapper,
-      currentWorkWrapper,
-      dateEnded.wrapper,
-      actions,
-    );
+    dateRow.append(dateStarted.wrapper, dateEnded.wrapper, currentWorkWrapper);
+    form.append(role.wrapper, company.wrapper, responsibilities.wrapper, dateRow, actions);
     body.append(form);
   }
 
@@ -625,11 +640,11 @@ function renderLinksCard(page) {
     _formState.links.forEach((entry, index) => {
       const row = createElement('div', 'entry-row');
       const anchor = document.createElement('a');
-      const remove = createButton('Remove', 'entry-row__remove', () => {
+      const remove = createButton('x', 'entry-row__remove', () => {
         _formState.links.splice(index, 1);
         commitListChange();
         render();
-      });
+      }, 'Remove entry');
 
       anchor.href = getSafeExternalHref(entry.url);
       anchor.target = '_blank';
@@ -647,8 +662,8 @@ function renderLinksCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const url = createField('Link URL');
+    const form = createElement('div', 'inline-entry-form inline-entry-form--link');
+    const url = createField('Link URL', '', false, { required: true });
     const friendlyName = createField('Friendly Name');
     const actions = createElement('div', 'inline-entry-form__actions');
     const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
@@ -704,9 +719,9 @@ function renderAwardsCard(page) {
       return;
     }
 
-    const form = createElement('div', 'inline-entry-form');
-    const awardName = createField('Award Name');
-    const issuingBody = createField('Issuing Body');
+    const form = createElement('div', 'inline-entry-form inline-entry-form--award');
+    const awardName = createField('Award Name', '', false, { required: true });
+    const issuingBody = createField('Issuing Body', '', false, { required: true });
     const details = createField('Details', '', true);
     const date = createField('Date');
     const actions = createElement('div', 'inline-entry-form__actions');
@@ -747,7 +762,6 @@ function renderAwardsCard(page) {
 function renderEditPage(container) {
   const page = createElement('div', 'profile-edit-page');
 
-  page.append(renderPageControls());
   renderBasicInfoCard(page);
   renderSummaryCard(page);
   renderSkillsCard(page);
@@ -861,13 +875,15 @@ function closeDiscardModal(backdrop) {
   }
 
   document.body.style.overflow = '';
+  _discardAction = null;
   backdrop?.remove();
 }
 
-function showDiscardModal() {
+function showDiscardModal(onDiscard) {
   if (document.querySelector('.confirm-backdrop')) {
     return;
   }
+  _discardAction = typeof onDiscard === 'function' ? onDiscard : null;
 
   const backdrop = createElement('div', 'confirm-backdrop');
   const modal = createElement('div', 'confirm-modal');
@@ -876,8 +892,15 @@ function showDiscardModal() {
   const actions = createElement('div', 'confirm-modal__actions');
   const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => closeDiscardModal(backdrop));
   const discard = createButton('Discard', 'profile-btn profile-btn--primary', () => {
+    const action = _discardAction;
+
+    _initialState = deepClone(_formState);
     closeDiscardModal(backdrop);
-    _navigate('profile');
+    if (action) {
+      action();
+    } else {
+      _navigate('profile');
+    }
     Toast.show('Edits discarded.', 'success');
   });
 
@@ -898,6 +921,15 @@ function showDiscardModal() {
   document.addEventListener('keydown', _discardKeyHandler);
   document.body.style.overflow = 'hidden';
   document.body.append(backdrop);
+}
+
+export function confirmNavigation(page) {
+  if (!isDirty()) {
+    return true;
+  }
+
+  showDiscardModal(() => _navigate(page));
+  return false;
 }
 
 export async function mount(container, { navigate } = {}) {
@@ -935,6 +967,7 @@ export function unmount() {
   _initialState = null;
   _saving = false;
   _basicInfoFields = {};
+  _discardAction = null;
 }
 
-export const ProfileEdit = { mount, unmount };
+export const ProfileEdit = { mount, unmount, confirmNavigation };

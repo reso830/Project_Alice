@@ -139,6 +139,10 @@ function navigate(page) {
     return;
   }
 
+  if (_currentPage === 'profile-edit' && !ProfileEdit.confirmNavigation(page)) {
+    return;
+  }
+
   if (_currentUnmount) {
     _currentUnmount();
   }

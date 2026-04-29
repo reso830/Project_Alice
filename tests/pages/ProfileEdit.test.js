@@ -442,11 +442,11 @@ describe('ProfileEdit page', () => {
 
     expect(api.saveProfile).not.toHaveBeenCalled();
     expect(document.querySelector('.open-form-error')?.previousElementSibling)
-      .toBe(getTopControls(container));
+      .toBe(document.querySelector('.profile-edit-subheader'));
     expect(Toast.show).not.toHaveBeenCalled();
   });
 
-  it('adds, deduplicates, and removes skills while tracking dirty reversion', async () => {
+  it('adds skills by button or Enter, deduplicates, and removes while tracking dirty reversion', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -461,6 +461,13 @@ describe('ProfileEdit page', () => {
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent)).toEqual(['TypeScriptx']);
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
 
+    inputValue(skills.querySelector('.skills-input-row input'), 'React');
+    skills.querySelector('.skills-input-row input')
+      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScriptx', 'Reactx']);
+
+    skills.querySelectorAll('.skill-pill__remove')[1].click();
     inputValue(skills.querySelector('.skills-input-row input'), 'TypeScript');
     getButton(skills, 'Add').click();
     inputValue(skills.querySelector('.skills-input-row input'), 'typescript');
@@ -618,7 +625,7 @@ describe('ProfileEdit page', () => {
     expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
   });
 
-  it('routes the subheader back action through cancel behavior', async () => {
+  it('routes the subheader cancel action through discard behavior', async () => {
     const container = createAppShell();
     const navigate = vi.fn();
 
@@ -626,15 +633,51 @@ describe('ProfileEdit page', () => {
 
     await ProfileEdit.mount(container, { navigate });
 
-    document.querySelector('.profile-edit-subheader__back').click();
+    getCancelButton(document.querySelector('.profile-edit-subheader')).click();
     expect(navigate).toHaveBeenCalledWith('profile');
 
     navigate.mockClear();
     inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
-    document.querySelector('.profile-edit-subheader__back').click();
+    getCancelButton(document.querySelector('.profile-edit-subheader')).click();
 
     expect(navigate).not.toHaveBeenCalled();
     expect(document.querySelector('.confirm-backdrop')).toBeTruthy();
+  });
+
+  it('prompts before external navigation when dirty and follows the selected target on discard', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
+
+    expect(ProfileEdit.confirmNavigation('calendar')).toBe(false);
+    expect(document.querySelector('.confirm-backdrop')).toBeTruthy();
+    expect(navigate).not.toHaveBeenCalled();
+
+    [...document.querySelectorAll('.confirm-modal button')]
+      .find((button) => button.textContent === 'Discard')
+      .click();
+
+    expect(navigate).toHaveBeenCalledWith('calendar');
+    expect(Toast.show).toHaveBeenCalledWith('Edits discarded.', 'success');
+  });
+
+  it('marks required fields visually', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    expect(getField(getCard(container, 'BASIC INFO'), 'First Name').classList)
+      .toContain('edit-field--required');
+    getButton(getCard(container, 'CERTIFICATIONS'), 'Add Certification').click();
+    expect(getField(getCard(container, 'CERTIFICATIONS'), 'Issuing Body').classList)
+      .toContain('edit-field--required');
   });
 
   it('removes the subheader on unmount', async () => {
