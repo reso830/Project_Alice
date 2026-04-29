@@ -174,7 +174,7 @@ function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
     actions.append(createButton('✎', 'entry-row__edit', onEdit, 'Edit entry'));
   }
 
-  actions.append(createButton('x', 'entry-row__remove', onRemove, 'Remove entry'));
+  actions.append(createButton('×', 'entry-row__remove', onRemove, 'Remove entry'));
   row.append(content, actions);
 
   return row;
