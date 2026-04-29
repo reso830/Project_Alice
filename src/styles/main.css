@@ -418,16 +418,16 @@ textarea.edit-field__control {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border: 1px solid var(--accent, var(--color-accent));
+  border: 1px solid var(--color-accent);
   border-radius: 4px;
   background: transparent;
-  color: var(--accent, var(--color-accent));
+  color: var(--color-accent);
   font-size: 13px;
   cursor: pointer;
 }
 
 .entry-row__edit:hover {
-  background: var(--accent, var(--color-accent));
+  background: var(--color-accent);
   color: #fff;
 }
 

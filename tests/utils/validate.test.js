@@ -4,6 +4,7 @@ import {
   validateMonthYear,
   validateRequired,
   validateUrl,
+  validateYear,
 } from '../../src/utils/validate.js';
 
 describe('validate utilities', () => {
@@ -18,6 +19,12 @@ describe('validate utilities', () => {
     expect(validateMonthYear('13/2024')).toBe('Month must be 01-12.');
     expect(validateMonthYear('01/24')).toBe('Year must be a valid four-digit year.');
     expect(validateMonthYear('2024-01')).toBe('Date must be in MM/YYYY format.');
+  });
+
+  it('validates four-digit years', () => {
+    expect(validateYear('2024')).toBeNull();
+    expect(validateYear('1899')).toBe('Year must be a valid four-digit year.');
+    expect(validateYear('20-24')).toBe('Year must be a valid four-digit year.');
   });
 
   it('validates safe URLs', () => {

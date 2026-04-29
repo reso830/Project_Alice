@@ -335,6 +335,29 @@ describe('ProfileEdit page', () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it('Tab key stays trapped inside the discard dialog when present', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+
+    const dialog = document.querySelector('.overlay-discard-dialog');
+    const focusable = [...dialog.querySelectorAll('button')];
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    last.focus();
+    overlay.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+
+    expect(document.activeElement).toBe(first);
+  });
+
   it('Cancel on blank add overlay closes immediately', async () => {
     const container = createAppShell();
 
@@ -914,7 +937,7 @@ describe('ProfileEdit page', () => {
 
     expect(document.querySelector('.entry-modal')).toBeNull();
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['Pythonx']);
+      .toEqual(['Python×']);
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
   });
 
@@ -975,11 +998,11 @@ describe('ProfileEdit page', () => {
     const skills = getCard(container, 'SKILLS');
 
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScriptx', 'Reactx']);
+      .toEqual(['TypeScript×', 'React×']);
 
     skills.querySelectorAll('.skill-pill__remove')[1].click();
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScriptx']);
+      .toEqual(['TypeScript×']);
 
     skills.querySelector('.skill-pill__remove').click();
     expect(skills.querySelectorAll('.skill-pill')).toHaveLength(0);
@@ -1008,7 +1031,7 @@ describe('ProfileEdit page', () => {
     getButton(overlay, 'Save').click();
 
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScriptx', 'Reactx']);
+      .toEqual(['TypeScript×', 'React×']);
   });
 
   it('adds languages through the entry overlay with validation and one-at-a-time guard', async () => {
@@ -1043,6 +1066,28 @@ describe('ProfileEdit page', () => {
     getHeaderAddButton(languages).click();
     expect(document.querySelectorAll('.entry-modal, .entry-sheet')).toHaveLength(1);
     expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Certification');
+  });
+
+  it('blocks adding education when year is not four digits', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const education = getCard(container, 'EDUCATION');
+
+    getHeaderAddButton(education).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Degree & Major'), 'BS Computer Science');
+    inputValue(getFieldInput(overlay, 'University'), 'State University');
+    inputValue(getFieldInput(overlay, 'Year Completed'), '20-20');
+    getButton(overlay, 'Save').click();
+
+    expect(getField(overlay, 'Year Completed').querySelector('.field-error')?.textContent)
+      .toBe('Year must be a valid four-digit year.');
+    expect(education.querySelectorAll('.entry-row')).toHaveLength(0);
   });
 
   it('validates and sorts experience entries with current work handling', async () => {
@@ -1271,6 +1316,51 @@ describe('ProfileEdit page', () => {
     expect(error).toBeTruthy();
     expect(error.hidden).toBe(false);
     expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
+  });
+
+  it('blocks adding a certification when optional expiry date is invalid', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const certs = getCard(container, 'CERTIFICATIONS');
+
+    getHeaderAddButton(certs).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Certification Name'), 'AWS Developer');
+    inputValue(getFieldInput(overlay, 'Issuing Body'), 'Amazon');
+    inputValue(getFieldInput(overlay, 'Issuance Date'), '01/2023');
+    inputValue(getFieldInput(overlay, 'Expiry Date'), 'baddate');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
+  });
+
+  it('blocks adding an award when optional date is invalid', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const awards = getCard(container, 'AWARDS');
+
+    getHeaderAddButton(awards).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Award Name'), 'Top Performer');
+    inputValue(getFieldInput(overlay, 'Issuing Body'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Date'), 'baddate');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(awards.querySelectorAll('.entry-row')).toHaveLength(0);
   });
 
   it('routes the subheader cancel action through discard behavior', async () => {

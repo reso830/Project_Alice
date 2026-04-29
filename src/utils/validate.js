@@ -1,5 +1,6 @@
 const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
+const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 
 function asString(value) {
@@ -32,6 +33,16 @@ export function validateMonthYear(value) {
   }
 
   if (year < 1900) {
+    return 'Year must be a valid four-digit year.';
+  }
+
+  return null;
+}
+
+export function validateYear(value) {
+  const trimmed = asString(value);
+
+  if (!YEAR_PATTERN.test(trimmed) || Number(trimmed) < 1900) {
     return 'Year must be a valid four-digit year.';
   }
 
