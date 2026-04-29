@@ -15,6 +15,7 @@ let _discardKeyHandler = null;
 let _discardAction = null;
 let _openOverlay = null;
 let _renderSkillsBody = () => {};
+let _beforeUnloadHandler = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1114,7 +1115,7 @@ function showDiscardModal(onDiscard) {
   const body = createElement('p', 'confirm-modal__body', 'Your edits will be lost.');
   const actions = createElement('div', 'confirm-modal__actions');
   const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => closeDiscardModal(backdrop));
-  const discard = createButton('Discard', 'profile-btn profile-btn--primary', () => {
+  const discard = createButton('Discard', 'profile-btn profile-btn--primary profile-btn--danger', () => {
     const action = _discardAction;
 
     _initialState = deepClone(_formState);
@@ -1170,10 +1171,22 @@ export async function mount(container, { navigate } = {}) {
   _initialState = deepClone(_formState);
   renderSubheader();
   renderEditPage(container);
+
+  _beforeUnloadHandler = (event) => {
+    if (isDirty()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  };
+  window.addEventListener('beforeunload', _beforeUnloadHandler);
 }
 
 export function unmount() {
   _openOverlay?.close();
+  if (_beforeUnloadHandler) {
+    window.removeEventListener('beforeunload', _beforeUnloadHandler);
+    _beforeUnloadHandler = null;
+  }
   document.querySelector('.confirm-backdrop')?.remove();
   if (_discardKeyHandler) {
     document.removeEventListener('keydown', _discardKeyHandler);

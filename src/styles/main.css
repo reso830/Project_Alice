@@ -479,6 +479,7 @@ textarea.edit-field__control {
   background: #fff;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, .12);
   pointer-events: auto;
+  animation: sheet-up 250ms ease-out;
 }
 
 .entry-overlay__header {
@@ -674,6 +675,14 @@ textarea.edit-field__control {
 
 .profile-btn--primary:hover {
   background: var(--indigo-hover);
+}
+
+.profile-btn--danger {
+  background: #c1121f;
+}
+
+.profile-btn--danger:hover {
+  background: #a00e19;
 }
 
 .profile-btn--outline {
