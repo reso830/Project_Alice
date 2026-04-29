@@ -113,9 +113,9 @@
 
 **Independent Test**: For each section, verify: existing entries render on load; Add button opens inline form; valid entry commits and appears; invalid entry is rejected; Cancel discards form; remove button removes entry; dirty state triggers after any list change.
 
-- [X] T026 [P] [US3] Implement `renderSkillsCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.skills` as `.skills-pills-wrap` with `.skill-pill` elements each having a `.skill-pill__remove` button that splices from `_formState.skills` and re-renders; below pills, render `.skills-input-row` (text input + Add button); Add validates non-empty via `validateRequired`, normalises whitespace, checks case-insensitive duplicate (`toLowerCase()` comparison) before pushing to `_formState.skills`; clears input after add; do NOT wire the Enter key on the skills input — submission is via the Add button only; calls `updateControlsState()` on add/remove
+- [X] T026 [P] [US3] Implement `renderSkillsCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.skills` as `.skills-pills-wrap` with `.skill-pill` elements each having a `.skill-pill__remove` button that splices from `_formState.skills` and re-renders; below pills, render `.skills-input-row` (text input + Add button); Add validates non-empty via `validateRequired`, normalises whitespace, checks case-insensitive duplicate (`toLowerCase()` comparison) before pushing to `_formState.skills`; clears input after add; pressing Enter in the skills text input MUST also trigger Add (same as clicking the Add button); calls `updateControlsState()` on add/remove
 - [X] T027 [P] [US3] Implement `renderLanguagesCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.languages` as `.entry-row` rows (language name + proficiency badge + remove button); "Add Language" button calls `hasOpenInlineForm()` on click — if any form is already open, do nothing (enforce one-at-a-time); otherwise set `isAddingLanguage = true` and re-render body; inline form has Language text input (required) and Proficiency `<select>` with Beginner/Intermediate/Professional/Fluent (required); Add validates both fields, pushes `{ language, proficiency }` to `_formState.languages`, resets flag; Cancel resets flag; calls `updateControlsState()` on add/remove
-- [X] T028 [P] [US3] Implement `renderCertificationsCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.certifications` as `.entry-row` rows (name + issuanceDate + remove button); "Add Certification" button respects one-at-a-time via `hasOpenInlineForm()`; inline form: Certification Name (required), Issuing Body (optional), Certificate ID (optional), Issuance Date (required, `validateMonthYear`), Expiry Date (optional, `validateMonthYear` when non-empty); Add validates required fields and date formats, pushes `CertificationEntry` to `_formState.certifications`, resets flag; calls `updateControlsState()`
+- [X] T028 [P] [US3] Implement `renderCertificationsCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.certifications` as `.entry-row` rows (name + issuanceDate + remove button); "Add Certification" button respects one-at-a-time via `hasOpenInlineForm()`; inline form: Certification Name (required), Issuing Body (required), Certificate ID (optional), Issuance Date (required, `validateMonthYear`), Expiry Date (optional, `validateMonthYear` when non-empty); Add validates required fields and date formats, pushes `CertificationEntry` to `_formState.certifications`, resets flag; calls `updateControlsState()`
 - [X] T029 [P] [US3] Implement `renderEducationCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.education` sorted by `sortEducation()` as `.entry-row` rows (degreeMajor + university + yearCompleted + remove button); "Add Education" button respects one-at-a-time; inline form: Degree & Major (required), University (required), Year Completed (required); Add validates all required, pushes entry, re-sorts `_formState.education` via `sortEducation()`, resets flag; calls `updateControlsState()`
 - [X] T030 [US3] Implement `renderExperienceCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.experience` sorted by `sortExperience()` as cards (role + company + dateStarted–dateEnded or "Present" + remove button); "Add Experience" button respects one-at-a-time; inline form: Role (required), Company (required), Responsibilities textarea (required), Date Started (required, `validateMonthYear`), Current Work checkbox (default unchecked), Date Ended (hidden when checked, shown+required when unchecked, `validateMonthYear`); checkbox `change` event shows/hides Date Ended; Add validates all applicable fields, pushes `ExperienceEntry`, re-sorts via `sortExperience()`, resets flag; calls `updateControlsState()`
 - [X] T031 [P] [US3] Implement `renderLinksCard(page)` in `src/pages/ProfileEdit.js`: render `_formState.links` as `.entry-row` rows each containing an `<a href target="_blank" rel="noopener noreferrer">` showing `friendlyName || new URL(url).hostname` as anchor text; "Add Link" button respects one-at-a-time; inline form: Link URL (required, `validateUrl` — rejects unsafe protocols), Friendly Name (optional); Add commits `{ url, friendlyName }` entry; calls `updateControlsState()`
@@ -228,7 +228,28 @@ Then sequential:
 - Profile scoring changes
 - Changes to the main Profile page beyond display compatibility (T023)
 - Edit-in-place for existing list entries (remove + re-add is sufficient)
-- Enter key in any text input triggering an add action — submission is button-only throughout
+- Enter key triggering add in multi-field inline forms (certifications, experience, etc.) — button-only for forms with multiple fields; Enter is only wired for the single-field skills input
+
+---
+
+---
+
+## Phase 7: Post-QA Polish
+
+**Purpose**: Address usability bugs and UX improvements identified during manual QA. All items are incremental — no Phase 1–6 work is rolled back.
+
+- [ ] T048 Fix navbar discard guard (Bug): intercept nav bar link clicks in `src/main.js` while the profile-edit page is active and form is dirty — expose a `ProfileEdit.canNavigateAway()` or `ProfileEdit.isDirty()` check; when dirty, show the discard confirmation modal before allowing navigation; if confirmed, proceed with the intended navigation; if dismissed, stay on the edit page. Cover with tests: nav bar click while dirty shows modal; nav bar click while clean navigates directly.
+- [ ] T049 [P] Add required field visual indicators (FR-074): update `createField()` in `src/pages/ProfileEdit.js` to accept a `required` boolean; when `true`, append a red asterisk element (`*`) to the field label; apply to all required fields in the Basic Info card and all inline entry forms across all sections.
+- [ ] T050 [P] Wire Enter key for skills input (FR-025 / FR-026): in `renderSkillsCard()`, add a `keydown` listener on the skills text input that triggers the same Add logic when `event.key === 'Enter'`.
+- [ ] T051 Move Save/Cancel into subheader bar (FR-002 / FR-007): update `renderSubheader()` to include Save and Cancel buttons right-aligned in the subheader; remove the `← Profile` back button; remove the top `renderPageControls()` call from `renderEditPage()` (bottom controls remain); update `updateControlsState()` to also target Save buttons inside the subheader. The subheader is already sticky, so this provides always-visible controls. Update existing tests that reference the top `.page-controls` to use the subheader buttons instead.
+- [ ] T052 [P] Inline form field row layout (FR-076 / FR-077 / FR-078): add a CSS class `.inline-fields-row` (flex, gap 8px, at ≥640px); apply it in:
+  - `renderLanguagesCard()`: wrap Language input and Proficiency select in a row
+  - `renderCertificationsCard()`: wrap Issuance Date and Expiry Date in a row
+  - `renderExperienceCard()`: wrap Date Started, Date Ended, and Current Work checkbox in a row
+- [ ] T053 [P] Replace entry Remove buttons with icons (FR-075): update `createEntryRow()` in `src/pages/ProfileEdit.js` to render the remove action as a compact icon button (e.g. `×` or a trash SVG) with an accessible `aria-label="Remove"` instead of the full text label "Remove"; update button class to `.entry-row__remove-icon`; update CSS accordingly.
+- [ ] T054 Run `npm run test:run` and `npm run lint`; fix any failures introduced by Phase 7 changes.
+
+**Checkpoint**: All post-QA improvements implemented and tested. Subheader is the persistent action bar. Nav bar is guarded. Required fields are labeled. Keyboard shortcut works for skills.
 
 ---
 
@@ -240,3 +261,4 @@ Then sequential:
 - Run `npm run test:run` at each checkpoint to catch regressions early
 - The `tests/pages/ProfileEdit.test.js` rewrite in T021 replaces the existing 4-test file entirely; the old section-level save tests are no longer valid after the architecture change
 - US4 (subheader) and US5 (dual controls) are built in Phase 3 and their verification assertions are integrated into T021 — no separate verification phase is needed
+- Phase 7 tasks T051 (subheader controls) will require updating existing tests that locate Save/Cancel via `.page-controls` at the top of the form

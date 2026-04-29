@@ -25,6 +25,7 @@ A user who has no saved profile navigates to the Edit Profile page. All form fie
 4. **Given** the user has filled in some fields but has not saved, **When** they click Cancel, **Then** a discard confirmation modal appears.
 5. **Given** the discard confirmation modal is showing, **When** the user confirms discard, **Then** changes are discarded, the user returns to the Profile page, and a toast confirms the discard.
 6. **Given** the discard confirmation modal is showing, **When** the user dismisses the modal, **Then** the modal closes and the user remains on the Edit Profile page with their changes intact.
+7. **Given** the user has unsaved changes, **When** they click any nav bar link to navigate elsewhere in the app, **Then** the discard confirmation modal appears before navigation occurs.
 
 ---
 
@@ -69,33 +70,33 @@ A user adds and removes entries in the Skills, Languages, Certifications, Educat
 
 ### User Story 4 — User navigates the Edit Profile page using the subheader (Priority: P2)
 
-A user on the Edit Profile page sees the normal Project Alice navigation bar plus a secondary subheader bar below it. The subheader shows the page title "Edit Profile" and a back action. The main nav bar is unchanged.
+A user on the Edit Profile page sees the normal Project Alice navigation bar plus a sticky secondary subheader bar below it. The subheader shows the page title "Edit Profile" on the left, and Save and Cancel buttons on the right. Because the subheader is sticky, these controls are always visible without scrolling. The main nav bar is unchanged.
 
-**Why this priority**: The navigation update improves consistency and removes a bespoke edit-page topbar, but the core form behavior is independently valuable.
+**Why this priority**: Combining the persistent action controls with the subheader eliminates the redundant top controls row and keeps Save/Cancel always visible via the sticky bar, reducing the need to scroll to act.
 
-**Independent Test**: Navigate to `/profile/edit`. Verify the main nav bar is present and unchanged. Verify a subheader bar appears below it showing "Edit Profile" and a back link to the Profile page.
+**Independent Test**: Navigate to `/profile/edit`. Verify the main nav bar is present and unchanged. Verify a sticky subheader bar appears below it showing "Edit Profile" on the left and Save/Cancel buttons on the right. Verify clicking Cancel with no changes navigates back; clicking Cancel with unsaved changes shows the discard modal.
 
 **Acceptance Scenarios**:
 
 1. **Given** the user is on the Edit Profile page, **When** the page renders, **Then** the standard Project Alice nav bar is visible and unchanged.
-2. **Given** the user is on the Edit Profile page, **When** the page renders, **Then** a secondary subheader bar appears below the nav bar showing the title "Edit Profile" and a back action.
-3. **Given** the user clicks the back action in the subheader with no unsaved changes, **When** the navigation occurs, **Then** the user is taken back to the Profile page.
-4. **Given** the user clicks the back action in the subheader with unsaved changes, **When** the action fires, **Then** the discard confirmation modal appears.
-5. **Given** the Edit Profile page renders on a mobile viewport, **When** the subheader is visible, **Then** both the title and back action are accessible without horizontal scrolling.
+2. **Given** the user is on the Edit Profile page, **When** the page renders, **Then** a sticky secondary subheader bar appears below the nav bar showing the title "Edit Profile" on the left and Save and Cancel buttons on the right.
+3. **Given** the user clicks Cancel in the subheader with no unsaved changes, **When** the action fires, **Then** the user is taken back to the Profile page.
+4. **Given** the user clicks Cancel in the subheader with unsaved changes, **When** the action fires, **Then** the discard confirmation modal appears.
+5. **Given** the Edit Profile page renders on a mobile viewport, **When** the subheader is visible, **Then** the title and Cancel/Save buttons are accessible without horizontal scrolling.
 
 ---
 
-### User Story 5 — User uses top and bottom Save/Cancel controls (Priority: P2)
+### User Story 5 — User uses persistent Save/Cancel controls (Priority: P2)
 
-A user editing a long profile form can Save or Cancel from both the top and the bottom of the page. Both pairs of buttons perform the same actions, so the user is never forced to scroll to act.
+A user editing a long profile form can Save or Cancel from the sticky subheader bar (always visible) and from a control row at the bottom of the page. Both pairs of buttons perform the same actions.
 
-**Why this priority**: Large forms without persistent controls create friction. Duplicate top/bottom controls improve usability without requiring sticky UI.
+**Why this priority**: The sticky subheader ensures Save/Cancel are always accessible without scrolling. The bottom control row provides a convenient alternative after working through the full form.
 
-**Independent Test**: Open the Edit Profile page and scroll to the bottom. Verify Save and Cancel buttons are present near both the top and the bottom. Click the bottom Save button and verify it behaves identically to the top Save button.
+**Independent Test**: Open the Edit Profile page. Verify Save and Cancel are visible in the subheader without scrolling. Scroll to the bottom and verify a second Save/Cancel pair is present. Click the bottom Save and verify it behaves identically to the subheader Save.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Edit Profile page renders, **When** the user views the top of the page, **Then** a Save and Cancel button pair is visible near the top.
+1. **Given** the Edit Profile page renders, **When** the user views any point on the page, **Then** a Save and Cancel button pair is always visible in the sticky subheader bar.
 2. **Given** the Edit Profile page renders, **When** the user scrolls to the bottom, **Then** a second Save and Cancel button pair is visible.
 3. **Given** no changes have been made, **When** either Save button is viewed, **Then** it is visually disabled and cannot trigger a save.
 4. **Given** the user modifies any field or list entry, **When** they view either Save button, **Then** it becomes enabled.
@@ -104,6 +105,7 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 
 ### Edge Cases
 
+- What happens when the user clicks a nav bar link while they have unsaved changes on the Edit Profile page? The discard confirmation modal must appear before any navigation occurs; if the user confirms discard, navigation proceeds normally.
 - What happens when a user attempts to save with an open inline add form that has uncommitted data? The save must not proceed silently — the user must be notified to complete or cancel the open inline form first.
 - What happens if a MM/YYYY date has an invalid month (e.g. `13/2024`)? The entry must be rejected with specific feedback indicating the month must be between 01 and 12.
 - What happens if a MM/YYYY date has a non-four-digit year (e.g. `01/24`)? The entry must be rejected with feedback indicating the year must be four digits.
@@ -121,15 +123,15 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 **Navigation and Layout**
 
 - **FR-001**: The Edit Profile page MUST display the standard Project Alice nav bar unchanged, with the Profile nav item shown as active.
-- **FR-002**: A secondary subheader bar MUST appear below the nav bar on the Edit Profile page, containing the page title "Edit Profile" and a back action that returns the user to the Profile page.
-- **FR-003**: The subheader back action MUST trigger the discard confirmation flow when unsaved changes exist, or navigate directly to the Profile page when no changes exist.
+- **FR-002**: A sticky secondary subheader bar MUST appear below the nav bar on the Edit Profile page, containing the page title "Edit Profile" on the left and Save and Cancel buttons on the right. There is no separate back action — Cancel serves this role.
+- **FR-003**: The subheader Cancel button MUST trigger the discard confirmation flow when unsaved changes exist, or navigate directly to the Profile page when no changes exist. Clicking any nav bar link while unsaved changes exist MUST also trigger the discard confirmation flow before navigation occurs.
 - **FR-004**: The previous edit-page topbar variant (replacing the nav bar with a custom bar) MUST be removed.
 - **FR-005**: The placeholder banner ("This page is a placeholder — details to be designed in a later iteration.") MUST be removed from the Edit Profile page.
 - **FR-006**: The Edit Profile page layout MUST make effective use of available horizontal space on wider viewports using wider form sections or responsive multi-column layouts; mobile viewports MUST remain single-column.
 
 **Save and Cancel Controls**
 
-- **FR-007**: Save and Cancel button pairs MUST appear both near the top and near the bottom of the Edit Profile page.
+- **FR-007**: Save and Cancel buttons MUST appear in the sticky subheader bar and in a bottom control row. There is no separate top page-controls section — the subheader bar replaces it.
 - **FR-008**: All Save buttons MUST perform the same save action; all Cancel buttons MUST perform the same cancel action.
 - **FR-009**: Save buttons MUST be disabled when no unsaved changes exist (dirty state is false).
 - **FR-010**: Save buttons MUST become enabled when the current form state differs from the saved state. If a user reverts all changes back to the original saved values, Save buttons MUST disable again.
@@ -159,8 +161,8 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 
 - **FR-023**: Existing skills MUST be displayed as removable pill tags, each with an × remove button.
 - **FR-024**: Clicking a skill pill's remove button MUST remove that skill from the list.
-- **FR-025**: The Skills section MUST include a text field and an Add button for adding new skills one at a time.
-- **FR-026**: Clicking Add MUST commit the entered skill as a new pill; empty values MUST NOT be committed.
+- **FR-025**: The Skills section MUST include a text field and an Add button for adding new skills one at a time. Pressing Enter in the skill text field MUST also trigger Add.
+- **FR-026**: Clicking Add (or pressing Enter) MUST commit the entered skill as a new pill; empty values MUST NOT be committed.
 - **FR-027**: Duplicate skills MUST be prevented or normalized so that no two identical skill values appear in the list.
 
 **Languages**
@@ -173,7 +175,7 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 **Certifications**
 
 - **FR-032**: Existing certifications MUST be displayed as rows or list items.
-- **FR-033**: Clicking "Add Certification" MUST open an inline entry form with: Certification Name (required), Issuing Body (optional), Certificate ID (optional), Issuance Date (required), Expiry Date (optional).
+- **FR-033**: Clicking "Add Certification" MUST open an inline entry form with: Certification Name (required), Issuing Body (required), Certificate ID (optional), Issuance Date (required), Expiry Date (optional).
 - **FR-034**: Clicking Add in the inline certification form MUST validate required fields, commit the entry, and restore the "Add Certification" button.
 - **FR-035**: Clicking Cancel in the inline certification form MUST discard the inline state and restore the "Add Certification" button.
 
@@ -242,6 +244,11 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 - **FR-069**: All user-supplied profile text MUST be rendered safely to prevent injection attacks.
 - **FR-070**: Forms MUST have labels, clear validation messages, and keyboard navigation MUST work for core editing workflows.
 - **FR-071**: The app MUST NOT introduce external analytics, tracking, or data sharing as part of this feature.
+- **FR-074**: Required field labels throughout the Edit Profile page MUST include a visual indicator (e.g. a red asterisk) so users can identify mandatory fields before attempting to submit.
+- **FR-075**: Entry remove buttons MUST use a compact icon (e.g. a trash or × symbol) rather than a full text "Remove" label.
+- **FR-076**: The Language inline form MUST place the Language text field and Proficiency dropdown side-by-side on viewports ≥ 640 px.
+- **FR-077**: The Certification inline form MUST place Issuance Date and Expiry Date side-by-side on viewports ≥ 640 px.
+- **FR-078**: The Experience inline form MUST place Date Started, Date Ended, and the Current Work checkbox in a single row on viewports ≥ 640 px.
 
 **Non-Regression**
 
@@ -253,7 +260,7 @@ A user editing a long profile form can Save or Cancel from both the top and the 
 - **Profile**: A user's optional professional background record containing basic contact info, a summary, and structured lists for experience, education, skills, certifications, awards, languages, and external links. Its presence or absence drives the two Profile page states.
 - **Experience Entry**: One work history position with a role, company, responsibilities, start date (MM/YYYY), optional end date (MM/YYYY), and a current-work flag.
 - **Education Entry**: One academic credential with a degree and major, university, and year completed.
-- **Certification Entry**: One professional certification with a name, optional issuing body, optional certificate ID, issuance date, and optional expiry date.
+- **Certification Entry**: One professional certification with a name, issuing body, optional certificate ID, issuance date, and optional expiry date.
 - **Award Entry**: One recognition record with an award name, issuing body, optional details, and an optional date (MM/YYYY).
 - **Language Entry**: A language the user speaks or works in, paired with a fixed proficiency level (Beginner, Intermediate, Professional, Fluent).
 - **Link Entry**: An external URL with an optional friendly display name.
@@ -295,7 +302,7 @@ EducationEntry
 
 CertificationEntry
   name              string, required
-  issuingBody       string, optional
+  issuingBody       string, required
   certificateId     string, optional
   issuanceDate      string, required
   expiryDate        string, optional
@@ -325,7 +332,7 @@ LinkEntry
 - **SC-002**: Users can edit any profile field or list section and see the change reflected on the Profile page after saving, with no data loss.
 - **SC-003**: Save buttons are disabled on page load and become enabled within one user interaction of modifying any field or list entry.
 - **SC-004**: All inline entry forms reject incomplete or invalid inputs 100% of the time before committing an entry; no invalid data reaches persistent storage.
-- **SC-005**: The discard confirmation flow triggers 100% of the time when unsaved changes exist and the user attempts to navigate away, and does not trigger when no changes exist.
+- **SC-005**: The discard confirmation flow triggers 100% of the time when unsaved changes exist and the user attempts to navigate away — whether via the subheader Cancel button or a nav bar link — and does not trigger when no changes exist.
 - **SC-006**: Experience and Education entries consistently appear in most-recent-first order after each add operation without requiring a page reload.
 - **SC-007**: All added links open correctly in a new browser tab, and no unsafe-protocol URL is ever committed to the profile.
 - **SC-008**: MM/YYYY validation correctly rejects invalid months and non-four-digit years across all applicable fields, for both required and optional date inputs.

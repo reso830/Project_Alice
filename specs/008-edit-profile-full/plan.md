@@ -4,7 +4,7 @@
 
 ## Summary
 
-Upgrade `src/pages/ProfileEdit.js` from a multi-section placeholder with per-section saves into a fully interactive profile editor. The page receives centralized Save/Cancel controls (top and bottom), dirty state tracking with a discard confirmation modal, a new subheader bar below the unchanged navbar, and inline add/remove flows for all seven list-based profile sections. The Profile data model is extended in `src/models/profile.js` to handle structured entry objects for experience, education, certifications, awards, languages, and links, with backward-compatible normalisation of old string-array formats. Two new utility modules are introduced: `src/utils/validate.js` (MM/YYYY, URL, required, email validators) and `src/utils/sort.js` (education and experience sort logic). No new npm dependencies are added. All profile data continues to be persisted through the existing `PUT /api/profile` endpoint.
+Upgrade `src/pages/ProfileEdit.js` from a multi-section placeholder with per-section saves into a fully interactive profile editor. The page receives a sticky subheader bar (containing Save/Cancel) and a bottom control row, dirty state tracking with a discard confirmation modal, navbar navigation interception when dirty, and inline add/remove flows for all seven list-based profile sections. The Profile data model is extended in `src/models/profile.js` to handle structured entry objects for experience, education, certifications, awards, languages, and links, with backward-compatible normalisation of old string-array formats. Two new utility modules are introduced: `src/utils/validate.js` (MM/YYYY, URL, required, email validators) and `src/utils/sort.js` (education and experience sort logic). No new npm dependencies are added. All profile data continues to be persisted through the existing `PUT /api/profile` endpoint.
 
 ---
 
@@ -94,21 +94,25 @@ tests/
 
 ## Key Implementation Notes
 
-### 1. Subheader replaces custom topbar
+### 1. Subheader replaces custom topbar; houses Save/Cancel
 
 **Remove** from `ProfileEdit.js`:
 - `renderTopbar()` function
 - `hideNavbar()` / `_navbar` / `_previousNavbarDisplay` state
 - `_header?.remove()` in `unmount()`
+- Top `renderPageControls()` call from `renderEditPage()` (bottom call remains)
+- `← Profile` back button (Cancel in the subheader replaces it)
 
 **Add** to `ProfileEdit.js`:
 ```js
 function renderSubheader(navigate) {
   const bar = document.createElement('div');
   bar.className = 'profile-edit-subheader';
-  const back = createButton('← Profile', 'profile-edit-subheader__back', handleCancel);
   const title = createElement('span', 'profile-edit-subheader__title', 'Edit Profile');
-  bar.append(back, title);
+  const cancel = createButton('Cancel', 'profile-btn profile-btn--outline page-controls__cancel', handleCancel);
+  const save = createButton('Save', 'profile-btn profile-btn--primary page-controls__save', handleSave);
+  save.disabled = true;
+  bar.append(title, cancel, save);
   document.querySelector('.navbar').insertAdjacentElement('afterend', bar);
   _subheader = bar;
 }
@@ -119,6 +123,16 @@ function renderSubheader(navigate) {
 _subheader?.remove();
 _subheader = null;
 ```
+
+**Nav bar guard** — in `src/main.js`, expose `ProfileEdit.isDirty` and intercept nav clicks when the edit page is active:
+```js
+// In navigate():
+if (_currentPage === 'profile-edit' && ProfileEdit.isDirty?.()) {
+  ProfileEdit.showDiscardModal(navigate, targetPage);
+  return;
+}
+```
+This requires `showDiscardModal` (or a thin wrapper) to accept a post-confirm callback so that confirming discard triggers the intended navigation.
 
 **`main.js` change** — add `Navbar.setActive('profile')` to the profile-edit branch:
 ```js
@@ -409,6 +423,8 @@ Basic Info card applies `.edit-fields-grid`: First Name + Last Name in row 1, Ci
 .skills-input-row { display: flex; gap: 8px; }
 .skills-input-row .edit-field__control { flex: 1; }
 ```
+
+The skills text input wires a `keydown` listener: `if (event.key === 'Enter') triggerAdd()`. This is the only text input where Enter triggers add — multi-field forms remain button-only.
 
 ---
 
