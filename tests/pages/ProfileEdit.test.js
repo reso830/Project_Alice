@@ -521,17 +521,18 @@ describe('ProfileEdit page', () => {
     const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
 
     getButton(experience, 'Add Experience').click();
-    expect(getField(experience, 'Date Ended').hidden).toBe(false);
+    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
 
     const currentWork = experience.querySelector('input[type="checkbox"]');
 
     currentWork.checked = true;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getField(experience, 'Date Ended').hidden).toBe(true);
+    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(true);
+    expect(getField(experience, 'Date Ended').classList).toContain('edit-field--disabled');
 
     currentWork.checked = false;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getField(experience, 'Date Ended').hidden).toBe(false);
+    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
 
     inputValue(getFieldInput(experience, 'Role'), 'Past Role');
     inputValue(getFieldInput(experience, 'Company'), 'Acme');

@@ -578,7 +578,11 @@ function renderExperienceCard(page) {
     currentWorkWrapper.append(currentWorkLabel, currentWork);
 
     function syncDateEnded() {
-      dateEnded.wrapper.hidden = currentWork.checked;
+      dateEnded.input.disabled = currentWork.checked;
+      dateEnded.wrapper.classList.toggle('edit-field--disabled', currentWork.checked);
+      if (currentWork.checked) {
+        setFieldError(dateEnded, '');
+      }
     }
 
     currentWork.addEventListener('change', syncDateEnded);

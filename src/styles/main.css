@@ -273,6 +273,16 @@ textarea.edit-field__control {
   content: " *";
 }
 
+.edit-field--disabled {
+  opacity: .62;
+}
+
+.edit-field__control:disabled {
+  background: #F3F1EC;
+  color: var(--t3);
+  cursor: not-allowed;
+}
+
 .skills-pills-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -328,7 +338,13 @@ textarea.edit-field__control {
 
 .inline-entry-form__row--dates {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: center;
+}
+
+.edit-field--checkbox {
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 112px;
 }
 
 .inline-entry-form__actions {
@@ -438,27 +454,37 @@ textarea.edit-field__control {
   .edit-fields-grid {
     display: flex;
     flex-direction: column;
+    gap: 13px;
   }
 
   .profile-edit-subheader {
     top: 48px;
     min-height: calc(44px + env(safe-area-inset-top, 0px));
-    align-items: stretch;
-    flex-direction: column;
-    gap: 8px;
-    padding-top: 8px;
-    padding-bottom: 8px;
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
     padding-right: 14px;
     padding-left: 14px;
   }
 
   .page-controls--subheader {
+    flex: 0 0 auto;
     justify-content: flex-end;
+  }
+
+  .page-controls--subheader .profile-btn {
+    padding-right: 9px;
+    padding-left: 9px;
   }
 
   .inline-entry-form__row--two,
   .inline-entry-form__row--dates {
     grid-template-columns: 1fr;
+  }
+
+  .edit-field--checkbox {
+    align-items: flex-start;
+    min-width: 0;
   }
 }
 
