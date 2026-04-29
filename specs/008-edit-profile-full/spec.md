@@ -192,8 +192,8 @@ A user editing a long profile form can Save or Cancel from the sticky subheader 
 - **FR-041**: Existing experience entries MUST be displayed as rows or cards.
 - **FR-042**: Experience entries MUST be sorted with current roles first, then ended roles by most recent Date Ended descending; Date Started may be used as a fallback for tie-breaking.
 - **FR-043**: Clicking "Add Experience" MUST open an inline entry form with: Role (required), Company (required), Responsibilities textarea (required), Date Started in MM/YYYY format (required), Date Ended in MM/YYYY format (required unless Current Work is checked), and a Current Work checkbox.
-- **FR-044**: When the Current Work checkbox is checked, the Date Ended field MUST be hidden and treated as not required.
-- **FR-045**: When the Current Work checkbox is unchecked, the Date Ended field MUST be shown and required.
+- **FR-044**: When the Current Work checkbox is checked, the Date Ended field MUST be visually disabled (dimmed and non-interactive) and treated as not required.
+- **FR-045**: When the Current Work checkbox is unchecked, the Date Ended field MUST be enabled and required.
 - **FR-046**: Clicking Add in the inline experience form MUST validate required fields and MM/YYYY format for date fields, commit the entry, re-sort the list, and restore the "Add Experience" button.
 - **FR-047**: Clicking Cancel in the inline experience form MUST discard the inline state and restore the "Add Experience" button.
 
@@ -249,6 +249,7 @@ A user editing a long profile form can Save or Cancel from the sticky subheader 
 - **FR-076**: The Language inline form MUST place the Language text field and Proficiency dropdown side-by-side on viewports ≥ 640 px.
 - **FR-077**: The Certification inline form MUST place Issuance Date and Expiry Date side-by-side on viewports ≥ 640 px.
 - **FR-078**: The Experience inline form MUST place Date Started, Date Ended, and the Current Work checkbox in a single row on viewports ≥ 640 px.
+- **FR-079**: Section card header labels on the Edit Profile page MUST be rendered in the application's primary accent color (navy) to visually distinguish editable sections.
 
 **Non-Regression**
 

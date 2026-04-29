@@ -124,15 +124,21 @@ _subheader?.remove();
 _subheader = null;
 ```
 
-**Nav bar guard** — in `src/main.js`, expose `ProfileEdit.isDirty` and intercept nav clicks when the edit page is active:
+**Nav bar guard** — export `confirmNavigation(page)` from `ProfileEdit.js` and call it at the top of `navigate()` in `src/main.js`:
 ```js
-// In navigate():
-if (_currentPage === 'profile-edit' && ProfileEdit.isDirty?.()) {
-  ProfileEdit.showDiscardModal(navigate, targetPage);
+// ProfileEdit.js
+export function confirmNavigation(page) {
+  if (!isDirty()) return true;
+  showDiscardModal(() => _navigate(page));
+  return false;
+}
+
+// main.js — navigate():
+if (_currentPage === 'profile-edit' && !ProfileEdit.confirmNavigation(page)) {
   return;
 }
 ```
-This requires `showDiscardModal` (or a thin wrapper) to accept a post-confirm callback so that confirming discard triggers the intended navigation.
+`showDiscardModal` accepts an optional `onDiscard` callback; when provided, confirming discard calls `onDiscard()` (which navigates to the intended page) rather than always going to `'profile'`.
 
 **`main.js` change** — add `Navbar.setActive('profile')` to the profile-edit branch:
 ```js

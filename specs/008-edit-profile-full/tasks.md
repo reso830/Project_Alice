@@ -238,16 +238,17 @@ Then sequential:
 
 **Purpose**: Address usability bugs and UX improvements identified during manual QA. All items are incremental — no Phase 1–6 work is rolled back.
 
-- [ ] T048 Fix navbar discard guard (Bug): intercept nav bar link clicks in `src/main.js` while the profile-edit page is active and form is dirty — expose a `ProfileEdit.canNavigateAway()` or `ProfileEdit.isDirty()` check; when dirty, show the discard confirmation modal before allowing navigation; if confirmed, proceed with the intended navigation; if dismissed, stay on the edit page. Cover with tests: nav bar click while dirty shows modal; nav bar click while clean navigates directly.
-- [ ] T049 [P] Add required field visual indicators (FR-074): update `createField()` in `src/pages/ProfileEdit.js` to accept a `required` boolean; when `true`, append a red asterisk element (`*`) to the field label; apply to all required fields in the Basic Info card and all inline entry forms across all sections.
-- [ ] T050 [P] Wire Enter key for skills input (FR-025 / FR-026): in `renderSkillsCard()`, add a `keydown` listener on the skills text input that triggers the same Add logic when `event.key === 'Enter'`.
-- [ ] T051 Move Save/Cancel into subheader bar (FR-002 / FR-007): update `renderSubheader()` to include Save and Cancel buttons right-aligned in the subheader; remove the `← Profile` back button; remove the top `renderPageControls()` call from `renderEditPage()` (bottom controls remain); update `updateControlsState()` to also target Save buttons inside the subheader. The subheader is already sticky, so this provides always-visible controls. Update existing tests that reference the top `.page-controls` to use the subheader buttons instead.
-- [ ] T052 [P] Inline form field row layout (FR-076 / FR-077 / FR-078): add a CSS class `.inline-fields-row` (flex, gap 8px, at ≥640px); apply it in:
-  - `renderLanguagesCard()`: wrap Language input and Proficiency select in a row
-  - `renderCertificationsCard()`: wrap Issuance Date and Expiry Date in a row
-  - `renderExperienceCard()`: wrap Date Started, Date Ended, and Current Work checkbox in a row
-- [ ] T053 [P] Replace entry Remove buttons with icons (FR-075): update `createEntryRow()` in `src/pages/ProfileEdit.js` to render the remove action as a compact icon button (e.g. `×` or a trash SVG) with an accessible `aria-label="Remove"` instead of the full text label "Remove"; update button class to `.entry-row__remove-icon`; update CSS accordingly.
-- [ ] T054 Run `npm run test:run` and `npm run lint`; fix any failures introduced by Phase 7 changes.
+- [X] T048 Fix navbar discard guard (Bug): export `ProfileEdit.confirmNavigation(page)` — returns `true` if clean, otherwise calls `showDiscardModal` with the target page as the post-confirm callback and returns `false`; `navigate()` in `src/main.js` calls this before unmounting when `_currentPage === 'profile-edit'`; covered by test "prompts before external navigation when dirty and follows the selected target on discard".
+- [X] T049 [P] Add required field visual indicators (FR-074): `createField()` and `createSelectField()` accept `{ required }` option; when `true`, adds `edit-field--required` class; CSS `.edit-field--required .edit-field__label::after { content: " *"; color: var(--color-danger); }` renders the asterisk; applied to all required fields across Basic Info and inline entry forms; covered by test "marks required fields visually".
+- [X] T050 [P] Wire Enter key for skills input (FR-025 / FR-026): `keydown` listener on the skills text input calls `add.click()` when `event.key === 'Enter'`; covered by test "adds skills by button or Enter, deduplicates…".
+- [X] T051 Move Save/Cancel into subheader bar (FR-002 / FR-007): `renderSubheader()` calls `renderPageControls()` and adds `.page-controls--subheader` modifier to style buttons for the dark bar; no `← Profile` back button; bottom `renderPageControls()` call in `renderEditPage()` remains; `updateControlsState()` targets all `.page-controls__save` globally; tests updated to locate Cancel/Save via `document.querySelector('.profile-edit-subheader')`.
+- [X] T052 [P] Inline form field row layout (FR-076 / FR-077 / FR-078): CSS grid classes `.inline-entry-form__row--two` (repeat(2, 1fr)) and `.inline-entry-form__row--dates` (1fr 1fr auto); applied in:
+  - `renderLanguagesCard()`: Language + Proficiency in `--two` row
+  - `renderCertificationsCard()`: Issuance Date + Expiry Date in `--two` row
+  - `renderExperienceCard()`: Date Started + Date Ended + Current Work checkbox in `--dates` row; checkbox uses `.edit-field--checkbox` for label/checkbox vertical alignment
+- [X] T053 [P] Replace entry Remove buttons with icon (FR-075): `createEntryRow()` renders remove as `'x'` label with `aria-label="Remove entry"`; CSS `.entry-row__remove` is a 26×26 icon button with hover danger state.
+- [X] T054 Run `npm run test:run` and `npm run lint`; 205 tests passing, lint clean.
+- [X] T055 [P] Section card header accent color (FR-079): CSS `.edit-card .section-label { color: var(--navy); }` renders edit-page section labels in navy to match the nav and subheader bar.
 
 **Checkpoint**: All post-QA improvements implemented and tested. Subheader is the persistent action bar. Nav bar is guarded. Required fields are labeled. Keyboard shortcut works for skills.
 
