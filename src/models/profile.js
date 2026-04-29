@@ -261,6 +261,7 @@ export function validateProfile(data = {}) {
 
   profile.certifications.forEach((entry, index) => {
     setRequiredError(errors, `certifications[${index}].name`, entry.name, 'Certification Name');
+    setRequiredError(errors, `certifications[${index}].issuingBody`, entry.issuingBody, 'Issuing Body');
     setMonthYearError(
       errors,
       `certifications[${index}].issuanceDate`,

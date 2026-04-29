@@ -212,6 +212,7 @@ describe('profile model', () => {
       'experience[0].dateEnded': 'Date Ended is required.',
       'education[0].university': 'University is required.',
       'education[0].yearCompleted': 'Year Completed is required.',
+      'certifications[0].issuingBody': 'Issuing Body is required.',
       'certifications[0].issuanceDate': 'Issuance Date is required.',
       'awards[0].issuingBody': 'Issuing Body is required.',
       'languages[0].proficiency': 'Proficiency is required.',
@@ -237,6 +238,7 @@ describe('profile model', () => {
       }],
       certifications: [{
         name: 'AWS Developer',
+        issuingBody: 'Amazon Web Services',
         issuanceDate: '02/2022',
       }],
       awards: [{
