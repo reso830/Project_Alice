@@ -520,12 +520,6 @@ textarea.edit-field__control {
   text-align: center;
 }
 
-.open-form-error {
-  margin: 4px 0 0;
-  color: var(--color-danger);
-  font-size: 13px;
-}
-
 .section-validation-error {
   margin: 4px 0 0;
   color: var(--color-danger);

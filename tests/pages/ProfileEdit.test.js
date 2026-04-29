@@ -601,25 +601,6 @@ describe('ProfileEdit page', () => {
     expect(city.value).toBe('Seattle');
   });
 
-  it('blocks save when an inline entry form is open', async () => {
-    const container = createAppShell();
-    const openForm = document.createElement('div');
-
-    api.getProfile.mockResolvedValue(createProfile());
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
-    openForm.className = 'inline-entry-form';
-    getCard(container, 'SKILLS').append(openForm);
-    getSaveButton(getTopControls(container)).click();
-
-    expect(api.saveProfile).not.toHaveBeenCalled();
-    expect(document.querySelector('.open-form-error')?.previousElementSibling)
-      .toBe(document.querySelector('.profile-edit-subheader'));
-    expect(Toast.show).not.toHaveBeenCalled();
-  });
-
   it('adds skills by button or Enter, deduplicates, and removes while tracking dirty reversion', async () => {
     const container = createAppShell();
 
@@ -653,7 +634,7 @@ describe('ProfileEdit page', () => {
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
-  it('manages language inline forms with validation, cancel, and one-at-a-time guard', async () => {
+  it('adds languages through the entry overlay with validation and one-at-a-time guard', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -663,27 +644,28 @@ describe('ProfileEdit page', () => {
     const languages = getCard(container, 'LANGUAGES');
 
     getHeaderAddButton(languages).click();
-    expect(languages.querySelector('.inline-entry-form')).toBeTruthy();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
 
-    getButton(languages, 'Add').click();
-    expect(languages.querySelector('.field-error')?.textContent).toBe('This field is required.');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
+    expect(document.querySelector('.entry-modal .field-error')?.textContent).toBe('This field is required.');
 
-    inputValue(getFieldInput(languages, 'Language'), 'English');
-    changeValue(getFieldInput(languages, 'Proficiency'), 'Fluent');
-    getButton(languages, 'Add').click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Language'), 'English');
+    changeValue(getFieldInput(document.querySelector('.entry-modal'), 'Proficiency'), 'Fluent');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
     expect(languages.querySelector('.profile-entry__title')?.textContent).toBe('English');
     expect(languages.querySelector('.profile-entry__meta')?.textContent).toBe('Fluent');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
 
     getHeaderAddButton(languages).click();
-    inputValue(getFieldInput(languages, 'Language'), 'French');
-    getButton(languages, 'Cancel').click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Language'), 'French');
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Discard').click();
     expect(languages.textContent).not.toContain('French');
 
     getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
     getHeaderAddButton(languages).click();
-    expect(document.querySelectorAll('.inline-entry-form')).toHaveLength(1);
-    expect(getCard(container, 'CERTIFICATIONS').querySelector('.inline-entry-form')).toBeTruthy();
+    expect(document.querySelectorAll('.entry-modal, .entry-sheet')).toHaveLength(1);
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Certification');
   });
 
   it('validates and sorts experience entries with current work handling', async () => {
@@ -696,42 +678,44 @@ describe('ProfileEdit page', () => {
     const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
 
     getHeaderAddButton(experience).click();
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
+    let overlay = document.querySelector('.entry-modal');
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(false);
 
-    const currentWork = experience.querySelector('input[type="checkbox"]');
+    const currentWork = overlay.querySelector('input[type="checkbox"]');
 
     currentWork.checked = true;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(true);
-    expect(getField(experience, 'Date Ended').classList).toContain('edit-field--disabled');
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(true);
+    expect(getField(overlay, 'Date Ended').classList).toContain('edit-field--disabled');
 
     currentWork.checked = false;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(false);
 
-    inputValue(getFieldInput(experience, 'Role'), 'Past Role');
-    inputValue(getFieldInput(experience, 'Company'), 'Acme');
-    inputValue(getFieldInput(experience, 'Responsibilities'), 'Built tools');
-    inputValue(getFieldInput(experience, 'Date Started'), '13/2024');
-    inputValue(getFieldInput(experience, 'Date Ended'), '02/2025');
-    getButton(experience, 'Add').click();
-    expect([...experience.querySelectorAll('.field-error')]
+    inputValue(getFieldInput(overlay, 'Role'), 'Past Role');
+    inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Built tools');
+    inputValue(getFieldInput(overlay, 'Date Started'), '13/2024');
+    inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+    getButton(overlay, 'Save').click();
+    expect([...overlay.querySelectorAll('.field-error')]
       .some((error) => error.textContent === 'Month must be 01-12.')).toBe(true);
 
-    inputValue(getFieldInput(experience, 'Date Started'), '01/2024');
-    getButton(experience, 'Add').click();
+    inputValue(getFieldInput(overlay, 'Date Started'), '01/2024');
+    getButton(overlay, 'Save').click();
     expect(experience.querySelector('.profile-entry__title')?.textContent).toBe('Past Role');
     expect(experience.querySelector('.profile-entry__meta')?.textContent)
       .toBe('Acme | 01/2024 – 02/2025');
 
     getHeaderAddButton(experience).click();
-    inputValue(getFieldInput(experience, 'Role'), 'Current Role');
-    inputValue(getFieldInput(experience, 'Company'), 'Beta');
-    inputValue(getFieldInput(experience, 'Responsibilities'), 'Lead work');
-    inputValue(getFieldInput(experience, 'Date Started'), '03/2025');
-    experience.querySelector('input[type="checkbox"]').checked = true;
-    experience.querySelector('input[type="checkbox"]').dispatchEvent(new window.Event('change', { bubbles: true }));
-    getButton(experience, 'Add').click();
+    overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Role'), 'Current Role');
+    inputValue(getFieldInput(overlay, 'Company'), 'Beta');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Lead work');
+    inputValue(getFieldInput(overlay, 'Date Started'), '03/2025');
+    overlay.querySelector('input[type="checkbox"]').checked = true;
+    overlay.querySelector('input[type="checkbox"]').dispatchEvent(new window.Event('change', { bubbles: true }));
+    getButton(overlay, 'Save').click();
 
     expect(experience.querySelector('.profile-entry__title')?.textContent)
       .toBe('Current Role');
@@ -749,19 +733,21 @@ describe('ProfileEdit page', () => {
     const links = getCard(container, 'LINKS');
 
     getHeaderAddButton(links).click();
-    inputValue(getFieldInput(links, 'Link URL'), 'javascript:alert(1)');
-    getButton(links, 'Add').click();
-    expect(links.querySelector('.field-error')?.textContent)
+    let overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Link URL'), 'javascript:alert(1)');
+    getButton(overlay, 'Save').click();
+    expect(overlay.querySelector('.field-error')?.textContent)
       .toBe('Please enter a valid URL (http or https).');
 
-    inputValue(getFieldInput(links, 'Link URL'), 'https://example.com/profile');
-    inputValue(getFieldInput(links, 'Friendly Name'), 'Portfolio');
-    getButton(links, 'Add').click();
+    inputValue(getFieldInput(overlay, 'Link URL'), 'https://example.com/profile');
+    inputValue(getFieldInput(overlay, 'Friendly Name'), 'Portfolio');
+    getButton(overlay, 'Save').click();
     expect(links.querySelector('.profile-entry__title')?.textContent).toBe('Portfolio');
 
     getHeaderAddButton(links).click();
-    inputValue(getFieldInput(links, 'Link URL'), 'https://github.com/alex');
-    getButton(links, 'Add').click();
+    overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Link URL'), 'https://github.com/alex');
+    getButton(overlay, 'Save').click();
     expect([...links.querySelectorAll('.profile-entry__title')].map((title) => title.textContent))
       .toEqual(['Portfolio', 'github.com']);
   });
@@ -797,11 +783,12 @@ describe('ProfileEdit page', () => {
     const certs = getCard(container, 'CERTIFICATIONS');
 
     getHeaderAddButton(certs).click();
-    inputValue(getFieldInput(certs, 'Certification Name'), 'AWS Developer');
-    inputValue(getFieldInput(certs, 'Issuance Date'), '01/2023');
-    getButton(certs, 'Add').click();
+    const overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Certification Name'), 'AWS Developer');
+    inputValue(getFieldInput(overlay, 'Issuance Date'), '01/2023');
+    getButton(overlay, 'Save').click();
 
-    const error = [...certs.querySelectorAll('.field-error')]
+    const error = [...overlay.querySelectorAll('.field-error')]
       .find((el) => el.textContent === 'This field is required.');
     expect(error).toBeTruthy();
     expect(error.hidden).toBe(false);
@@ -859,7 +846,7 @@ describe('ProfileEdit page', () => {
     expect(getField(getCard(container, 'BASIC INFO'), 'First Name').classList)
       .toContain('edit-field--required');
     getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
-    expect(getField(getCard(container, 'CERTIFICATIONS'), 'Issuing Body').classList)
+    expect(getField(document.querySelector('.entry-modal'), 'Issuing Body').classList)
       .toContain('edit-field--required');
   });
 

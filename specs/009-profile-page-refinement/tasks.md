@@ -119,28 +119,28 @@
 
 **Independent Test**: For each of the six sections (Experience, Education, Certifications, Awards, Languages, Links), click Add, fill required fields, click Save. The entry should appear in the section and the overlay should close. Leaving required fields blank and clicking Save should surface inline errors inside the overlay.
 
-- [ ] T016 [P] [US5] Implement `buildExperienceForm(formEl, initial = {})` in `src/pages/ProfileEdit.js` and wire `renderExperienceCard()`:
+- [X] T016 [P] [US5] Implement `buildExperienceForm(formEl, initial = {})` in `src/pages/ProfileEdit.js` and wire `renderExperienceCard()`:
   - `buildExperienceForm`: creates Role (required), Company (required), Responsibilities textarea (required), Date Started (required, `validateMonthYear`), Current Work checkbox, Date Ended (disabled+dimmed via `edit-field--disabled` when checked, required+enabled when unchecked, `validateMonthYear`); appends date fields in `inline-entry-form__row inline-entry-form__row--dates` row; wires `currentWork.change` to `syncDateEnded()`; takes snapshot `JSON.stringify(getFormData(fields))` on creation; returns `{ validate: () => validateFields(rules), getData: () => ({ role, company, responsibilities, dateStarted, dateEnded, currentWork }), isDirty: () => snapshot !== JSON.stringify(getFormData(fields)) }`
   - Wire: update `renderExperienceCard` to pass `onAdd: () => createEntryOverlay('Add Experience', (el) => buildExperienceForm(el), { onSave: (data) => { _formState.experience = sortExperience([..._formState.experience, data]); commitListChange(); render(); } })` to `createEditCard`
 
-- [ ] T017 [P] [US5] Implement `buildEducationForm(formEl, initial = {})` and wire `renderEducationCard()`:
+- [X] T017 [P] [US5] Implement `buildEducationForm(formEl, initial = {})` and wire `renderEducationCard()`:
   - Fields: Degree & Major (required), University (required), Year Completed (required); returns `{ validate, getData, isDirty }`
   - `onSave`: push entry, re-sort via `sortEducation`, call `commitListChange()`, call `render()`
 
-- [ ] T018 [P] [US5] Implement `buildCertificationsForm(formEl, initial = {})` and wire `renderCertificationsCard()`:
+- [X] T018 [P] [US5] Implement `buildCertificationsForm(formEl, initial = {})` and wire `renderCertificationsCard()`:
   - Fields: Certification Name (required), Issuing Body (required), Certificate ID (optional), Issuance Date (required, `validateMonthYear`), Expiry Date (optional, `validateMonthYear` when non-empty via `optionalMonthYear`); Issuance Date and Expiry Date placed in `inline-entry-form__row inline-entry-form__row--two`
 
-- [ ] T019 [P] [US5] Implement `buildAwardsForm(formEl, initial = {})` and wire `renderAwardsCard()`:
+- [X] T019 [P] [US5] Implement `buildAwardsForm(formEl, initial = {})` and wire `renderAwardsCard()`:
   - Fields: Award Name (required), Issuing Body (required), Details textarea (optional), Date (optional, `optionalMonthYear`)
 
-- [ ] T020 [P] [US5] Implement `buildLanguagesForm(formEl, initial = {})` and wire `renderLanguagesCard()`:
+- [X] T020 [P] [US5] Implement `buildLanguagesForm(formEl, initial = {})` and wire `renderLanguagesCard()`:
   - Fields: Language text (required), Proficiency `<select>` (Beginner / Intermediate / Professional / Fluent, required) via `createSelectField`; Language and Proficiency placed in `inline-entry-form__row inline-entry-form__row--two`
 
-- [ ] T021 [P] [US5] Implement `buildLinksForm(formEl, initial = {})` and wire `renderLinksCard()`:
+- [X] T021 [P] [US5] Implement `buildLinksForm(formEl, initial = {})` and wire `renderLinksCard()`:
   - Fields: Link URL (required, `validateUrl` which rejects non-http/https), Friendly Name (optional)
   - `getData` returns `{ url: url.input.value.trim(), friendlyName: normalizeWhitespace(friendlyName.input.value) }`
 
-- [ ] T022 [US5] Remove stale helpers from `src/pages/ProfileEdit.js` now that all 6 structured sections use overlay-based Add:
+- [X] T022 [US5] Remove stale helpers from `src/pages/ProfileEdit.js` now that all 6 structured sections use overlay-based Add:
   - Delete `appendAddButton()` (no remaining callers)
   - Delete `canOpenInlineForm()` and `hasOpenInlineForm()` (overlay `_openOverlay` guard replaces this)
   - Delete `renderOpenFormError()` and remove the `hasOpenInlineForm()` guard block from `handleSave()` (the inline form Save-blocking check is no longer needed)

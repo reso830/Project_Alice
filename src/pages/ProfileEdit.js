@@ -137,15 +137,11 @@ function createEditCard(title, { onAdd } = {}) {
 
   header.append(label);
   if (onAdd) {
-    appendAddButton(header, 'Add', onAdd, 'profile-btn profile-btn--primary');
+    header.append(createButton('Add', 'profile-btn profile-btn--primary', onAdd));
   }
   card.append(header, body);
 
   return { card, body };
-}
-
-function removeOpenFormError() {
-  document.querySelector('.open-form-error')?.remove();
 }
 
 function normalizeWhitespace(value) {
@@ -153,12 +149,7 @@ function normalizeWhitespace(value) {
 }
 
 function commitListChange() {
-  removeOpenFormError();
   updateControlsState();
-}
-
-function canOpenInlineForm() {
-  return !hasOpenInlineForm();
 }
 
 function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
@@ -188,16 +179,6 @@ function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
   return row;
 }
 
-function appendAddButton(body, label, onClick, className = 'profile-btn profile-btn--outline') {
-  body.append(createButton(label, className, () => {
-    if (!canOpenInlineForm()) {
-      return;
-    }
-
-    onClick();
-  }));
-}
-
 function validateFields(rules) {
   let valid = true;
 
@@ -218,6 +199,13 @@ function validateFields(rules) {
 
 function optionalMonthYear(value) {
   return value.trim() ? validateMonthYear(value) : null;
+}
+
+function getFormData(fields) {
+  return Object.fromEntries(Object.entries(fields).map(([key, field]) => [
+    key,
+    field.input.type === 'checkbox' ? field.input.checked : field.input.value,
+  ]));
 }
 
 function getOverlayFocusable(overlay) {
@@ -369,16 +357,6 @@ function updateField(fieldName, value) {
   updateControlsState();
 }
 
-function hasOpenInlineForm() {
-  return document.querySelector('.inline-entry-form') !== null;
-}
-
-function renderOpenFormError() {
-  const err = createElement('p', 'open-form-error', 'Please finish or cancel the open form before saving.');
-
-  _subheader?.after(err);
-}
-
 function renderSubheader() {
   const navbar = document.querySelector('.navbar');
   const bar = createElement('div', 'profile-edit-subheader');
@@ -493,13 +471,38 @@ function renderSkillsCard(page) {
   page.append(card);
 }
 
+function buildLanguagesForm(formEl, initial = {}) {
+  const language = createField('Language', initial.language ?? '', false, { required: true });
+  const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS, initial.proficiency ?? '', { required: true });
+  const row = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
+  const fields = { language, proficiency };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  row.append(language.wrapper, proficiency.wrapper);
+  formEl.append(row);
+
+  return {
+    validate: () => validateFields([
+      { field: language, validators: [validateRequired] },
+      { field: proficiency, validators: [validateRequired] },
+    ]),
+    getData: () => ({
+      language: normalizeWhitespace(language.input.value),
+      proficiency: proficiency.input.value,
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
 function renderLanguagesCard(page) {
-  let isAddingLanguage = false;
   const { card, body } = createEditCard('LANGUAGES', {
-    onAdd: () => {
-      isAddingLanguage = true;
-      render();
-    },
+    onAdd: () => createEntryOverlay('Add Language', (el) => buildLanguagesForm(el), {
+      onSave: (data) => {
+        _formState.languages.push(data);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -518,55 +521,52 @@ function renderLanguagesCard(page) {
         },
       }));
     });
-
-    if (!isAddingLanguage) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--language');
-    const language = createField('Language', '', false, { required: true });
-    const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS, '', { required: true });
-    const row = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: language, validators: [validateRequired] },
-        { field: proficiency, validators: [validateRequired] },
-      ])) {
-        return;
-      }
-
-      _formState.languages.push({
-        language: normalizeWhitespace(language.input.value),
-        proficiency: proficiency.input.value,
-      });
-      isAddingLanguage = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingLanguage = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    row.append(language.wrapper, proficiency.wrapper);
-    form.append(row, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildCertificationsForm(formEl, initial = {}) {
+  const name = createField('Certification Name', initial.name ?? '', false, { required: true });
+  const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
+  const certificateId = createField('Certificate ID', initial.certificateId ?? '');
+  const issuanceDate = createField('Issuance Date', initial.issuanceDate ?? '', false, { required: true });
+  const expiryDate = createField('Expiry Date', initial.expiryDate ?? '');
+  const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
+  const fields = { name, issuingBody, certificateId, issuanceDate, expiryDate };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  dateRow.append(issuanceDate.wrapper, expiryDate.wrapper);
+  formEl.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, dateRow);
+
+  return {
+    validate: () => validateFields([
+      { field: name, validators: [validateRequired] },
+      { field: issuingBody, validators: [validateRequired] },
+      { field: issuanceDate, validators: [validateRequired, validateMonthYear] },
+      { field: expiryDate, validators: [optionalMonthYear] },
+    ]),
+    getData: () => ({
+      name: normalizeWhitespace(name.input.value),
+      issuingBody: normalizeWhitespace(issuingBody.input.value),
+      certificateId: normalizeWhitespace(certificateId.input.value),
+      issuanceDate: issuanceDate.input.value.trim(),
+      expiryDate: expiryDate.input.value.trim(),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
 function renderCertificationsCard(page) {
-  let isAddingCertification = false;
   const { card, body } = createEditCard('CERTIFICATIONS', {
-    onAdd: () => {
-      isAddingCertification = true;
-      render();
-    },
+    onAdd: () => createEntryOverlay('Add Certification', (el) => buildCertificationsForm(el), {
+      onSave: (data) => {
+        _formState.certifications.push(data);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -585,63 +585,45 @@ function renderCertificationsCard(page) {
         },
       }));
     });
-
-    if (!isAddingCertification) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--certification');
-    const name = createField('Certification Name', '', false, { required: true });
-    const issuingBody = createField('Issuing Body', '', false, { required: true });
-    const certificateId = createField('Certificate ID');
-    const issuanceDate = createField('Issuance Date', '', false, { required: true });
-    const expiryDate = createField('Expiry Date');
-    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: name, validators: [validateRequired] },
-        { field: issuingBody, validators: [validateRequired] },
-        { field: issuanceDate, validators: [validateRequired, validateMonthYear] },
-        { field: expiryDate, validators: [optionalMonthYear] },
-      ])) {
-        return;
-      }
-
-      _formState.certifications.push({
-        name: normalizeWhitespace(name.input.value),
-        issuingBody: normalizeWhitespace(issuingBody.input.value),
-        certificateId: normalizeWhitespace(certificateId.input.value),
-        issuanceDate: issuanceDate.input.value.trim(),
-        expiryDate: expiryDate.input.value.trim(),
-      });
-      isAddingCertification = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingCertification = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    dateRow.append(issuanceDate.wrapper, expiryDate.wrapper);
-    form.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, dateRow, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildEducationForm(formEl, initial = {}) {
+  const degreeMajor = createField('Degree & Major', initial.degreeMajor ?? '', false, { required: true });
+  const university = createField('University', initial.university ?? '', false, { required: true });
+  const yearCompleted = createField('Year Completed', initial.yearCompleted ?? '', false, { required: true });
+  const fields = { degreeMajor, university, yearCompleted };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(degreeMajor.wrapper, university.wrapper, yearCompleted.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: degreeMajor, validators: [validateRequired] },
+      { field: university, validators: [validateRequired] },
+      { field: yearCompleted, validators: [validateRequired] },
+    ]),
+    getData: () => ({
+      degreeMajor: normalizeWhitespace(degreeMajor.input.value),
+      university: normalizeWhitespace(university.input.value),
+      yearCompleted: normalizeWhitespace(yearCompleted.input.value),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
 function renderEducationCard(page) {
-  let isAddingEducation = false;
   const { card, body } = createEditCard('EDUCATION', {
-    onAdd: () => {
-      isAddingEducation = true;
-      render();
-    },
+    onAdd: () => createEntryOverlay('Add Education', (el) => buildEducationForm(el), {
+      onSave: (data) => {
+        _formState.education = sortEducation([..._formState.education, data]);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -662,56 +644,85 @@ function renderEducationCard(page) {
         },
       }));
     }
-
-    if (!isAddingEducation) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--education');
-    const degreeMajor = createField('Degree & Major', '', false, { required: true });
-    const university = createField('University', '', false, { required: true });
-    const yearCompleted = createField('Year Completed', '', false, { required: true });
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: degreeMajor, validators: [validateRequired] },
-        { field: university, validators: [validateRequired] },
-        { field: yearCompleted, validators: [validateRequired] },
-      ])) {
-        return;
-      }
-
-      _formState.education = sortEducation([..._formState.education, {
-        degreeMajor: normalizeWhitespace(degreeMajor.input.value),
-        university: normalizeWhitespace(university.input.value),
-        yearCompleted: normalizeWhitespace(yearCompleted.input.value),
-      }]);
-      isAddingEducation = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingEducation = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(degreeMajor.wrapper, university.wrapper, yearCompleted.wrapper, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
-function renderExperienceCard(page) {
-  let isAddingExperience = false;
-  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE', {
-    onAdd: () => {
-      isAddingExperience = true;
-      render();
+function buildExperienceForm(formEl, initial = {}) {
+  const role = createField('Role', initial.role ?? '', false, { required: true });
+  const company = createField('Company', initial.company ?? '', false, { required: true });
+  const responsibilities = createField('Responsibilities', initial.responsibilities ?? '', true, { required: true });
+  const dateStarted = createField('Date Started', initial.dateStarted ?? '', false, { required: true });
+  const dateEnded = createField('Date Ended', initial.dateEnded ?? '', false, { required: true });
+  const currentWorkWrapper = createElement('label', 'edit-field');
+  const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
+  const currentWork = document.createElement('input');
+  const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--dates');
+  const currentWorkField = { wrapper: currentWorkWrapper, input: currentWork, error: createElement('span', 'field-error') };
+  const fields = { role, company, responsibilities, dateStarted, dateEnded, currentWork: currentWorkField };
+
+  currentWork.type = 'checkbox';
+  currentWork.className = 'edit-field__checkbox';
+  currentWork.checked = Boolean(initial.currentWork);
+  currentWorkField.error.hidden = true;
+  currentWorkWrapper.classList.add('edit-field--checkbox');
+  currentWorkWrapper.append(currentWorkLabel, currentWork, currentWorkField.error);
+
+  function syncDateEnded() {
+    dateEnded.input.disabled = currentWork.checked;
+    dateEnded.wrapper.classList.toggle('edit-field--disabled', currentWork.checked);
+    if (currentWork.checked) {
+      setFieldError(dateEnded, '');
+    }
+  }
+
+  currentWork.addEventListener('change', syncDateEnded);
+  syncDateEnded();
+  dateRow.append(dateStarted.wrapper, dateEnded.wrapper, currentWorkWrapper);
+  formEl.append(role.wrapper, company.wrapper, responsibilities.wrapper, dateRow);
+
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  return {
+    validate: () => {
+      const rules = [
+        { field: role, validators: [validateRequired] },
+        { field: company, validators: [validateRequired] },
+        { field: responsibilities, validators: [validateRequired] },
+        { field: dateStarted, validators: [validateRequired, validateMonthYear] },
+      ];
+
+      if (!currentWork.checked) {
+        rules.push({ field: dateEnded, validators: [validateRequired, validateMonthYear] });
+      } else {
+        setFieldError(dateEnded, '');
+      }
+
+      return validateFields(rules);
     },
+    getData: () => ({
+      role: normalizeWhitespace(role.input.value),
+      company: normalizeWhitespace(company.input.value),
+      responsibilities: responsibilities.input.value.trim(),
+      dateStarted: dateStarted.input.value.trim(),
+      dateEnded: currentWork.checked ? '' : dateEnded.input.value.trim(),
+      currentWork: currentWork.checked,
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function renderExperienceCard(page) {
+  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE', {
+    onAdd: () => createEntryOverlay('Add Experience', (el) => buildExperienceForm(el), {
+      onSave: (data) => {
+        _formState.experience = sortExperience([..._formState.experience, data]);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -738,92 +749,41 @@ function renderExperienceCard(page) {
         },
       }));
     }
-
-    if (!isAddingExperience) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--experience');
-    const role = createField('Role', '', false, { required: true });
-    const company = createField('Company', '', false, { required: true });
-    const responsibilities = createField('Responsibilities', '', true, { required: true });
-    const dateStarted = createField('Date Started', '', false, { required: true });
-    const dateEnded = createField('Date Ended', '', false, { required: true });
-    const currentWorkWrapper = createElement('label', 'edit-field');
-    const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
-    const currentWork = document.createElement('input');
-    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--dates');
-    const actions = createElement('div', 'inline-entry-form__actions');
-
-    currentWork.type = 'checkbox';
-    currentWork.className = 'edit-field__checkbox';
-    currentWorkWrapper.classList.add('edit-field--checkbox');
-    currentWorkWrapper.append(currentWorkLabel, currentWork);
-
-    function syncDateEnded() {
-      dateEnded.input.disabled = currentWork.checked;
-      dateEnded.wrapper.classList.toggle('edit-field--disabled', currentWork.checked);
-      if (currentWork.checked) {
-        setFieldError(dateEnded, '');
-      }
-    }
-
-    currentWork.addEventListener('change', syncDateEnded);
-    syncDateEnded();
-
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      const rules = [
-        { field: role, validators: [validateRequired] },
-        { field: company, validators: [validateRequired] },
-        { field: responsibilities, validators: [validateRequired] },
-        { field: dateStarted, validators: [validateRequired, validateMonthYear] },
-      ];
-
-      if (!currentWork.checked) {
-        rules.push({ field: dateEnded, validators: [validateRequired, validateMonthYear] });
-      } else {
-        setFieldError(dateEnded, '');
-      }
-
-      if (!validateFields(rules)) {
-        return;
-      }
-
-      _formState.experience = sortExperience([..._formState.experience, {
-        role: normalizeWhitespace(role.input.value),
-        company: normalizeWhitespace(company.input.value),
-        responsibilities: responsibilities.input.value.trim(),
-        dateStarted: dateStarted.input.value.trim(),
-        dateEnded: currentWork.checked ? '' : dateEnded.input.value.trim(),
-        currentWork: currentWork.checked,
-      }]);
-      isAddingExperience = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingExperience = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    dateRow.append(dateStarted.wrapper, dateEnded.wrapper, currentWorkWrapper);
-    form.append(role.wrapper, company.wrapper, responsibilities.wrapper, dateRow, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildLinksForm(formEl, initial = {}) {
+  const url = createField('Link URL', initial.url ?? '', false, { required: true });
+  const friendlyName = createField('Friendly Name', initial.friendlyName ?? '');
+  const fields = { url, friendlyName };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(url.wrapper, friendlyName.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: url, validators: [validateRequired, validateUrl] },
+    ]),
+    getData: () => ({
+      url: url.input.value.trim(),
+      friendlyName: normalizeWhitespace(friendlyName.input.value),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
 function renderLinksCard(page) {
-  let isAddingLink = false;
   const { card, body } = createEditCard('LINKS', {
-    onAdd: () => {
-      isAddingLink = true;
-      render();
-    },
+    onAdd: () => createEntryOverlay('Add Link', (el) => buildLinksForm(el), {
+      onSave: (data) => {
+        _formState.links.push(data);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -842,52 +802,47 @@ function renderLinksCard(page) {
         },
       }));
     });
-
-    if (!isAddingLink) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--link');
-    const url = createField('Link URL', '', false, { required: true });
-    const friendlyName = createField('Friendly Name');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: url, validators: [validateRequired, validateUrl] },
-      ])) {
-        return;
-      }
-
-      _formState.links.push({
-        url: url.input.value.trim(),
-        friendlyName: normalizeWhitespace(friendlyName.input.value),
-      });
-      isAddingLink = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingLink = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(url.wrapper, friendlyName.wrapper, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildAwardsForm(formEl, initial = {}) {
+  const awardName = createField('Award Name', initial.awardName ?? '', false, { required: true });
+  const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
+  const details = createField('Details', initial.details ?? '', true);
+  const date = createField('Date', initial.date ?? '');
+  const fields = { awardName, issuingBody, details, date };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(awardName.wrapper, issuingBody.wrapper, details.wrapper, date.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: awardName, validators: [validateRequired] },
+      { field: issuingBody, validators: [validateRequired] },
+      { field: date, validators: [optionalMonthYear] },
+    ]),
+    getData: () => ({
+      awardName: normalizeWhitespace(awardName.input.value),
+      issuingBody: normalizeWhitespace(issuingBody.input.value),
+      details: details.input.value.trim(),
+      date: date.input.value.trim(),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
 function renderAwardsCard(page) {
-  let isAddingAward = false;
   const { card, body } = createEditCard('AWARDS', {
-    onAdd: () => {
-      isAddingAward = true;
-      render();
-    },
+    onAdd: () => createEntryOverlay('Add Award', (el) => buildAwardsForm(el), {
+      onSave: (data) => {
+        _formState.awards.push(data);
+        commitListChange();
+        render();
+      },
+    }),
   });
 
   function render() {
@@ -907,45 +862,6 @@ function renderAwardsCard(page) {
         },
       }));
     });
-
-    if (!isAddingAward) {
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--award');
-    const awardName = createField('Award Name', '', false, { required: true });
-    const issuingBody = createField('Issuing Body', '', false, { required: true });
-    const details = createField('Details', '', true);
-    const date = createField('Date');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: awardName, validators: [validateRequired] },
-        { field: issuingBody, validators: [validateRequired] },
-        { field: date, validators: [optionalMonthYear] },
-      ])) {
-        return;
-      }
-
-      _formState.awards.push({
-        awardName: normalizeWhitespace(awardName.input.value),
-        issuingBody: normalizeWhitespace(issuingBody.input.value),
-        details: details.input.value.trim(),
-        date: date.input.value.trim(),
-      });
-      isAddingAward = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingAward = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(awardName.wrapper, issuingBody.wrapper, details.wrapper, date.wrapper, actions);
-    body.append(form);
   }
 
   render();
@@ -1014,13 +930,7 @@ async function handleSave() {
     return;
   }
 
-  removeOpenFormError();
   removeSectionValidationError();
-
-  if (hasOpenInlineForm()) {
-    renderOpenFormError();
-    return;
-  }
 
   const validation = validateProfile(_formState);
 
