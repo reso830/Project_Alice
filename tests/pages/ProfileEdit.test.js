@@ -1404,6 +1404,27 @@ describe('ProfileEdit page', () => {
     expect(Toast.show).toHaveBeenCalledWith('Edits discarded.', 'success');
   });
 
+  it('prompts before page unload when an overlay draft is dirty', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const cleanEvent = new window.Event('beforeunload', { cancelable: true });
+
+    window.dispatchEvent(cleanEvent);
+    expect(cleanEvent.defaultPrevented).toBe(false);
+
+    const overlay = openExperienceOverlay(container);
+    const dirtyEvent = new window.Event('beforeunload', { cancelable: true });
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    window.dispatchEvent(dirtyEvent);
+
+    expect(dirtyEvent.defaultPrevented).toBe(true);
+  });
+
   it('marks required fields visually', async () => {
     const container = createAppShell();
 

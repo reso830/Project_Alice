@@ -335,7 +335,7 @@ export function createEntryOverlay(title, buildForm, { onSave } = {}) {
   document.body.append(backdrop, overlay);
   document.body.style.overflow = 'hidden';
 
-  _openOverlay = { close };
+  _openOverlay = { close, isDirty };
 
   getOverlayFocusable(overlay)[0]?.focus();
 
@@ -1173,7 +1173,7 @@ export async function mount(container, { navigate } = {}) {
   renderEditPage(container);
 
   _beforeUnloadHandler = (event) => {
-    if (isDirty()) {
+    if (isDirty() || _openOverlay?.isDirty?.()) {
       event.preventDefault();
       event.returnValue = '';
     }
