@@ -2,6 +2,7 @@ import { getAll, getProfile } from '../services/api.js';
 import { computeAppCounts, computeStats, STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
+import { getSafeExternalHref } from '../utils/url.js';
 
 let _container = null;
 let _dismissTimer = null;
@@ -261,22 +262,16 @@ function appendMeta(parent, label, value) {
   parent.append(item);
 }
 
-function getSafeExternalHref(url) {
-  if (!url) {
-    return '#';
+function getLinkLabel(link) {
+  if (link.friendlyName) {
+    return link.friendlyName;
   }
 
   try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.href;
-    }
+    return new URL(link.url).hostname;
   } catch {
-    return '#';
+    return link.url;
   }
-
-  return '#';
 }
 
 function renderBasicInfo(profile) {
@@ -328,11 +323,15 @@ function renderExperience(profile, container) {
 
   for (const entry of profile.experience) {
     const item = createElement('div', 'profile-entry');
+    const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
 
     item.append(
       createElement('div', 'profile-entry__title', entry.role),
-      createElement('div', 'profile-entry__meta', [entry.company, entry.period].filter(Boolean).join(' | ')),
-      createElement('p', 'profile-entry__desc', entry.desc),
+      createElement('div', 'profile-entry__meta', [
+        entry.company,
+        [entry.dateStarted, endDate].filter(Boolean).join(' - '),
+      ].filter(Boolean).join(' | ')),
+      createElement('p', 'profile-entry__desc', entry.responsibilities),
     );
     list.append(item);
   }
@@ -351,8 +350,8 @@ function renderEducation(profile, container) {
     const item = createElement('div', 'profile-entry');
 
     item.append(
-      createElement('div', 'profile-entry__title', entry.degree),
-      createElement('div', 'profile-entry__meta', [entry.school, entry.year].filter(Boolean).join(' | ')),
+      createElement('div', 'profile-entry__title', entry.degreeMajor),
+      createElement('div', 'profile-entry__meta', [entry.university, entry.yearCompleted].filter(Boolean).join(' | ')),
     );
     list.append(item);
   }
@@ -374,18 +373,54 @@ function renderPills(label, values, container) {
   container.append(renderSubSection(label, pills));
 }
 
-function renderBulletList(label, values, className, container) {
-  if (!Array.isArray(values) || values.length === 0) {
+function renderCertifications(profile, container) {
+  if (!Array.isArray(profile.certifications) || profile.certifications.length === 0) {
     return;
   }
 
-  const list = createElement('ul', `profile-bullet-list ${className}`);
+  const list = createElement('ul', 'profile-bullet-list profile-bullet-list--indigo');
 
-  for (const value of values) {
-    list.append(createElement('li', null, value));
+  for (const entry of profile.certifications) {
+    list.append(createElement('li', null, [
+      entry.name,
+      entry.issuingBody,
+      entry.issuanceDate,
+    ].filter(Boolean).join(' | ')));
   }
 
-  container.append(renderSubSection(label, list));
+  container.append(renderSubSection('CERTIFICATIONS', list));
+}
+
+function renderAwards(profile, container) {
+  if (!Array.isArray(profile.awards) || profile.awards.length === 0) {
+    return;
+  }
+
+  const list = createElement('ul', 'profile-bullet-list profile-bullet-list--amber');
+
+  for (const entry of profile.awards) {
+    list.append(createElement('li', null, [
+      entry.awardName,
+      entry.issuingBody,
+      entry.date,
+    ].filter(Boolean).join(' | ')));
+  }
+
+  container.append(renderSubSection('AWARDS', list));
+}
+
+function renderLanguages(profile, container) {
+  if (!Array.isArray(profile.languages) || profile.languages.length === 0) {
+    return;
+  }
+
+  const pills = createElement('div', 'pill-row');
+
+  for (const entry of profile.languages) {
+    pills.append(createElement('span', 'pill-tag', [entry.language, entry.proficiency].filter(Boolean).join(' | ')));
+  }
+
+  container.append(renderSubSection('LANGUAGES', pills));
 }
 
 function renderLinks(profile, container) {
@@ -403,8 +438,7 @@ function renderLinks(profile, container) {
     chip.target = '_blank';
     chip.rel = 'noopener noreferrer';
     chip.append(
-      createElement('span', 'link-chip__platform', link.platform),
-      createElement('span', 'link-chip__url', link.label || link.url),
+      createElement('span', 'link-chip__url', getLinkLabel(link)),
     );
     links.append(chip);
   }
@@ -420,9 +454,9 @@ function renderPopulatedProfile(section, profile) {
   renderExperience(profile, content);
   renderEducation(profile, content);
   renderPills('SKILLS', profile.skills, content);
-  renderBulletList('CERTIFICATIONS', profile.certifications, 'profile-bullet-list--indigo', content);
-  renderBulletList('AWARDS', profile.awards, 'profile-bullet-list--amber', content);
-  renderPills('LANGUAGES', profile.languages, content);
+  renderCertifications(profile, content);
+  renderAwards(profile, content);
+  renderLanguages(profile, content);
   renderLinks(profile, content);
   section.append(content);
 }

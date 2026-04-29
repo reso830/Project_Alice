@@ -7,6 +7,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-04-29
+
+### Added
+- Profile Edit page — full rewrite from section-by-section placeholder to a centralized inline editor with global Save/Cancel controls, dirty-state tracking, and a discard confirmation modal (keyboard-accessible, scroll-locked backdrop)
+- Sticky subheader bar on the Edit Profile page — "Edit Profile" title with Save and Cancel buttons always visible without scrolling; Cancel triggers the discard flow; no separate back button
+- Navbar discard guard — clicking any nav bar link while unsaved changes exist shows the discard confirmation modal before navigation proceeds
+- Inline add/remove flows for all seven list-based profile sections: Skills (pill tags, case-insensitive duplicate deduplication, Enter key shortcut), Languages (language + proficiency dropdown), Certifications, Education (sorted newest-first by year), Professional Experience (sorted current-first then by end date), Links (URL validation, safe-protocol enforcement), Awards
+- One-at-a-time inline form constraint — opening a second section's form while one is already open has no effect; Save is blocked and shows a persistent inline error (not a toast) while any form is open
+- Structured entry data model — Experience, Education, Certifications, Awards, Languages, and Links now stored as typed entry objects instead of plain strings; backward-compatible normaliser migrates old string-array profiles on first read
+- Client-side validation for all entry types: required fields, MM/YYYY date format, URL protocol enforcement, email format; errors surfaced inline below the relevant field before save; section-level summary shown if migrated entries have unfilled required fields
+- Server-side validation for all structured entry fields via extended `validateProfile`; server returns `400 VALIDATION_ERROR` on invalid entries
+- Required field visual indicators — red asterisk appended to all required field labels throughout the editor
+- Inline form two-column row layouts — Language (language + proficiency), Certification (issuance date + expiry date), Experience (date started + date ended + current work checkbox) on viewports ≥ 640 px
+- Experience Date Ended field disabled and dimmed when Current Work is checked; re-enabled and required when unchecked
+- Compact icon remove button on all list entry rows (26 × 26 px, accessible `aria-label`, red hover state)
+- Section header navy accent color on the Edit Profile page
+- `src/utils/validate.js` — `validateRequired`, `validateMonthYear`, `validateUrl`, `validateEmail` pure validators
+- `src/utils/sort.js` — `sortEducation` (by year completed descending) and `sortExperience` (current roles first, then by end date descending, then by start date)
+- `src/utils/url.js` — `getSafeExternalHref` extracted and shared by Profile and ProfileEdit pages
+
+### Changed
+- Profile page updated to render new structured entry shapes: `responsibilities`/`dateStarted`/`currentWork` for experience; `degreeMajor`/`university`/`yearCompleted` for education; certifications, awards, languages, and links rendered as objects
+- `src/models/profile.js` extended with per-type entry normalisers and comprehensive `validateProfile` covering all entry-level required fields; `PROFICIENCY_LEVELS` exported
+- `certifications[].issuingBody` is now required (was previously optional); profiles with a blank issuing body will fail validation at save, prompting the user to update before saving
+
 ## [0.4.0] — 2026-04-28
 
 ### Added
@@ -92,7 +117,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/reso830/Project_Alice/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/reso830/Project_Alice/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/reso830/Project_Alice/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/reso830/Project_Alice/compare/v0.1.0...v0.2.0

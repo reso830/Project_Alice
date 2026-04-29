@@ -133,8 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function navigate(page) {
   const appRoot = document.querySelector('#app');
+  let activePage = page;
 
   if (!appRoot || page === _currentPage) {
+    return;
+  }
+
+  if (_currentPage === 'profile-edit' && !ProfileEdit.confirmNavigation(page)) {
     return;
   }
 
@@ -153,13 +158,12 @@ function navigate(page) {
   } else if (page === 'profile-edit') {
     ProfileEdit.mount(appRoot, { navigate });
     _currentUnmount = ProfileEdit.unmount;
-    _currentPage = page;
-    return;
+    activePage = 'profile';
   } else {
     Tracker.mount(appRoot);
     _currentUnmount = Tracker.unmount;
   }
 
   _currentPage = page;
-  Navbar.setActive(page);
+  Navbar.setActive(activePage);
 }
