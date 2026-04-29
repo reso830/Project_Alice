@@ -2,6 +2,7 @@ import { getAll, getProfile } from '../services/api.js';
 import { computeAppCounts, computeStats, STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
+import { getSafeExternalHref } from '../utils/url.js';
 
 let _container = null;
 let _dismissTimer = null;
@@ -259,24 +260,6 @@ function appendMeta(parent, label, value) {
 
   item.append(labelEl, valueEl);
   parent.append(item);
-}
-
-function getSafeExternalHref(url) {
-  if (!url) {
-    return '#';
-  }
-
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.href;
-    }
-  } catch {
-    return '#';
-  }
-
-  return '#';
 }
 
 function getLinkLabel(link) {

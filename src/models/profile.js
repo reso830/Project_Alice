@@ -13,7 +13,7 @@ const STRING_FIELDS = ['firstName', 'lastName', 'city', 'phone', 'email', 'summa
 const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
-const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
+export const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
 
 function cleanString(value) {
   return typeof value === 'string' ? value.trim() : '';

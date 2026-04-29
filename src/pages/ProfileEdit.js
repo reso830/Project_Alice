@@ -1,10 +1,9 @@
 import { Toast } from '../components/Toast.js';
-import { normaliseProfile, validateProfile } from '../models/profile.js';
+import { normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
+import { getSafeExternalHref } from '../utils/url.js';
 import { validateMonthYear, validateRequired, validateUrl } from '../utils/validate.js';
-
-const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
 
 let _container = null;
 let _navigate = () => {};
@@ -203,23 +202,9 @@ function getLinkLabel(url, friendlyName = '') {
   }
 }
 
-function getSafeExternalHref(url) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.href;
-    }
-  } catch {
-    return '#';
-  }
-
-  return '#';
-}
-
 function updateField(fieldName, value) {
   _formState[fieldName] = value;
-  clearBasicInfoErrors();
+  setFieldError(_basicInfoFields[fieldName], '');
   updateControlsState();
 }
 
@@ -537,7 +522,7 @@ function renderExperienceCard(page) {
     for (const entry of sortExperience(_formState.experience)) {
       const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
 
-      body.append(createEntryRow([entry.role, entry.company, [entry.dateStarted, endDate].filter(Boolean).join('-')], () => {
+      body.append(createEntryRow([entry.role, entry.company, [entry.dateStarted, endDate].filter(Boolean).join(' - ')], () => {
         const index = _formState.experience.indexOf(entry);
 
         _formState.experience.splice(index, 1);

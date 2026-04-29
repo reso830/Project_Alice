@@ -295,6 +295,30 @@ describe('ProfileEdit page', () => {
     expect(error.hidden).toBe(false);
   });
 
+  it('does not clear unrelated validation errors when another field changes', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const basic = getCard(container, 'BASIC INFO');
+    const firstName = getFieldInput(basic, 'First Name');
+    const summary = getFieldInput(getCard(container, 'SUMMARY'), 'Summary');
+
+    inputValue(firstName, '');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    inputValue(summary, 'Updated summary');
+
+    const error = [...basic.querySelectorAll('.field-error')]
+      .find((fieldError) => fieldError.textContent === 'First Name is required.');
+
+    expect(error).toBeTruthy();
+    expect(error.hidden).toBe(false);
+  });
+
   it('navigates directly when cancelling a clean form', async () => {
     const container = createAppShell();
     const navigate = vi.fn();
@@ -472,7 +496,7 @@ describe('ProfileEdit page', () => {
 
     inputValue(getFieldInput(experience, 'Date Started'), '01/2024');
     getButton(experience, 'Add').click();
-    expect(experience.textContent).toContain('Past Role | Acme | 01/2024-02/2025');
+    expect(experience.textContent).toContain('Past Role | Acme | 01/2024 - 02/2025');
 
     getButton(experience, 'Add Experience').click();
     inputValue(getFieldInput(experience, 'Role'), 'Current Role');
@@ -484,7 +508,7 @@ describe('ProfileEdit page', () => {
     getButton(experience, 'Add').click();
 
     expect(experience.querySelector('.entry-row__text')?.textContent)
-      .toBe('Current Role | Beta | 03/2025-Present');
+      .toBe('Current Role | Beta | 03/2025 - Present');
   });
 
   it('validates links and renders friendly-name and hostname labels', async () => {
