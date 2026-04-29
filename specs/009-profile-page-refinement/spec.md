@@ -320,7 +320,7 @@ A user viewing the Profile page on an iPad Mini (approximately 768 px wide) sees
 - **SC-008**: Canceling a modal/sheet with unsaved changes always produces a confirmation dialog; confirmed discard always produces a toast. Canceling with no changes always closes immediately.
 - **SC-009**: Every structured entry on the Edit Profile page has an Edit icon that opens the overlay pre-filled with that entry's values; saving from the edit overlay updates the correct entry in-place.
 - **SC-010**: At a 768 px viewport width, all four stat chips are fully readable with no overflow.
-- **SC-011**: All existing automated tests pass without modification after feature delivery.
+- **SC-011**: All existing automated tests continue to pass after feature delivery (no regressions). New tests may be added to existing test files; existing assertions must not fail.
 
 ---
 
