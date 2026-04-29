@@ -14,7 +14,7 @@ vi.mock('../../src/components/Toast.js', () => ({
 
 import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
-import { ProfileEdit } from '../../src/pages/ProfileEdit.js';
+import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
 afterEach(() => {
   ProfileEdit.unmount();
@@ -111,6 +111,86 @@ async function flushPromises() {
 }
 
 describe('ProfileEdit page', () => {
+  it('creates a desktop entry modal, saves form data, and restores scroll', () => {
+    window.innerWidth = 1024;
+    const onSave = vi.fn();
+
+    createEntryOverlay('Add Experience', (formEl) => {
+      const input = document.createElement('input');
+
+      input.value = 'Engineer';
+      formEl.append(input);
+
+      return {
+        validate: () => true,
+        getData: () => ({ role: input.value }),
+        isDirty: () => false,
+      };
+    }, { onSave });
+
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+    expect(document.querySelector('.entry-sheet')).toBeNull();
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    [...document.querySelectorAll('.entry-modal button')]
+      .find((button) => button.textContent === 'Save')
+      .click();
+
+    expect(onSave).toHaveBeenCalledWith({ role: 'Engineer' });
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('creates a mobile entry bottom sheet', () => {
+    window.innerWidth = 375;
+
+    createEntryOverlay('Add Link', (formEl) => {
+      formEl.append(document.createElement('input'));
+
+      return {
+        validate: () => true,
+        getData: () => ({}),
+        isDirty: () => false,
+      };
+    }, { onSave: vi.fn() });
+
+    expect(document.querySelector('.entry-sheet')).toBeTruthy();
+    expect(document.querySelector('.entry-modal')).toBeNull();
+  });
+
+  it('shows entry discard confirmation for dirty overlay cancel', () => {
+    window.innerWidth = 1024;
+    const input = document.createElement('input');
+
+    createEntryOverlay('Add Award', (formEl) => {
+      input.value = '';
+      formEl.append(input);
+
+      return {
+        validate: () => true,
+        getData: () => ({}),
+        isDirty: () => input.value !== '',
+      };
+    }, { onSave: vi.fn() });
+
+    input.value = 'Top Performer';
+    [...document.querySelectorAll('.entry-modal button')]
+      .find((button) => button.textContent === 'Cancel')
+      .click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+    expect(document.querySelector('.overlay-discard-dialog__msg')?.textContent)
+      .toBe('Discard entry changes?');
+
+    [...document.querySelectorAll('.overlay-discard-dialog button')]
+      .find((button) => button.textContent === 'Keep Editing')
+      .click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
   it('renders a blank form when no profile exists', async () => {
     const container = createAppShell();
 

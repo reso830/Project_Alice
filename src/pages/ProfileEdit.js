@@ -13,6 +13,7 @@ let _saving = false;
 let _basicInfoFields = {};
 let _discardKeyHandler = null;
 let _discardAction = null;
+let _openOverlay = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -217,6 +218,137 @@ function validateFields(rules) {
 
 function optionalMonthYear(value) {
   return value.trim() ? validateMonthYear(value) : null;
+}
+
+function getOverlayFocusable(overlay) {
+  return [...overlay.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+}
+
+function showOverlayDiscardDialog(boxEl, { onDiscard }) {
+  if (boxEl.querySelector('.overlay-discard-dialog')) {
+    return;
+  }
+
+  const dialog = createElement('div', 'overlay-discard-dialog');
+  const message = createElement('p', 'overlay-discard-dialog__msg', 'Discard entry changes?');
+  const discard = createButton('Discard', 'profile-btn profile-btn--primary profile-btn--danger', () => {
+    dialog.remove();
+    onDiscard();
+  });
+  const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => dialog.remove());
+
+  dialog.append(message, discard, keepEditing);
+  boxEl.append(dialog);
+}
+
+export function createEntryOverlay(title, buildForm, { onSave, initialValues = {} } = {}) {
+  void initialValues;
+
+  if (_openOverlay !== null) {
+    return undefined;
+  }
+
+  const isDesktop = window.innerWidth >= 640;
+  const backdrop = createElement('div', 'entry-overlay-backdrop');
+  const overlay = createElement('div', isDesktop ? 'entry-modal' : 'entry-sheet');
+  const container = createElement('div', isDesktop ? 'entry-modal__box' : 'entry-sheet__box');
+  const header = createElement('div', 'entry-overlay__header');
+  const titleEl = createElement('h2', 'entry-overlay__title', title);
+  const formEl = createElement('div', 'entry-overlay__form');
+  const footer = createElement('div', 'entry-overlay__footer');
+  const formApi = buildForm(formEl);
+  const validate = formApi?.validate ?? (() => true);
+  const getData = formApi?.getData ?? (() => ({}));
+  const isDirty = formApi?.isDirty ?? (() => false);
+  let isClosed = false;
+
+  function close() {
+    if (isClosed) {
+      return;
+    }
+
+    isClosed = true;
+    document.removeEventListener('keydown', handleDocumentKeydown);
+    overlay.removeEventListener('keydown', handleOverlayKeydown);
+    backdrop.removeEventListener('click', handleCancel);
+    backdrop.remove();
+    overlay.remove();
+    document.body.style.overflow = '';
+    _openOverlay = null;
+  }
+
+  function handleSave() {
+    if (!validate()) {
+      return;
+    }
+
+    onSave?.(getData());
+    close();
+  }
+
+  function handleCancel() {
+    if (!isDirty()) {
+      close();
+      return;
+    }
+
+    showOverlayDiscardDialog(container, {
+      onDiscard: () => {
+        close();
+        Toast.show('Changes discarded.', 'success');
+      },
+    });
+  }
+
+  function handleDocumentKeydown(event) {
+    if (event.key === 'Escape') {
+      handleCancel();
+    }
+  }
+
+  function handleOverlayKeydown(event) {
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusable = getOverlayFocusable(overlay);
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', handleCancel);
+  const save = createButton('Save', 'profile-btn profile-btn--primary', handleSave);
+
+  header.append(titleEl);
+  footer.append(cancel, save);
+  container.append(header, formEl, footer);
+  overlay.append(container);
+  backdrop.addEventListener('click', handleCancel);
+  document.addEventListener('keydown', handleDocumentKeydown);
+  overlay.addEventListener('keydown', handleOverlayKeydown);
+  document.body.append(backdrop, overlay);
+  document.body.style.overflow = 'hidden';
+
+  _openOverlay = { close };
+
+  getOverlayFocusable(overlay)[0]?.focus();
+
+  return _openOverlay;
 }
 
 function getLinkLabel(url, friendlyName = '') {
@@ -1011,6 +1143,7 @@ export async function mount(container, { navigate } = {}) {
 }
 
 export function unmount() {
+  _openOverlay?.close();
   document.querySelector('.confirm-backdrop')?.remove();
   if (_discardKeyHandler) {
     document.removeEventListener('keydown', _discardKeyHandler);
@@ -1029,6 +1162,7 @@ export function unmount() {
   _saving = false;
   _basicInfoFields = {};
   _discardAction = null;
+  _openOverlay = null;
 }
 
 export const ProfileEdit = { mount, unmount, confirmNavigation };

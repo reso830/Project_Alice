@@ -87,7 +87,7 @@
 
 **Independent Test**: With `window.innerWidth = 1024`, click "Add" on the Professional Experience section. A modal overlay with a backdrop, a title, form fields, Cancel, and Save should appear. Fill Role and click Save — the entry should commit to the section and the modal should close. Fill Role, click Cancel — a discard dialog should appear. Confirm discard — modal closes, toast shows.
 
-- [ ] T014 [US5] Implement `createEntryOverlay(title, buildForm, { onSave, initialValues = {} } = {})` in `src/pages/ProfileEdit.js`:
+- [X] T014 [US5] Implement `createEntryOverlay(title, buildForm, { onSave, initialValues = {} } = {})` in `src/pages/ProfileEdit.js`:
   - Guard: if `_openOverlay !== null`, return early (no-op)
   - Detects viewport: `window.innerWidth >= 640` → creates `.entry-modal` wrapping `.entry-modal__box`; else creates `.entry-sheet` wrapping `.entry-sheet__box`
   - Creates `.entry-overlay-backdrop`, appends backdrop and overlay to `document.body`, sets `document.body.style.overflow = 'hidden'`
@@ -103,7 +103,7 @@
   - Stores `_openOverlay = { close }` on open; returns `{ close }`
   - Add `let _openOverlay = null` to module-level state in `ProfileEdit.js`
 
-- [ ] T015 [US7] Implement `showOverlayDiscardDialog(boxEl, { onDiscard })` in `src/pages/ProfileEdit.js`:
+- [X] T015 [US7] Implement `showOverlayDiscardDialog(boxEl, { onDiscard })` in `src/pages/ProfileEdit.js`:
   - Accepts `boxEl` — a direct reference to the open `.entry-modal__box` or `.entry-sheet__box` passed from `handleCancel` in `createEntryOverlay` (the `container` variable). Do NOT use `document.querySelector` to locate the box.
   - Creates `.overlay-discard-dialog` div and appends it to `boxEl`
   - Contains `.overlay-discard-dialog__msg` with text "Discard entry changes?", a "Discard" button (danger-styled primary, calls `dialog.remove()` then `onDiscard()`), and a "Keep Editing" button (outline, calls `dialog.remove()` only)
