@@ -30,6 +30,11 @@ function getButton(container, label) {
     .find((button) => button.textContent === label);
 }
 
+function getSubsection(container, label) {
+  return [...container.querySelectorAll('.profile-subsection')]
+    .find((section) => section.querySelector('.profile-subsection__label')?.textContent.includes(label));
+}
+
 describe('Profile page', () => {
   it('renders the no-profile state and wires navigation callbacks', async () => {
     const container = document.createElement('main');
@@ -95,8 +100,11 @@ describe('Profile page', () => {
     expect(container.textContent).toContain('BS Computer Science');
     expect(container.textContent).toContain('State University | 2020');
     expect(container.textContent).toContain('JavaScript');
-    expect(container.textContent).toContain('AWS Developer | Amazon | 02/2023');
-    expect(container.textContent).toContain('Top Performer | Acme | 03/2024');
+    expect(container.textContent).toContain('AWS Developer');
+    expect(container.textContent).toContain('Amazon');
+    expect(container.textContent).toContain('02/2023');
+    expect(container.textContent).toContain('Top Performer');
+    expect(container.textContent).toContain('Acme | 03/2024');
     expect(container.textContent).toContain('English | Fluent');
     expect(container.querySelectorAll('.link-chip')[0].getAttribute('href')).toBe('https://alex.dev/');
     expect(container.querySelectorAll('.link-chip')[0].textContent).toBe('Portfolio');
@@ -129,6 +137,113 @@ describe('Profile page', () => {
       .toEqual(['0', '0', '0', '0', '0', '0', '0', '0']);
     expect(container.querySelector('.profile-basic__name')?.textContent).toBe('Taylor Ng');
     expect(container.querySelector('.pill-tag')).toBeNull();
+  });
+
+  it('renders certifications with structured entry hierarchy', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      certifications: [{
+        name: 'AWS Developer',
+        issuingBody: 'Amazon',
+        issuanceDate: '02/2023',
+        expiryDate: '02/2026',
+        certificateId: 'CERT-123',
+      }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const section = getSubsection(container, 'CERTIFICATIONS');
+    const list = section.querySelector('.profile-entry-list');
+    const entry = list.querySelector('.profile-entry');
+    const meta = [...entry.querySelectorAll('.profile-entry__meta')].map((el) => el.textContent);
+
+    expect(list).not.toBeNull();
+    expect(entry.querySelector('.profile-entry__title')?.textContent).toBe('AWS Developer');
+    expect(meta).toContain('Amazon');
+    expect(meta).toContain('02/2023 – 02/2026');
+    expect(entry.querySelector('.profile-entry__meta--secondary')?.textContent).toBe('ID: CERT-123');
+  });
+
+  it('renders certifications with partial data without breaking', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      certifications: [{
+        name: 'AWS Developer',
+        issuingBody: 'Amazon',
+      }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const section = getSubsection(container, 'CERTIFICATIONS');
+    const entry = section.querySelector('.profile-entry');
+    const meta = [...entry.querySelectorAll('.profile-entry__meta')].map((el) => el.textContent);
+
+    expect(entry.querySelector('.profile-entry__title')?.textContent).toBe('AWS Developer');
+    expect(meta).toEqual(['Amazon']);
+    expect(meta.every((text) => text.trim().length > 0)).toBe(true);
+    expect(entry.querySelector('.profile-entry__meta--secondary')).toBeNull();
+  });
+
+  it('renders awards with structured entry hierarchy', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      awards: [{
+        awardName: 'Top Performer',
+        issuingBody: 'Acme',
+        date: '03/2024',
+        details: 'Recognized for dashboard delivery.',
+      }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const section = getSubsection(container, 'AWARDS');
+    const list = section.querySelector('.profile-entry-list');
+    const entry = list.querySelector('.profile-entry');
+
+    expect(list).not.toBeNull();
+    expect(entry.querySelector('.profile-entry__title')?.textContent).toBe('Top Performer');
+    expect(entry.querySelector('.profile-entry__meta')?.textContent).toBe('Acme | 03/2024');
+    expect(entry.querySelector('.profile-entry__desc')?.textContent).toBe('Recognized for dashboard delivery.');
+  });
+
+  it('renders awards with no details and no date without breaking', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      awards: [{
+        awardName: 'Top Performer',
+        issuingBody: 'Acme',
+      }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const section = getSubsection(container, 'AWARDS');
+    const entry = section.querySelector('.profile-entry');
+    const meta = [...entry.querySelectorAll('.profile-entry__meta')].map((el) => el.textContent);
+
+    expect(entry.querySelector('.profile-entry__title')?.textContent).toBe('Top Performer');
+    expect(meta).toEqual(['Acme']);
+    expect(meta.every((text) => text.trim().length > 0)).toBe(true);
+    expect(entry.querySelector('.profile-entry__desc')).toBeNull();
   });
 
   it('clears rendered content on unmount', async () => {
