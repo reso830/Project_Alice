@@ -2,7 +2,6 @@ import { Toast } from '../components/Toast.js';
 import { normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
-import { getSafeExternalHref } from '../utils/url.js';
 import { validateMonthYear, validateRequired, validateUrl } from '../utils/validate.js';
 
 let _container = null;
@@ -129,13 +128,16 @@ function clearBasicInfoErrors() {
   }
 }
 
-function createEditCard(title) {
+function createEditCard(title, { onAdd } = {}) {
   const card = createElement('section', 'section-card edit-card');
   const header = createElement('div', 'section-card__header');
   const label = createElement('div', 'section-label', title);
   const body = createElement('div', 'edit-card__body');
 
   header.append(label);
+  if (onAdd) {
+    appendAddButton(header, 'Add', onAdd, 'profile-btn profile-btn--primary');
+  }
   card.append(header, body);
 
   return { card, body };
@@ -158,18 +160,35 @@ function canOpenInlineForm() {
   return !hasOpenInlineForm();
 }
 
-function createEntryRow(parts, onRemove) {
-  const row = createElement('div', 'entry-row');
-  const text = createElement('span', 'entry-row__text', parts.filter(Boolean).join(' | '));
-  const remove = createButton('x', 'entry-row__remove', onRemove, 'Remove entry');
+function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
+  const row = createElement('div', 'entry-row entry-row--structured');
+  const content = createElement('div', 'entry-row__content');
+  const actions = createElement('div', 'entry-row__actions');
 
-  row.append(text, remove);
+  if (display.title) {
+    content.append(createElement('div', 'profile-entry__title', display.title));
+  }
+
+  if (display.meta) {
+    content.append(createElement('div', 'profile-entry__meta', display.meta));
+  }
+
+  if (display.desc) {
+    content.append(createElement('p', 'profile-entry__desc', display.desc));
+  }
+
+  if (onEdit) {
+    actions.append(createButton('✎', 'entry-row__edit', onEdit, 'Edit entry'));
+  }
+
+  actions.append(createButton('x', 'entry-row__remove', onRemove, 'Remove entry'));
+  row.append(content, actions);
 
   return row;
 }
 
-function appendAddButton(body, label, onClick) {
-  body.append(createButton(label, 'profile-btn profile-btn--outline', () => {
+function appendAddButton(body, label, onClick, className = 'profile-btn profile-btn--outline') {
+  body.append(createButton(label, className, () => {
     if (!canOpenInlineForm()) {
       return;
     }
@@ -288,7 +307,7 @@ function renderSummaryCard(page) {
 }
 
 function renderSkillsCard(page) {
-  const { card, body } = createEditCard('SKILLS');
+  const { card, body } = createEditCard('SKILLS', { onAdd: () => input.focus() });
   const inputRow = createElement('div', 'skills-input-row');
   const input = document.createElement('input');
   const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
@@ -343,25 +362,32 @@ function renderSkillsCard(page) {
 }
 
 function renderLanguagesCard(page) {
-  const { card, body } = createEditCard('LANGUAGES');
   let isAddingLanguage = false;
+  const { card, body } = createEditCard('LANGUAGES', {
+    onAdd: () => {
+      isAddingLanguage = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.languages.forEach((entry, index) => {
-      body.append(createEntryRow([entry.language, entry.proficiency], () => {
-        _formState.languages.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.language,
+        meta: entry.proficiency,
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          _formState.languages.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
 
     if (!isAddingLanguage) {
-      appendAddButton(body, 'Add Language', () => {
-        isAddingLanguage = true;
-        render();
-      });
       return;
     }
 
@@ -403,25 +429,32 @@ function renderLanguagesCard(page) {
 }
 
 function renderCertificationsCard(page) {
-  const { card, body } = createEditCard('CERTIFICATIONS');
   let isAddingCertification = false;
+  const { card, body } = createEditCard('CERTIFICATIONS', {
+    onAdd: () => {
+      isAddingCertification = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.certifications.forEach((entry, index) => {
-      body.append(createEntryRow([entry.name, entry.issuanceDate], () => {
-        _formState.certifications.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.name,
+        meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | '),
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          _formState.certifications.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
 
     if (!isAddingCertification) {
-      appendAddButton(body, 'Add Certification', () => {
-        isAddingCertification = true;
-        render();
-      });
       return;
     }
 
@@ -471,27 +504,34 @@ function renderCertificationsCard(page) {
 }
 
 function renderEducationCard(page) {
-  const { card, body } = createEditCard('EDUCATION');
   let isAddingEducation = false;
+  const { card, body } = createEditCard('EDUCATION', {
+    onAdd: () => {
+      isAddingEducation = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
 
     for (const entry of sortEducation(_formState.education)) {
-      body.append(createEntryRow([entry.degreeMajor, entry.university, entry.yearCompleted], () => {
-        const index = _formState.education.indexOf(entry);
+      body.append(createStructuredEntryRow({
+        title: entry.degreeMajor,
+        meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | '),
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          const index = _formState.education.indexOf(entry);
 
-        _formState.education.splice(index, 1);
-        commitListChange();
-        render();
+          _formState.education.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     }
 
     if (!isAddingEducation) {
-      appendAddButton(body, 'Add Education', () => {
-        isAddingEducation = true;
-        render();
-      });
       return;
     }
 
@@ -534,8 +574,13 @@ function renderEducationCard(page) {
 }
 
 function renderExperienceCard(page) {
-  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE');
   let isAddingExperience = false;
+  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE', {
+    onAdd: () => {
+      isAddingExperience = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
@@ -543,20 +588,26 @@ function renderExperienceCard(page) {
     for (const entry of sortExperience(_formState.experience)) {
       const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
 
-      body.append(createEntryRow([entry.role, entry.company, [entry.dateStarted, endDate].filter(Boolean).join(' - ')], () => {
-        const index = _formState.experience.indexOf(entry);
+      body.append(createStructuredEntryRow({
+        title: entry.role,
+        meta: [
+          entry.company,
+          [entry.dateStarted, endDate].filter(Boolean).join(' – '),
+        ].filter(Boolean).join(' | '),
+        desc: entry.responsibilities,
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          const index = _formState.experience.indexOf(entry);
 
-        _formState.experience.splice(index, 1);
-        commitListChange();
-        render();
+          _formState.experience.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     }
 
     if (!isAddingExperience) {
-      appendAddButton(body, 'Add Experience', () => {
-        isAddingExperience = true;
-        render();
-      });
       return;
     }
 
@@ -635,34 +686,32 @@ function renderExperienceCard(page) {
 }
 
 function renderLinksCard(page) {
-  const { card, body } = createEditCard('LINKS');
   let isAddingLink = false;
+  const { card, body } = createEditCard('LINKS', {
+    onAdd: () => {
+      isAddingLink = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.links.forEach((entry, index) => {
-      const row = createElement('div', 'entry-row');
-      const anchor = document.createElement('a');
-      const remove = createButton('x', 'entry-row__remove', () => {
-        _formState.links.splice(index, 1);
-        commitListChange();
-        render();
-      }, 'Remove entry');
-
-      anchor.href = getSafeExternalHref(entry.url);
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.textContent = getLinkLabel(entry.url, entry.friendlyName);
-      row.append(anchor, remove);
-      body.append(row);
+      body.append(createStructuredEntryRow({
+        title: getLinkLabel(entry.url, entry.friendlyName),
+        meta: entry.url,
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          _formState.links.splice(index, 1);
+          commitListChange();
+          render();
+        },
+      }));
     });
 
     if (!isAddingLink) {
-      appendAddButton(body, 'Add Link', () => {
-        isAddingLink = true;
-        render();
-      });
       return;
     }
 
@@ -701,25 +750,33 @@ function renderLinksCard(page) {
 }
 
 function renderAwardsCard(page) {
-  const { card, body } = createEditCard('AWARDS');
   let isAddingAward = false;
+  const { card, body } = createEditCard('AWARDS', {
+    onAdd: () => {
+      isAddingAward = true;
+      render();
+    },
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.awards.forEach((entry, index) => {
-      body.append(createEntryRow([entry.awardName, entry.issuingBody], () => {
-        _formState.awards.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.awardName,
+        meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '),
+        desc: entry.details || '',
+      }, {
+        onEdit: () => {},
+        onRemove: () => {
+          _formState.awards.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
 
     if (!isAddingAward) {
-      appendAddButton(body, 'Add Award', () => {
-        isAddingAward = true;
-        render();
-      });
       return;
     }
 
@@ -768,13 +825,13 @@ function renderEditPage(container) {
 
   renderBasicInfoCard(page);
   renderSummaryCard(page);
-  renderSkillsCard(page);
-  renderLanguagesCard(page);
-  renderCertificationsCard(page);
-  renderEducationCard(page);
   renderExperienceCard(page);
-  renderLinksCard(page);
+  renderEducationCard(page);
+  renderSkillsCard(page);
+  renderCertificationsCard(page);
   renderAwardsCard(page);
+  renderLanguagesCard(page);
+  renderLinksCard(page);
 
   page.append(renderPageControls());
   container.replaceChildren(page);

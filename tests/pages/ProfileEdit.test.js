@@ -85,7 +85,13 @@ function getCancelButton(controls) {
 
 function getButton(container, label) {
   return [...container.querySelectorAll('button')]
-    .find((button) => button.textContent === label);
+    .filter((button) => button.textContent === label)
+    .at(-1);
+}
+
+function getHeaderAddButton(card) {
+  return [...card.querySelectorAll('.section-card__header button')]
+    .find((button) => button.textContent === 'Add');
 }
 
 function inputValue(input, value) {
@@ -147,6 +153,94 @@ describe('ProfileEdit page', () => {
     expect(getFieldInput(basic, 'Phone').value).toBe('555-0100');
     expect(getFieldInput(summary, 'Summary').value).toBe('Frontend engineer.');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+  });
+
+  it('Edit Profile section cards appear in View Profile order', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{ role: 'Engineer', company: 'Acme', responsibilities: 'Build', dateStarted: '01/2024', dateEnded: '02/2025' }],
+      education: [{ degreeMajor: 'BS Computer Science', university: 'State University', yearCompleted: '2020' }],
+      skills: ['JavaScript'],
+      certifications: [{ name: 'AWS Developer', issuingBody: 'Amazon', issuanceDate: '02/2023' }],
+      awards: [{ awardName: 'Top Performer', issuingBody: 'Acme', date: '03/2024' }],
+      languages: [{ language: 'English', proficiency: 'Fluent' }],
+      links: [{ url: 'https://example.com/profile', friendlyName: 'Portfolio' }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    expect([...container.querySelectorAll('.section-label')].map((label) => label.textContent))
+      .toEqual([
+        'BASIC INFO',
+        'SUMMARY',
+        'PROFESSIONAL EXPERIENCE',
+        'EDUCATION',
+        'SKILLS',
+        'CERTIFICATIONS',
+        'AWARDS',
+        'LANGUAGES',
+        'LINKS',
+      ]);
+  });
+
+  it('Experience entries use structured hierarchy with title and meta', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2024',
+        dateEnded: '02/2025',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    expect(experience.querySelector('.profile-entry__title')?.textContent)
+      .toBe('Frontend Engineer');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Acme | 01/2024 – 02/2025');
+  });
+
+  it('Add button appears in section header with primary styling', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    for (const title of ['PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'CERTIFICATIONS', 'AWARDS', 'LANGUAGES', 'LINKS']) {
+      const add = getHeaderAddButton(getCard(container, title));
+
+      expect(add).toBeTruthy();
+      expect(add.classList).toContain('profile-btn--primary');
+    }
+  });
+
+  it('each structured entry has accessible Edit and Remove icon buttons', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2024',
+        dateEnded: '02/2025',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const entry = getCard(container, 'PROFESSIONAL EXPERIENCE').querySelector('.entry-row--structured');
+
+    expect(entry.querySelector('[aria-label="Edit entry"]')).toBeTruthy();
+    expect(entry.querySelector('[aria-label="Remove entry"]')).toBeTruthy();
   });
 
   it('keeps both save buttons disabled until the form is dirty', async () => {
@@ -488,7 +582,7 @@ describe('ProfileEdit page', () => {
 
     const languages = getCard(container, 'LANGUAGES');
 
-    getButton(languages, 'Add Language').click();
+    getHeaderAddButton(languages).click();
     expect(languages.querySelector('.inline-entry-form')).toBeTruthy();
 
     getButton(languages, 'Add').click();
@@ -497,16 +591,17 @@ describe('ProfileEdit page', () => {
     inputValue(getFieldInput(languages, 'Language'), 'English');
     changeValue(getFieldInput(languages, 'Proficiency'), 'Fluent');
     getButton(languages, 'Add').click();
-    expect(languages.textContent).toContain('English | Fluent');
+    expect(languages.querySelector('.profile-entry__title')?.textContent).toBe('English');
+    expect(languages.querySelector('.profile-entry__meta')?.textContent).toBe('Fluent');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
 
-    getButton(languages, 'Add Language').click();
+    getHeaderAddButton(languages).click();
     inputValue(getFieldInput(languages, 'Language'), 'French');
     getButton(languages, 'Cancel').click();
     expect(languages.textContent).not.toContain('French');
 
-    getButton(getCard(container, 'CERTIFICATIONS'), 'Add Certification').click();
-    getButton(languages, 'Add Language').click();
+    getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
+    getHeaderAddButton(languages).click();
     expect(document.querySelectorAll('.inline-entry-form')).toHaveLength(1);
     expect(getCard(container, 'CERTIFICATIONS').querySelector('.inline-entry-form')).toBeTruthy();
   });
@@ -520,7 +615,7 @@ describe('ProfileEdit page', () => {
 
     const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
 
-    getButton(experience, 'Add Experience').click();
+    getHeaderAddButton(experience).click();
     expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
 
     const currentWork = experience.querySelector('input[type="checkbox"]');
@@ -545,9 +640,11 @@ describe('ProfileEdit page', () => {
 
     inputValue(getFieldInput(experience, 'Date Started'), '01/2024');
     getButton(experience, 'Add').click();
-    expect(experience.textContent).toContain('Past Role | Acme | 01/2024 - 02/2025');
+    expect(experience.querySelector('.profile-entry__title')?.textContent).toBe('Past Role');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Acme | 01/2024 – 02/2025');
 
-    getButton(experience, 'Add Experience').click();
+    getHeaderAddButton(experience).click();
     inputValue(getFieldInput(experience, 'Role'), 'Current Role');
     inputValue(getFieldInput(experience, 'Company'), 'Beta');
     inputValue(getFieldInput(experience, 'Responsibilities'), 'Lead work');
@@ -556,8 +653,10 @@ describe('ProfileEdit page', () => {
     experience.querySelector('input[type="checkbox"]').dispatchEvent(new window.Event('change', { bubbles: true }));
     getButton(experience, 'Add').click();
 
-    expect(experience.querySelector('.entry-row__text')?.textContent)
-      .toBe('Current Role | Beta | 03/2025 - Present');
+    expect(experience.querySelector('.profile-entry__title')?.textContent)
+      .toBe('Current Role');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Beta | 03/2025 – Present');
   });
 
   it('validates links and renders friendly-name and hostname labels', async () => {
@@ -569,7 +668,7 @@ describe('ProfileEdit page', () => {
 
     const links = getCard(container, 'LINKS');
 
-    getButton(links, 'Add Link').click();
+    getHeaderAddButton(links).click();
     inputValue(getFieldInput(links, 'Link URL'), 'javascript:alert(1)');
     getButton(links, 'Add').click();
     expect(links.querySelector('.field-error')?.textContent)
@@ -578,16 +677,16 @@ describe('ProfileEdit page', () => {
     inputValue(getFieldInput(links, 'Link URL'), 'https://example.com/profile');
     inputValue(getFieldInput(links, 'Friendly Name'), 'Portfolio');
     getButton(links, 'Add').click();
-    expect(links.querySelector('a')?.textContent).toBe('Portfolio');
+    expect(links.querySelector('.profile-entry__title')?.textContent).toBe('Portfolio');
 
-    getButton(links, 'Add Link').click();
+    getHeaderAddButton(links).click();
     inputValue(getFieldInput(links, 'Link URL'), 'https://github.com/alex');
     getButton(links, 'Add').click();
-    expect([...links.querySelectorAll('a')].map((anchor) => anchor.textContent))
+    expect([...links.querySelectorAll('.profile-entry__title')].map((title) => title.textContent))
       .toEqual(['Portfolio', 'github.com']);
   });
 
-  it('sanitizes rendered link hrefs from loaded profile data', async () => {
+  it('renders loaded profile links as structured plain text rows', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile({
@@ -601,8 +700,11 @@ describe('ProfileEdit page', () => {
 
     const links = getCard(container, 'LINKS');
 
-    expect(links.querySelectorAll('a')[0].getAttribute('href')).toBe('https://example.com/profile');
-    expect(links.querySelectorAll('a')[1].getAttribute('href')).toBe('#');
+    expect([...links.querySelectorAll('.profile-entry__title')].map((title) => title.textContent))
+      .toEqual(['Portfolio', 'Unsafe']);
+    expect([...links.querySelectorAll('.profile-entry__meta')].map((meta) => meta.textContent))
+      .toEqual(['https://example.com/profile', 'javascript:alert(1)']);
+    expect(links.querySelector('a')).toBeNull();
   });
 
   it('blocks adding a certification when issuing body is missing', async () => {
@@ -614,7 +716,7 @@ describe('ProfileEdit page', () => {
 
     const certs = getCard(container, 'CERTIFICATIONS');
 
-    getButton(certs, 'Add Certification').click();
+    getHeaderAddButton(certs).click();
     inputValue(getFieldInput(certs, 'Certification Name'), 'AWS Developer');
     inputValue(getFieldInput(certs, 'Issuance Date'), '01/2023');
     getButton(certs, 'Add').click();
@@ -676,7 +778,7 @@ describe('ProfileEdit page', () => {
 
     expect(getField(getCard(container, 'BASIC INFO'), 'First Name').classList)
       .toContain('edit-field--required');
-    getButton(getCard(container, 'CERTIFICATIONS'), 'Add Certification').click();
+    getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
     expect(getField(getCard(container, 'CERTIFICATIONS'), 'Issuing Body').classList)
       .toContain('edit-field--required');
   });
