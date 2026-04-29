@@ -601,7 +601,7 @@ describe('ProfileEdit page', () => {
     expect(city.value).toBe('Seattle');
   });
 
-  it('adds skills by button or Enter, deduplicates, and removes while tracking dirty reversion', async () => {
+  it('Skills Add button opens overlay with staging input and empty pill area', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -609,29 +609,166 @@ describe('ProfileEdit page', () => {
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     const skills = getCard(container, 'SKILLS');
-    const input = skills.querySelector('.skills-input-row input');
 
-    inputValue(input, 'TypeScript');
-    getButton(skills, 'Add').click();
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent)).toEqual(['TypeScriptx']);
+    getHeaderAddButton(skills).click();
+
+    const overlay = document.querySelector('.entry-modal');
+    expect(overlay.querySelector('.skills-input-row input')).toBeTruthy();
+    expect(overlay.querySelectorAll('.skills-pills-wrap .skill-pill')).toHaveLength(0);
+    expect(skills.querySelector('.skills-input-row')).toBeNull();
+  });
+
+  it('staging a skill adds it as a pill inside the overlay only', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+
+    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['Python×']);
+    expect(skills.textContent).not.toContain('Python');
+  });
+
+  it('pressing Enter in skill input stages the skill', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+    const input = overlay.querySelector('.skills-input-row input');
+
+    inputValue(input, 'Go');
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['Go×']);
+  });
+
+  it('overlay Save commits staged skills to main form', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+    getButton(overlay, 'Save').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['Pythonx']);
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+  });
 
-    inputValue(skills.querySelector('.skills-input-row input'), 'React');
-    skills.querySelector('.skills-input-row input')
-      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  it('duplicate skill is not staged', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: ['Python'] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'python');
+    getButton(overlay, 'Add').click();
+
+    expect(overlay.querySelectorAll('.skill-pill')).toHaveLength(0);
+  });
+
+  it('Cancel with staged skill triggers discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('Cancel with no staged skills closes overlay immediately', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('removes saved skills while tracking dirty reversion', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: ['TypeScript', 'React'] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
       .toEqual(['TypeScriptx', 'Reactx']);
 
     skills.querySelectorAll('.skill-pill__remove')[1].click();
-    inputValue(skills.querySelector('.skills-input-row input'), 'TypeScript');
-    getButton(skills, 'Add').click();
-    inputValue(skills.querySelector('.skills-input-row input'), 'typescript');
-    getButton(skills, 'Add').click();
-    expect(skills.querySelectorAll('.skill-pill')).toHaveLength(1);
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScriptx']);
 
     skills.querySelector('.skill-pill__remove').click();
     expect(skills.querySelectorAll('.skill-pill')).toHaveLength(0);
-    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+  });
+
+  it('stages multiple skills in one overlay session', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+    const input = overlay.querySelector('.skills-input-row input');
+
+    inputValue(input, 'TypeScript');
+    getButton(overlay, 'Add').click();
+    inputValue(input, 'React');
+    input
+      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    getButton(overlay, 'Save').click();
+
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScriptx', 'Reactx']);
   });
 
   it('adds languages through the entry overlay with validation and one-at-a-time guard', async () => {

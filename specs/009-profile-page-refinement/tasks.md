@@ -156,7 +156,7 @@
 
 **Independent Test**: Click "Add" in the Skills section. Type "Python" and click the inline Add inside the overlay — "Python" should appear as a pill inside the overlay but NOT in the main Skills section. Type "JavaScript" and press Enter — it stages too. Click overlay Save — both skills appear in the main Skills section and the overlay closes. Reopen, stage a skill, click Cancel — discard dialog appears.
 
-- [ ] T023 [US6] Implement `openSkillsOverlay()` in `src/pages/ProfileEdit.js`:
+- [X] T023 [US6] Implement `openSkillsOverlay()` in `src/pages/ProfileEdit.js`:
   - Guard: if `_openOverlay !== null`, return early
   - Initialize `const staged = []` (modal-local; never mutates `_formState.skills` until Save)
   - Define `renderStagedPills(pillWrap)`: clears and re-renders pills for `staged` array; each pill is `createElement('span', 'skill-pill', skill)` with a `'×'` remove button that splices from `staged` and calls `renderStagedPills`

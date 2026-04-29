@@ -14,6 +14,7 @@ let _basicInfoFields = {};
 let _discardKeyHandler = null;
 let _discardAction = null;
 let _openOverlay = null;
+let _renderSkillsBody = () => {};
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -416,36 +417,91 @@ function renderSummaryCard(page) {
   page.append(card);
 }
 
+function openSkillsOverlay() {
+  if (_openOverlay !== null) {
+    return;
+  }
+
+  const staged = [];
+
+  function renderStagedPills(pillWrap) {
+    pillWrap.replaceChildren();
+
+    for (const skill of staged) {
+      const pill = createElement('span', 'skill-pill', skill);
+      const remove = createButton('×', 'skill-pill__remove', () => {
+        const index = staged.indexOf(skill);
+
+        staged.splice(index, 1);
+        renderStagedPills(pillWrap);
+      });
+
+      pill.append(remove);
+      pillWrap.append(pill);
+    }
+  }
+
+  function buildSkillsForm(formEl) {
+    const inputRow = createElement('div', 'skills-input-row');
+    const input = document.createElement('input');
+    const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
+      const skill = normalizeWhitespace(input.value);
+      const existingSkills = _formState.skills.map((existing) => existing.toLowerCase());
+      const stagedSkills = staged.map((existing) => existing.toLowerCase());
+
+      if (validateRequired(skill)) {
+        return;
+      }
+
+      if (!existingSkills.includes(skill.toLowerCase()) && !stagedSkills.includes(skill.toLowerCase())) {
+        staged.push(skill);
+        input.value = '';
+        renderStagedPills(pillWrap);
+      }
+    });
+    const pillWrap = createElement('div', 'skills-pills-wrap');
+
+    input.type = 'text';
+    input.className = 'edit-field__control';
+    input.setAttribute('aria-label', 'Skill');
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        add.click();
+      }
+    });
+
+    inputRow.append(input, add);
+    formEl.append(inputRow, pillWrap);
+
+    return {
+      validate: () => true,
+      getData: () => staged,
+      isDirty: () => staged.length > 0,
+    };
+  }
+
+  function mergeSkills(data) {
+    const existing = new Set(_formState.skills.map((skill) => skill.toLowerCase()));
+
+    for (const skill of data) {
+      if (!existing.has(skill.toLowerCase())) {
+        _formState.skills.push(skill);
+        existing.add(skill.toLowerCase());
+      }
+    }
+
+    commitListChange();
+    _renderSkillsBody();
+  }
+
+  createEntryOverlay('Add Skills', buildSkillsForm, {
+    onSave: (data) => mergeSkills(data),
+  });
+}
+
 function renderSkillsCard(page) {
-  const { card, body } = createEditCard('SKILLS', { onAdd: () => input.focus() });
-  const inputRow = createElement('div', 'skills-input-row');
-  const input = document.createElement('input');
-  const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
-    const skill = normalizeWhitespace(input.value);
-
-    if (validateRequired(skill)) {
-      return;
-    }
-
-    if (!_formState.skills.some((existing) => existing.toLowerCase() === skill.toLowerCase())) {
-      _formState.skills.push(skill);
-      commitListChange();
-      render();
-    }
-
-    input.value = '';
-  });
-
-  input.type = 'text';
-  input.className = 'edit-field__control';
-  input.setAttribute('aria-label', 'Skill');
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      add.click();
-    }
-  });
-  inputRow.append(input, add);
+  const { card, body } = createEditCard('SKILLS', { onAdd: () => openSkillsOverlay() });
 
   function render() {
     const pills = createElement('div', 'skills-pills-wrap');
@@ -464,9 +520,10 @@ function renderSkillsCard(page) {
       pills.append(pill);
     }
 
-    body.append(pills, inputRow);
+    body.append(pills);
   }
 
+  _renderSkillsBody = render;
   render();
   page.append(card);
 }
@@ -1073,6 +1130,7 @@ export function unmount() {
   _basicInfoFields = {};
   _discardAction = null;
   _openOverlay = null;
+  _renderSkillsBody = () => {};
 }
 
 export const ProfileEdit = { mount, unmount, confirmNavigation };
