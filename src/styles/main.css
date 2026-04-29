@@ -748,6 +748,10 @@ textarea.edit-field__control {
   border-right: 1px solid #F0ECE5;
 }
 
+.apps-desktop-vis__stats .stat-chip-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .apps-desktop-vis__chart {
   display: grid;
   grid-template-columns: auto minmax(160px, 1fr);

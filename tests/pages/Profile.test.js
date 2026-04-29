@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/services/api.js', () => ({
@@ -36,6 +37,14 @@ function getSubsection(container, label) {
 }
 
 describe('Profile page', () => {
+  it('scopes desktop application stat chips to a two-column grid', () => {
+    const css = readFileSync('src/styles/main.css', 'utf8');
+
+    expect(css).toContain(`.apps-desktop-vis__stats .stat-chip-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}`);
+  });
+
   it('renders the no-profile state and wires navigation callbacks', async () => {
     const container = document.createElement('main');
     const navigate = vi.fn();

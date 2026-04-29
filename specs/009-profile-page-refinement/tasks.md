@@ -204,7 +204,7 @@
 
 **Independent Test**: Open the Profile page at 768 px viewport width. All four stat chips (Total, Active, Pending, Offer) should be fully readable with no horizontal overflow. At 1280 px the existing desktop layout should be unchanged. At 375 px the existing mobile layout should be unchanged.
 
-- [ ] T030 [US9] Add CSS rule to `src/styles/main.css` (outside any media query, scoped to the desktop stats column): `.apps-desktop-vis__stats .stat-chip-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }` — this overrides the global `repeat(4, minmax(0, 1fr))` rule only within the left column of the desktop applications layout, producing a 2 × 2 chip grid at all viewport widths where `.apps-desktop-vis` is visible (≥ 640 px). The `apps-mobile-vis .stat-chip-row` rule at `@media (max-width: 639px)` is unaffected.
+- [X] T030 [US9] Add CSS rule to `src/styles/main.css` (outside any media query, scoped to the desktop stats column): `.apps-desktop-vis__stats .stat-chip-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }` — this overrides the global `repeat(4, minmax(0, 1fr))` rule only within the left column of the desktop applications layout, producing a 2 × 2 chip grid at all viewport widths where `.apps-desktop-vis` is visible (≥ 640 px). The `apps-mobile-vis .stat-chip-row` rule at `@media (max-width: 639px)` is unaffected.
 
 **Checkpoint**: iPad Mini stat chip overflow is resolved. Desktop and mobile layouts are confirmed unchanged.
 
