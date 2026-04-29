@@ -10,7 +10,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
 - **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
 - **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections
-- **Profile editing** — centralized inline editor with sticky Save/Cancel controls, dirty-state tracking, discard confirmation, and inline add/remove flows for all seven list-based sections (Skills, Languages, Certifications, Education, Experience, Links, Awards); navbar navigation intercepted when unsaved changes exist
+- **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; all six structured sections (Experience, Education, Certifications, Awards, Languages, Links) use modal/bottom-sheet overlays for Add and Edit with inline validation, focus trap, and discard guard; Skills use a staging overlay with deduplication; browser refresh guard warns on unsaved changes; navbar navigation intercepted when unsaved changes exist
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 
@@ -162,7 +162,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.5.0**
+Current version: **0.5.1**
 
 ## Development Workflow
 
