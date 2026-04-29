@@ -320,6 +320,12 @@ textarea.edit-field__control {
   font-size: 13px;
 }
 
+.section-validation-error {
+  margin: 4px 0 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
 .confirm-backdrop {
   position: fixed;
   inset: 0;

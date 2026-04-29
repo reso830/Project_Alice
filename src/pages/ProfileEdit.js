@@ -762,10 +762,43 @@ function renderEditPage(container) {
   updateControlsState();
 }
 
+const ENTRY_SECTION_LABELS = {
+  experience: 'Professional Experience',
+  education: 'Education',
+  certifications: 'Certifications',
+  awards: 'Awards',
+  languages: 'Languages',
+  links: 'Links',
+};
+
+function removeSectionValidationError() {
+  document.querySelector('.section-validation-error')?.remove();
+}
+
 function surfaceValidationErrors(errors) {
   clearBasicInfoErrors();
   setFieldError(_basicInfoFields.firstName, errors.firstName ?? '');
   setFieldError(_basicInfoFields.lastName, errors.lastName ?? '');
+  setFieldError(_basicInfoFields.email, errors.email ?? '');
+
+  const sections = new Set();
+  for (const key of Object.keys(errors)) {
+    for (const [prefix, label] of Object.entries(ENTRY_SECTION_LABELS)) {
+      if (key.startsWith(`${prefix}[`)) {
+        sections.add(label);
+        break;
+      }
+    }
+  }
+  removeSectionValidationError();
+  if (sections.size > 0) {
+    const summary = createElement(
+      'p',
+      'section-validation-error',
+      `Some entries have missing required fields (${[...sections].join(', ')}). Remove and re-add any incomplete entries.`,
+    );
+    document.querySelector('.page-controls')?.after(summary);
+  }
 }
 
 async function handleSave() {
@@ -774,6 +807,7 @@ async function handleSave() {
   }
 
   removeOpenFormError();
+  removeSectionValidationError();
 
   if (hasOpenInlineForm()) {
     renderOpenFormError();

@@ -319,6 +319,47 @@ describe('ProfileEdit page', () => {
     expect(error.hidden).toBe(false);
   });
 
+  it('surfaces email validation error before save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ firstName: 'Ana', lastName: 'Rivera' }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const basic = getCard(container, 'BASIC INFO');
+    inputValue(getFieldInput(basic, 'Email'), 'not-an-email');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    const error = [...basic.querySelectorAll('.field-error')]
+      .find((fieldError) => fieldError.textContent === 'Email must be a valid email address.');
+
+    expect(api.saveProfile).not.toHaveBeenCalled();
+    expect(error).toBeTruthy();
+    expect(error.hidden).toBe(false);
+  });
+
+  it('surfaces a section-level summary when entry data has validation errors', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      languages: [{ language: 'English', proficiency: '' }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'City/Location'), 'Austin');
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    const summary = document.querySelector('.section-validation-error');
+    expect(api.saveProfile).not.toHaveBeenCalled();
+    expect(summary).toBeTruthy();
+    expect(summary.textContent).toContain('Languages');
+  });
+
   it('navigates directly when cancelling a clean form', async () => {
     const container = createAppShell();
     const navigate = vi.fn();
