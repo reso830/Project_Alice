@@ -343,8 +343,13 @@ textarea.edit-field__control {
 
 .edit-field--checkbox {
   align-items: flex-start;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: auto 36px auto;
   min-width: 112px;
+}
+
+.edit-field--checkbox .edit-field__checkbox {
+  align-self: center;
 }
 
 .inline-entry-form__actions {
@@ -484,6 +489,7 @@ textarea.edit-field__control {
 
   .edit-field--checkbox {
     align-items: flex-start;
+    display: flex;
     min-width: 0;
   }
 }
