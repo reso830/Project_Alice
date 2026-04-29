@@ -220,6 +220,23 @@ describe('profile model', () => {
     });
   });
 
+  it('validates education year format', () => {
+    expect(validateProfile({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      education: [{
+        degreeMajor: 'BS Computer Science',
+        university: 'State University',
+        yearCompleted: '20-20',
+      }],
+    })).toEqual({
+      valid: false,
+      errors: {
+        'education[0].yearCompleted': 'Year Completed must be a valid four-digit year.',
+      },
+    });
+  });
+
   it('accepts valid structured profile entries', () => {
     expect(validateProfile({
       firstName: 'Ana',

@@ -12,6 +12,7 @@ const ARRAY_FIELDS = [
 const STRING_FIELDS = ['firstName', 'lastName', 'city', 'phone', 'email', 'summary'];
 const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
+const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 export const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
 
@@ -194,6 +195,19 @@ function setMonthYearError(errors, key, value, label, { required = false } = {})
   }
 }
 
+function setYearError(errors, key, value, label, { required = false } = {}) {
+  if (!value) {
+    if (required) {
+      errors[key] = `${label} is required.`;
+    }
+    return;
+  }
+
+  if (!YEAR_PATTERN.test(value) || Number(value) < 1900) {
+    errors[key] = `${label} must be a valid four-digit year.`;
+  }
+}
+
 export function normaliseProfile(data = {}) {
   const safe = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
   const profile = {};
@@ -256,7 +270,9 @@ export function validateProfile(data = {}) {
   profile.education.forEach((entry, index) => {
     setRequiredError(errors, `education[${index}].degreeMajor`, entry.degreeMajor, 'Degree & Major');
     setRequiredError(errors, `education[${index}].university`, entry.university, 'University');
-    setRequiredError(errors, `education[${index}].yearCompleted`, entry.yearCompleted, 'Year Completed');
+    setYearError(errors, `education[${index}].yearCompleted`, entry.yearCompleted, 'Year Completed', {
+      required: true,
+    });
   });
 
   profile.certifications.forEach((entry, index) => {

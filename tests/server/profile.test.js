@@ -162,6 +162,18 @@ describe('profile API', () => {
           links: [{ friendlyName: 'Portfolio' }],
         }),
       });
+      const invalidEducationYear = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          firstName: 'Ana',
+          lastName: 'Rivera',
+          education: [{
+            degreeMajor: 'BS Computer Science',
+            university: 'State University',
+            yearCompleted: '20-20',
+          }],
+        }),
+      });
 
       expect(missingRole.status).toBe(400);
       expect(missingRole.body.error.code).toBe('VALIDATION_ERROR');
@@ -172,6 +184,11 @@ describe('profile API', () => {
       expect(missingUrl.body.error.code).toBe('VALIDATION_ERROR');
       expect(missingUrl.body.error.fields).toMatchObject({
         'links[0].url': 'URL is required.',
+      });
+      expect(invalidEducationYear.status).toBe(400);
+      expect(invalidEducationYear.body.error.code).toBe('VALIDATION_ERROR');
+      expect(invalidEducationYear.body.error.fields).toMatchObject({
+        'education[0].yearCompleted': 'Year Completed must be a valid four-digit year.',
       });
       expect(getProfile(db)).toBeNull();
     });

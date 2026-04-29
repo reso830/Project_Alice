@@ -14,7 +14,7 @@ vi.mock('../../src/components/Toast.js', () => ({
 
 import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
-import { ProfileEdit } from '../../src/pages/ProfileEdit.js';
+import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
 afterEach(() => {
   ProfileEdit.unmount();
@@ -85,7 +85,13 @@ function getCancelButton(controls) {
 
 function getButton(container, label) {
   return [...container.querySelectorAll('button')]
-    .find((button) => button.textContent === label);
+    .filter((button) => button.textContent === label)
+    .at(-1);
+}
+
+function getHeaderAddButton(card) {
+  return [...card.querySelectorAll('.section-card__header button')]
+    .find((button) => button.textContent === 'Add');
 }
 
 function inputValue(input, value) {
@@ -104,7 +110,350 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
+function openExperienceOverlay(container) {
+  window.innerWidth = 1024;
+  getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+  return document.querySelector('.entry-modal');
+}
+
+function fillValidExperience(overlay, role = 'Platform Engineer') {
+  inputValue(getFieldInput(overlay, 'Role'), role);
+  inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+  inputValue(getFieldInput(overlay, 'Responsibilities'), 'Built dashboards.');
+  inputValue(getFieldInput(overlay, 'Date Started'), '01/2024');
+  inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+}
+
 describe('ProfileEdit page', () => {
+  it('creates a desktop entry modal, saves form data, and restores scroll', () => {
+    window.innerWidth = 1024;
+    const onSave = vi.fn();
+
+    createEntryOverlay('Add Experience', (formEl) => {
+      const input = document.createElement('input');
+
+      input.value = 'Engineer';
+      formEl.append(input);
+
+      return {
+        validate: () => true,
+        getData: () => ({ role: input.value }),
+        isDirty: () => false,
+      };
+    }, { onSave });
+
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+    expect(document.querySelector('.entry-sheet')).toBeNull();
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    [...document.querySelectorAll('.entry-modal button')]
+      .find((button) => button.textContent === 'Save')
+      .click();
+
+    expect(onSave).toHaveBeenCalledWith({ role: 'Engineer' });
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('creates a mobile entry bottom sheet', () => {
+    window.innerWidth = 375;
+
+    createEntryOverlay('Add Link', (formEl) => {
+      formEl.append(document.createElement('input'));
+
+      return {
+        validate: () => true,
+        getData: () => ({}),
+        isDirty: () => false,
+      };
+    }, { onSave: vi.fn() });
+
+    expect(document.querySelector('.entry-sheet')).toBeTruthy();
+    expect(document.querySelector('.entry-modal')).toBeNull();
+  });
+
+  it('shows entry discard confirmation for dirty overlay cancel', () => {
+    window.innerWidth = 1024;
+    const input = document.createElement('input');
+
+    createEntryOverlay('Add Award', (formEl) => {
+      input.value = '';
+      formEl.append(input);
+
+      return {
+        validate: () => true,
+        getData: () => ({}),
+        isDirty: () => input.value !== '',
+      };
+    }, { onSave: vi.fn() });
+
+    input.value = 'Top Performer';
+    [...document.querySelectorAll('.entry-modal button')]
+      .find((button) => button.textContent === 'Cancel')
+      .click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+    expect(document.querySelector('.overlay-discard-dialog__msg')?.textContent)
+      .toBe('Discard entry changes?');
+
+    [...document.querySelectorAll('.overlay-discard-dialog button')]
+      .find((button) => button.textContent === 'Keep Editing')
+      .click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('opens modal on desktop when Add is clicked in Experience section', async () => {
+    const container = createAppShell();
+
+    window.innerWidth = 1024;
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+    expect(document.body.querySelector('.entry-modal')).toBeTruthy();
+    expect(document.body.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+  });
+
+  it('opens bottom sheet on mobile when Add is clicked in Experience section', async () => {
+    const container = createAppShell();
+
+    window.innerWidth = 375;
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+    expect(document.body.querySelector('.entry-sheet')).toBeTruthy();
+    expect(document.body.querySelector('.entry-modal')).toBeNull();
+  });
+
+  it('closes overlay and restores body scroll after successful Save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    fillValidExperience(overlay);
+    getButton(overlay, 'Save').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('validates required fields inside overlay and keeps overlay open on failure', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    getButton(overlay, 'Save').click();
+
+    expect(overlay.querySelector('.field-error')?.textContent).toBe('This field is required.');
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('invalid MM/YYYY date in overlay shows inline error', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Build');
+    inputValue(getFieldInput(overlay, 'Date Started'), 'baddate');
+    inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+  });
+
+  it('committed entry appears in Experience section after overlay Save', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    fillValidExperience(overlay, 'Staff Engineer');
+    getButton(overlay, 'Save').click();
+
+    expect(getCard(container, 'PROFESSIONAL EXPERIENCE').querySelector('.profile-entry__title')?.textContent)
+      .toBe('Staff Engineer');
+  });
+
+  it('clicking Add while an overlay is open has no effect', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    openExperienceOverlay(container);
+    getHeaderAddButton(getCard(container, 'EDUCATION')).click();
+
+    expect(document.querySelectorAll('.entry-modal, .entry-sheet')).toHaveLength(1);
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Experience');
+  });
+
+  it('Tab key stays trapped inside the open overlay', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+    const focusable = [...overlay.querySelectorAll('button, input, select, textarea')]
+      .filter((el) => !el.disabled);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    last.focus();
+    overlay.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('Tab key stays trapped inside the discard dialog when present', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+
+    const dialog = document.querySelector('.overlay-discard-dialog');
+    const focusable = [...dialog.querySelectorAll('button')];
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    last.focus();
+    overlay.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('Cancel on blank add overlay closes immediately', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getButton(openExperienceOverlay(container), 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('Cancel on dirty add overlay shows discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('dirty-state revert closes overlay immediately on Cancel', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+    const role = getFieldInput(overlay, 'Role');
+
+    inputValue(role, 'Engineer');
+    inputValue(role, '');
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('Discard closes overlay and shows toast', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Discard').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith('Changes discarded.', 'success');
+  });
+
+  it('Keep Editing closes dialog and preserves overlay and form state', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    getButton(overlay, 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Keep Editing').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
+    expect(getFieldInput(overlay, 'Role').value).toBe('Engineer');
+  });
+
+  it('ESC triggers Cancel behavior', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const overlay = openExperienceOverlay(container);
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
   it('renders a blank form when no profile exists', async () => {
     const container = createAppShell();
 
@@ -147,6 +496,94 @@ describe('ProfileEdit page', () => {
     expect(getFieldInput(basic, 'Phone').value).toBe('555-0100');
     expect(getFieldInput(summary, 'Summary').value).toBe('Frontend engineer.');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+  });
+
+  it('Edit Profile section cards appear in View Profile order', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{ role: 'Engineer', company: 'Acme', responsibilities: 'Build', dateStarted: '01/2024', dateEnded: '02/2025' }],
+      education: [{ degreeMajor: 'BS Computer Science', university: 'State University', yearCompleted: '2020' }],
+      skills: ['JavaScript'],
+      certifications: [{ name: 'AWS Developer', issuingBody: 'Amazon', issuanceDate: '02/2023' }],
+      awards: [{ awardName: 'Top Performer', issuingBody: 'Acme', date: '03/2024' }],
+      languages: [{ language: 'English', proficiency: 'Fluent' }],
+      links: [{ url: 'https://example.com/profile', friendlyName: 'Portfolio' }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    expect([...container.querySelectorAll('.section-label')].map((label) => label.textContent))
+      .toEqual([
+        'BASIC INFO',
+        'SUMMARY',
+        'PROFESSIONAL EXPERIENCE',
+        'EDUCATION',
+        'SKILLS',
+        'CERTIFICATIONS',
+        'AWARDS',
+        'LANGUAGES',
+        'LINKS',
+      ]);
+  });
+
+  it('Experience entries use structured hierarchy with title and meta', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2024',
+        dateEnded: '02/2025',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    expect(experience.querySelector('.profile-entry__title')?.textContent)
+      .toBe('Frontend Engineer');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Acme | 01/2024 – 02/2025');
+  });
+
+  it('Add button appears in section header with primary styling', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    for (const title of ['PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'CERTIFICATIONS', 'AWARDS', 'LANGUAGES', 'LINKS']) {
+      const add = getHeaderAddButton(getCard(container, title));
+
+      expect(add).toBeTruthy();
+      expect(add.classList).toContain('profile-btn--primary');
+    }
+  });
+
+  it('each structured entry has accessible Edit and Remove icon buttons', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2024',
+        dateEnded: '02/2025',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const entry = getCard(container, 'PROFESSIONAL EXPERIENCE').querySelector('.entry-row--structured');
+
+    expect(entry.querySelector('[aria-label="Edit entry"]')).toBeTruthy();
+    expect(entry.querySelector('[aria-label="Remove entry"]')).toBeTruthy();
   });
 
   it('keeps both save buttons disabled until the form is dirty', async () => {
@@ -427,26 +864,7 @@ describe('ProfileEdit page', () => {
     expect(city.value).toBe('Seattle');
   });
 
-  it('blocks save when an inline entry form is open', async () => {
-    const container = createAppShell();
-    const openForm = document.createElement('div');
-
-    api.getProfile.mockResolvedValue(createProfile());
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
-    openForm.className = 'inline-entry-form';
-    getCard(container, 'SKILLS').append(openForm);
-    getSaveButton(getTopControls(container)).click();
-
-    expect(api.saveProfile).not.toHaveBeenCalled();
-    expect(document.querySelector('.open-form-error')?.previousElementSibling)
-      .toBe(document.querySelector('.profile-edit-subheader'));
-    expect(Toast.show).not.toHaveBeenCalled();
-  });
-
-  it('adds skills by button or Enter, deduplicates, and removes while tracking dirty reversion', async () => {
+  it('Skills Add button opens overlay with staging input and empty pill area', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -454,32 +872,169 @@ describe('ProfileEdit page', () => {
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     const skills = getCard(container, 'SKILLS');
-    const input = skills.querySelector('.skills-input-row input');
 
-    inputValue(input, 'TypeScript');
-    getButton(skills, 'Add').click();
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent)).toEqual(['TypeScriptx']);
-    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+    getHeaderAddButton(skills).click();
 
-    inputValue(skills.querySelector('.skills-input-row input'), 'React');
-    skills.querySelector('.skills-input-row input')
-      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    const overlay = document.querySelector('.entry-modal');
+    expect(overlay.querySelector('.skills-input-row input')).toBeTruthy();
+    expect(overlay.querySelectorAll('.skills-pills-wrap .skill-pill')).toHaveLength(0);
+    expect(skills.querySelector('.skills-input-row')).toBeNull();
+  });
+
+  it('staging a skill adds it as a pill inside the overlay only', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+
+    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['Python×']);
+    expect(skills.textContent).not.toContain('Python');
+  });
+
+  it('pressing Enter in skill input stages the skill', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+    const input = overlay.querySelector('.skills-input-row input');
+
+    inputValue(input, 'Go');
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['Go×']);
+  });
+
+  it('overlay Save commits staged skills to main form', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+    getButton(overlay, 'Save').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
     expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScriptx', 'Reactx']);
+      .toEqual(['Python×']);
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+  });
+
+  it('duplicate skill is not staged', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: ['Python'] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'python');
+    getButton(overlay, 'Add').click();
+
+    expect(overlay.querySelectorAll('.skill-pill')).toHaveLength(0);
+  });
+
+  it('Cancel with staged skill triggers discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
+    getButton(overlay, 'Add').click();
+    getButton(overlay, 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('Cancel with no staged skills closes overlay immediately', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getHeaderAddButton(getCard(container, 'SKILLS')).click();
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+
+    expect(document.querySelector('.entry-modal')).toBeNull();
+    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+  });
+
+  it('removes saved skills while tracking dirty reversion', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: ['TypeScript', 'React'] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScript×', 'React×']);
 
     skills.querySelectorAll('.skill-pill__remove')[1].click();
-    inputValue(skills.querySelector('.skills-input-row input'), 'TypeScript');
-    getButton(skills, 'Add').click();
-    inputValue(skills.querySelector('.skills-input-row input'), 'typescript');
-    getButton(skills, 'Add').click();
-    expect(skills.querySelectorAll('.skill-pill')).toHaveLength(1);
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScript×']);
 
     skills.querySelector('.skill-pill__remove').click();
     expect(skills.querySelectorAll('.skill-pill')).toHaveLength(0);
-    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
   });
 
-  it('manages language inline forms with validation, cancel, and one-at-a-time guard', async () => {
+  it('stages multiple skills in one overlay session', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const overlay = document.querySelector('.entry-modal');
+    const input = overlay.querySelector('.skills-input-row input');
+
+    inputValue(input, 'TypeScript');
+    getButton(overlay, 'Add').click();
+    inputValue(input, 'React');
+    input
+      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    getButton(overlay, 'Save').click();
+
+    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
+      .toEqual(['TypeScript×', 'React×']);
+  });
+
+  it('adds languages through the entry overlay with validation and one-at-a-time guard', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -488,27 +1043,51 @@ describe('ProfileEdit page', () => {
 
     const languages = getCard(container, 'LANGUAGES');
 
-    getButton(languages, 'Add Language').click();
-    expect(languages.querySelector('.inline-entry-form')).toBeTruthy();
+    getHeaderAddButton(languages).click();
+    expect(document.querySelector('.entry-modal')).toBeTruthy();
 
-    getButton(languages, 'Add').click();
-    expect(languages.querySelector('.field-error')?.textContent).toBe('This field is required.');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
+    expect(document.querySelector('.entry-modal .field-error')?.textContent).toBe('This field is required.');
 
-    inputValue(getFieldInput(languages, 'Language'), 'English');
-    changeValue(getFieldInput(languages, 'Proficiency'), 'Fluent');
-    getButton(languages, 'Add').click();
-    expect(languages.textContent).toContain('English | Fluent');
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Language'), 'English');
+    changeValue(getFieldInput(document.querySelector('.entry-modal'), 'Proficiency'), 'Fluent');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
+    expect(languages.querySelector('.profile-entry__title')?.textContent).toBe('English');
+    expect(languages.querySelector('.profile-entry__meta')?.textContent).toBe('Fluent');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
 
-    getButton(languages, 'Add Language').click();
-    inputValue(getFieldInput(languages, 'Language'), 'French');
-    getButton(languages, 'Cancel').click();
+    getHeaderAddButton(languages).click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Language'), 'French');
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+    getButton(document.querySelector('.overlay-discard-dialog'), 'Discard').click();
     expect(languages.textContent).not.toContain('French');
 
-    getButton(getCard(container, 'CERTIFICATIONS'), 'Add Certification').click();
-    getButton(languages, 'Add Language').click();
-    expect(document.querySelectorAll('.inline-entry-form')).toHaveLength(1);
-    expect(getCard(container, 'CERTIFICATIONS').querySelector('.inline-entry-form')).toBeTruthy();
+    getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
+    getHeaderAddButton(languages).click();
+    expect(document.querySelectorAll('.entry-modal, .entry-sheet')).toHaveLength(1);
+    expect(document.querySelector('.entry-overlay__title')?.textContent).toBe('Add Certification');
+  });
+
+  it('blocks adding education when year is not four digits', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const education = getCard(container, 'EDUCATION');
+
+    getHeaderAddButton(education).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Degree & Major'), 'BS Computer Science');
+    inputValue(getFieldInput(overlay, 'University'), 'State University');
+    inputValue(getFieldInput(overlay, 'Year Completed'), '20-20');
+    getButton(overlay, 'Save').click();
+
+    expect(getField(overlay, 'Year Completed').querySelector('.field-error')?.textContent)
+      .toBe('Year must be a valid four-digit year.');
+    expect(education.querySelectorAll('.entry-row')).toHaveLength(0);
   });
 
   it('validates and sorts experience entries with current work handling', async () => {
@@ -520,44 +1099,151 @@ describe('ProfileEdit page', () => {
 
     const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
 
-    getButton(experience, 'Add Experience').click();
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
+    getHeaderAddButton(experience).click();
+    let overlay = document.querySelector('.entry-modal');
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(false);
 
-    const currentWork = experience.querySelector('input[type="checkbox"]');
+    const currentWork = overlay.querySelector('input[type="checkbox"]');
 
     currentWork.checked = true;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(true);
-    expect(getField(experience, 'Date Ended').classList).toContain('edit-field--disabled');
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(true);
+    expect(getField(overlay, 'Date Ended').classList).toContain('edit-field--disabled');
 
     currentWork.checked = false;
     currentWork.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(getFieldInput(experience, 'Date Ended').disabled).toBe(false);
+    expect(getFieldInput(overlay, 'Date Ended').disabled).toBe(false);
 
-    inputValue(getFieldInput(experience, 'Role'), 'Past Role');
-    inputValue(getFieldInput(experience, 'Company'), 'Acme');
-    inputValue(getFieldInput(experience, 'Responsibilities'), 'Built tools');
-    inputValue(getFieldInput(experience, 'Date Started'), '13/2024');
-    inputValue(getFieldInput(experience, 'Date Ended'), '02/2025');
-    getButton(experience, 'Add').click();
-    expect([...experience.querySelectorAll('.field-error')]
+    inputValue(getFieldInput(overlay, 'Role'), 'Past Role');
+    inputValue(getFieldInput(overlay, 'Company'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Built tools');
+    inputValue(getFieldInput(overlay, 'Date Started'), '13/2024');
+    inputValue(getFieldInput(overlay, 'Date Ended'), '02/2025');
+    getButton(overlay, 'Save').click();
+    expect([...overlay.querySelectorAll('.field-error')]
       .some((error) => error.textContent === 'Month must be 01-12.')).toBe(true);
 
-    inputValue(getFieldInput(experience, 'Date Started'), '01/2024');
-    getButton(experience, 'Add').click();
-    expect(experience.textContent).toContain('Past Role | Acme | 01/2024 - 02/2025');
+    inputValue(getFieldInput(overlay, 'Date Started'), '01/2024');
+    getButton(overlay, 'Save').click();
+    expect(experience.querySelector('.profile-entry__title')?.textContent).toBe('Past Role');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Acme | 01/2024 – 02/2025');
 
-    getButton(experience, 'Add Experience').click();
-    inputValue(getFieldInput(experience, 'Role'), 'Current Role');
-    inputValue(getFieldInput(experience, 'Company'), 'Beta');
-    inputValue(getFieldInput(experience, 'Responsibilities'), 'Lead work');
-    inputValue(getFieldInput(experience, 'Date Started'), '03/2025');
-    experience.querySelector('input[type="checkbox"]').checked = true;
-    experience.querySelector('input[type="checkbox"]').dispatchEvent(new window.Event('change', { bubbles: true }));
-    getButton(experience, 'Add').click();
+    getHeaderAddButton(experience).click();
+    overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Role'), 'Current Role');
+    inputValue(getFieldInput(overlay, 'Company'), 'Beta');
+    inputValue(getFieldInput(overlay, 'Responsibilities'), 'Lead work');
+    inputValue(getFieldInput(overlay, 'Date Started'), '03/2025');
+    overlay.querySelector('input[type="checkbox"]').checked = true;
+    overlay.querySelector('input[type="checkbox"]').dispatchEvent(new window.Event('change', { bubbles: true }));
+    getButton(overlay, 'Save').click();
 
-    expect(experience.querySelector('.entry-row__text')?.textContent)
-      .toBe('Current Role | Beta | 03/2025 - Present');
+    expect(experience.querySelector('.profile-entry__title')?.textContent)
+      .toBe('Current Role');
+    expect(experience.querySelector('.profile-entry__meta')?.textContent)
+      .toBe('Beta | 03/2025 – Present');
+  });
+
+  it('Edit icon opens overlay pre-filled with entry data', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+
+    const overlay = document.querySelector('.entry-modal');
+
+    expect(overlay.querySelector('.entry-overlay__title')?.textContent).toBe('Edit Experience');
+    expect(getFieldInput(overlay, 'Role').value).toBe('Senior Engineer');
+    expect(getFieldInput(overlay, 'Company').value).toBe('Acme');
+  });
+
+  it('Save from edit overlay updates entry in-place', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Role'), 'Staff Engineer');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    expect([...experience.querySelectorAll('.entry-row--structured')]).toHaveLength(1);
+    expect(experience.querySelector('.profile-entry__title')?.textContent).toBe('Staff Engineer');
+    expect(experience.textContent).not.toContain('Senior Engineer');
+  });
+
+  it('Edit then Cancel with changed value shows discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Role'), 'Staff Engineer');
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('Remove icon still removes the entry', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    experience.querySelector('[aria-label="Remove entry"]').click();
+
+    expect(experience.textContent).not.toContain('Senior Engineer');
+    expect(experience.querySelector('.entry-row--structured')).toBeNull();
   });
 
   it('validates links and renders friendly-name and hostname labels', async () => {
@@ -569,25 +1255,27 @@ describe('ProfileEdit page', () => {
 
     const links = getCard(container, 'LINKS');
 
-    getButton(links, 'Add Link').click();
-    inputValue(getFieldInput(links, 'Link URL'), 'javascript:alert(1)');
-    getButton(links, 'Add').click();
-    expect(links.querySelector('.field-error')?.textContent)
+    getHeaderAddButton(links).click();
+    let overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Link URL'), 'javascript:alert(1)');
+    getButton(overlay, 'Save').click();
+    expect(overlay.querySelector('.field-error')?.textContent)
       .toBe('Please enter a valid URL (http or https).');
 
-    inputValue(getFieldInput(links, 'Link URL'), 'https://example.com/profile');
-    inputValue(getFieldInput(links, 'Friendly Name'), 'Portfolio');
-    getButton(links, 'Add').click();
-    expect(links.querySelector('a')?.textContent).toBe('Portfolio');
+    inputValue(getFieldInput(overlay, 'Link URL'), 'https://example.com/profile');
+    inputValue(getFieldInput(overlay, 'Friendly Name'), 'Portfolio');
+    getButton(overlay, 'Save').click();
+    expect(links.querySelector('.profile-entry__title')?.textContent).toBe('Portfolio');
 
-    getButton(links, 'Add Link').click();
-    inputValue(getFieldInput(links, 'Link URL'), 'https://github.com/alex');
-    getButton(links, 'Add').click();
-    expect([...links.querySelectorAll('a')].map((anchor) => anchor.textContent))
+    getHeaderAddButton(links).click();
+    overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Link URL'), 'https://github.com/alex');
+    getButton(overlay, 'Save').click();
+    expect([...links.querySelectorAll('.profile-entry__title')].map((title) => title.textContent))
       .toEqual(['Portfolio', 'github.com']);
   });
 
-  it('sanitizes rendered link hrefs from loaded profile data', async () => {
+  it('renders loaded profile links as structured plain text rows', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile({
@@ -601,8 +1289,11 @@ describe('ProfileEdit page', () => {
 
     const links = getCard(container, 'LINKS');
 
-    expect(links.querySelectorAll('a')[0].getAttribute('href')).toBe('https://example.com/profile');
-    expect(links.querySelectorAll('a')[1].getAttribute('href')).toBe('#');
+    expect([...links.querySelectorAll('.profile-entry__title')].map((title) => title.textContent))
+      .toEqual(['Portfolio', 'Unsafe']);
+    expect([...links.querySelectorAll('.profile-entry__meta')].map((meta) => meta.textContent))
+      .toEqual(['https://example.com/profile', 'javascript:alert(1)']);
+    expect(links.querySelector('a')).toBeNull();
   });
 
   it('blocks adding a certification when issuing body is missing', async () => {
@@ -614,16 +1305,62 @@ describe('ProfileEdit page', () => {
 
     const certs = getCard(container, 'CERTIFICATIONS');
 
-    getButton(certs, 'Add Certification').click();
-    inputValue(getFieldInput(certs, 'Certification Name'), 'AWS Developer');
-    inputValue(getFieldInput(certs, 'Issuance Date'), '01/2023');
-    getButton(certs, 'Add').click();
+    getHeaderAddButton(certs).click();
+    const overlay = document.querySelector('.entry-modal');
+    inputValue(getFieldInput(overlay, 'Certification Name'), 'AWS Developer');
+    inputValue(getFieldInput(overlay, 'Issuance Date'), '01/2023');
+    getButton(overlay, 'Save').click();
 
-    const error = [...certs.querySelectorAll('.field-error')]
+    const error = [...overlay.querySelectorAll('.field-error')]
       .find((el) => el.textContent === 'This field is required.');
     expect(error).toBeTruthy();
     expect(error.hidden).toBe(false);
     expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
+  });
+
+  it('blocks adding a certification when optional expiry date is invalid', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const certs = getCard(container, 'CERTIFICATIONS');
+
+    getHeaderAddButton(certs).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Certification Name'), 'AWS Developer');
+    inputValue(getFieldInput(overlay, 'Issuing Body'), 'Amazon');
+    inputValue(getFieldInput(overlay, 'Issuance Date'), '01/2023');
+    inputValue(getFieldInput(overlay, 'Expiry Date'), 'baddate');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
+  });
+
+  it('blocks adding an award when optional date is invalid', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const awards = getCard(container, 'AWARDS');
+
+    getHeaderAddButton(awards).click();
+    const overlay = document.querySelector('.entry-modal');
+
+    inputValue(getFieldInput(overlay, 'Award Name'), 'Top Performer');
+    inputValue(getFieldInput(overlay, 'Issuing Body'), 'Acme');
+    inputValue(getFieldInput(overlay, 'Date'), 'baddate');
+    getButton(overlay, 'Save').click();
+
+    expect([...overlay.querySelectorAll('.field-error')]
+      .some((error) => error.textContent.includes('MM/YYYY'))).toBe(true);
+    expect(awards.querySelectorAll('.entry-row')).toHaveLength(0);
   });
 
   it('routes the subheader cancel action through discard behavior', async () => {
@@ -667,6 +1404,27 @@ describe('ProfileEdit page', () => {
     expect(Toast.show).toHaveBeenCalledWith('Edits discarded.', 'success');
   });
 
+  it('prompts before page unload when an overlay draft is dirty', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const cleanEvent = new window.Event('beforeunload', { cancelable: true });
+
+    window.dispatchEvent(cleanEvent);
+    expect(cleanEvent.defaultPrevented).toBe(false);
+
+    const overlay = openExperienceOverlay(container);
+    const dirtyEvent = new window.Event('beforeunload', { cancelable: true });
+
+    inputValue(getFieldInput(overlay, 'Role'), 'Engineer');
+    window.dispatchEvent(dirtyEvent);
+
+    expect(dirtyEvent.defaultPrevented).toBe(true);
+  });
+
   it('marks required fields visually', async () => {
     const container = createAppShell();
 
@@ -676,8 +1434,8 @@ describe('ProfileEdit page', () => {
 
     expect(getField(getCard(container, 'BASIC INFO'), 'First Name').classList)
       .toContain('edit-field--required');
-    getButton(getCard(container, 'CERTIFICATIONS'), 'Add Certification').click();
-    expect(getField(getCard(container, 'CERTIFICATIONS'), 'Issuing Body').classList)
+    getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
+    expect(getField(document.querySelector('.entry-modal'), 'Issuing Body').classList)
       .toContain('edit-field--required');
   });
 

@@ -7,6 +7,32 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-04-29
+
+### Added
+- Overlay-based add and edit flows for all six structured profile sections — Experience, Education, Certifications, Awards, Languages, and Links; modal on desktop (≥ 640 px), bottom-sheet on mobile with fly-in animation; overlay includes focus trap, ESC dismiss, and backdrop-click cancel
+- Skills staging overlay — skills are staged as pills inside the overlay and merged into the main form only on Save; case-insensitive duplicate deduplication
+- Discard confirmation inside overlays — "Discard entry changes?" with a red Discard button appears when cancelling a dirty overlay; ESC and backdrop click route through the same flow
+- Edit icon on each structured entry row — opens a pre-filled overlay; saving updates the entry in-place without adding a duplicate
+- Structured display for Certifications on the View Profile page — name, issuing body, date range, and optional Certificate ID rendered in a hierarchy matching the Education section
+- Structured display for Awards on the View Profile page — award name, issuing body and date as meta, details paragraph below
+- `validateYear` — four-digit year validator (≥ 1900) applied to Education's Year Completed field in both the overlay form and `validateProfile`
+- `beforeunload` guard on the Edit Profile page — triggers the browser's native "Leave site?" dialog when there are unsaved changes
+
+### Changed
+- Edit Profile section order now matches View Profile: Basic Info → Summary → Experience → Education → Skills → Certifications → Awards → Languages → Links
+- All structured entry sections use a title/meta/desc hierarchy with dedicated Edit and Remove icon buttons; "Add" button moved to the section header with primary styling
+- Edit overlay saves use card-local re-render instead of full page rebuild, preventing scroll position reset on every entry edit
+- Overlay form fields have consistent 14 px gap between fields
+- Discard button styled red (`#c1121f`) across both the overlay discard dialog and the page-level discard modal
+- iPad Mini stat chip layout — `.apps-desktop-vis__stats .stat-chip-row` overrides to a 2 × 2 grid, preventing chip overflow at 768 px
+
+### Fixed
+- Education Year Completed now validates year format in addition to required-field check
+- Remove icon on the main skills card now uses `×` (was ASCII `x`)
+- `.entry-row__edit` CSS now uses `var(--color-accent)` directly; undefined `--accent` fallback removed
+- Awards entry no longer passes an empty string to the display helper when details are absent
+
 ## [0.5.0] — 2026-04-29
 
 ### Added
@@ -117,7 +143,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/reso830/Project_Alice/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/reso830/Project_Alice/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/reso830/Project_Alice/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/reso830/Project_Alice/compare/v0.2.0...v0.3.0

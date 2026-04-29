@@ -2,8 +2,7 @@ import { Toast } from '../components/Toast.js';
 import { normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
-import { getSafeExternalHref } from '../utils/url.js';
-import { validateMonthYear, validateRequired, validateUrl } from '../utils/validate.js';
+import { validateMonthYear, validateRequired, validateUrl, validateYear } from '../utils/validate.js';
 
 let _container = null;
 let _navigate = () => {};
@@ -14,6 +13,9 @@ let _saving = false;
 let _basicInfoFields = {};
 let _discardKeyHandler = null;
 let _discardAction = null;
+let _openOverlay = null;
+let _renderSkillsBody = () => {};
+let _beforeUnloadHandler = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -129,20 +131,19 @@ function clearBasicInfoErrors() {
   }
 }
 
-function createEditCard(title) {
+function createEditCard(title, { onAdd } = {}) {
   const card = createElement('section', 'section-card edit-card');
   const header = createElement('div', 'section-card__header');
   const label = createElement('div', 'section-label', title);
   const body = createElement('div', 'edit-card__body');
 
   header.append(label);
+  if (onAdd) {
+    header.append(createButton('Add', 'profile-btn profile-btn--primary', onAdd));
+  }
   card.append(header, body);
 
   return { card, body };
-}
-
-function removeOpenFormError() {
-  document.querySelector('.open-form-error')?.remove();
 }
 
 function normalizeWhitespace(value) {
@@ -150,32 +151,34 @@ function normalizeWhitespace(value) {
 }
 
 function commitListChange() {
-  removeOpenFormError();
   updateControlsState();
 }
 
-function canOpenInlineForm() {
-  return !hasOpenInlineForm();
-}
+function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
+  const row = createElement('div', 'entry-row entry-row--structured');
+  const content = createElement('div', 'entry-row__content');
+  const actions = createElement('div', 'entry-row__actions');
 
-function createEntryRow(parts, onRemove) {
-  const row = createElement('div', 'entry-row');
-  const text = createElement('span', 'entry-row__text', parts.filter(Boolean).join(' | '));
-  const remove = createButton('x', 'entry-row__remove', onRemove, 'Remove entry');
+  if (display.title) {
+    content.append(createElement('div', 'profile-entry__title', display.title));
+  }
 
-  row.append(text, remove);
+  if (display.meta) {
+    content.append(createElement('div', 'profile-entry__meta', display.meta));
+  }
+
+  if (display.desc) {
+    content.append(createElement('p', 'profile-entry__desc', display.desc));
+  }
+
+  if (onEdit) {
+    actions.append(createButton('✎', 'entry-row__edit', onEdit, 'Edit entry'));
+  }
+
+  actions.append(createButton('×', 'entry-row__remove', onRemove, 'Remove entry'));
+  row.append(content, actions);
 
   return row;
-}
-
-function appendAddButton(body, label, onClick) {
-  body.append(createButton(label, 'profile-btn profile-btn--outline', () => {
-    if (!canOpenInlineForm()) {
-      return;
-    }
-
-    onClick();
-  }));
 }
 
 function validateFields(rules) {
@@ -200,6 +203,145 @@ function optionalMonthYear(value) {
   return value.trim() ? validateMonthYear(value) : null;
 }
 
+function getFormData(fields) {
+  return Object.fromEntries(Object.entries(fields).map(([key, field]) => [
+    key,
+    field.input.type === 'checkbox' ? field.input.checked : field.input.value,
+  ]));
+}
+
+function getOverlayFocusable(overlay) {
+  const root = overlay.querySelector('.overlay-discard-dialog') ?? overlay;
+
+  return [...root.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+}
+
+function showOverlayDiscardDialog(boxEl, { onDiscard }) {
+  if (boxEl.querySelector('.overlay-discard-dialog')) {
+    return;
+  }
+
+  const dialog = createElement('div', 'overlay-discard-dialog');
+  const message = createElement('p', 'overlay-discard-dialog__msg', 'Discard entry changes?');
+  const discard = createButton('Discard', 'profile-btn profile-btn--primary profile-btn--danger', () => {
+    dialog.remove();
+    onDiscard();
+  });
+  const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => dialog.remove());
+
+  dialog.append(message, discard, keepEditing);
+  boxEl.append(dialog);
+  discard.focus();
+}
+
+export function createEntryOverlay(title, buildForm, { onSave } = {}) {
+  if (_openOverlay !== null) {
+    return undefined;
+  }
+
+  const isDesktop = window.innerWidth >= 640;
+  const backdrop = createElement('div', 'entry-overlay-backdrop');
+  const overlay = createElement('div', isDesktop ? 'entry-modal' : 'entry-sheet');
+  const container = createElement('div', isDesktop ? 'entry-modal__box' : 'entry-sheet__box');
+  const header = createElement('div', 'entry-overlay__header');
+  const titleEl = createElement('h2', 'entry-overlay__title', title);
+  const formEl = createElement('div', 'entry-overlay__form');
+  const footer = createElement('div', 'entry-overlay__footer');
+  const formApi = buildForm(formEl);
+  const validate = formApi?.validate ?? (() => true);
+  const getData = formApi?.getData ?? (() => ({}));
+  const isDirty = formApi?.isDirty ?? (() => false);
+  let isClosed = false;
+
+  function close() {
+    if (isClosed) {
+      return;
+    }
+
+    isClosed = true;
+    document.removeEventListener('keydown', handleDocumentKeydown);
+    overlay.removeEventListener('keydown', handleOverlayKeydown);
+    backdrop.removeEventListener('click', handleCancel);
+    backdrop.remove();
+    overlay.remove();
+    document.body.style.overflow = '';
+    _openOverlay = null;
+  }
+
+  function handleSave() {
+    if (!validate()) {
+      return;
+    }
+
+    onSave?.(getData());
+    close();
+  }
+
+  function handleCancel() {
+    if (!isDirty()) {
+      close();
+      return;
+    }
+
+    showOverlayDiscardDialog(container, {
+      onDiscard: () => {
+        close();
+        Toast.show('Changes discarded.', 'success');
+      },
+    });
+  }
+
+  function handleDocumentKeydown(event) {
+    if (event.key === 'Escape') {
+      handleCancel();
+    }
+  }
+
+  function handleOverlayKeydown(event) {
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusable = getOverlayFocusable(overlay);
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', handleCancel);
+  const save = createButton('Save', 'profile-btn profile-btn--primary', handleSave);
+
+  header.append(titleEl);
+  footer.append(cancel, save);
+  container.append(header, formEl, footer);
+  overlay.append(container);
+  backdrop.addEventListener('click', handleCancel);
+  document.addEventListener('keydown', handleDocumentKeydown);
+  overlay.addEventListener('keydown', handleOverlayKeydown);
+  document.body.append(backdrop, overlay);
+  document.body.style.overflow = 'hidden';
+
+  _openOverlay = { close, isDirty };
+
+  getOverlayFocusable(overlay)[0]?.focus();
+
+  return _openOverlay;
+}
+
 function getLinkLabel(url, friendlyName = '') {
   if (friendlyName) {
     return friendlyName;
@@ -216,16 +358,6 @@ function updateField(fieldName, value) {
   _formState[fieldName] = value;
   setFieldError(_basicInfoFields[fieldName], '');
   updateControlsState();
-}
-
-function hasOpenInlineForm() {
-  return document.querySelector('.inline-entry-form') !== null;
-}
-
-function renderOpenFormError() {
-  const err = createElement('p', 'open-form-error', 'Please finish or cancel the open form before saving.');
-
-  _subheader?.after(err);
 }
 
 function renderSubheader() {
@@ -287,36 +419,91 @@ function renderSummaryCard(page) {
   page.append(card);
 }
 
+function openSkillsOverlay() {
+  if (_openOverlay !== null) {
+    return;
+  }
+
+  const staged = [];
+
+  function renderStagedPills(pillWrap) {
+    pillWrap.replaceChildren();
+
+    for (const skill of staged) {
+      const pill = createElement('span', 'skill-pill', skill);
+      const remove = createButton('×', 'skill-pill__remove', () => {
+        const index = staged.indexOf(skill);
+
+        staged.splice(index, 1);
+        renderStagedPills(pillWrap);
+      });
+
+      pill.append(remove);
+      pillWrap.append(pill);
+    }
+  }
+
+  function buildSkillsForm(formEl) {
+    const inputRow = createElement('div', 'skills-input-row');
+    const input = document.createElement('input');
+    const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
+      const skill = normalizeWhitespace(input.value);
+      const existingSkills = _formState.skills.map((existing) => existing.toLowerCase());
+      const stagedSkills = staged.map((existing) => existing.toLowerCase());
+
+      if (validateRequired(skill)) {
+        return;
+      }
+
+      if (!existingSkills.includes(skill.toLowerCase()) && !stagedSkills.includes(skill.toLowerCase())) {
+        staged.push(skill);
+        input.value = '';
+        renderStagedPills(pillWrap);
+      }
+    });
+    const pillWrap = createElement('div', 'skills-pills-wrap');
+
+    input.type = 'text';
+    input.className = 'edit-field__control';
+    input.setAttribute('aria-label', 'Skill');
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        add.click();
+      }
+    });
+
+    inputRow.append(input, add);
+    formEl.append(inputRow, pillWrap);
+
+    return {
+      validate: () => true,
+      getData: () => staged,
+      isDirty: () => staged.length > 0,
+    };
+  }
+
+  function mergeSkills(data) {
+    const existing = new Set(_formState.skills.map((skill) => skill.toLowerCase()));
+
+    for (const skill of data) {
+      if (!existing.has(skill.toLowerCase())) {
+        _formState.skills.push(skill);
+        existing.add(skill.toLowerCase());
+      }
+    }
+
+    commitListChange();
+    _renderSkillsBody();
+  }
+
+  createEntryOverlay('Add Skills', buildSkillsForm, {
+    onSave: (data) => mergeSkills(data),
+  });
+}
+
 function renderSkillsCard(page) {
-  const { card, body } = createEditCard('SKILLS');
-  const inputRow = createElement('div', 'skills-input-row');
-  const input = document.createElement('input');
-  const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
-    const skill = normalizeWhitespace(input.value);
-
-    if (validateRequired(skill)) {
-      return;
-    }
-
-    if (!_formState.skills.some((existing) => existing.toLowerCase() === skill.toLowerCase())) {
-      _formState.skills.push(skill);
-      commitListChange();
-      render();
-    }
-
-    input.value = '';
-  });
-
-  input.type = 'text';
-  input.className = 'edit-field__control';
-  input.setAttribute('aria-label', 'Skill');
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      add.click();
-    }
-  });
-  inputRow.append(input, add);
+  const { card, body } = createEditCard('SKILLS', { onAdd: () => openSkillsOverlay() });
 
   function render() {
     const pills = createElement('div', 'skills-pills-wrap');
@@ -325,7 +512,7 @@ function renderSkillsCard(page) {
 
     for (const skill of _formState.skills) {
       const pill = createElement('span', 'skill-pill');
-      const remove = createButton('x', 'skill-pill__remove', () => {
+      const remove = createButton('×', 'skill-pill__remove', () => {
         _formState.skills = _formState.skills.filter((existing) => existing !== skill);
         commitListChange();
         render();
@@ -335,260 +522,261 @@ function renderSkillsCard(page) {
       pills.append(pill);
     }
 
-    body.append(pills, inputRow);
+    body.append(pills);
   }
 
+  _renderSkillsBody = render;
   render();
   page.append(card);
 }
 
+function buildLanguagesForm(formEl, initial = {}) {
+  const language = createField('Language', initial.language ?? '', false, { required: true });
+  const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS, initial.proficiency ?? '', { required: true });
+  const row = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
+  const fields = { language, proficiency };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  row.append(language.wrapper, proficiency.wrapper);
+  formEl.append(row);
+
+  return {
+    validate: () => validateFields([
+      { field: language, validators: [validateRequired] },
+      { field: proficiency, validators: [validateRequired] },
+    ]),
+    getData: () => ({
+      language: normalizeWhitespace(language.input.value),
+      proficiency: proficiency.input.value,
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function openEditLanguageOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Language', (el) => buildLanguagesForm(el, entry), {
+    onSave: (data) => {
+      _formState.languages.splice(index, 1, data);
+      commitListChange();
+      onSaved();
+    },
+  });
+}
+
 function renderLanguagesCard(page) {
-  const { card, body } = createEditCard('LANGUAGES');
-  let isAddingLanguage = false;
+  const { card, body } = createEditCard('LANGUAGES', {
+    onAdd: () => createEntryOverlay('Add Language', (el) => buildLanguagesForm(el), {
+      onSave: (data) => {
+        _formState.languages.push(data);
+        commitListChange();
+        render();
+      },
+    }),
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.languages.forEach((entry, index) => {
-      body.append(createEntryRow([entry.language, entry.proficiency], () => {
-        _formState.languages.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.language,
+        meta: entry.proficiency,
+      }, {
+        onEdit: () => openEditLanguageOverlay(entry, index, render),
+        onRemove: () => {
+          _formState.languages.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
-
-    if (!isAddingLanguage) {
-      appendAddButton(body, 'Add Language', () => {
-        isAddingLanguage = true;
-        render();
-      });
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--language');
-    const language = createField('Language', '', false, { required: true });
-    const proficiency = createSelectField('Proficiency', PROFICIENCY_LEVELS, '', { required: true });
-    const row = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: language, validators: [validateRequired] },
-        { field: proficiency, validators: [validateRequired] },
-      ])) {
-        return;
-      }
-
-      _formState.languages.push({
-        language: normalizeWhitespace(language.input.value),
-        proficiency: proficiency.input.value,
-      });
-      isAddingLanguage = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingLanguage = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    row.append(language.wrapper, proficiency.wrapper);
-    form.append(row, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildCertificationsForm(formEl, initial = {}) {
+  const name = createField('Certification Name', initial.name ?? '', false, { required: true });
+  const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
+  const certificateId = createField('Certificate ID', initial.certificateId ?? '');
+  const issuanceDate = createField('Issuance Date', initial.issuanceDate ?? '', false, { required: true });
+  const expiryDate = createField('Expiry Date', initial.expiryDate ?? '');
+  const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
+  const fields = { name, issuingBody, certificateId, issuanceDate, expiryDate };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  dateRow.append(issuanceDate.wrapper, expiryDate.wrapper);
+  formEl.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, dateRow);
+
+  return {
+    validate: () => validateFields([
+      { field: name, validators: [validateRequired] },
+      { field: issuingBody, validators: [validateRequired] },
+      { field: issuanceDate, validators: [validateRequired, validateMonthYear] },
+      { field: expiryDate, validators: [optionalMonthYear] },
+    ]),
+    getData: () => ({
+      name: normalizeWhitespace(name.input.value),
+      issuingBody: normalizeWhitespace(issuingBody.input.value),
+      certificateId: normalizeWhitespace(certificateId.input.value),
+      issuanceDate: issuanceDate.input.value.trim(),
+      expiryDate: expiryDate.input.value.trim(),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function openEditCertificationOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Certification', (el) => buildCertificationsForm(el, entry), {
+    onSave: (data) => {
+      _formState.certifications.splice(index, 1, data);
+      commitListChange();
+      onSaved();
+    },
+  });
+}
+
 function renderCertificationsCard(page) {
-  const { card, body } = createEditCard('CERTIFICATIONS');
-  let isAddingCertification = false;
+  const { card, body } = createEditCard('CERTIFICATIONS', {
+    onAdd: () => createEntryOverlay('Add Certification', (el) => buildCertificationsForm(el), {
+      onSave: (data) => {
+        _formState.certifications.push(data);
+        commitListChange();
+        render();
+      },
+    }),
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.certifications.forEach((entry, index) => {
-      body.append(createEntryRow([entry.name, entry.issuanceDate], () => {
-        _formState.certifications.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.name,
+        meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | '),
+      }, {
+        onEdit: () => openEditCertificationOverlay(entry, index, render),
+        onRemove: () => {
+          _formState.certifications.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
-
-    if (!isAddingCertification) {
-      appendAddButton(body, 'Add Certification', () => {
-        isAddingCertification = true;
-        render();
-      });
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--certification');
-    const name = createField('Certification Name', '', false, { required: true });
-    const issuingBody = createField('Issuing Body', '', false, { required: true });
-    const certificateId = createField('Certificate ID');
-    const issuanceDate = createField('Issuance Date', '', false, { required: true });
-    const expiryDate = createField('Expiry Date');
-    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: name, validators: [validateRequired] },
-        { field: issuingBody, validators: [validateRequired] },
-        { field: issuanceDate, validators: [validateRequired, validateMonthYear] },
-        { field: expiryDate, validators: [optionalMonthYear] },
-      ])) {
-        return;
-      }
-
-      _formState.certifications.push({
-        name: normalizeWhitespace(name.input.value),
-        issuingBody: normalizeWhitespace(issuingBody.input.value),
-        certificateId: normalizeWhitespace(certificateId.input.value),
-        issuanceDate: issuanceDate.input.value.trim(),
-        expiryDate: expiryDate.input.value.trim(),
-      });
-      isAddingCertification = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingCertification = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    dateRow.append(issuanceDate.wrapper, expiryDate.wrapper);
-    form.append(name.wrapper, issuingBody.wrapper, certificateId.wrapper, dateRow, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildEducationForm(formEl, initial = {}) {
+  const degreeMajor = createField('Degree & Major', initial.degreeMajor ?? '', false, { required: true });
+  const university = createField('University', initial.university ?? '', false, { required: true });
+  const yearCompleted = createField('Year Completed', initial.yearCompleted ?? '', false, { required: true });
+  const fields = { degreeMajor, university, yearCompleted };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(degreeMajor.wrapper, university.wrapper, yearCompleted.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: degreeMajor, validators: [validateRequired] },
+      { field: university, validators: [validateRequired] },
+      { field: yearCompleted, validators: [validateRequired, validateYear] },
+    ]),
+    getData: () => ({
+      degreeMajor: normalizeWhitespace(degreeMajor.input.value),
+      university: normalizeWhitespace(university.input.value),
+      yearCompleted: normalizeWhitespace(yearCompleted.input.value),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function openEditEducationOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Education', (el) => buildEducationForm(el, entry), {
+    onSave: (data) => {
+      _formState.education.splice(index, 1, data);
+      _formState.education = sortEducation(_formState.education);
+      commitListChange();
+      onSaved();
+    },
+  });
+}
+
 function renderEducationCard(page) {
-  const { card, body } = createEditCard('EDUCATION');
-  let isAddingEducation = false;
+  const { card, body } = createEditCard('EDUCATION', {
+    onAdd: () => createEntryOverlay('Add Education', (el) => buildEducationForm(el), {
+      onSave: (data) => {
+        _formState.education = sortEducation([..._formState.education, data]);
+        commitListChange();
+        render();
+      },
+    }),
+  });
 
   function render() {
     body.replaceChildren();
 
     for (const entry of sortEducation(_formState.education)) {
-      body.append(createEntryRow([entry.degreeMajor, entry.university, entry.yearCompleted], () => {
-        const index = _formState.education.indexOf(entry);
+      body.append(createStructuredEntryRow({
+        title: entry.degreeMajor,
+        meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | '),
+      }, {
+        onEdit: () => openEditEducationOverlay(entry, _formState.education.indexOf(entry), render),
+        onRemove: () => {
+          const index = _formState.education.indexOf(entry);
 
-        _formState.education.splice(index, 1);
-        commitListChange();
-        render();
+          _formState.education.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     }
-
-    if (!isAddingEducation) {
-      appendAddButton(body, 'Add Education', () => {
-        isAddingEducation = true;
-        render();
-      });
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--education');
-    const degreeMajor = createField('Degree & Major', '', false, { required: true });
-    const university = createField('University', '', false, { required: true });
-    const yearCompleted = createField('Year Completed', '', false, { required: true });
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: degreeMajor, validators: [validateRequired] },
-        { field: university, validators: [validateRequired] },
-        { field: yearCompleted, validators: [validateRequired] },
-      ])) {
-        return;
-      }
-
-      _formState.education = sortEducation([..._formState.education, {
-        degreeMajor: normalizeWhitespace(degreeMajor.input.value),
-        university: normalizeWhitespace(university.input.value),
-        yearCompleted: normalizeWhitespace(yearCompleted.input.value),
-      }]);
-      isAddingEducation = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingEducation = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(degreeMajor.wrapper, university.wrapper, yearCompleted.wrapper, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
-function renderExperienceCard(page) {
-  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE');
-  let isAddingExperience = false;
+function buildExperienceForm(formEl, initial = {}) {
+  const role = createField('Role', initial.role ?? '', false, { required: true });
+  const company = createField('Company', initial.company ?? '', false, { required: true });
+  const responsibilities = createField('Responsibilities', initial.responsibilities ?? '', true, { required: true });
+  const dateStarted = createField('Date Started', initial.dateStarted ?? '', false, { required: true });
+  const dateEnded = createField('Date Ended', initial.dateEnded ?? '', false, { required: true });
+  const currentWorkWrapper = createElement('label', 'edit-field');
+  const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
+  const currentWork = document.createElement('input');
+  const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--dates');
+  const currentWorkField = { wrapper: currentWorkWrapper, input: currentWork, error: createElement('span', 'field-error') };
+  const fields = { role, company, responsibilities, dateStarted, dateEnded, currentWork: currentWorkField };
 
-  function render() {
-    body.replaceChildren();
+  currentWork.type = 'checkbox';
+  currentWork.className = 'edit-field__checkbox';
+  currentWork.checked = Boolean(initial.currentWork);
+  currentWorkField.error.hidden = true;
+  currentWorkWrapper.classList.add('edit-field--checkbox');
+  currentWorkWrapper.append(currentWorkLabel, currentWork, currentWorkField.error);
 
-    for (const entry of sortExperience(_formState.experience)) {
-      const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
-
-      body.append(createEntryRow([entry.role, entry.company, [entry.dateStarted, endDate].filter(Boolean).join(' - ')], () => {
-        const index = _formState.experience.indexOf(entry);
-
-        _formState.experience.splice(index, 1);
-        commitListChange();
-        render();
-      }));
+  function syncDateEnded() {
+    dateEnded.input.disabled = currentWork.checked;
+    dateEnded.wrapper.classList.toggle('edit-field--disabled', currentWork.checked);
+    if (currentWork.checked) {
+      setFieldError(dateEnded, '');
     }
+  }
 
-    if (!isAddingExperience) {
-      appendAddButton(body, 'Add Experience', () => {
-        isAddingExperience = true;
-        render();
-      });
-      return;
-    }
+  currentWork.addEventListener('change', syncDateEnded);
+  syncDateEnded();
+  dateRow.append(dateStarted.wrapper, dateEnded.wrapper, currentWorkWrapper);
+  formEl.append(role.wrapper, company.wrapper, responsibilities.wrapper, dateRow);
 
-    const form = createElement('div', 'inline-entry-form inline-entry-form--experience');
-    const role = createField('Role', '', false, { required: true });
-    const company = createField('Company', '', false, { required: true });
-    const responsibilities = createField('Responsibilities', '', true, { required: true });
-    const dateStarted = createField('Date Started', '', false, { required: true });
-    const dateEnded = createField('Date Ended', '', false, { required: true });
-    const currentWorkWrapper = createElement('label', 'edit-field');
-    const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
-    const currentWork = document.createElement('input');
-    const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--dates');
-    const actions = createElement('div', 'inline-entry-form__actions');
+  const snapshot = JSON.stringify(getFormData(fields));
 
-    currentWork.type = 'checkbox';
-    currentWork.className = 'edit-field__checkbox';
-    currentWorkWrapper.classList.add('edit-field--checkbox');
-    currentWorkWrapper.append(currentWorkLabel, currentWork);
-
-    function syncDateEnded() {
-      dateEnded.input.disabled = currentWork.checked;
-      dateEnded.wrapper.classList.toggle('edit-field--disabled', currentWork.checked);
-      if (currentWork.checked) {
-        setFieldError(dateEnded, '');
-      }
-    }
-
-    currentWork.addEventListener('change', syncDateEnded);
-    syncDateEnded();
-
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
+  return {
+    validate: () => {
       const rules = [
         { field: role, validators: [validateRequired] },
         { field: company, validators: [validateRequired] },
@@ -602,161 +790,199 @@ function renderExperienceCard(page) {
         setFieldError(dateEnded, '');
       }
 
-      if (!validateFields(rules)) {
-        return;
-      }
+      return validateFields(rules);
+    },
+    getData: () => ({
+      role: normalizeWhitespace(role.input.value),
+      company: normalizeWhitespace(company.input.value),
+      responsibilities: responsibilities.input.value.trim(),
+      dateStarted: dateStarted.input.value.trim(),
+      dateEnded: currentWork.checked ? '' : dateEnded.input.value.trim(),
+      currentWork: currentWork.checked,
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
 
-      _formState.experience = sortExperience([..._formState.experience, {
-        role: normalizeWhitespace(role.input.value),
-        company: normalizeWhitespace(company.input.value),
-        responsibilities: responsibilities.input.value.trim(),
-        dateStarted: dateStarted.input.value.trim(),
-        dateEnded: currentWork.checked ? '' : dateEnded.input.value.trim(),
-        currentWork: currentWork.checked,
-      }]);
-      isAddingExperience = false;
+function openEditExperienceOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Experience', (el) => buildExperienceForm(el, entry), {
+    onSave: (data) => {
+      _formState.experience.splice(index, 1, data);
+      _formState.experience = sortExperience(_formState.experience);
       commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingExperience = false;
-      removeOpenFormError();
-      render();
-    });
+      onSaved();
+    },
+  });
+}
 
-    actions.append(cancel, add);
-    dateRow.append(dateStarted.wrapper, dateEnded.wrapper, currentWorkWrapper);
-    form.append(role.wrapper, company.wrapper, responsibilities.wrapper, dateRow, actions);
-    body.append(form);
+function renderExperienceCard(page) {
+  const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE', {
+    onAdd: () => createEntryOverlay('Add Experience', (el) => buildExperienceForm(el), {
+      onSave: (data) => {
+        _formState.experience = sortExperience([..._formState.experience, data]);
+        commitListChange();
+        render();
+      },
+    }),
+  });
+
+  function render() {
+    body.replaceChildren();
+
+    for (const entry of sortExperience(_formState.experience)) {
+      const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
+
+      body.append(createStructuredEntryRow({
+        title: entry.role,
+        meta: [
+          entry.company,
+          [entry.dateStarted, endDate].filter(Boolean).join(' – '),
+        ].filter(Boolean).join(' | '),
+        desc: entry.responsibilities,
+      }, {
+        onEdit: () => openEditExperienceOverlay(entry, _formState.experience.indexOf(entry), render),
+        onRemove: () => {
+          const index = _formState.experience.indexOf(entry);
+
+          _formState.experience.splice(index, 1);
+          commitListChange();
+          render();
+        },
+      }));
+    }
   }
 
   render();
   page.append(card);
 }
 
+function buildLinksForm(formEl, initial = {}) {
+  const url = createField('Link URL', initial.url ?? '', false, { required: true });
+  const friendlyName = createField('Friendly Name', initial.friendlyName ?? '');
+  const fields = { url, friendlyName };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(url.wrapper, friendlyName.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: url, validators: [validateRequired, validateUrl] },
+    ]),
+    getData: () => ({
+      url: url.input.value.trim(),
+      friendlyName: normalizeWhitespace(friendlyName.input.value),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function openEditLinkOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Link', (el) => buildLinksForm(el, entry), {
+    onSave: (data) => {
+      _formState.links.splice(index, 1, data);
+      commitListChange();
+      onSaved();
+    },
+  });
+}
+
 function renderLinksCard(page) {
-  const { card, body } = createEditCard('LINKS');
-  let isAddingLink = false;
+  const { card, body } = createEditCard('LINKS', {
+    onAdd: () => createEntryOverlay('Add Link', (el) => buildLinksForm(el), {
+      onSave: (data) => {
+        _formState.links.push(data);
+        commitListChange();
+        render();
+      },
+    }),
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.links.forEach((entry, index) => {
-      const row = createElement('div', 'entry-row');
-      const anchor = document.createElement('a');
-      const remove = createButton('x', 'entry-row__remove', () => {
-        _formState.links.splice(index, 1);
-        commitListChange();
-        render();
-      }, 'Remove entry');
-
-      anchor.href = getSafeExternalHref(entry.url);
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.textContent = getLinkLabel(entry.url, entry.friendlyName);
-      row.append(anchor, remove);
-      body.append(row);
+      body.append(createStructuredEntryRow({
+        title: getLinkLabel(entry.url, entry.friendlyName),
+        meta: entry.url,
+      }, {
+        onEdit: () => openEditLinkOverlay(entry, index, render),
+        onRemove: () => {
+          _formState.links.splice(index, 1);
+          commitListChange();
+          render();
+        },
+      }));
     });
-
-    if (!isAddingLink) {
-      appendAddButton(body, 'Add Link', () => {
-        isAddingLink = true;
-        render();
-      });
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--link');
-    const url = createField('Link URL', '', false, { required: true });
-    const friendlyName = createField('Friendly Name');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: url, validators: [validateRequired, validateUrl] },
-      ])) {
-        return;
-      }
-
-      _formState.links.push({
-        url: url.input.value.trim(),
-        friendlyName: normalizeWhitespace(friendlyName.input.value),
-      });
-      isAddingLink = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingLink = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(url.wrapper, friendlyName.wrapper, actions);
-    body.append(form);
   }
 
   render();
   page.append(card);
 }
 
+function buildAwardsForm(formEl, initial = {}) {
+  const awardName = createField('Award Name', initial.awardName ?? '', false, { required: true });
+  const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
+  const details = createField('Details', initial.details ?? '', true);
+  const date = createField('Date', initial.date ?? '');
+  const fields = { awardName, issuingBody, details, date };
+  const snapshot = JSON.stringify(getFormData(fields));
+
+  formEl.append(awardName.wrapper, issuingBody.wrapper, details.wrapper, date.wrapper);
+
+  return {
+    validate: () => validateFields([
+      { field: awardName, validators: [validateRequired] },
+      { field: issuingBody, validators: [validateRequired] },
+      { field: date, validators: [optionalMonthYear] },
+    ]),
+    getData: () => ({
+      awardName: normalizeWhitespace(awardName.input.value),
+      issuingBody: normalizeWhitespace(issuingBody.input.value),
+      details: details.input.value.trim(),
+      date: date.input.value.trim(),
+    }),
+    isDirty: () => snapshot !== JSON.stringify(getFormData(fields)),
+  };
+}
+
+function openEditAwardOverlay(entry, index, onSaved) {
+  createEntryOverlay('Edit Award', (el) => buildAwardsForm(el, entry), {
+    onSave: (data) => {
+      _formState.awards.splice(index, 1, data);
+      commitListChange();
+      onSaved();
+    },
+  });
+}
+
 function renderAwardsCard(page) {
-  const { card, body } = createEditCard('AWARDS');
-  let isAddingAward = false;
+  const { card, body } = createEditCard('AWARDS', {
+    onAdd: () => createEntryOverlay('Add Award', (el) => buildAwardsForm(el), {
+      onSave: (data) => {
+        _formState.awards.push(data);
+        commitListChange();
+        render();
+      },
+    }),
+  });
 
   function render() {
     body.replaceChildren();
 
     _formState.awards.forEach((entry, index) => {
-      body.append(createEntryRow([entry.awardName, entry.issuingBody], () => {
-        _formState.awards.splice(index, 1);
-        commitListChange();
-        render();
+      body.append(createStructuredEntryRow({
+        title: entry.awardName,
+        meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '),
+        desc: entry.details,
+      }, {
+        onEdit: () => openEditAwardOverlay(entry, index, render),
+        onRemove: () => {
+          _formState.awards.splice(index, 1);
+          commitListChange();
+          render();
+        },
       }));
     });
-
-    if (!isAddingAward) {
-      appendAddButton(body, 'Add Award', () => {
-        isAddingAward = true;
-        render();
-      });
-      return;
-    }
-
-    const form = createElement('div', 'inline-entry-form inline-entry-form--award');
-    const awardName = createField('Award Name', '', false, { required: true });
-    const issuingBody = createField('Issuing Body', '', false, { required: true });
-    const details = createField('Details', '', true);
-    const date = createField('Date');
-    const actions = createElement('div', 'inline-entry-form__actions');
-    const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
-      if (!validateFields([
-        { field: awardName, validators: [validateRequired] },
-        { field: issuingBody, validators: [validateRequired] },
-        { field: date, validators: [optionalMonthYear] },
-      ])) {
-        return;
-      }
-
-      _formState.awards.push({
-        awardName: normalizeWhitespace(awardName.input.value),
-        issuingBody: normalizeWhitespace(issuingBody.input.value),
-        details: details.input.value.trim(),
-        date: date.input.value.trim(),
-      });
-      isAddingAward = false;
-      commitListChange();
-      render();
-    });
-    const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
-      isAddingAward = false;
-      removeOpenFormError();
-      render();
-    });
-
-    actions.append(cancel, add);
-    form.append(awardName.wrapper, issuingBody.wrapper, details.wrapper, date.wrapper, actions);
-    body.append(form);
   }
 
   render();
@@ -768,13 +994,13 @@ function renderEditPage(container) {
 
   renderBasicInfoCard(page);
   renderSummaryCard(page);
-  renderSkillsCard(page);
-  renderLanguagesCard(page);
-  renderCertificationsCard(page);
-  renderEducationCard(page);
   renderExperienceCard(page);
-  renderLinksCard(page);
+  renderEducationCard(page);
+  renderSkillsCard(page);
+  renderCertificationsCard(page);
   renderAwardsCard(page);
+  renderLanguagesCard(page);
+  renderLinksCard(page);
 
   page.append(renderPageControls());
   container.replaceChildren(page);
@@ -825,13 +1051,7 @@ async function handleSave() {
     return;
   }
 
-  removeOpenFormError();
   removeSectionValidationError();
-
-  if (hasOpenInlineForm()) {
-    renderOpenFormError();
-    return;
-  }
 
   const validation = validateProfile(_formState);
 
@@ -895,7 +1115,7 @@ function showDiscardModal(onDiscard) {
   const body = createElement('p', 'confirm-modal__body', 'Your edits will be lost.');
   const actions = createElement('div', 'confirm-modal__actions');
   const keepEditing = createButton('Keep Editing', 'profile-btn profile-btn--outline', () => closeDiscardModal(backdrop));
-  const discard = createButton('Discard', 'profile-btn profile-btn--primary', () => {
+  const discard = createButton('Discard', 'profile-btn profile-btn--primary profile-btn--danger', () => {
     const action = _discardAction;
 
     _initialState = deepClone(_formState);
@@ -951,9 +1171,22 @@ export async function mount(container, { navigate } = {}) {
   _initialState = deepClone(_formState);
   renderSubheader();
   renderEditPage(container);
+
+  _beforeUnloadHandler = (event) => {
+    if (isDirty() || _openOverlay?.isDirty?.()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  };
+  window.addEventListener('beforeunload', _beforeUnloadHandler);
 }
 
 export function unmount() {
+  _openOverlay?.close();
+  if (_beforeUnloadHandler) {
+    window.removeEventListener('beforeunload', _beforeUnloadHandler);
+    _beforeUnloadHandler = null;
+  }
   document.querySelector('.confirm-backdrop')?.remove();
   if (_discardKeyHandler) {
     document.removeEventListener('keydown', _discardKeyHandler);
@@ -972,6 +1205,8 @@ export function unmount() {
   _saving = false;
   _basicInfoFields = {};
   _discardAction = null;
+  _openOverlay = null;
+  _renderSkillsBody = () => {};
 }
 
 export const ProfileEdit = { mount, unmount, confirmNavigation };

@@ -378,14 +378,27 @@ function renderCertifications(profile, container) {
     return;
   }
 
-  const list = createElement('ul', 'profile-bullet-list profile-bullet-list--indigo');
+  const list = createElement('div', 'profile-entry-list');
 
   for (const entry of profile.certifications) {
-    list.append(createElement('li', null, [
-      entry.name,
-      entry.issuingBody,
-      entry.issuanceDate,
-    ].filter(Boolean).join(' | ')));
+    const item = createElement('div', 'profile-entry');
+    const dateText = [entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' – ');
+
+    item.append(createElement('div', 'profile-entry__title', entry.name));
+
+    if (entry.issuingBody) {
+      item.append(createElement('div', 'profile-entry__meta', entry.issuingBody));
+    }
+
+    if (dateText) {
+      item.append(createElement('div', 'profile-entry__meta', dateText));
+    }
+
+    if (entry.certificateId) {
+      item.append(createElement('div', 'profile-entry__meta profile-entry__meta--secondary', `ID: ${entry.certificateId}`));
+    }
+
+    list.append(item);
   }
 
   container.append(renderSubSection('CERTIFICATIONS', list));
@@ -396,14 +409,23 @@ function renderAwards(profile, container) {
     return;
   }
 
-  const list = createElement('ul', 'profile-bullet-list profile-bullet-list--amber');
+  const list = createElement('div', 'profile-entry-list');
 
   for (const entry of profile.awards) {
-    list.append(createElement('li', null, [
-      entry.awardName,
-      entry.issuingBody,
-      entry.date,
-    ].filter(Boolean).join(' | ')));
+    const item = createElement('div', 'profile-entry');
+    const metaText = [entry.issuingBody, entry.date].filter(Boolean).join(' | ');
+
+    item.append(createElement('div', 'profile-entry__title', entry.awardName));
+
+    if (metaText) {
+      item.append(createElement('div', 'profile-entry__meta', metaText));
+    }
+
+    if (entry.details) {
+      item.append(createElement('p', 'profile-entry__desc', entry.details));
+    }
+
+    list.append(item);
   }
 
   container.append(renderSubSection('AWARDS', list));
