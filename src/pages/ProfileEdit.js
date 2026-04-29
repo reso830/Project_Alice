@@ -417,6 +417,7 @@ function renderCertificationsCard(page) {
     const add = createButton('Add', 'profile-btn profile-btn--primary', () => {
       if (!validateFields([
         { field: name, validators: [validateRequired] },
+        { field: issuingBody, validators: [validateRequired] },
         { field: issuanceDate, validators: [validateRequired, validateMonthYear] },
         { field: expiryDate, validators: [optionalMonthYear] },
       ])) {

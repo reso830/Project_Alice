@@ -62,12 +62,12 @@ Stored as a JSON string in `profile.data` (SQLite, single row, `id = 1`). Serial
 | Field          | Type     | Required | Validation                                   |
 |----------------|----------|----------|----------------------------------------------|
 | `name`         | `string` | Yes      | Non-empty after trim                         |
-| `issuingBody`  | `string` | No       | Trimmed                                      |
+| `issuingBody`  | `string` | Yes      | Non-empty after trim                         |
 | `certificateId`| `string` | No       | Trimmed                                      |
 | `issuanceDate` | `string` | Yes      | MM/YYYY format, month 01–12, year ≥ 1900     |
 | `expiryDate`   | `string` | No       | MM/YYYY format if provided; month 01–12, year ≥ 1900 |
 
-**Backward compatibility**: Old values were plain strings. The normaliser maps a plain string → `{ name: string, issuingBody: '', certificateId: '', issuanceDate: '', expiryDate: '' }`.
+**Backward compatibility**: Old values were plain strings. The normaliser maps a plain string → `{ name: string, issuingBody: '', certificateId: '', issuanceDate: '', expiryDate: '' }`. Because `issuingBody` is required, migrated entries will have an empty required field — validation will fail at save time, prompting the user to fill it in before saving.
 
 ---
 

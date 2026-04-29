@@ -597,6 +597,27 @@ describe('ProfileEdit page', () => {
     expect(links.querySelectorAll('a')[1].getAttribute('href')).toBe('#');
   });
 
+  it('blocks adding a certification when issuing body is missing', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const certs = getCard(container, 'CERTIFICATIONS');
+
+    getButton(certs, 'Add Certification').click();
+    inputValue(getFieldInput(certs, 'Certification Name'), 'AWS Developer');
+    inputValue(getFieldInput(certs, 'Issuance Date'), '01/2023');
+    getButton(certs, 'Add').click();
+
+    const error = [...certs.querySelectorAll('.field-error')]
+      .find((el) => el.textContent === 'This field is required.');
+    expect(error).toBeTruthy();
+    expect(error.hidden).toBe(false);
+    expect(certs.querySelectorAll('.entry-row')).toHaveLength(0);
+  });
+
   it('routes the subheader back action through cancel behavior', async () => {
     const container = createAppShell();
     const navigate = vi.fn();
