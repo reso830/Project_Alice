@@ -16,7 +16,7 @@
 
 **Purpose**: Add all new CSS classes required by later phases. Has no code dependencies; can be done immediately.
 
-- [ ] T001 Add a `/* === Profile Refinements (009) === */` block to `src/styles/main.css` containing:
+- [X] T001 Add a `/* === Profile Refinements (009) === */` block to `src/styles/main.css` containing:
   - `.profile-entry__meta--secondary { font-size: 10px; color: var(--t3); }` — for optional Certificate ID line on View Profile certifications
   - `.entry-row--structured { align-items: flex-start; gap: 12px; }` — extends `.entry-row` for multi-line structured content
   - `.entry-row__content { flex: 1; min-width: 0; }` — holds the profile-entry title/meta/desc hierarchy
