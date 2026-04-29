@@ -338,18 +338,19 @@ textarea.edit-field__control {
 
 .inline-entry-form__row--dates {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
 }
 
 .edit-field--checkbox {
   align-items: flex-start;
-  display: grid;
-  grid-template-rows: auto 36px auto;
+  display: flex;
+  justify-content: flex-start;
   min-width: 112px;
 }
 
 .edit-field--checkbox .edit-field__checkbox {
-  align-self: center;
+  align-self: flex-start;
+  margin: 10px 0 0;
 }
 
 .inline-entry-form__actions {
@@ -489,8 +490,11 @@ textarea.edit-field__control {
 
   .edit-field--checkbox {
     align-items: flex-start;
-    display: flex;
     min-width: 0;
+  }
+
+  .edit-field--checkbox .edit-field__checkbox {
+    margin-top: 0;
   }
 }
 
