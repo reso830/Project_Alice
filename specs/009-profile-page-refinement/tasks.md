@@ -175,23 +175,23 @@
 
 **Independent Test**: With a seeded profile, open Edit Profile. Click the Edit icon on an Experience entry. The overlay should open with all fields pre-filled with that entry's data. Change the Role, click Save. The entry in the section should show the updated role. No duplicate entry should be added.
 
-- [ ] T024 [P] [US8] Implement `openEditExperienceOverlay(entry, index)` in `src/pages/ProfileEdit.js` and wire the `onEdit` placeholder in T008:
+- [X] T024 [P] [US8] Implement `openEditExperienceOverlay(entry, index)` in `src/pages/ProfileEdit.js` and wire the `onEdit` placeholder in T008:
   - Calls `createEntryOverlay('Edit Experience', (el) => buildExperienceForm(el, entry), { onSave: (data) => { _formState.experience.splice(index, 1, data); _formState.experience = sortExperience(_formState.experience); commitListChange(); render(); }, initialValues: entry })`
   - Replace the `/* placeholder */` in T008's `onEdit` callback with `() => openEditExperienceOverlay(entry, _formState.experience.indexOf(entry))`
 
-- [ ] T025 [P] [US8] Implement `openEditEducationOverlay(entry, index)` and wire T009's `onEdit`:
+- [X] T025 [P] [US8] Implement `openEditEducationOverlay(entry, index)` and wire T009's `onEdit`:
   - `createEntryOverlay('Edit Education', (el) => buildEducationForm(el, entry), { onSave: (data) => { _formState.education.splice(index, 1, data); _formState.education = sortEducation(_formState.education); commitListChange(); render(); }, initialValues: entry })`
 
-- [ ] T026 [P] [US8] Implement `openEditCertificationOverlay(entry, index)` and wire T010's `onEdit`:
+- [X] T026 [P] [US8] Implement `openEditCertificationOverlay(entry, index)` and wire T010's `onEdit`:
   - `createEntryOverlay('Edit Certification', (el) => buildCertificationsForm(el, entry), { onSave: (data) => { _formState.certifications.splice(index, 1, data); commitListChange(); render(); }, initialValues: entry })`
 
-- [ ] T027 [P] [US8] Implement `openEditAwardOverlay(entry, index)` and wire T011's `onEdit`:
+- [X] T027 [P] [US8] Implement `openEditAwardOverlay(entry, index)` and wire T011's `onEdit`:
   - `createEntryOverlay('Edit Award', (el) => buildAwardsForm(el, entry), { onSave: (data) => { _formState.awards.splice(index, 1, data); commitListChange(); render(); }, initialValues: entry })`
 
-- [ ] T028 [P] [US8] Implement `openEditLanguageOverlay(entry, index)` and wire T012's `onEdit`:
+- [X] T028 [P] [US8] Implement `openEditLanguageOverlay(entry, index)` and wire T012's `onEdit`:
   - `createEntryOverlay('Edit Language', (el) => buildLanguagesForm(el, entry), { onSave: (data) => { _formState.languages.splice(index, 1, data); commitListChange(); render(); }, initialValues: entry })`
 
-- [ ] T029 [P] [US8] Implement `openEditLinkOverlay(entry, index)` and wire T013's `onEdit`:
+- [X] T029 [P] [US8] Implement `openEditLinkOverlay(entry, index)` and wire T013's `onEdit`:
   - `createEntryOverlay('Edit Link', (el) => buildLinksForm(el, entry), { onSave: (data) => { _formState.links.splice(index, 1, data); commitListChange(); render(); }, initialValues: entry })`
 
 **Checkpoint**: All six sections have functional Edit icons. Editing pre-fills the overlay; saving updates in-place; section sort is re-applied where applicable.

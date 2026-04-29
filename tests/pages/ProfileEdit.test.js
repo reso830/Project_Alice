@@ -860,6 +860,107 @@ describe('ProfileEdit page', () => {
       .toBe('Beta | 03/2025 – Present');
   });
 
+  it('Edit icon opens overlay pre-filled with entry data', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+
+    const overlay = document.querySelector('.entry-modal');
+
+    expect(overlay.querySelector('.entry-overlay__title')?.textContent).toBe('Edit Experience');
+    expect(getFieldInput(overlay, 'Role').value).toBe('Senior Engineer');
+    expect(getFieldInput(overlay, 'Company').value).toBe('Acme');
+  });
+
+  it('Save from edit overlay updates entry in-place', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Role'), 'Staff Engineer');
+    getButton(document.querySelector('.entry-modal'), 'Save').click();
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    expect([...experience.querySelectorAll('.entry-row--structured')]).toHaveLength(1);
+    expect(experience.querySelector('.profile-entry__title')?.textContent).toBe('Staff Engineer');
+    expect(experience.textContent).not.toContain('Senior Engineer');
+  });
+
+  it('Edit then Cancel with changed value shows discard dialog', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    getCard(container, 'PROFESSIONAL EXPERIENCE')
+      .querySelector('[aria-label="Edit entry"]')
+      .click();
+    inputValue(getFieldInput(document.querySelector('.entry-modal'), 'Role'), 'Staff Engineer');
+    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+
+    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+  });
+
+  it('Remove icon still removes the entry', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Senior Engineer',
+        company: 'Acme',
+        responsibilities: 'Built dashboards.',
+        dateStarted: '01/2023',
+        dateEnded: '02/2024',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+
+    experience.querySelector('[aria-label="Remove entry"]').click();
+
+    expect(experience.textContent).not.toContain('Senior Engineer');
+    expect(experience.querySelector('.entry-row--structured')).toBeNull();
+  });
+
   it('validates links and renders friendly-name and hostname labels', async () => {
     const container = createAppShell();
 

@@ -551,6 +551,17 @@ function buildLanguagesForm(formEl, initial = {}) {
   };
 }
 
+function openEditLanguageOverlay(entry, index) {
+  createEntryOverlay('Edit Language', (el) => buildLanguagesForm(el, entry), {
+    onSave: (data) => {
+      _formState.languages.splice(index, 1, data);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderLanguagesCard(page) {
   const { card, body } = createEditCard('LANGUAGES', {
     onAdd: () => createEntryOverlay('Add Language', (el) => buildLanguagesForm(el), {
@@ -570,7 +581,7 @@ function renderLanguagesCard(page) {
         title: entry.language,
         meta: entry.proficiency,
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditLanguageOverlay(entry, index),
         onRemove: () => {
           _formState.languages.splice(index, 1);
           commitListChange();
@@ -615,6 +626,17 @@ function buildCertificationsForm(formEl, initial = {}) {
   };
 }
 
+function openEditCertificationOverlay(entry, index) {
+  createEntryOverlay('Edit Certification', (el) => buildCertificationsForm(el, entry), {
+    onSave: (data) => {
+      _formState.certifications.splice(index, 1, data);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderCertificationsCard(page) {
   const { card, body } = createEditCard('CERTIFICATIONS', {
     onAdd: () => createEntryOverlay('Add Certification', (el) => buildCertificationsForm(el), {
@@ -634,7 +656,7 @@ function renderCertificationsCard(page) {
         title: entry.name,
         meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | '),
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditCertificationOverlay(entry, index),
         onRemove: () => {
           _formState.certifications.splice(index, 1);
           commitListChange();
@@ -672,6 +694,18 @@ function buildEducationForm(formEl, initial = {}) {
   };
 }
 
+function openEditEducationOverlay(entry, index) {
+  createEntryOverlay('Edit Education', (el) => buildEducationForm(el, entry), {
+    onSave: (data) => {
+      _formState.education.splice(index, 1, data);
+      _formState.education = sortEducation(_formState.education);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderEducationCard(page) {
   const { card, body } = createEditCard('EDUCATION', {
     onAdd: () => createEntryOverlay('Add Education', (el) => buildEducationForm(el), {
@@ -691,7 +725,7 @@ function renderEducationCard(page) {
         title: entry.degreeMajor,
         meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | '),
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditEducationOverlay(entry, _formState.education.indexOf(entry)),
         onRemove: () => {
           const index = _formState.education.indexOf(entry);
 
@@ -771,6 +805,18 @@ function buildExperienceForm(formEl, initial = {}) {
   };
 }
 
+function openEditExperienceOverlay(entry, index) {
+  createEntryOverlay('Edit Experience', (el) => buildExperienceForm(el, entry), {
+    onSave: (data) => {
+      _formState.experience.splice(index, 1, data);
+      _formState.experience = sortExperience(_formState.experience);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderExperienceCard(page) {
   const { card, body } = createEditCard('PROFESSIONAL EXPERIENCE', {
     onAdd: () => createEntryOverlay('Add Experience', (el) => buildExperienceForm(el), {
@@ -796,7 +842,7 @@ function renderExperienceCard(page) {
         ].filter(Boolean).join(' | '),
         desc: entry.responsibilities,
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditExperienceOverlay(entry, _formState.experience.indexOf(entry)),
         onRemove: () => {
           const index = _formState.experience.indexOf(entry);
 
@@ -832,6 +878,17 @@ function buildLinksForm(formEl, initial = {}) {
   };
 }
 
+function openEditLinkOverlay(entry, index) {
+  createEntryOverlay('Edit Link', (el) => buildLinksForm(el, entry), {
+    onSave: (data) => {
+      _formState.links.splice(index, 1, data);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderLinksCard(page) {
   const { card, body } = createEditCard('LINKS', {
     onAdd: () => createEntryOverlay('Add Link', (el) => buildLinksForm(el), {
@@ -851,7 +908,7 @@ function renderLinksCard(page) {
         title: getLinkLabel(entry.url, entry.friendlyName),
         meta: entry.url,
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditLinkOverlay(entry, index),
         onRemove: () => {
           _formState.links.splice(index, 1);
           commitListChange();
@@ -891,6 +948,17 @@ function buildAwardsForm(formEl, initial = {}) {
   };
 }
 
+function openEditAwardOverlay(entry, index) {
+  createEntryOverlay('Edit Award', (el) => buildAwardsForm(el, entry), {
+    onSave: (data) => {
+      _formState.awards.splice(index, 1, data);
+      commitListChange();
+      renderEditPage(_container);
+    },
+    initialValues: entry,
+  });
+}
+
 function renderAwardsCard(page) {
   const { card, body } = createEditCard('AWARDS', {
     onAdd: () => createEntryOverlay('Add Award', (el) => buildAwardsForm(el), {
@@ -911,7 +979,7 @@ function renderAwardsCard(page) {
         meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '),
         desc: entry.details || '',
       }, {
-        onEdit: () => {},
+        onEdit: () => openEditAwardOverlay(entry, index),
         onRemove: () => {
           _formState.awards.splice(index, 1);
           commitListChange();
