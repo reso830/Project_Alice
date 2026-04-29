@@ -493,6 +493,12 @@ textarea.edit-field__control {
   font-weight: 700;
 }
 
+.entry-overlay__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .entry-overlay__footer {
   display: flex;
   justify-content: flex-end;
