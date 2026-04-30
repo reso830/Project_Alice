@@ -171,10 +171,10 @@
 
 **Independent Test**: Run seed, then review all entries — confirm at least corporate, startup, and fintech tones represented; no two descriptions open with the same sentence structure.
 
-- [ ] T067 [US10] Rewrite all `responsibilities` values in `server/db-seed.js` — ensure ≥3 distinct tones (e.g. corporate, startup, fintech), varied seniority language (IC, senior, lead signals), distinct tech/tooling per entry, no repeated sentence openers
-- [ ] T068 [P] [US10] Update client-side seed in `src/main.js` — reduce to 2–3 representative entries with integer salary and diverse responsibilities matching the new seed style
-- [ ] T069 [US10] Run `node server/db-seed.js` — confirm seed completes without errors
-- [ ] T070 [US10] Visually inspect 5 seeded records in the UI — confirm no two `responsibilities` fields share sentence structure or domain vocabulary
+- [X] T067 [US10] Rewrite all `responsibilities` values in `server/db-seed.js` — ensure ≥3 distinct tones (e.g. corporate, startup, fintech), varied seniority language (IC, senior, lead signals), distinct tech/tooling per entry, no repeated sentence openers
+- [X] T068 [P] [US10] Update client-side seed in `src/main.js` — reduce to 2–3 representative entries with integer salary and diverse responsibilities matching the new seed style
+- [X] T069 [US10] Run `node server/db-seed.js` — confirm seed completes without errors
+- [X] T070 [US10] Visually inspect 5 seeded records in the UI — confirm no two `responsibilities` fields share sentence structure or domain vocabulary
 
 **Checkpoint**: US10 complete — seed data loads cleanly with realistic, varied job descriptions.
 

@@ -1,6 +1,7 @@
+import { pathToFileURL } from 'node:url';
 import { db } from './db.js';
 
-const DEMO_RECORDS = [
+export const DEMO_RECORDS = [
   {
     company_name: 'Acme Corp',
     job_title: 'Frontend Engineer',
@@ -12,7 +13,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/acme-fe',
     recruiter: 'Jane Smith',
     notes: 'Strong culture fit. Hybrid role, 2 days in office.',
-    responsibilities: 'Build and maintain component library, own frontend CI pipeline.',
+    responsibilities: 'Shape a shared React design system for a corporate hiring platform, pairing Storybook governance with pragmatic accessibility reviews.',
     skills: JSON.stringify(['React', 'TypeScript', 'CSS', 'Vite']),
     application_date: '2026-04-10',
     last_status_update: '2026-04-12',
@@ -31,7 +32,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/beta-backend',
     recruiter: 'Tom Lee',
     notes: 'Second round scheduled for next week. Panel format.',
-    responsibilities: 'Design REST APIs, own DB migrations, participate in on-call rotation.',
+    responsibilities: 'Steward order-management APIs for a regional logistics group, using PostgreSQL migration playbooks and calm on-call runbooks.',
     skills: JSON.stringify(['Node.js', 'PostgreSQL', 'Docker', 'AWS']),
     application_date: '2026-03-28',
     last_status_update: '2026-04-18',
@@ -50,7 +51,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Maria Chen',
     notes: 'Verbal offer received. Deadline to accept: 2026-05-01.',
-    responsibilities: 'End-to-end ownership of 2 product squads. React + Node.',
+    responsibilities: 'Guide two startup product pods from discovery to launch, splitting time between React workflows, Node services, and release decisions.',
     skills: JSON.stringify(['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Redis']),
     application_date: '2026-03-15',
     last_status_update: '2026-04-22',
@@ -69,7 +70,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/delta-devops',
     recruiter: null,
     notes: 'Initial call with HR went well. Waiting for technical screen invite.',
-    responsibilities: 'Maintain CI/CD pipelines, manage Kubernetes clusters on GCP.',
+    responsibilities: 'Harden deployment paths for a cloud infrastructure team, tuning Terraform modules, GKE clusters, and incident drills.',
     skills: JSON.stringify(['Kubernetes', 'Terraform', 'GCP', 'Python']),
     application_date: '2026-04-14',
     last_status_update: '2026-04-20',
@@ -88,7 +89,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/epsilon-ml',
     recruiter: 'Priya Nair',
     notes: 'Take-home project due 2026-04-30. Build a small recommendation engine.',
-    responsibilities: 'Train and ship production ML models, collaborate with data platform team.',
+    responsibilities: 'Operationalize recommendation models for a consumer AI group, moving PyTorch experiments into MLflow-tracked production jobs.',
     skills: JSON.stringify(['Python', 'PyTorch', 'SQL', 'MLflow']),
     application_date: '2026-04-05',
     last_status_update: '2026-04-19',
@@ -107,7 +108,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/zeta-swe',
     recruiter: null,
     notes: 'Interesting mission. Not ready to apply — revisit after current round.',
-    responsibilities: null,
+    responsibilities: 'Map patient-facing workflow risks before applying, comparing Django service boundaries with the health-tech team mission.',
     skills: JSON.stringify(['Python', 'Django', 'React']),
     application_date: null,
     last_status_update: '2026-04-23',
@@ -126,7 +127,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Chris Park',
     notes: 'Generic rejection email. Role required more Java experience.',
-    responsibilities: 'Internal tooling and developer platform for 200-person eng org.',
+    responsibilities: 'Modernize developer tooling for a retail engineering department, replacing manual Java release steps with Kafka-aware platform services.',
     skills: JSON.stringify(['Java', 'Spring Boot', 'Kafka']),
     application_date: '2026-03-10',
     last_status_update: '2026-04-01',
@@ -145,7 +146,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/theta-sre',
     recruiter: 'Alex Wong',
     notes: 'No response after onsite interview on 2026-03-22. Followed up twice.',
-    responsibilities: 'Lead reliability initiatives across payment services.',
+    responsibilities: 'Drive reliability reviews across fintech payment services, mentoring senior peers on Go tracing, SLO budgets, and database failover.',
     skills: JSON.stringify(['Go', 'Kubernetes', 'Prometheus', 'PostgreSQL']),
     application_date: '2026-03-05',
     last_status_update: '2026-03-22',
@@ -164,7 +165,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Sam Rivera',
     notes: 'Withdrew after receiving the Gamma Digital offer.',
-    responsibilities: 'Build consumer-facing video streaming UI.',
+    responsibilities: 'Craft high-traffic streaming interfaces for a media subscription product, balancing GraphQL data needs with Next.js performance budgets.',
     skills: JSON.stringify(['React', 'GraphQL', 'Next.js']),
     application_date: '2026-03-20',
     last_status_update: '2026-04-23',
@@ -183,7 +184,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/kappa-em',
     recruiter: null,
     notes: 'Exploratory — not actively pursuing management yet.',
-    responsibilities: 'Lead a team of 6 engineers on the data platform.',
+    responsibilities: 'Coach a six-person data platform team through roadmap planning, hiring calibration, and Python service ownership.',
     skills: JSON.stringify(['Team leadership', 'Node.js', 'Python']),
     application_date: '2026-04-08',
     last_status_update: '2026-04-08',
@@ -202,7 +203,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/lambda-sre',
     recruiter: 'Dana Hill',
     notes: 'Onsite scheduled for 2026-04-29. Will cover incident response and system design.',
-    responsibilities: 'Own uptime SLOs for core services, lead post-mortems, build internal tooling.',
+    responsibilities: 'Set reliability targets for core operations services, turning PagerDuty trends and Grafana dashboards into post-incident improvements.',
     skills: JSON.stringify(['Go', 'Prometheus', 'Grafana', 'Kubernetes', 'PagerDuty']),
     application_date: '2026-04-02',
     last_status_update: '2026-04-21',
@@ -221,7 +222,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/mu-ios',
     recruiter: 'Lena Park',
     notes: 'Recruiter screen done. Stretch role — Swift experience is limited.',
-    responsibilities: 'Build and ship new features in the consumer iOS app, coordinate with backend.',
+    responsibilities: 'Deliver SwiftUI features for a mobile startup, negotiating API contracts with backend engineers before each App Store release.',
     skills: JSON.stringify(['Swift', 'SwiftUI', 'Xcode', 'REST APIs']),
     application_date: '2026-04-16',
     last_status_update: '2026-04-24',
@@ -240,7 +241,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/nu-de',
     recruiter: 'Omar Hassan',
     notes: 'SQL + Python take-home. 3-hour window, due 2026-04-28.',
-    responsibilities: 'Build and maintain ELT pipelines, partner with analytics and ML teams.',
+    responsibilities: 'Design analytics pipelines for a data consultancy, orchestrating Airflow, dbt, and BigQuery models for finance and growth teams.',
     skills: JSON.stringify(['Python', 'dbt', 'Airflow', 'BigQuery', 'SQL']),
     application_date: '2026-04-09',
     last_status_update: '2026-04-22',
@@ -259,7 +260,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/xi-staff',
     recruiter: null,
     notes: 'Dream role — wait until current round settles before applying.',
-    responsibilities: null,
+    responsibilities: 'Evaluate staff-level architecture work for a distributed systems studio, with emphasis on TypeScript boundaries and Go services.',
     skills: JSON.stringify(['System design', 'TypeScript', 'Go', 'Distributed systems']),
     application_date: null,
     last_status_update: '2026-04-25',
@@ -278,7 +279,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/omicron-java',
     recruiter: null,
     notes: 'Applied as a backup option. Heavy enterprise Java stack.',
-    responsibilities: 'Maintain internal payments processing services using Spring Boot.',
+    responsibilities: 'Refactor compliance-heavy banking services in Spring Boot, keeping Oracle-backed payment flows auditable and predictable.',
     skills: JSON.stringify(['Java', 'Spring Boot', 'Oracle DB', 'Maven']),
     application_date: '2026-04-17',
     last_status_update: '2026-04-17',
@@ -297,7 +298,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Ingrid Sato',
     notes: 'Required 3+ years of C/C++ embedded experience. Not a match.',
-    responsibilities: 'Write firmware for motor control systems on custom ARM hardware.',
+    responsibilities: 'Implement embedded control loops for robotics hardware, validating RTOS timing assumptions on ARM prototypes.',
     skills: JSON.stringify(['C', 'C++', 'RTOS', 'ARM']),
     application_date: '2026-03-18',
     last_status_update: '2026-04-03',
@@ -316,7 +317,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Jake Moon',
     notes: 'Withdrew — salary range too low and fully on-site.',
-    responsibilities: 'Gameplay systems engineering in Unity for a mobile title.',
+    responsibilities: 'Prototype Unity gameplay loops for a mobile game studio, coordinating C# systems work with design telemetry.',
     skills: JSON.stringify(['C#', 'Unity', 'Git', 'Agile']),
     application_date: '2026-03-25',
     last_status_update: '2026-04-10',
@@ -335,7 +336,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/sigma-arch',
     recruiter: 'Rachel Kim',
     notes: 'Competing offer — using to negotiate with Gamma Digital.',
-    responsibilities: 'Design multi-region AWS architecture, lead migration from on-prem.',
+    responsibilities: 'Architect a multi-region AWS migration for enterprise workloads, using CDK patterns and network segmentation reviews.',
     skills: JSON.stringify(['AWS', 'Terraform', 'Python', 'CDK', 'Networking']),
     application_date: '2026-03-12',
     last_status_update: '2026-04-20',
@@ -354,7 +355,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/tau-sec',
     recruiter: 'Victor Olsen',
     notes: 'Completed technical screen on 2026-03-30. No word since.',
-    responsibilities: 'Threat modelling, vulnerability management, secure SDLC practices.',
+    responsibilities: 'Lead security reviews for SaaS delivery teams, combining OWASP threat models, Burp Suite findings, and AWS control checks.',
     skills: JSON.stringify(['Python', 'Burp Suite', 'OWASP', 'AWS Security']),
     application_date: '2026-03-22',
     last_status_update: '2026-03-30',
@@ -373,7 +374,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/upsilon-swe2',
     recruiter: 'Nadia Flores',
     notes: 'Fast-growing Series B. Engineering team of 15.',
-    responsibilities: 'Greenfield product features across the full stack.',
+    responsibilities: 'Build first-version collaboration features for a Series B startup, moving quickly across React, Node.js, and PostgreSQL.',
     skills: JSON.stringify(['TypeScript', 'React', 'Node.js', 'PostgreSQL']),
     application_date: '2026-04-18',
     last_status_update: '2026-04-24',
@@ -392,7 +393,7 @@ const DEMO_RECORDS = [
     job_posting_url: null,
     recruiter: 'Marcus Bell',
     notes: 'Client-facing role — heavier travel than expected. Worth exploring.',
-    responsibilities: 'Design enterprise integration solutions, lead pre-sales technical calls.',
+    responsibilities: 'Translate enterprise integration needs into Salesforce and AWS solution diagrams during client-facing technical discovery.',
     skills: JSON.stringify(['AWS', 'Salesforce', 'REST APIs', 'Solution design']),
     application_date: '2026-04-01',
     last_status_update: '2026-04-19',
@@ -411,7 +412,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/chi-net',
     recruiter: null,
     notes: 'Long shot — applied to broaden the pipeline.',
-    responsibilities: 'Design and manage enterprise WAN/LAN infrastructure.',
+    responsibilities: 'Plan resilient enterprise network upgrades, documenting BGP routing choices and security handoffs for operations teams.',
     skills: JSON.stringify(['Cisco', 'BGP', 'OSPF', 'Network security']),
     application_date: '2026-04-21',
     last_status_update: '2026-04-21',
@@ -430,7 +431,7 @@ const DEMO_RECORDS = [
     job_posting_url: 'https://jobs.example.com/psi-fe-arch',
     recruiter: null,
     notes: 'Posted recently. Revisit after the current interview round wraps.',
-    responsibilities: null,
+    responsibilities: 'Research frontend architecture requirements before applying, focusing on micro-frontend governance and TypeScript migration scope.',
     skills: JSON.stringify(['React', 'Micro-frontends', 'Design systems', 'TypeScript']),
     application_date: null,
     last_status_update: '2026-04-26',
@@ -447,7 +448,7 @@ const COLUMNS = [
   'application_date', 'last_status_update', 'created_at', 'updated_at', 'archived',
 ];
 
-try {
+export function seedApplications() {
   const cleared = db.prepare('DELETE FROM applications').run();
   console.log(`Cleared ${cleared.changes} existing record(s).`);
 
@@ -466,8 +467,14 @@ try {
   db.close();
 
   console.log(`Seeded ${DEMO_RECORDS.length} demo records.`);
-  process.exit(0);
-} catch (error) {
-  console.error(error);
-  process.exit(1);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    seedApplications();
+    process.exit(0);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
 }
