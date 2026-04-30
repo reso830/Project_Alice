@@ -95,6 +95,8 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Company"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
     expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
       .toBe('false');
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
@@ -148,6 +150,35 @@ describe('QuickFiltersToolbar', () => {
     });
   });
 
+  it('toggles favorites-only filtering from the toolbar button', () => {
+    const onFilterChange = vi.fn();
+    const { toolbar } = renderToolbar({ onFilterChange });
+
+    toolbar.querySelector('[aria-label="Favorites only"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenCalledWith({
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    });
+  });
+
+  it('updates favorites-only pressed state for active filters', () => {
+    const { toolbar } = renderToolbar();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: 1,
+      filterState: { ...DEFAULT_FILTER_STATE, favoritesOnly: true },
+      sortState: DEFAULT_SORT_STATE,
+    });
+
+    expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(toolbar.dataset.activeFilterCount).toBe('1');
+  });
+
   it('renders status filter dots from STATUS_CONFIG colors', () => {
     const { toolbar } = renderToolbar();
     const statusButton = toolbar.querySelector('[aria-label="Filter by Status"]');
@@ -178,7 +209,7 @@ describe('QuickFiltersToolbar', () => {
     });
     const buttons = [...toolbar.querySelectorAll('.filter-btn')];
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     expect(buttons.every((button) => button.disabled)).toBe(true);
     expect(buttons.every((button) => button.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
@@ -390,6 +421,7 @@ describe('QuickFiltersToolbar', () => {
       'Filter by Salary',
       'Filter by Compatibility',
       'Filter by Company',
+      'Favorites only',
       'Sort',
     ]) {
       const button = toolbar.querySelector(`[aria-label="${label}"]`);

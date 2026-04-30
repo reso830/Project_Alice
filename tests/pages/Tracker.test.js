@@ -26,13 +26,15 @@ vi.mock('../../src/services/api.js', () => ({
 }));
 
 import * as api from '../../src/services/api.js';
-import { Tracker } from '../../src/pages/Tracker.js';
+import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 afterEach(() => {
   Tracker.unmount();
   document.body.replaceChildren();
   toolbarRenderOptions.length = 0;
   toolbarUpdateOptions.length = 0;
+  window.localStorage.clear();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -125,6 +127,91 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
   });
 
+  it('persists favorites-only filter changes and restores them on mount', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    window.localStorage.clear();
+    api.getAll.mockResolvedValue([
+      createApplication(1, { fav: true }),
+      createApplication(2, { fav: false }),
+    ]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      favoritesOnly: true,
+    });
+
+    expect(JSON.parse(window.localStorage.getItem('apptracker_filters')).favoritesOnly).toBe(true);
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+
+    Tracker.unmount();
+    await Tracker.mount(container);
+
+    expect(toolbarRenderOptions[1].filterState.favoritesOnly).toBe(true);
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+  });
+
+  it('removes an unfavorited card while favorites-only is active', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1, { fav: true });
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([original]);
+    api.update.mockResolvedValue({ ...original, fav: false });
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      favoritesOnly: true,
+    });
+    container.querySelector('.card-btn--star')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { fav: false });
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+    expect(container.querySelector('.empty-state--filter')).not.toBeNull();
+  });
+
+  it('validates stored filter state before mounting', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    window.localStorage.setItem('apptracker_filters', JSON.stringify({
+      statuses: ['applied', 'unknown'],
+      salaryMin: 200000,
+      salaryMax: 100000,
+      favoritesOnly: 'true',
+    }));
+    api.getAll.mockResolvedValue([createApplication(1, { status: 'applied' })]);
+
+    await Tracker.mount(container);
+
+    expect(toolbarRenderOptions[0].filterState).toEqual(expect.objectContaining({
+      statuses: ['applied'],
+      salaryMin: null,
+      salaryMax: null,
+      favoritesOnly: false,
+    }));
+  });
+
+  it('falls back to default filters when stored filters are unavailable', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    vi.spyOn(window.Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    api.getAll.mockResolvedValue([createApplication(1)]);
+
+    await Tracker.mount(container);
+
+    expect(toolbarRenderOptions[0].filterState.favoritesOnly).toBe(false);
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+  });
+
   it('re-renders cards after overlay favorite updates', async () => {
     const container = document.createElement('main');
     const original = createApplication(1, { fav: false });
@@ -185,5 +272,27 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+  });
+});
+
+describe('Tracker stored filter validation', () => {
+  it('discards unknown statuses and corrupted favorites values', () => {
+    expect(normalizeStoredFilterState({
+      statuses: ['applied', 'missing'],
+      favoritesOnly: 'yes',
+    })).toEqual(expect.objectContaining({
+      statuses: ['applied'],
+      favoritesOnly: false,
+    }));
+  });
+
+  it('resets inverted salary ranges', () => {
+    expect(normalizeStoredFilterState({
+      salaryMin: 200000,
+      salaryMax: 100000,
+    })).toEqual(expect.objectContaining({
+      salaryMin: null,
+      salaryMax: null,
+    }));
   });
 });

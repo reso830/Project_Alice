@@ -114,6 +114,18 @@ describe('applyFilters', () => {
     }))).toEqual([6]);
     expect(applyFilters(apps, DEFAULT_FILTER_STATE)).toBe(apps);
   });
+
+  it('composes favorites-only with status filters', () => {
+    expect(ids(applyFilters([
+      { id: 1, status: 'applied', fav: true },
+      { id: 2, status: 'applied', fav: false },
+      { id: 3, status: 'offer', fav: true },
+    ], {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['applied'],
+      favoritesOnly: true,
+    }))).toEqual([1]);
+  });
 });
 
 describe('isAnyFilterActive', () => {

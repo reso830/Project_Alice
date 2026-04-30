@@ -20,6 +20,7 @@ let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
 let _companyButton = null;
+let _favoritesButton = null;
 let _sortButton = null;
 let _sortTrigger = null;
 let _eraseBtn = null;
@@ -67,7 +68,8 @@ function getActiveFilterCount(filterState) {
   return (filterState.statuses?.length ?? 0)
     + (filterState.companies?.length ?? 0)
     + (filterState.salaryMin === null && filterState.salaryMax === null ? 0 : 1)
-    + (filterState.compatMin === null && filterState.compatMax === null ? 0 : 1);
+    + (filterState.compatMin === null && filterState.compatMax === null ? 0 : 1)
+    + (filterState.favoritesOnly === true ? 1 : 0);
 }
 
 function updateLabel(totalCount, filteredCount, filterState) {
@@ -323,12 +325,14 @@ function updateButtons(totalCount, filterState) {
   setButtonDisabled(_salaryButton, salaryDisabled);
   setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
+  setButtonDisabled(_favoritesButton, disabled);
   setButtonDisabled(_sortButton, disabled);
   setButtonDisabled(_eraseBtn, disabled);
   setPressed(_statusButton, (filterState.statuses?.length ?? 0) > 0);
   setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
   setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
   setPressed(_companyButton, (filterState.companies?.length ?? 0) > 0);
+  setPressed(_favoritesButton, filterState.favoritesOnly === true);
   setPressed(_sortButton, !isDefaultSort(_sortState));
   _salaryButton?.setAttribute(
     'aria-label',
@@ -406,6 +410,18 @@ export function render(options = {}) {
     icon: createSvgIcon('M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M9 7h1M9 11h1M9 15h1'),
     onClick: (button) => openPanel('company', button, renderCompanyPanel()),
   });
+  const favorites = createFilterButton({
+    className: 'filter-btn--favorites',
+    label: 'Favorites only',
+    title: 'Favorites only',
+    icon: createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+    onClick: () => {
+      _callbacks.onFilterChange?.({
+        ..._filterState,
+        favoritesOnly: _filterState.favoritesOnly !== true,
+      });
+    },
+  });
   const sort = createFilterButton({
     className: 'filter-btn--sort',
     label: 'Sort',
@@ -424,7 +440,7 @@ export function render(options = {}) {
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
 
-  filters.append(status.trigger, salary.trigger, compat.trigger, company.trigger);
+  filters.append(favorites.trigger, status.trigger, salary.trigger, compat.trigger, company.trigger);
   actions.append(sort.trigger);
   controls.append(filters, actions);
   toolbar.append(label, controls, addButton);
@@ -437,6 +453,7 @@ export function render(options = {}) {
   _salaryButton = salary.button;
   _compatButton = compat.button;
   _companyButton = company.button;
+  _favoritesButton = favorites.button;
   _sortButton = sort.button;
   _sortTrigger = sort.trigger;
   _eraseBtn = erase;

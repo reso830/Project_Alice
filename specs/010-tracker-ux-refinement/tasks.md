@@ -96,12 +96,12 @@
 
 **Independent Test**: Mark two applications as favorites. Enable "Favorites only" + a status filter. Confirm only matching applications show. Reload; confirm filter state is restored exactly.
 
-- [ ] T036 [US3] Add "Favorites only" toggle button to `src/components/QuickFiltersToolbar.js` — active/inactive visual states bound to `filterState.favoritesOnly`
-- [ ] T037 [US3] Wire favorites toggle in `src/pages/Tracker.js` — toggle updates `filterState.favoritesOnly`, triggers `applyFilters()`, and re-renders the card list
-- [ ] T038 [US3] Implement filter state persistence in `src/pages/Tracker.js` — on every `filterState` mutation write to `localStorage` key `'apptracker_filters'`; on page mount read, validate (coerce `favoritesOnly` to boolean, discard unknown status keys), and restore; if localStorage is unavailable fall back to defaults silently
-- [ ] T039 [P] [US3] Add composability test in `tests/utils/filterSort.test.js` — `applyFilters()` with `statuses: ['applied'], favoritesOnly: true` returns only records matching both conditions
-- [ ] T040 [P] [US3] Add localStorage validation edge case tests — unknown `statuses` keys are discarded on load; corrupted `favoritesOnly` value coerces to `false`; `salaryMin > salaryMax` resets both to `null`
-- [ ] T041 [US3] Manual verify — favorites filter + status filter shows correct intersection; reload restores both filter states; unfavoriting an app while filter active removes it immediately; no favorites active shows empty state
+- [X] T036 [US3] Add "Favorites only" toggle button to `src/components/QuickFiltersToolbar.js` — active/inactive visual states bound to `filterState.favoritesOnly`
+- [X] T037 [US3] Wire favorites toggle in `src/pages/Tracker.js` — toggle updates `filterState.favoritesOnly`, triggers `applyFilters()`, and re-renders the card list
+- [X] T038 [US3] Implement filter state persistence in `src/pages/Tracker.js` — on every `filterState` mutation write to `localStorage` key `'apptracker_filters'`; on page mount read, validate (coerce `favoritesOnly` to boolean, discard unknown status keys), and restore; if localStorage is unavailable fall back to defaults silently
+- [X] T039 [P] [US3] Add composability test in `tests/utils/filterSort.test.js` — `applyFilters()` with `statuses: ['applied'], favoritesOnly: true` returns only records matching both conditions
+- [X] T040 [P] [US3] Add localStorage validation edge case tests — unknown `statuses` keys are discarded on load; corrupted `favoritesOnly` value coerces to `false`; `salaryMin > salaryMax` resets both to `null`
+- [X] T041 [US3] Manual verify — favorites filter + status filter shows correct intersection; reload restores both filter states; unfavoriting an app while filter active removes it immediately; no favorites active shows empty state
 
 **Checkpoint**: US3 complete — favorites filter works, composes with other filters, and persists across reloads.
 
