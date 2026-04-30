@@ -70,21 +70,21 @@
 
 **Independent Test**: Open any application overlay. Confirm the header background matches the status color. Toggle favorite, change status via dropdown, and archive (confirm dialog). Confirm all actions complete inline. Click the link field; confirm toast appears and clipboard holds the URL.
 
-- [ ] T021 [US2] Update `src/components/Modal.js` overlay header — set `background-color` from `STATUS_CONFIG[status].borderAccent`; add a contrast helper that applies a dark or light text class based on the hex luminance of `borderAccent`
-- [ ] T022 [US2] Add Favorite quick action button in `src/components/Modal.js` — star icon (filled/outline), on click calls `PATCH /api/applications/:id { fav: !current }` via `src/services/api.js`; update icon fill state on response
-- [ ] T023 [US2] Add Change Status quick action in `src/components/Modal.js` — reuse `StatusDropdown` component; on selection calls `PATCH /api/applications/:id { status }`; update header color reactively without closing overlay
-- [ ] T024 [US2] Add Archive quick action in `src/components/Modal.js` — on click call `window.confirm('Archive this application?')`; if confirmed call `PATCH /api/applications/:id { archived: true, fav: false }`; on success close overlay and remove card from active list; on API failure show error toast and leave overlay open
-- [ ] T025 [US2] Enforce quick action render order in `src/components/Modal.js` — Favorite → Change Status → Archive, left to right
-- [ ] T026 [P] [US2] Write unit test for the contrast helper function in `tests/components/modal.test.js` — given `borderAccent` hex values from all 9 `STATUS_CONFIG` entries, assert the helper returns a class meeting WCAG 2.1 AA contrast (≥4.5:1 for normal text)
-- [ ] T027 [P] [US2] Write behavioral test for the archive action in `tests/components/modal.test.js` — confirm dialog cancel leaves overlay open and no PATCH is called; confirm dialog acceptance calls `PATCH { archived: true, fav: false }`
-- [ ] T028 [US6] Make `job_posting_url` field in `src/components/Modal.js` clickable when non-empty — on click call `navigator.clipboard.writeText(url)` then `Toast.show('Link copied', 'success')`
-- [ ] T029 [US6] Apply `opacity: 0.4` and `pointer-events: none` to link field container in `src/components/Modal.js` when `job_posting_url` is `null` or empty string
-- [ ] T030 [P] [US6] Replace emoji copy icon in `src/components/Card.js` with inline SVG clipboard icon (16×16) matching the style of existing SVG icons in the project
-- [ ] T031 [US6] Apply the same SVG clipboard icon to the copy affordance in `src/components/Modal.js`
-- [ ] T032 [US6] Add clipboard API failure handler in `src/components/Modal.js` — wrap `navigator.clipboard.writeText()` in try/catch; on failure show `Toast('Could not copy link', 'error')`
-- [ ] T033 [US2] Confirm `src/pages/Tracker.js` re-renders the affected card with updated `fav`, `status`, and `archived` state after overlay quick actions complete
-- [ ] T034 Run `npm run test:run` — no regressions from Modal or Card changes
-- [ ] T035 Manual smoke test — overlay header color matches status; favorite toggles on click; status change updates header color inline; archive confirm dialog appears and on confirm card is removed; link copy shows confirmation toast; disabled link is muted and unclickable
+- [X] T021 [US2] Update `src/components/Modal.js` overlay header — set `background-color` from `STATUS_CONFIG[status].borderAccent`; add a contrast helper that applies a dark or light text class based on the hex luminance of `borderAccent`
+- [X] T022 [US2] Add Favorite quick action button in `src/components/Modal.js` — star icon (filled/outline), on click calls `PATCH /api/applications/:id { fav: !current }` via `src/services/api.js`; update icon fill state on response
+- [X] T023 [US2] Add Change Status quick action in `src/components/Modal.js` — reuse `StatusDropdown` component; on selection calls `PATCH /api/applications/:id { status }`; update header color reactively without closing overlay
+- [X] T024 [US2] Add Archive quick action in `src/components/Modal.js` — on click call `window.confirm('Archive this application?')`; if confirmed call `PATCH /api/applications/:id { archived: true, fav: false }`; on success close overlay and remove card from active list; on API failure show error toast and leave overlay open
+- [X] T025 [US2] Enforce quick action render order in `src/components/Modal.js` — Favorite → Change Status → Archive, left to right
+- [X] T026 [P] [US2] Write unit test for the contrast helper function in `tests/components/modal.test.js` — given `borderAccent` hex values from all 9 `STATUS_CONFIG` entries, assert the helper returns a class meeting WCAG 2.1 AA contrast (≥4.5:1 for normal text)
+- [X] T027 [P] [US2] Write behavioral test for the archive action in `tests/components/modal.test.js` — confirm dialog cancel leaves overlay open and no PATCH is called; confirm dialog acceptance calls `PATCH { archived: true, fav: false }`
+- [X] T028 [US6] Make `job_posting_url` field in `src/components/Modal.js` clickable when non-empty — on click call `navigator.clipboard.writeText(url)` then `Toast.show('Link copied', 'success')`
+- [X] T029 [US6] Apply `opacity: 0.4` and `pointer-events: none` to link field container in `src/components/Modal.js` when `job_posting_url` is `null` or empty string
+- [X] T030 [P] [US6] Replace emoji copy icon in `src/components/Card.js` with inline SVG clipboard icon (16×16) matching the style of existing SVG icons in the project
+- [X] T031 [US6] Apply the same SVG clipboard icon to the copy affordance in `src/components/Modal.js`
+- [X] T032 [US6] Add clipboard API failure handler in `src/components/Modal.js` — wrap `navigator.clipboard.writeText()` in try/catch; on failure show `Toast('Could not copy link', 'error')`
+- [X] T033 [US2] Confirm `src/pages/Tracker.js` re-renders the affected card with updated `fav`, `status`, and `archived` state after overlay quick actions complete
+- [X] T034 Run `npm run test:run` — no regressions from Modal or Card changes
+- [X] T035 Manual smoke test — overlay header color matches status; favorite toggles on click; status change updates header color inline; archive confirm dialog appears and on confirm card is removed; link copy shows confirmation toast; disabled link is muted and unclickable
 
 **Checkpoint**: US2 + US6 complete — overlay has status-colored header, all three quick actions work inline, link copies with feedback, empty link is disabled.
 

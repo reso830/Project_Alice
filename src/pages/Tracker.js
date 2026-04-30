@@ -168,16 +168,17 @@ function createCallbacks() {
       try {
         const application = await api.getById(coerceId(id));
         Modal.open(application, {
-          onStatusChange: async (applicationId, newStatus) => {
-            try {
-              const updated = await api.update(coerceId(applicationId), { status: newStatus });
-              replaceApplication(updated);
-              refreshCard(updated.id);
-              return updated;
-            } catch {
-              Toast.show('Status update failed', 'failure');
-              return null;
-            }
+          onApplicationUpdate: (updated) => {
+            replaceApplication(updated);
+            refreshCard(updated.id);
+            updateToolbar();
+          },
+          onArchiveSuccess: (updated) => {
+            removeApplication(updated.id);
+            _salaryBounds = getSalaryBounds(_applications);
+            renderPage();
+            updateToolbar();
+            focusCardList();
           },
         });
       } catch {

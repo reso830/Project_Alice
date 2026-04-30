@@ -1834,6 +1834,14 @@ button:focus-visible,
   color: #FFFFFF;
 }
 
+.modal-header--light {
+  color: #FFFFFF;
+}
+
+.modal-header--dark {
+  color: #000000;
+}
+
 .modal-header__meta,
 .modal-header__title-row {
   display: flex;
@@ -1843,6 +1851,28 @@ button:focus-visible,
 
 .modal-header__title-row {
   justify-content: space-between;
+}
+
+.modal-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modal-quick-action {
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, .14);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-quick-action:hover,
+.modal-quick-action:focus-visible {
+  background: rgba(255, 255, 255, .24);
 }
 
 .modal-header h2 {
@@ -1881,6 +1911,28 @@ button:focus-visible,
   color: var(--t1);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.modal-link-field {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.modal-link-field--disabled {
+  opacity: .4;
+  pointer-events: none;
+}
+
+.modal-link-field__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .modal-skills {

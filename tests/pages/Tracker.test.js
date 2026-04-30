@@ -124,4 +124,66 @@ describe('Tracker quick filter toolbar integration', () => {
       .toBe('No applications match<br>the active filters.');
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
   });
+
+  it('re-renders cards after overlay favorite updates', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1, { fav: false });
+    const updated = { ...original, fav: true };
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+    api.update.mockResolvedValue(updated);
+
+    await Tracker.mount(container);
+    container.querySelector('.card').click();
+    await Promise.resolve();
+    document.querySelector('.modal-quick-action--favorite').click();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { fav: true });
+    expect(container.querySelector('.card-btn--star').classList.contains('card-btn--starred'))
+      .toBe(true);
+  });
+
+  it('re-renders cards after overlay status updates', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1, { status: 'applied' });
+    const updated = { ...original, status: 'offer' };
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+    api.update.mockResolvedValue(updated);
+
+    await Tracker.mount(container);
+    container.querySelector('.card').click();
+    await Promise.resolve();
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="offer"]').click();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { status: 'offer' });
+    expect(container.querySelector('.status-badge').textContent).toBe('Offer');
+  });
+
+  it('removes cards after overlay archive confirmation', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1);
+
+    window.scrollTo = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+    api.update.mockResolvedValue({ ...original, archived: true, fav: false });
+
+    await Tracker.mount(container);
+    container.querySelector('.card').click();
+    await Promise.resolve();
+    document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+  });
 });

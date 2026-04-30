@@ -37,4 +37,12 @@ describe('Card', () => {
     expect(badge.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeBg));
     expect(badge.style.color).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeText));
   });
+
+  it('uses an inline SVG clipboard icon for the copy action', () => {
+    const card = Card.render(application());
+    const copyButton = card.querySelector('[aria-label="Copy job URL"]');
+
+    expect(copyButton.textContent).toBe('');
+    expect(copyButton.querySelector('svg')).not.toBeNull();
+  });
 });

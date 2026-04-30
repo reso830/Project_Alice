@@ -13,6 +13,34 @@ function createActionButton(label, className) {
   return button;
 }
 
+function createClipboardIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+  svg.setAttribute('aria-hidden', 'true');
+  rect.setAttribute('x', '8');
+  rect.setAttribute('y', '8');
+  rect.setAttribute('width', '12');
+  rect.setAttribute('height', '12');
+  rect.setAttribute('rx', '2');
+  path.setAttribute('d', 'M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2');
+
+  for (const element of [rect, path]) {
+    element.setAttribute('fill', 'none');
+    element.setAttribute('stroke', 'currentColor');
+    element.setAttribute('stroke-width', '2');
+    element.setAttribute('stroke-linecap', 'round');
+    element.setAttribute('stroke-linejoin', 'round');
+  }
+
+  svg.append(rect, path);
+  return svg;
+}
+
 function createDetailCell(label, valueEl, modifier) {
   const cell = document.createElement('div');
   const labelEl = document.createElement('span');
@@ -66,13 +94,14 @@ export function render(application, callbacks = {}) {
   const salary = document.createElement('span');
   const editButton = createActionButton('✎', 'card-btn--edit');
   const statusButton = createActionButton('⇄', 'card-btn--status');
-  const copyButton = createActionButton('🔗', 'card-btn--copy');
+  const copyButton = createActionButton('', 'card-btn--copy');
   const starButton = createActionButton('★', 'card-btn--star');
   const archiveButton = createActionButton('×', 'card-btn--archive');
 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
+  copyButton.append(createClipboardIcon());
   starButton.setAttribute('aria-label', 'Star application');
   archiveButton.setAttribute('aria-label', 'Archive application permanently from active list');
 
