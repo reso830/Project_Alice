@@ -140,6 +140,22 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-backdrop')).toBeNull();
   });
 
+  it('keeps the overlay open and shows an error when archive fails', async () => {
+    const onArchiveSuccess = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.update.mockRejectedValue(new Error('server error'));
+
+    Modal.open(application(), { onArchiveSuccess });
+    document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
+    expect(onArchiveSuccess).not.toHaveBeenCalled();
+    expect(document.querySelector('.modal-backdrop')).not.toBeNull();
+    expect(document.body.textContent).toContain('Archive failed');
+  });
+
   it('copies populated job links and disables empty link fields', async () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     const writeText = vi.fn().mockResolvedValue();
@@ -160,6 +176,9 @@ describe('Modal', () => {
 
     expect(disabledLink.disabled).toBe(true);
     expect(disabledLink.classList.contains('modal-link-field--disabled')).toBe(true);
+    disabledLink.click();
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('Could not copy link');
   });
 
   it('shows an error toast when clipboard copy fails', async () => {

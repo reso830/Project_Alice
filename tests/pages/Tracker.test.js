@@ -165,6 +165,27 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
   });
 
+  it('shows an empty state when favorites-only is enabled with zero favorite records', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([
+      createApplication(1, { fav: false }),
+      createApplication(2, { fav: false }),
+    ]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      favoritesOnly: true,
+    });
+
+    expect(container.querySelector('.empty-state--filter')).not.toBeNull();
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No applications match<br>the active filters.');
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+  });
+
   it('persists favorites-only filter changes and restores them on mount', async () => {
     const container = document.createElement('main');
 
@@ -310,6 +331,28 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+  });
+
+  it('keeps cards visible when overlay archive confirmation fails', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1);
+
+    window.scrollTo = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+    api.update.mockRejectedValue(new Error('server error'));
+
+    await Tracker.mount(container);
+    container.querySelector('.card').click();
+    await Promise.resolve();
+    document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
+    expect(document.querySelector('.modal-backdrop')).not.toBeNull();
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+    expect(document.body.textContent).toContain('Archive failed');
   });
 });
 

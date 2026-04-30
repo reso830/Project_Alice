@@ -38,7 +38,7 @@ function getSubsection(container, label) {
 
 describe('Profile page', () => {
   it('scopes desktop application stat chips to a two-column grid', () => {
-    const css = readFileSync('src/styles/main.css', 'utf8');
+    const css = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
 
     expect(css).toContain(`.apps-desktop-vis__stats .stat-chip-row {
   grid-template-columns: repeat(2, minmax(0, 1fr));

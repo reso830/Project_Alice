@@ -184,16 +184,16 @@
 
 **Purpose**: Final validation, accessibility, constitution compliance, and edge cases.
 
-- [ ] T071 [P] Run `npm run test:run` — full test suite passes with no regressions
-- [ ] T072 [P] Run `npm run lint` (if configured) — no new lint errors introduced by this feature
-- [ ] T073 [P] Constitution compliance check — confirm: no external API calls added; FAB has `aria-label`; clipboard failure shows user-facing toast; status communicated via label text not color only; keyboard navigation works for FAB (`Tab`) and overlay actions (`Enter`/`Space`)
-- [ ] T074 [P] Cross-device smoke — desktop 1280px: no FAB, overlay colors correct, subheader matches navbar; mobile 375px: FAB at bottom-right, subheader single row, no overflow or horizontal scroll
-- [ ] T075 [P] Edge case — enable "Favorites only" filter with zero favorited records; confirm empty state is shown (not a blank or broken UI)
-- [ ] T076 [P] Edge case — archive an application: click Cancel in confirm dialog and verify overlay stays open with no PATCH called; click OK and verify card disappears from active list and `PATCH { archived: true, fav: false }` was called
-- [ ] T077 [P] Edge case — open overlay for an application with no `job_posting_url`; confirm link field has reduced opacity, does not respond to clicks, and no clipboard error is thrown
-- [ ] T078 [P] Edge case — simulate API failure during archive PATCH (mock 500 response); confirm UI state is unchanged (application remains visible) and an error toast is shown
-- [ ] T079 [P] Edge case — confirm archived applications do not appear in the default list view; note that UI access to archived items is deferred to a future feature scope (not in this release)
-- [ ] T080 Final verification — confirm all 12 success criteria in `specs/010-tracker-ux-refinement/spec.md` (SC-001 through SC-012) are met
+- [X] T071 [P] Run `npm run test:run` — full test suite passes with no regressions
+- [X] T072 [P] Run `npm run lint` (if configured) — no new lint errors introduced by this feature
+- [X] T073 [P] Constitution compliance check — confirm: no external API calls added; FAB has `aria-label`; clipboard failure shows user-facing toast; status communicated via label text not color only; keyboard navigation works for FAB (`Tab`) and overlay actions (`Enter`/`Space`)
+- [X] T074 [P] Cross-device smoke — desktop 1280px: no FAB, overlay colors correct, subheader matches navbar; mobile 375px: FAB at bottom-right, subheader single row, no overflow or horizontal scroll
+- [X] T075 [P] Edge case — enable "Favorites only" filter with zero favorited records; confirm empty state is shown (not a blank or broken UI)
+- [X] T076 [P] Edge case — archive an application: click Cancel in confirm dialog and verify overlay stays open with no PATCH called; click OK and verify card disappears from active list and `PATCH { archived: true, fav: false }` was called
+- [X] T077 [P] Edge case — open overlay for an application with no `job_posting_url`; confirm link field has reduced opacity, does not respond to clicks, and no clipboard error is thrown
+- [X] T078 [P] Edge case — simulate API failure during archive PATCH (mock 500 response); confirm UI state is unchanged (application remains visible) and an error toast is shown
+- [X] T079 [P] Edge case — confirm archived applications do not appear in the default list view; note that UI access to archived items is deferred to a future feature scope (not in this release)
+- [X] T080 Final verification — confirm all 12 success criteria in `specs/010-tracker-ux-refinement/spec.md` (SC-001 through SC-012) are met
 
 ---
 
