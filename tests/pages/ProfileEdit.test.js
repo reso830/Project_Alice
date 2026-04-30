@@ -1447,7 +1447,6 @@ describe('ProfileEdit page', () => {
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     expect(document.querySelector('.profile-edit-subheader')).toBeTruthy();
-    expect(document.querySelector('.profile-edit-subheader').classList).toContain('subheader');
 
     ProfileEdit.unmount();
 
@@ -1478,6 +1477,7 @@ describe('ProfileEdit page', () => {
 
     getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
 
-    expect(document.querySelector('.entry-overlay__header').classList).toContain('subheader');
+    expect(document.querySelector('.entry-overlay__header')).not.toBeNull();
+    expect(document.querySelector('.entry-overlay__header').classList).not.toContain('subheader');
   });
 });

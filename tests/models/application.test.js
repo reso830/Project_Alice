@@ -119,9 +119,9 @@ describe('normalizeApplication', () => {
 describe('STATUS_CONFIG', () => {
   it('assigns Wishlist the approved pink status colors', () => {
     expect(STATUS_CONFIG.wishlisted).toMatchObject({
-      badgeBg: '#FCE7F3',
-      badgeText: '#9D174D',
-      borderAccent: '#EC4899',
+      badgeBg: '#ffafcc',
+      badgeText: '#212529',
+      borderAccent: '#ffafcc',
     });
   });
 

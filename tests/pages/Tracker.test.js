@@ -28,7 +28,12 @@ vi.mock('../../src/services/api.js', () => ({
   update: vi.fn(),
 }));
 
+vi.mock('../../src/components/ConfirmDialog.js', () => ({
+  ConfirmDialog: { show: vi.fn() },
+}));
+
 import * as api from '../../src/services/api.js';
+import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
@@ -318,7 +323,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const original = createApplication(1);
 
     window.scrollTo = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    ConfirmDialog.show.mockResolvedValue(true);
     api.getAll.mockResolvedValue([original]);
     api.getById.mockResolvedValue(original);
     api.archive.mockResolvedValue({ ...original, archived: true, fav: false });
@@ -327,6 +332,7 @@ describe('Tracker quick filter toolbar integration', () => {
     container.querySelector('.card').click();
     await Promise.resolve();
     document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);
@@ -338,7 +344,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const original = createApplication(1);
 
     window.scrollTo = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    ConfirmDialog.show.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     api.getAll.mockResolvedValue([original]);
     api.archive.mockResolvedValue({ ...original, archived: true, fav: false });
 
@@ -346,11 +352,12 @@ describe('Tracker quick filter toolbar integration', () => {
     container.querySelector('.card-btn--archive').click();
     await Promise.resolve();
 
-    expect(window.confirm).toHaveBeenCalledWith('Archive this application?');
+    expect(ConfirmDialog.show).toHaveBeenCalledWith('Archive this application?');
     expect(api.archive).not.toHaveBeenCalled();
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
 
     container.querySelector('.card-btn--archive').click();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);
@@ -362,7 +369,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const original = createApplication(1);
 
     window.scrollTo = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    ConfirmDialog.show.mockResolvedValue(true);
     api.getAll.mockResolvedValue([original]);
     api.getById.mockResolvedValue(original);
     api.archive.mockRejectedValue(new Error('server error'));
@@ -371,6 +378,7 @@ describe('Tracker quick filter toolbar integration', () => {
     container.querySelector('.card').click();
     await Promise.resolve();
     document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);

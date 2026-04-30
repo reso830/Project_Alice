@@ -58,8 +58,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function setRangeTrackRect(toolbar, { width = 200 } = {}) {
-  const track = toolbar.querySelector('.range-track');
+function setRangeTrackRect(_toolbar, { width = 200 } = {}) {
+  const track = document.querySelector('.range-track');
 
   track.getBoundingClientRect = () => ({
     left: 0,
@@ -84,7 +84,7 @@ describe('QuickFiltersToolbar', () => {
   it('renders the default label, count, and inactive filter buttons', () => {
     const { toolbar } = renderToolbar();
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`All Applications ${apps.length}`);
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`Applications ${apps.length}`);
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
     expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
     expect(toolbar.classList.contains('subheader')).toBe(true);
@@ -149,7 +149,7 @@ describe('QuickFiltersToolbar', () => {
     const statusButton = toolbar.querySelector('[aria-label="Filter by Status"]');
 
     statusButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    toolbar.querySelector('[data-value="applied"]')
+    document.querySelector('[data-value="applied"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect(onFilterChange).toHaveBeenCalledOnce();
@@ -194,10 +194,10 @@ describe('QuickFiltersToolbar', () => {
 
     statusButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    const appliedDot = toolbar.querySelector('[data-value="applied"] .filter-panel__dot');
+    const appliedDot = document.querySelector('[data-value="applied"] .filter-panel__dot');
 
-    expect(appliedDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.badgeBg));
-    expect(appliedDot.style.border).toBe(`1px solid ${hexToRgb(STATUS_CONFIG.applied.borderAccent)}`);
+    expect(appliedDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.borderAccent));
+    expect(appliedDot.style.border).toBe('');
   });
 
   it('calls onAddApplication from the primary toolbar action', () => {
@@ -245,7 +245,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar);
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 50, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
@@ -267,7 +267,7 @@ describe('QuickFiltersToolbar', () => {
     compatToolbar.querySelector('[aria-label="Filter by Compatibility"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(compatToolbar, { width: 100 });
-    compatToolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 10, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
@@ -288,7 +288,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar);
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 50, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
@@ -306,21 +306,21 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar, { width: 100 });
-    toolbar.querySelector('.range-thumb--max')
+    document.querySelector('.range-thumb--max')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 100, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 55, bubbles: true }));
 
-    expect(toolbar.querySelector('.range-value--max').textContent).toBe(formatPeso(160000));
+    expect(document.querySelector('.range-value--max').textContent).toBe('₱160k');
 
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
     toolbar.querySelector('[aria-label="Filter by Compatibility"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar, { width: 100 });
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 33.4, bubbles: true }));
 
-    expect(toolbar.querySelector('.range-value--min').textContent).toBe('33%');
+    expect(document.querySelector('.range-value--min').textContent).toBe('33%');
   });
 
   it('disables only the salary button when there is no salary data', () => {
@@ -342,8 +342,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    expect(toolbar.querySelector('.range-bounds').textContent)
-      .toBe(`${formatPeso(50000)}${formatPeso(250000)}+`);
+    expect(document.querySelector('.range-bounds').textContent).toBe('₱50k₱250k+');
   });
 
   it('calls onSortChange from the sort panel and restores default sort', () => {
@@ -355,7 +354,7 @@ describe('QuickFiltersToolbar', () => {
     const sortButton = toolbar.querySelector('[aria-label="Sort"]');
 
     sortButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    [...toolbar.querySelectorAll('.sort-panel__option')]
+    [...document.querySelectorAll('.sort-panel__option')]
       .find((option) => option.textContent === 'Compatibility')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
@@ -371,12 +370,12 @@ describe('QuickFiltersToolbar', () => {
 
     sortedToolbar.querySelector('[aria-label="Sort"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    [...sortedToolbar.querySelectorAll('.sort-panel__option')]
+    [...document.querySelectorAll('.sort-panel__option')]
       .find((option) => option.textContent === 'Restore default')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_SORT_STATE);
-    expect(sortedToolbar.querySelector('.sort-panel')).toBeNull();
+    expect(document.querySelector('.sort-panel')).toBeNull();
   });
 
   it('shows erase-all for active filters and calls onClearAll', () => {
@@ -450,7 +449,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Status"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    const checkbox = toolbar.querySelector('[data-value="applied"]');
+    const checkbox = document.querySelector('[data-value="applied"]');
 
     expect(checkbox.getAttribute('role')).toBe('checkbox');
     expect(checkbox.hasAttribute('aria-checked')).toBe(true);
@@ -458,7 +457,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Sort"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    expect(toolbar.querySelector('[aria-label="Restore default sort"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Restore default sort"]')).not.toBeNull();
   });
 
   it('returns focus to each trigger when Escape closes an open panel', () => {
@@ -474,11 +473,11 @@ describe('QuickFiltersToolbar', () => {
       const button = toolbar.querySelector(`[aria-label="${label}"]`);
 
       button.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-      expect(toolbar.querySelector('.filter-panel, .sort-panel')).not.toBeNull();
+      expect(document.querySelector('.filter-panel, .sort-panel')).not.toBeNull();
 
       document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
-      expect(toolbar.querySelector('.filter-panel, .sort-panel')).toBeNull();
+      expect(document.querySelector('.filter-panel, .sort-panel')).toBeNull();
       expect(document.activeElement).toBe(button);
     }
   });

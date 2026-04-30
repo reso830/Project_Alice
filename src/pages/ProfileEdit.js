@@ -284,7 +284,7 @@ export function createEntryOverlay(title, buildForm, { onSave } = {}) {
   const backdrop = createElement('div', 'entry-overlay-backdrop');
   const overlay = createElement('div', isDesktop ? 'entry-modal' : 'entry-sheet');
   const container = createElement('div', isDesktop ? 'entry-modal__box' : 'entry-sheet__box');
-  const header = createElement('div', 'entry-overlay__header subheader');
+  const header = createElement('div', 'entry-overlay__header');
   const titleEl = createElement('h2', 'entry-overlay__title', title);
   const formEl = createElement('div', 'entry-overlay__form');
   const footer = createElement('div', 'entry-overlay__footer');
@@ -402,7 +402,7 @@ function updateField(fieldName, value) {
 
 function renderSubheader() {
   const navbar = document.querySelector('.navbar');
-  const bar = createElement('div', 'profile-edit-subheader subheader');
+  const bar = createElement('div', 'profile-edit-subheader');
   const title = createElement('span', 'profile-edit-subheader__title', 'Edit Profile');
   const controls = renderPageControls();
 

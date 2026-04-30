@@ -4,6 +4,7 @@ import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 import { StatusDropdown } from './StatusDropdown.js';
 import { Toast } from './Toast.js';
 
@@ -59,23 +60,20 @@ export function getHeaderContrastRatio(hexColor) {
   return contrastRatio(background, text);
 }
 
-function createQuickButton(label, className, icon) {
+function createQuickButton(className, icon) {
   const button = document.createElement('button');
-  const text = document.createElement('span');
 
   button.className = `modal-quick-action ${className}`;
   button.type = 'button';
-  text.className = 'modal-quick-action__label';
-  text.textContent = label;
-  button.append(icon, text);
+  button.append(icon);
   return button;
 }
 
 function applyHeaderStatus(header, status) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
   header.style.backgroundColor = config.borderAccent;
+  header.style.color = config.badgeText;
   header.classList.remove('modal-header--light', 'modal-header--dark');
-  header.classList.add(getHeaderContrastClass(config.borderAccent));
 }
 
 function updateStatusBadge(badge, status) {
@@ -99,13 +97,10 @@ function updateStatusDate(lastStatusUpdate) {
 }
 
 function updateFavoriteButton(button, isFavorite) {
-  const text = document.createElement('span');
   const icon = createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z');
 
-  text.className = 'modal-quick-action__label';
-  text.textContent = 'Favorite';
   icon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
-  button.replaceChildren(icon, text);
+  button.replaceChildren(icon);
   button.setAttribute('aria-pressed', String(isFavorite));
 }
 
@@ -222,17 +217,14 @@ export function open(application, {
   const title = document.createElement('h2');
   const quickActions = document.createElement('div');
   const favoriteButton = createQuickButton(
-    'Favorite',
     'modal-quick-action--favorite',
     createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
   );
   const statusButton = createQuickButton(
-    'Change Status',
     'modal-quick-action--status',
     createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
   );
   const archiveButton = createQuickButton(
-    'Archive',
     'modal-quick-action--archive',
     createSvgIcon('M5 5l14 14M19 5 5 19'),
   );
@@ -293,7 +285,7 @@ export function open(application, {
   });
 
   archiveButton.addEventListener('click', async () => {
-    if (!window.confirm('Archive this application?')) {
+    if (!await ConfirmDialog.show('Archive this application?')) {
       return;
     }
 

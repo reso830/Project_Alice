@@ -1,4 +1,5 @@
 import { Card } from '../components/Card.js';
+import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
@@ -282,7 +283,7 @@ function createCallbacks() {
       }
     },
     onArchive: async (id) => {
-      if (!window.confirm('Archive this application?')) {
+      if (!await ConfirmDialog.show('Archive this application?')) {
         return;
       }
 

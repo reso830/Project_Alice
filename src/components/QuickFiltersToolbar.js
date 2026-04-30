@@ -81,7 +81,7 @@ function updateLabel(totalCount, filteredCount, filterState) {
   const active = isAnyFilterActive(filterState);
 
   if (_labelEl) {
-    _labelEl.textContent = active ? 'Results' : 'All Applications';
+    _labelEl.textContent = active ? 'Results' : 'Applications';
     _labelEl.append(' ', _countEl);
   }
 
@@ -132,10 +132,27 @@ function closePanel({ restoreFocus = false } = {}) {
   }
 }
 
+function positionPanel(button, panel) {
+  const rect = button.getBoundingClientRect();
+  const panelWidth = panel.offsetWidth || 220;
+  let top = rect.bottom + 8;
+  let left = rect.left;
+
+  if (left + panelWidth > window.innerWidth - 8) {
+    left = Math.max(8, rect.right - panelWidth);
+  }
+
+  panel.style.top = `${top}px`;
+  panel.style.left = `${left}px`;
+}
+
 function replaceOpenPanel(panel) {
   _openPanel?.remove();
   _openPanel = panel;
-  _openButton?.parentElement?.append(panel);
+  document.body.append(panel);
+  if (_openButton) {
+    positionPanel(_openButton, panel);
+  }
 }
 
 function openPanel(type, button, panel) {
@@ -153,7 +170,8 @@ function openPanel(type, button, panel) {
   _openButton = button;
   _openPanel = panel;
   button.classList.add('filter-btn--open');
-  button.parentElement.append(panel);
+  document.body.append(panel);
+  positionPanel(button, panel);
   attachPanelListeners();
 }
 
@@ -165,7 +183,7 @@ function renderStatusPanel() {
     getLabel: (status) => STATUS_CONFIG[status]?.label ?? status,
     getDot: (status) => {
       const config = STATUS_CONFIG[status];
-      return config ? { backgroundColor: config.badgeBg, borderColor: config.borderAccent } : null;
+      return config ? config.borderAccent : null;
     },
     onChange: (statuses) => {
       _callbacks.onFilterChange?.({ ..._filterState, statuses });
@@ -192,58 +210,81 @@ function renderCompanyPanel() {
   });
 }
 
-function createRangePanel(slider) {
+function createRangePanel(title, slider, onClear) {
   const panel = document.createElement('div');
+  const header = document.createElement('div');
+  const titleEl = document.createElement('span');
+  const clearBtn = document.createElement('button');
 
   panel.className = 'filter-panel range-panel';
-  panel.append(slider);
+  header.className = 'filter-panel__header';
+  titleEl.className = 'filter-panel__title';
+  titleEl.textContent = title;
+  clearBtn.type = 'button';
+  clearBtn.className = 'filter-panel__clear';
+  clearBtn.textContent = 'Clear';
+  clearBtn.addEventListener('click', () => {
+    onClear();
+    closePanel();
+  });
+
+  header.append(titleEl, clearBtn);
+  panel.append(header, slider);
 
   return panel;
 }
 
 function formatSalary(value) {
-  const formatted = formatPeso(value);
-  return value >= SALARY_FILTER_MAX ? `${formatted}+` : formatted;
+  const k = Math.round(value / 1000);
+  return value >= SALARY_FILTER_MAX ? `₱${k}k+` : `₱${k}k`;
 }
 
 function renderSalaryPanel() {
-  return createRangePanel(RangeSlider.render({
-    min: SALARY_FILTER_MIN,
-    max: SALARY_FILTER_MAX,
-    valueMin: _filterState.salaryMin ?? SALARY_FILTER_MIN,
-    valueMax: _filterState.salaryMax ?? SALARY_FILTER_MAX,
-    step: SALARY_STEP,
-    formatValue: formatSalary,
-    ariaLabelMin: 'Minimum salary',
-    ariaLabelMax: 'Maximum salary',
-    onCommit: (min, max) => {
-      _callbacks.onFilterChange?.({
-        ..._filterState,
-        salaryMin: min === SALARY_FILTER_MIN ? null : min,
-        salaryMax: max === SALARY_FILTER_MAX ? null : max,
-      });
-    },
-  }));
+  return createRangePanel(
+    'Salary',
+    RangeSlider.render({
+      min: SALARY_FILTER_MIN,
+      max: SALARY_FILTER_MAX,
+      valueMin: _filterState.salaryMin ?? SALARY_FILTER_MIN,
+      valueMax: _filterState.salaryMax ?? SALARY_FILTER_MAX,
+      step: SALARY_STEP,
+      formatValue: formatSalary,
+      ariaLabelMin: 'Minimum salary',
+      ariaLabelMax: 'Maximum salary',
+      onCommit: (min, max) => {
+        _callbacks.onFilterChange?.({
+          ..._filterState,
+          salaryMin: min === SALARY_FILTER_MIN ? null : min,
+          salaryMax: max === SALARY_FILTER_MAX ? null : max,
+        });
+      },
+    }),
+    () => _callbacks.onFilterChange?.({ ..._filterState, salaryMin: null, salaryMax: null }),
+  );
 }
 
 function renderCompatPanel() {
-  return createRangePanel(RangeSlider.render({
-    min: 0,
-    max: 100,
-    valueMin: _filterState.compatMin ?? 0,
-    valueMax: _filterState.compatMax ?? 100,
-    step: 1,
-    formatValue: (value) => `${Math.round(value)}%`,
-    ariaLabelMin: 'Minimum compatibility',
-    ariaLabelMax: 'Maximum compatibility',
-    onCommit: (min, max) => {
-      _callbacks.onFilterChange?.({
-        ..._filterState,
-        compatMin: min === 0 ? null : min,
-        compatMax: max === 100 ? null : max,
-      });
-    },
-  }));
+  return createRangePanel(
+    'Compatibility',
+    RangeSlider.render({
+      min: 0,
+      max: 100,
+      valueMin: _filterState.compatMin ?? 0,
+      valueMax: _filterState.compatMax ?? 100,
+      step: 1,
+      formatValue: (value) => `${Math.round(value)}%`,
+      ariaLabelMin: 'Minimum compatibility',
+      ariaLabelMax: 'Maximum compatibility',
+      onCommit: (min, max) => {
+        _callbacks.onFilterChange?.({
+          ..._filterState,
+          compatMin: min === 0 ? null : min,
+          compatMax: max === 100 ? null : max,
+        });
+      },
+    }),
+    () => _callbacks.onFilterChange?.({ ..._filterState, compatMin: null, compatMax: null }),
+  );
 }
 
 function renderSortPanel() {

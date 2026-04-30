@@ -6,7 +6,12 @@ vi.mock('../../src/services/api.js', () => ({
   update: vi.fn(),
 }));
 
+vi.mock('../../src/components/ConfirmDialog.js', () => ({
+  ConfirmDialog: { show: vi.fn() },
+}));
+
 import * as api from '../../src/services/api.js';
+import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
 import {
   Modal,
   getHeaderContrastClass,
@@ -64,8 +69,7 @@ describe('Modal', () => {
     const badge = document.querySelector('#modal-status-badge');
 
     expect(header.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.wishlisted.borderAccent));
-    expect(header.classList.contains(getHeaderContrastClass(STATUS_CONFIG.wishlisted.borderAccent)))
-      .toBe(true);
+    expect(header.style.color).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeText));
     expect(badge.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeBg));
     expect(badge.style.color).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeText));
   });
@@ -76,16 +80,19 @@ describe('Modal', () => {
     }
   });
 
-  it('renders quick actions in the required order', () => {
+  it('renders icon-only quick actions in the required order', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application());
 
     const actions = [...document.querySelectorAll('.modal-quick-action')];
 
-    expect(actions.map((button) => button.textContent))
-      .toEqual(['Favorite', 'Change Status', 'Archive']);
+    expect(actions).toHaveLength(3);
+    expect(actions[0].classList.contains('modal-quick-action--favorite')).toBe(true);
+    expect(actions[1].classList.contains('modal-quick-action--status')).toBe(true);
+    expect(actions[2].classList.contains('modal-quick-action--archive')).toBe(true);
     expect(actions.every((button) => button.querySelector('svg.icon'))).toBe(true);
+    expect(actions.every((button) => !button.querySelector('.modal-quick-action__label'))).toBe(true);
   });
 
   it('formats salary as Philippine Peso', () => {
@@ -114,26 +121,28 @@ describe('Modal', () => {
     await Promise.resolve();
 
     expect(api.update).toHaveBeenCalledWith(1, { fav: true });
-    expect(document.querySelector('.modal-quick-action--favorite').textContent).toBe('Favorite');
     expect(document.querySelector('.modal-quick-action--favorite svg.icon')).not.toBeNull();
+    expect(document.querySelector('.modal-quick-action--favorite .modal-quick-action__label')).toBeNull();
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ fav: true }));
   });
 
   it('archives only after confirmation and reports the updated record', async () => {
     const onArchiveSuccess = vi.fn();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    vi.spyOn(window, 'confirm')
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
+    ConfirmDialog.show
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
     api.archive.mockResolvedValue({ ...application(), archived: true, fav: false });
 
     Modal.open(application(), { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
 
     expect(api.archive).not.toHaveBeenCalled();
     expect(document.querySelector('.modal-backdrop')).not.toBeNull();
 
     document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);
@@ -144,11 +153,12 @@ describe('Modal', () => {
   it('keeps the overlay open and shows an error when archive fails', async () => {
     const onArchiveSuccess = vi.fn();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    ConfirmDialog.show.mockResolvedValue(true);
     api.archive.mockRejectedValue(new Error('server error'));
 
     Modal.open(application(), { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);

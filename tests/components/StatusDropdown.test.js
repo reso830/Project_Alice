@@ -28,7 +28,6 @@ describe('StatusDropdown', () => {
     const wishlistDot = document.querySelector('[data-status="wishlisted"] .status-dot');
 
     expect(wishlistDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeBg));
-    expect(wishlistDot.style.border)
-      .toBe(`1px solid ${hexToRgb(STATUS_CONFIG.wishlisted.borderAccent)}`);
+    expect(wishlistDot.style.border).toBe('');
   });
 });
