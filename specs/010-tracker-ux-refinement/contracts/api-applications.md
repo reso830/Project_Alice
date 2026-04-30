@@ -24,7 +24,7 @@ Updates one or more fields on an existing application record. Used by: favorite 
 
 | Field | Type | Constraints |
 |---|---|---|
-| `fav` | boolean | `true` or `false` |
+| `fav` | boolean | `true` or `false`; server forces to `false` when `archived: true` is also sent |
 | `archived` | boolean | `true` or `false` |
 | `status` | string | Must be a valid STATUS_VALUES key |
 | `salary` | integer \| null | Positive integer or `null` |
@@ -80,6 +80,6 @@ Consumers (`Card.js`, `Modal.js`) must call `formatPeso(salary)` from `src/utils
 |---|---|---|
 | `fav` | `null`, `undefined`, `0`, `1` | `false` or `true` (boolean coercion) |
 | `archived` | absent / `null` | `false` |
-| `salary` | string (legacy) | `null` (until migration complete) |
+| `salary` | string (legacy) | integer via `parseSalaryLower()`, or `null` on parse failure |
 
 These normalizations guard against stale records and must be applied in the server's data-access layer before returning records to the client.

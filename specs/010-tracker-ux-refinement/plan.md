@@ -5,7 +5,7 @@
 
 ## Summary
 
-Ten focused UX, data, and interaction improvements to the Application Tracker: standardized salary display in Philippine Peso, a visually distinct pink color for the Wishlist status, a composable Favorites filter with local persistence, inline overlay quick actions (favorite / change status / archive with undo), click-to-copy job links, a mobile FAB, subheader/nav visual consistency, slider label overlap fixes, icon consistency, and improved seed data variety. All changes are additive or corrective — no core data model rewrite required.
+Ten focused UX, data, and interaction improvements to the Application Tracker: standardized salary display in Philippine Peso, a visually distinct pink color for the Wishlist status, a composable Favorites filter with local persistence, inline overlay quick actions (favorite / change status / archive with browser confirm), click-to-copy job links, a mobile FAB, subheader/nav visual consistency, slider label overlap fixes, icon consistency, and improved seed data variety. All changes are additive or corrective — no core data model rewrite required.
 
 ## Technical Context
 
@@ -27,7 +27,7 @@ Ten focused UX, data, and interaction improvements to the Application Tracker: s
 - ✅ Business logic remains separated: salary formatting utility goes in `src/utils/currency.js`, status-color mapping stays in `src/models/application.js`, favorites filter logic in `src/utils/filterSort.js`.
 - ✅ Existing validation in `src/utils/validate.js` and `src/models/application.js` is preserved; no validation rules are removed or bypassed. URL validation for copy-link handles the absent-URL case explicitly.
 - ✅ All key workflows (add, edit, search, filter, review, stale/follow-up) are maintained and enhanced; empty and error states already handled and not regressed.
-- ✅ New behaviors (favorites filter, salary formatting, archive action with undo) will have automated test coverage in `tests/utils/`; existing tests must not regress.
+- ✅ New behaviors (favorites filter, salary formatting, archive action with browser confirm) will have automated test coverage in `tests/utils/` and `tests/components/`; existing tests must not regress.
 - ✅ All changes are local-first; no analytics, external services, or data sharing introduced.
 - ✅ Mobile UX improvements (FAB, single-row subheader), icon consistency (SVG replacing emoji), keyboard navigation, and non-color-only status indicators are explicitly addressed.
 - ✅ Adding a `fav` boolean clarification and numeric `salary` field are minimal additive changes that preserve future extensibility.
@@ -58,7 +58,7 @@ src/
 │   ├── Modal.js                   # [MODIFY] status-colored header, quick actions, copy-link
 │   ├── QuickFiltersToolbar.js     # [MODIFY] favorites toggle filter
 │   ├── RangeSlider.js             # [MODIFY] label overlap fix
-│   ├── Toast.js                   # [MODIFY] add optional undo callback support
+│   ├── Toast.js                   # [NO CHANGE] archive uses window.confirm; no undo extension needed
 │   ├── Navbar.js                  # [MODIFY] subheader elevation/style alignment
 │   └── StatusDropdown.js          # [REVIEW] verify color rendering consistency
 ├── models/
@@ -75,7 +75,7 @@ src/
 └── main.js                        # [MODIFY] client-side seed data (fallback only)
 
 shared/
-└── constants.js                   # [MODIFY] STATUS_COLORS wishlisted → pink (sync with model)
+└── constants.js                   # [MODIFY] remove duplicate STATUS_COLORS; import STATUS_CONFIG from src/models/application.js instead
 
 server/
 └── db-seed.js                     # [MODIFY] salary → integer, improved job descriptions

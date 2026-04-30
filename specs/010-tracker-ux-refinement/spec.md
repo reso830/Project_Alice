@@ -74,7 +74,7 @@ A job seeker entering or viewing salary information sees values displayed in Phi
 
 ### User Story 5 - Mobile-Optimized Layout with Floating Action Button (Priority: P5)
 
-On a mobile device, a job seeker sees a clean, uncluttered tracker view. A Floating Action Button (FAB) in the bottom-right corner replaces the "New Application" button, and the subheader shows a compact single-row layout with context on the left and quick filter icons on the right.
+On a mobile device, a job seeker sees a clean, uncluttered tracker view. On mobile viewports (≤768px), a Floating Action Button (FAB) in the bottom-right corner replaces the "New Application" button — the desktop button remains unchanged. The subheader shows a compact single-row layout with context on the left and quick filter icons on the right.
 
 **Why this priority**: Mobile usability suffers from button placement and subheader clutter. The FAB is a standard mobile pattern for primary actions, and a single-row subheader reduces vertical space consumed by navigation.
 
@@ -82,9 +82,10 @@ On a mobile device, a job seeker sees a clean, uncluttered tracker view. A Float
 
 **Acceptance Scenarios**:
 
-1. **Given** the tracker is viewed on a mobile browser, **When** the page renders, **Then** a FAB appears in the bottom-right corner, does not overlap core content, and respects device safe areas.
+1. **Given** the tracker is viewed on a mobile browser (viewport ≤768px), **When** the page renders, **Then** a FAB appears in the bottom-right corner, does not overlap core content, and respects device safe areas; the existing New Application button is hidden.
 2. **Given** the tracker is viewed on a mobile browser, **When** the subheader is rendered, **Then** it shows a single row with context/title on the left and filter icons right-aligned.
 3. **Given** the FAB is tapped, **When** the new application flow opens, **Then** the FAB does not obstruct the form or primary content beneath it.
+4. **Given** the tracker is viewed on a desktop browser (viewport >768px), **When** the page renders, **Then** the FAB is not visible and the existing New Application button is shown in the subheader.
 
 ---
 
@@ -104,49 +105,21 @@ A job seeker viewing an application with a job posting URL can click the link fi
 
 ---
 
-### User Story 7 - Subheader and Navigation Visual Consistency (Priority: P7)
+### User Story 7 - UI Polish, Slider Fix & Icon Consistency (Priority: P7)
 
-A user navigating between the tracker, profile edit, and application edit views sees a consistent subheader bar that matches the navigation bar in background color and elevation/shadow style.
+A user sees a consistent subheader that matches the navigation bar, sliders that never show overlapping labels, and all action icons rendered from the existing icon set at a uniform 16px size with hover feedback — no emoji.
 
-**Why this priority**: Visual inconsistency between navigation and subheaders creates a fragmented look. Aligning them signals a cohesive, polished product.
+**Why this priority**: These three corrections are individually too small to warrant independent stories but together define the app's visual quality baseline. Batching them reduces planning overhead without losing scope.
 
-**Independent Test**: Navigate between the tracker, Edit Profile, and Edit Application views and verify the subheader and navigation bar share the same background color and shadow/elevation treatment.
+**Independent Test**: Navigate across Tracker, Edit Profile, and Edit Application — subheader matches navbar background and shadow. Drag each slider end-to-end — labels never overlap. Inspect all action icons — no emoji, all 16px, all show hover feedback.
 
 **Acceptance Scenarios**:
 
 1. **Given** any view with a subheader, **When** rendered alongside the navigation bar, **Then** both bars share the same background color and elevation/shadow style.
-2. **Given** the Edit Profile and Edit Application overlays, **When** rendered, **Then** their subheaders match the same styling as the main tracker subheader.
-
----
-
-### User Story 8 - Slider Labels Without Overlap (Priority: P8)
-
-A user adjusting the compatibility or salary slider sees labels that do not overlap at any position across the slider's full range.
-
-**Why this priority**: Overlapping labels make sliders unusable at certain values. This is a readability regression that should be resolved before broader UI polish.
-
-**Independent Test**: Move each slider across its full range and confirm labels never overlap and remain readable at every position.
-
-**Acceptance Scenarios**:
-
-1. **Given** the compatibility slider, **When** dragged across its full range, **Then** labels or value indicators do not overlap at any position.
-2. **Given** the salary slider, **When** dragged across its full range, **Then** labels or value indicators do not overlap at any position.
-
----
-
-### User Story 9 - Icon Consistency (Priority: P9)
-
-A user interacting with any action icon (including copy link and favorites) sees proper icons from the application's existing icon set, with consistent sizing, hover states, and interaction feedback — no emoji substitutes.
-
-**Why this priority**: Emoji in action contexts look unpolished and behave inconsistently across platforms. Consistent icons reinforce a professional feel.
-
-**Independent Test**: Inspect all interactive icons across the tracker, overlay, and forms. Confirm no emoji are used as icons. Confirm all icons share consistent sizing and respond to hover.
-
-**Acceptance Scenarios**:
-
-1. **Given** the copy link action, **When** rendered, **Then** the icon comes from the existing icon set rather than an emoji character.
-2. **Given** all interactive icons in the application, **When** hovered, **Then** each displays a consistent hover state and interaction feedback.
-3. **Given** all interactive icons in the application, **When** rendered side by side, **Then** each shares a consistent visual size.
+2. **Given** the Edit Profile and Edit Application overlays, **When** rendered, **Then** their subheaders match the main tracker subheader styling.
+3. **Given** either slider (compatibility or salary), **When** dragged across its full range, **Then** labels never overlap at any position; during drag only the active thumb's label is shown; at rest both labels show only when thumbs are ≥40px apart, otherwise only the max-value label shows.
+4. **Given** all interactive icons across the tracker, overlay, and filters, **When** rendered, **Then** each uses an SVG from the existing icon set (no emoji) and is sized at 16px.
+5. **Given** all interactive icons, **When** hovered or focused, **Then** each shows a visible state change (opacity or color transition).
 
 ---
 
@@ -168,12 +141,16 @@ A developer or tester loading the seed data sees job descriptions that vary in t
 
 ### Edge Cases
 
-- What happens when a user archives the currently-displayed application and then dismisses the undo? The overlay closes and the item disappears from the active list view.
+- What happens when a user archives the currently-displayed application and then cancels the confirmation dialog? No action is taken; the overlay remains open and the application is unchanged.
 - How does "Favorites only" behave when the user has no favorited applications? Show an empty state with a prompt to mark favorites.
 - What happens if the clipboard API is unavailable (e.g., insecure HTTP context, browser restriction)? The copy action fails gracefully with an informative message rather than silently failing.
 - What does the salary filter display when an application has no salary value stored? The application is not excluded from results unless the user explicitly sets a minimum filter threshold.
 - What if a user has an existing salary record above ₱250,000? The ₱250,000+ filter bucket captures all values at or above the threshold without truncating the stored data.
 - What happens if a user unfavorites an application while the "Favorites only" filter is active? The application immediately disappears from the filtered list.
+- What happens if the archive PATCH request fails after the user confirms? The application state is rolled back in the UI and an error message is shown; no data is lost.
+- What happens if localStorage is unavailable (private browsing, storage quota exceeded)? Filter state falls back to defaults on each page load; no crash or error is surfaced to the user.
+- What does the salary filter show when an application has salary=0 stored? Zero is treated as absent (same as null) and the application is included regardless of filter range.
+- What if localStorage contains a stale `favoritesOnly: true` but the user has no favorited applications? The filter is restored and an empty state is shown, consistent with the normal no-favorites behavior.
 
 ## Requirements *(mandatory)*
 
@@ -181,30 +158,30 @@ A developer or tester loading the seed data sees job descriptions that vary in t
 
 - **FR-001**: System MUST display all 9 application statuses with visually distinct, non-conflicting colors across cards, overlay headers, and status selectors.
 - **FR-002**: System MUST assign the "Wishlist" status a pink color, distinct from the color assigned to "Technical Assessment."
-- **FR-003**: System MUST render the application overlay header background using the current application's status color, with sufficient contrast for text and icons.
+- **FR-003**: System MUST render the application overlay header background using the current application's status color, with contrast meeting WCAG 2.1 AA thresholds (4.5:1 for normal text, 3:1 for large text and icons).
 - **FR-004**: System MUST display all salary values in Philippine Peso (₱) format with comma separators and no decimal places (e.g., ₱150,000).
 - **FR-005**: System MUST store salary values as plain numeric data without truncation or rounding, regardless of how they are displayed.
-- **FR-006**: System MUST provide a salary filter with a defined range: ₱50,000 minimum to ₱250,000+ maximum bucket.
+- **FR-006**: System MUST provide a salary filter with a defined range: ₱50,000 minimum to ₱250,000+ maximum bucket. The filter is inactive by default; applications with null or zero salary are always included in results unless the user explicitly sets a minimum threshold.
 - **FR-007**: System MUST allow users to mark and unmark any application as a favorite.
 - **FR-008**: System MUST provide a "Favorites only" quick filter toggle that is composable with all other active filters.
 - **FR-009**: System MUST persist all active filter state — including the favorites toggle — in local browser storage, restoring it on page reload.
 - **FR-010**: System MUST present inline quick actions in the application overlay in the order: Favorite, Change Status, Archive — without triggering additional modals.
-- **FR-011**: System MUST require explicit confirmation or provide a visible undo affordance before completing an archive action.
+- **FR-011**: System MUST require a browser confirmation dialog before completing an archive action, and MUST set the application's favorite flag to false upon confirmation.
 - **FR-012**: System MUST copy the job posting URL to clipboard when the user clicks the link field, and display a "Link copied" toast notification.
 - **FR-013**: System MUST render the link field with reduced opacity and disable click interaction when no URL is present on the application.
-- **FR-014**: System MUST replace the "New Application" button with a Floating Action Button (FAB) positioned at the bottom-right on mobile viewports, respecting device safe areas.
+- **FR-014**: System MUST show a Floating Action Button (FAB) positioned at the bottom-right on mobile viewports (≤768px), respecting device safe areas; the existing "New Application" button in the subheader MUST be hidden at these widths and remain visible on desktop (>768px).
 - **FR-015**: System MUST render the subheader as a single row on mobile viewports, with context/title left-aligned and quick filter icons right-aligned.
 - **FR-016**: System MUST apply matching background color and elevation/shadow to the subheader bar and navigation bar across the tracker, Edit Profile, and Edit Application views.
-- **FR-017**: System MUST render all action icons using the existing icon set — no emoji substitutes — with consistent sizing, hover states, and interaction feedback.
+- **FR-017**: System MUST render all action icons using the existing icon set — no emoji substitutes — at 16px with consistent hover states and interaction feedback.
 - **FR-018**: System MUST render compatibility and salary slider labels without visual overlap at any position across the full slider range.
 - **FR-019**: System MUST include seed data with job descriptions that vary in tone, seniority signals, and domain/tooling references across at least three distinct industry contexts.
-- **FR-020**: System MUST preserve required job application fields: company name, job title, status, and created date.
+- **FR-020**: System MUST preserve required job application fields: company name, job title, status, and last_status_update.
 - **FR-021**: System MUST validate required fields, URLs when provided, and dates before saving.
 - **FR-022**: System MUST support desktop and mobile browser use, labeled forms, keyboard navigation, and non-color-only status communication.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Job Application**: A tracked application record with required company name, job title, status, and created date; optional source platform, job posting URL, application date, salary (stored as numeric, displayed as ₱ formatted), notes, follow-up action, follow-up date, and favorite flag (boolean).
+- **Job Application**: A tracked application record with required company name, job title, status, and last_status_update; optional source platform, job posting URL, application date, salary (stored as a positive integer, displayed as ₱ formatted; zero treated as absent), notes, follow-up action, follow-up date, and favorite flag (boolean, default false).
 - **Filter State**: A persisted set of active filter values including status selection, search query, salary range, and favorites toggle — stored in local browser storage.
 
 ## Success Criteria *(mandatory)*
@@ -217,7 +194,7 @@ A developer or tester loading the seed data sees job descriptions that vary in t
 - **SC-004**: Salary values stored in the data layer are never truncated or altered by display formatting changes.
 - **SC-005**: The "Favorites only" filter, combined with a status filter, returns only applications satisfying both conditions — verifiable with a defined test dataset.
 - **SC-006**: Filter state (including favorites toggle) survives a page reload without requiring manual reconfiguration.
-- **SC-007**: Favorite, Change Status, and Archive quick actions complete from the overlay in no more than 2 interactions each, with no modal opened.
+- **SC-007**: Favorite and Change Status quick actions complete from the overlay in no more than 2 interactions each (click action → observe result or select from dropdown), with no full-screen modal opened. Archive requires 2 interactions: click Archive + confirm dialog — the browser confirmation dialog is not counted as a modal violation.
 - **SC-008**: Archive action provides a confirmation or visible undo affordance — no silent, irreversible archive operation is possible.
 - **SC-009**: Clicking a populated link field copies the URL to clipboard in all test cases where the clipboard API is available.
 - **SC-010**: The FAB is visible and tappable on mobile viewports, does not overlap primary content, and respects safe area boundaries.
@@ -227,7 +204,7 @@ A developer or tester loading the seed data sees job descriptions that vary in t
 ## Assumptions
 
 - The target user base is primarily based in the Philippines, making Philippine Peso the appropriate and sole currency for salary display and filtering.
-- "Archive" moves an application out of the default active view but does not permanently delete it; archived items remain accessible via a dedicated filter or separate section.
+- "Archive" moves an application out of the default active view but does not permanently delete it. Accessing archived items (via a dedicated filter or separate section) is out of scope for this feature.
 - The existing icon set (already in use in the application) contains suitable icons for all required actions including copy link, favorite, and archive.
 - The "Favorites" flag is a local UI preference and does not affect any sync, export, or sharing behavior.
 - "Mobile viewport" corresponds to screen widths where the current layout is difficult to use (typically ≤768px); the FAB is shown only at those widths and not on desktop.

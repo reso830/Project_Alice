@@ -22,8 +22,8 @@ The core `JobApplication` entity is unchanged structurally. Two fields gain clar
 | follow_up_action | string | ❌ | | |
 | follow_up_date | ISO date string | ❌ | valid date when present | |
 | compat | integer (0–100) \| null | ❌ | 0 ≤ value ≤ 100 | |
-| fav | boolean | ❌ | `true` or `false` | **Clarified**: must be boolean, default `false`. No null/undefined. |
-| archived | boolean | ❌ | `true` or `false` | Default `false`. Excluded from default list view when `true`. |
+| fav | boolean | ❌ | `true` or `false` | **Clarified**: must be boolean, default `false`. SQLite stores as 0/1 — coerce to boolean on read. Force to `false` when application is archived. |
+| archived | boolean | ❌ | `true` or `false` | Default `false`. Excluded from default list view when `true`. SQLite stores as 0/1 — coerce to boolean on read. |
 | recruiter | string | ❌ | | |
 | responsibilities | string | ❌ | | |
 | skills | JSON array of strings | ❌ | | |
@@ -31,13 +31,13 @@ The core `JobApplication` entity is unchanged structurally. Two fields gain clar
 
 ### Migration note
 
-Existing records with string salary values (e.g. `"$120,000 – $140,000"`) must be migrated to numeric integers in `db-seed.js`. The server should normalize any legacy string salary to `null` on read to prevent display errors until migration is complete.
+Existing records with string salary values (e.g. `"$120,000 – $140,000"`) must be migrated to numeric integers in `db-seed.js` using the existing `parseSalaryLower()` utility to recover the lower bound as an integer. Only fall back to `null` if parsing fails. The server should normalize any remaining legacy string salary to `null` on read to prevent display errors until migration is fully applied. The `archived` column may not exist in older DB schemas; add a migration step to create it with `DEFAULT 0` if absent.
 
 ---
 
 ## STATUS_CONFIG (updated)
 
-Defined in `src/models/application.js` and synced to `shared/constants.js`.
+Defined in `src/models/application.js`. `shared/constants.js` imports from `application.js` — do not maintain a duplicate definition there.
 
 | Key | Label | badgeBg | badgeText | borderAccent | Change |
 |---|---|---|---|---|---|
@@ -86,16 +86,16 @@ Output:  string
 
 Rules:
   null or undefined  →  ""
-  0                  →  "₱0"
-  positive integer   →  "₱" + toLocaleString('en-PH', { maximumFractionDigits: 0 })
+  0                  →  "" (treated as absent; salary of zero is not meaningful)
   negative integer   →  "" (treated as invalid; salary cannot be negative)
+  positive integer   →  "₱" + toLocaleString('en-PH', { maximumFractionDigits: 0 })
 ```
 
 Examples:
 - `formatPeso(150000)` → `"₱150,000"`
 - `formatPeso(50000)`  → `"₱50,000"`
 - `formatPeso(null)`   → `""`
-- `formatPeso(0)`      → `"₱0"`
+- `formatPeso(0)`      → `""`
 
 ---
 
@@ -104,20 +104,20 @@ Examples:
 ```text
 [active application in overlay]
   → user clicks Archive quick action
-  → application.archived set to true optimistically in local state
-  → toast displayed: "Application archived  [Undo]"  (2400ms auto-dismiss)
-  → timer running:
-      → undo clicked within window:
-          application.archived reverts to false
-          toast dismissed immediately
-          no API call made
-      → timer expires without undo:
-          PATCH /api/applications/:id  { archived: true }
-          overlay closes / card removed from active list
+  → window.confirm("Archive this application?") shown
+      → user cancels:
+          no state change; overlay remains open
+      → user confirms:
+          PATCH /api/applications/:id  { archived: true, fav: false }
+          → success:
+              overlay closes / card removed from active list
+          → failure:
+              UI state unchanged; error message shown to user
 
 [archived application]
   → excluded from default list view (archived: false filter applied by default)
-  → accessible via "Show archived" toggle (future scope; not in this feature)
+  → fav is always false on archived applications
+  → accessing archived items is out of scope for this feature
 ```
 
 ---
