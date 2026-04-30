@@ -76,6 +76,9 @@ export function render(options) {
   function updatePositions() {
     const minPercent = getPercent(localMin, options.min, options.max);
     const maxPercent = getPercent(localMax, options.min, options.max);
+    const trackWidth = track.getBoundingClientRect().width;
+    const thumbDistance = ((maxPercent - minPercent) / 100) * trackWidth;
+    const showBothLabels = activeThumb === null && (trackWidth === 0 || thumbDistance >= 40);
 
     minThumb.style.left = `${minPercent}%`;
     maxThumb.style.left = `${maxPercent}%`;
@@ -83,6 +86,8 @@ export function render(options) {
     maxValue.style.left = `${maxPercent}%`;
     minValue.textContent = formatWithFallback(localMin, options.formatValue);
     maxValue.textContent = formatWithFallback(localMax, options.formatValue);
+    minValue.hidden = activeThumb === 'max' || (!showBothLabels && activeThumb !== 'min');
+    maxValue.hidden = activeThumb === 'min';
     fill.style.left = `${minPercent}%`;
     fill.style.width = `${maxPercent - minPercent}%`;
     updateAria();
@@ -94,6 +99,7 @@ export function render(options) {
     maxThumb.style.zIndex = nextThumb === 'max' ? '4' : '2';
     minThumb.classList.toggle('range-thumb--active', nextThumb === 'min');
     maxThumb.classList.toggle('range-thumb--active', nextThumb === 'max');
+    updatePositions();
   }
 
   function clearActiveThumb() {
@@ -102,6 +108,7 @@ export function render(options) {
     maxThumb.style.zIndex = '2';
     minThumb.classList.remove('range-thumb--active');
     maxThumb.classList.remove('range-thumb--active');
+    updatePositions();
   }
 
   function getValueFromPointer(event) {
@@ -148,7 +155,6 @@ export function render(options) {
 
     localMin = snapped.min;
     localMax = snapped.max;
-    updatePositions();
     options.onCommit?.(localMin, localMax);
     detachDragListeners();
     clearActiveThumb();

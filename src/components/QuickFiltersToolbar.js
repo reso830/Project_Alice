@@ -41,6 +41,7 @@ function createSvgIcon(pathData) {
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
   svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
   svg.setAttribute('width', '15');
   svg.setAttribute('height', '15');
   svg.setAttribute('aria-hidden', 'true');
@@ -439,7 +440,7 @@ export function render(options = {}) {
   const erase = createEraseButton();
   const addButton = createAddButton();
 
-  toolbar.className = 'toolbar';
+  toolbar.className = 'toolbar subheader';
   left.className = 'toolbar__left';
   right.className = 'toolbar__right';
   label.className = 'toolbar__label';

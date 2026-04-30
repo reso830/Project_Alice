@@ -87,6 +87,7 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`All Applications ${apps.length}`);
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
     expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
+    expect(toolbar.classList.contains('subheader')).toBe(true);
     expect(toolbar.querySelector('.toolbar__left')?.contains(toolbar.querySelector('.toolbar__label')))
       .toBe(true);
     expect(toolbar.querySelector('.toolbar__right')?.contains(toolbar.querySelector('.toolbar__controls')))
@@ -105,6 +106,8 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect([...toolbar.querySelectorAll('.filter-btn')].every((button) => button.querySelector('svg.icon')))
+      .toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
   });
 

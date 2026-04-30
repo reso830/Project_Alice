@@ -47,6 +47,15 @@ describe('Card', () => {
     expect(copyButton.querySelector('svg')).not.toBeNull();
   });
 
+  it('uses normalized SVG icons for all card action buttons', () => {
+    const card = Card.render(application());
+    const actions = card.querySelectorAll('.card-btn');
+
+    expect(actions).toHaveLength(5);
+    expect([...actions].every((button) => button.textContent === '')).toBe(true);
+    expect([...actions].every((button) => button.querySelector('svg.icon'))).toBe(true);
+  });
+
   it('formats salary as Philippine Peso', () => {
     const card = Card.render(application({ salary: 150000 }));
 

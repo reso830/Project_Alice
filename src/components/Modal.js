@@ -64,8 +64,7 @@ function createClipboardIcon() {
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', '16');
-  svg.setAttribute('height', '16');
+  svg.setAttribute('class', 'icon');
   svg.setAttribute('aria-hidden', 'true');
   rect.setAttribute('x', '8');
   rect.setAttribute('y', '8');
@@ -86,11 +85,33 @@ function createClipboardIcon() {
   return svg;
 }
 
-function createQuickButton(label, className) {
+function createSvgIcon(pathData) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  path.setAttribute('d', pathData);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.append(path);
+
+  return svg;
+}
+
+function createQuickButton(label, className, icon) {
   const button = document.createElement('button');
+  const text = document.createElement('span');
+
   button.className = `modal-quick-action ${className}`;
   button.type = 'button';
-  button.textContent = label;
+  text.className = 'modal-quick-action__label';
+  text.textContent = label;
+  button.append(icon, text);
   return button;
 }
 
@@ -123,7 +144,13 @@ function updateStatusDate(lastStatusUpdate) {
 }
 
 function updateFavoriteButton(button, isFavorite) {
-  button.textContent = `${isFavorite ? '★' : '☆'} Favorite`;
+  const text = document.createElement('span');
+  const icon = createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z');
+
+  text.className = 'modal-quick-action__label';
+  text.textContent = 'Favorite';
+  icon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
+  button.replaceChildren(icon, text);
   button.setAttribute('aria-pressed', String(isFavorite));
 }
 
@@ -239,9 +266,21 @@ export function open(application, {
   const idPill = document.createElement('span');
   const title = document.createElement('h2');
   const quickActions = document.createElement('div');
-  const favoriteButton = createQuickButton('', 'modal-quick-action--favorite');
-  const statusButton = createQuickButton('⇄ Change Status', 'modal-quick-action--status');
-  const archiveButton = createQuickButton('Archive', 'modal-quick-action--archive');
+  const favoriteButton = createQuickButton(
+    'Favorite',
+    'modal-quick-action--favorite',
+    createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+  );
+  const statusButton = createQuickButton(
+    'Change Status',
+    'modal-quick-action--status',
+    createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
+  );
+  const archiveButton = createQuickButton(
+    'Archive',
+    'modal-quick-action--archive',
+    createSvgIcon('M5 5l14 14M19 5 5 19'),
+  );
   const body = document.createElement('div');
   let currentStatus = application.status;
   let currentFavorite = application.fav === true;

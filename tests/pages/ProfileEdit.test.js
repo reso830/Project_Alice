@@ -1447,10 +1447,37 @@ describe('ProfileEdit page', () => {
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     expect(document.querySelector('.profile-edit-subheader')).toBeTruthy();
+    expect(document.querySelector('.profile-edit-subheader').classList).toContain('subheader');
 
     ProfileEdit.unmount();
 
     expect(document.querySelector('.profile-edit-subheader')).toBeNull();
     expect(container.children).toHaveLength(0);
+  });
+
+  it('applies subheader styling class to entry overlays and uses SVG entry actions', async () => {
+    const container = createAppShell();
+
+    window.innerWidth = 1024;
+    api.getProfile.mockResolvedValue(createProfile({
+      experience: [{
+        role: 'Frontend Engineer',
+        company: 'Acme',
+        responsibilities: 'Build dashboards.',
+        dateStarted: '01/2024',
+        dateEnded: '02/2025',
+      }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const entry = getCard(container, 'PROFESSIONAL EXPERIENCE').querySelector('.entry-row');
+
+    expect(entry.querySelector('[aria-label="Edit entry"] svg.icon')).not.toBeNull();
+    expect(entry.querySelector('[aria-label="Remove entry"] svg.icon')).not.toBeNull();
+
+    getHeaderAddButton(getCard(container, 'PROFESSIONAL EXPERIENCE')).click();
+
+    expect(document.querySelector('.entry-overlay__header').classList).toContain('subheader');
   });
 });

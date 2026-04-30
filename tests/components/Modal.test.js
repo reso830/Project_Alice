@@ -80,8 +80,11 @@ describe('Modal', () => {
 
     Modal.open(application());
 
-    expect([...document.querySelectorAll('.modal-quick-action')].map((button) => button.textContent))
-      .toEqual(['☆ Favorite', '⇄ Change Status', 'Archive']);
+    const actions = [...document.querySelectorAll('.modal-quick-action')];
+
+    expect(actions.map((button) => button.textContent))
+      .toEqual(['Favorite', 'Change Status', 'Archive']);
+    expect(actions.every((button) => button.querySelector('svg.icon'))).toBe(true);
   });
 
   it('formats salary as Philippine Peso', () => {
@@ -110,7 +113,8 @@ describe('Modal', () => {
     await Promise.resolve();
 
     expect(api.update).toHaveBeenCalledWith(1, { fav: true });
-    expect(document.querySelector('.modal-quick-action--favorite').textContent).toBe('★ Favorite');
+    expect(document.querySelector('.modal-quick-action--favorite').textContent).toBe('Favorite');
+    expect(document.querySelector('.modal-quick-action--favorite svg.icon')).not.toBeNull();
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ fav: true }));
   });
 

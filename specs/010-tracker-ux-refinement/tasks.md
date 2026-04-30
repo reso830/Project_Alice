@@ -149,17 +149,17 @@
 
 **Independent Test**: Navigate Tracker, Edit Profile, Edit Application — subheader and navbar match. Drag each slider end-to-end — labels never overlap. Inspect all icons — SVG, 16px, hover feedback, no emoji.
 
-- [ ] T056 [P] [US7] Identify `.navbar` `background-color` and `box-shadow` CSS values in `src/styles/main.css`
-- [ ] T057 [US7] Update `.subheader` styles in `src/styles/main.css` — set `background-color` and `box-shadow` to match `.navbar` values (use CSS custom properties if already defined, otherwise copy values directly)
-- [ ] T058 [P] [US7] Apply the updated subheader style class/variables to the overlay subheader element in `src/pages/ProfileEdit.js`
-- [ ] T059 [P] [US7] Track active drag thumb in `src/components/RangeSlider.js` — `mousedown` / `touchstart` on each thumb sets an `activeThumb` index; `mouseup` / `touchend` clears it
-- [ ] T060 [US7] Update label rendering in `src/components/RangeSlider.js` — during drag show only the active thumb's value label; at rest show both labels when pixel distance between thumb positions ≥ 40px, otherwise show only the max-value label
-- [ ] T061 [P] [US7] Audit `src/components/Card.js`, `src/components/Modal.js`, `src/components/QuickFiltersToolbar.js` — replace any remaining emoji characters used as icons with inline SVG equivalents from the existing icon set
-- [ ] T062 [US7] Normalize action icon sizing in `src/styles/main.css` — add `.icon` or equivalent selector enforcing `width: 16px; height: 16px; flex-shrink: 0`
-- [ ] T063 [US7] Add hover/focus transitions for action icons in `src/styles/main.css` — `opacity` or `color` transition (e.g. `transition: opacity 0.15s ease`) on `.btn-icon:hover .icon` or equivalent
-- [ ] T064 [US7] Test compatibility slider across full range (0–100) — drag from min to max and confirm no label overlap at any position
-- [ ] T065 [US7] Test salary slider across full range (₱50,000–₱250,000+) — drag from min to max and confirm ₱ labels never overlap
-- [ ] T066 [US7] Visual audit — subheader and navbar have identical background and shadow on Tracker, ProfileEdit, and modal overlay subheader; all action icons are 16px, have hover feedback, and no emoji characters remain
+- [X] T056 [P] [US7] Identify `.navbar` `background-color` and `box-shadow` CSS values in `src/styles/main.css`
+- [X] T057 [US7] Update `.subheader` styles in `src/styles/main.css` — set `background-color` and `box-shadow` to match `.navbar` values (use CSS custom properties if already defined, otherwise copy values directly)
+- [X] T058 [P] [US7] Apply the updated subheader style class/variables to the overlay subheader element in `src/pages/ProfileEdit.js`
+- [X] T059 [P] [US7] Track active drag thumb in `src/components/RangeSlider.js` — `mousedown` / `touchstart` on each thumb sets an `activeThumb` index; `mouseup` / `touchend` clears it
+- [X] T060 [US7] Update label rendering in `src/components/RangeSlider.js` — during drag show only the active thumb's value label; at rest show both labels when pixel distance between thumb positions ≥ 40px, otherwise show only the max-value label
+- [X] T061 [P] [US7] Audit `src/components/Card.js`, `src/components/Modal.js`, `src/components/QuickFiltersToolbar.js` — replace any remaining emoji characters used as icons with inline SVG equivalents from the existing icon set
+- [X] T062 [US7] Normalize action icon sizing in `src/styles/main.css` — add `.icon` or equivalent selector enforcing `width: 16px; height: 16px; flex-shrink: 0`
+- [X] T063 [US7] Add hover/focus transitions for action icons in `src/styles/main.css` — `opacity` or `color` transition (e.g. `transition: opacity 0.15s ease`) on `.btn-icon:hover .icon` or equivalent
+- [X] T064 [US7] Test compatibility slider across full range (0–100) — drag from min to max and confirm no label overlap at any position
+- [X] T065 [US7] Test salary slider across full range (₱50,000–₱250,000+) — drag from min to max and confirm ₱ labels never overlap
+- [X] T066 [US7] Visual audit — subheader and navbar have identical background and shadow on Tracker, ProfileEdit, and modal overlay subheader; all action icons are 16px, have hover feedback, and no emoji characters remain
 
 **Checkpoint**: US7 complete — subheader visually matches navbar everywhere; both sliders are label-overlap free; all icons are SVG, 16px, with hover states.
 
