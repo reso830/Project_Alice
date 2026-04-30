@@ -2,6 +2,7 @@ import { STATUS_CONFIG } from '../models/application.js';
 import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
+import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
@@ -12,51 +13,6 @@ function createActionButton(className, icon) {
   button.append(icon);
 
   return button;
-}
-
-function createSvgIcon(pathData) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('aria-hidden', 'true');
-  path.setAttribute('d', pathData);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', 'currentColor');
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-  svg.append(path);
-
-  return svg;
-}
-
-function createClipboardIcon() {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('aria-hidden', 'true');
-  rect.setAttribute('x', '8');
-  rect.setAttribute('y', '8');
-  rect.setAttribute('width', '12');
-  rect.setAttribute('height', '12');
-  rect.setAttribute('rx', '2');
-  path.setAttribute('d', 'M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2');
-
-  for (const element of [rect, path]) {
-    element.setAttribute('fill', 'none');
-    element.setAttribute('stroke', 'currentColor');
-    element.setAttribute('stroke-width', '2');
-    element.setAttribute('stroke-linecap', 'round');
-    element.setAttribute('stroke-linejoin', 'round');
-  }
-
-  svg.append(rect, path);
-  return svg;
 }
 
 function createDetailCell(label, valueEl, modifier) {

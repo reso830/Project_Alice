@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/services/api.js', () => ({
+  archive: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -124,18 +125,18 @@ describe('Modal', () => {
     vi.spyOn(window, 'confirm')
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
-    api.update.mockResolvedValue({ ...application(), archived: true, fav: false });
+    api.archive.mockResolvedValue({ ...application(), archived: true, fav: false });
 
     Modal.open(application(), { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
 
-    expect(api.update).not.toHaveBeenCalled();
+    expect(api.archive).not.toHaveBeenCalled();
     expect(document.querySelector('.modal-backdrop')).not.toBeNull();
 
     document.querySelector('.modal-quick-action--archive').click();
     await Promise.resolve();
 
-    expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
+    expect(api.archive).toHaveBeenCalledWith(1);
     expect(onArchiveSuccess).toHaveBeenCalledWith(expect.objectContaining({ archived: true }));
     expect(document.querySelector('.modal-backdrop')).toBeNull();
   });
@@ -144,13 +145,13 @@ describe('Modal', () => {
     const onArchiveSuccess = vi.fn();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    api.update.mockRejectedValue(new Error('server error'));
+    api.archive.mockRejectedValue(new Error('server error'));
 
     Modal.open(application(), { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
     await Promise.resolve();
 
-    expect(api.update).toHaveBeenCalledWith(1, { archived: true, fav: false });
+    expect(api.archive).toHaveBeenCalledWith(1);
     expect(onArchiveSuccess).not.toHaveBeenCalled();
     expect(document.querySelector('.modal-backdrop')).not.toBeNull();
     expect(document.body.textContent).toContain('Archive failed');

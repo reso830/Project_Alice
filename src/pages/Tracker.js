@@ -282,6 +282,10 @@ function createCallbacks() {
       }
     },
     onArchive: async (id) => {
+      if (!window.confirm('Archive this application?')) {
+        return;
+      }
+
       try {
         await api.archive(coerceId(id));
         removeApplication(id);

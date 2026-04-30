@@ -59,6 +59,12 @@ function parseSalaryLower(value) {
     return null;
   }
 
+  const numericValue = Number(value);
+
+  if (Number.isInteger(numericValue) && numericValue > 0) {
+    return numericValue;
+  }
+
   const match = value.match(/\$\s*([\d,.]+)\s*([kK])?/);
 
   if (!match) {

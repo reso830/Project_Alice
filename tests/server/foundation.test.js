@@ -57,14 +57,14 @@ describe('application validation schemas', () => {
     expect(result).toEqual({ status: 'interview' });
   });
 
-  it('clamps compat and rejects invalid metadata values', () => {
-    expect(createSchema.parse({
+  it('rejects out-of-range compat and invalid metadata values', () => {
+    const compatResult = createSchema.safeParse({
       companyName: 'Acme',
       jobTitle: 'Engineer',
       status: 'applied',
       compat: 150,
       metadata: { source: 'manual' },
-    }).compat).toBe(100);
+    });
 
     const result = createSchema.safeParse({
       companyName: 'Acme',
@@ -73,6 +73,7 @@ describe('application validation schemas', () => {
       metadata: 'plain text',
     });
 
+    expect(compatResult.success).toBe(false);
     expect(result.success).toBe(false);
   });
 
@@ -135,9 +136,36 @@ describe('application row mapping', () => {
       jobTitle: 'Engineer',
       fav: true,
       archived: false,
+      salary: 100000,
       skills: ['JavaScript'],
       metadata: { source: 'manual' },
     });
+  });
+
+  it('maps numeric salary strings from SQLite rows', () => {
+    expect(toRecord({
+      id: 1,
+      company_name: 'Acme',
+      job_title: 'Engineer',
+      status: 'applied',
+      compat: 80,
+      fav: 0,
+      source_platform: null,
+      application_date: null,
+      job_posting_url: null,
+      recruiter: null,
+      notes: null,
+      salary: '120000',
+      responsibilities: '',
+      skills: '[]',
+      follow_up_action: null,
+      follow_up_date: null,
+      last_status_update: '2026-04-26',
+      created_at: '2026-04-26',
+      updated_at: '2026-04-26',
+      archived: 0,
+      metadata: null,
+    }).salary).toBe(120000);
   });
 
   it('maps only supplied API fields to SQL row fields', () => {

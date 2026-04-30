@@ -134,7 +134,10 @@ export function isAnyFilterActive(filterState) {
 export function getAvailableStatuses(apps, filterState) {
   const filtered = filterByCompat(
     filterBySalary(
-      filterByCompany(apps, filterState.companies),
+      filterByCompany(
+        filterByFavorites(apps, filterState.favoritesOnly),
+        filterState.companies,
+      ),
       filterState.salaryMin,
       filterState.salaryMax,
     ),
@@ -149,7 +152,10 @@ export function getAvailableStatuses(apps, filterState) {
 export function getAvailableCompanies(apps, filterState) {
   const filtered = filterByCompat(
     filterBySalary(
-      filterByStatus(apps, filterState.statuses),
+      filterByStatus(
+        filterByFavorites(apps, filterState.favoritesOnly),
+        filterState.statuses,
+      ),
       filterState.salaryMin,
       filterState.salaryMax,
     ),

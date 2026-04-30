@@ -330,8 +330,8 @@ describe('applications API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data).toMatchObject({
-        applicationDate: '',
-        followUpDate: '',
+        applicationDate: null,
+        followUpDate: null,
         jobPostingUrl: '',
       });
     });

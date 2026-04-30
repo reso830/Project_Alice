@@ -49,10 +49,13 @@ describe('createSchema', () => {
     expectFieldError(validPayload({ metadata: 'string' }), 'metadata');
   });
 
-  it('clamps compatibility score to 100', () => {
-    const result = createSchema.parse(validPayload({ compat: 150 }));
+  it('rejects out-of-range compatibility scores', () => {
+    const high = createSchema.safeParse(validPayload({ compat: 150 }));
+    const low = createSchema.safeParse(validPayload({ compat: -1 }));
 
-    expect(result.compat).toBe(100);
+    expect(high.success).toBe(false);
+    expect(low.success).toBe(false);
+    expect(toApiError(high.error).compat).toBe('Compatibility must be between 0 and 100');
   });
 
   it('accepts all optional fields omitted', () => {
@@ -73,8 +76,8 @@ describe('createSchema', () => {
     }));
 
     expect(result.jobPostingUrl).toBe('');
-    expect(result.applicationDate).toBe('');
-    expect(result.followUpDate).toBe('');
+    expect(result.applicationDate).toBeNull();
+    expect(result.followUpDate).toBeNull();
   });
 });
 
@@ -105,8 +108,8 @@ describe('updateSchema', () => {
       followUpDate: '',
     })).toEqual({
       jobPostingUrl: '',
-      applicationDate: '',
-      followUpDate: '',
+      applicationDate: null,
+      followUpDate: null,
     });
   });
 

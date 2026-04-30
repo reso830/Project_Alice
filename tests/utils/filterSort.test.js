@@ -147,6 +147,10 @@ describe('dynamic options', () => {
       salaryMax: 130000,
     })).toEqual(['interview', 'offer', 'withdrawn']);
     expect(getAvailableStatuses(apps, DEFAULT_FILTER_STATE)).toEqual(STATUS_VALUES);
+    expect(getAvailableStatuses(apps, {
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    })).toEqual(['wishlisted', 'offer']);
   });
 
   it('returns available companies after non-company filters alphabetically', () => {
@@ -157,6 +161,10 @@ describe('dynamic options', () => {
     })).toEqual(['Acme']);
     expect(getAvailableCompanies(apps, DEFAULT_FILTER_STATE))
       .toEqual(['Acme', 'Beta', 'Cobalt', 'Delta', 'Echo', 'Foxtrot', 'Zenith']);
+    expect(getAvailableCompanies(apps, {
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    })).toEqual(['Cobalt', 'Zenith']);
   });
 
   it('syncs unavailable selected statuses and companies out of state', () => {

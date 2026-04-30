@@ -16,6 +16,7 @@ const optionalBoolean = z.union([z.boolean(), z.null()])
 const dateField = (fieldLabel) => z.string()
   .regex(datePattern, `${fieldLabel} must use YYYY-MM-DD format`)
   .or(emptyString)
+  .transform((value) => (value === '' ? null : value))
   .optional();
 
 const jobPostingUrl = z.string()
@@ -29,7 +30,8 @@ const jobPostingUrl = z.string()
 
 const compat = z.number()
   .int('Compatibility score must be an integer')
-  .transform((value) => Math.max(0, Math.min(100, value)))
+  .min(0, 'Compatibility must be between 0 and 100')
+  .max(100, 'Compatibility must be between 0 and 100')
   .optional();
 
 const salary = z.union([

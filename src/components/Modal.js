@@ -3,6 +3,7 @@ import * as api from '../services/api.js';
 import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
+import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { StatusDropdown } from './StatusDropdown.js';
 import { Toast } from './Toast.js';
 
@@ -58,51 +59,6 @@ export function getHeaderContrastRatio(hexColor) {
   return contrastRatio(background, text);
 }
 
-function createClipboardIcon() {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('aria-hidden', 'true');
-  rect.setAttribute('x', '8');
-  rect.setAttribute('y', '8');
-  rect.setAttribute('width', '12');
-  rect.setAttribute('height', '12');
-  rect.setAttribute('rx', '2');
-  path.setAttribute('d', 'M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2');
-
-  for (const element of [rect, path]) {
-    element.setAttribute('fill', 'none');
-    element.setAttribute('stroke', 'currentColor');
-    element.setAttribute('stroke-width', '2');
-    element.setAttribute('stroke-linecap', 'round');
-    element.setAttribute('stroke-linejoin', 'round');
-  }
-
-  svg.append(rect, path);
-  return svg;
-}
-
-function createSvgIcon(pathData) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('aria-hidden', 'true');
-  path.setAttribute('d', pathData);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', 'currentColor');
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-  svg.append(path);
-
-  return svg;
-}
-
 function createQuickButton(label, className, icon) {
   const button = document.createElement('button');
   const text = document.createElement('span');
@@ -122,8 +78,7 @@ function applyHeaderStatus(header, status) {
   header.classList.add(getHeaderContrastClass(config.borderAccent));
 }
 
-function updateStatusBadge(status) {
-  const badge = document.querySelector('#modal-status-badge');
+function updateStatusBadge(badge, status) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
 
   if (!badge) {
@@ -284,6 +239,7 @@ export function open(application, {
   const body = document.createElement('div');
   let currentStatus = application.status;
   let currentFavorite = application.fav === true;
+  const statusBadge = createStatusBadge(application.status, { id: 'modal-status-badge' });
 
   backdrop.className = 'modal-backdrop';
   panel.className = 'modal-panel';
@@ -330,7 +286,7 @@ export function open(application, {
 
       currentStatus = updated.status ?? newStatus;
       applyHeaderStatus(header, currentStatus);
-      updateStatusBadge(currentStatus);
+      updateStatusBadge(statusBadge, currentStatus);
       updateStatusDate(updated.lastStatusUpdate);
       onApplicationUpdate?.(updated);
     });
@@ -342,7 +298,7 @@ export function open(application, {
     }
 
     try {
-      const updated = await api.update(application.id, { archived: true, fav: false });
+      const updated = await api.archive(application.id);
       onArchiveSuccess?.(updated);
       close();
     } catch {
@@ -355,7 +311,7 @@ export function open(application, {
       await navigator.clipboard.writeText(application.jobPostingUrl);
       Toast.show('Link copied', 'success');
     } catch {
-      Toast.show('Could not copy link', 'error');
+      Toast.show('Could not copy link', 'failure');
     }
   }
 
@@ -396,7 +352,7 @@ export function open(application, {
   const statusDateField = createField('Last status update', toDisplayDate(application.lastStatusUpdate));
   statusDateField.dataset.modalField = 'last-status-update';
 
-  headerMeta.append(idPill, createStatusBadge(application.status, { id: 'modal-status-badge' }));
+  headerMeta.append(idPill, statusBadge);
   titleRow.append(title);
   quickActions.append(favoriteButton, statusButton, archiveButton);
   header.append(headerMeta, titleRow, quickActions);
