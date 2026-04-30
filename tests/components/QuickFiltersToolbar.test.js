@@ -87,7 +87,12 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`All Applications ${apps.length}`);
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
     expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
+    expect(toolbar.querySelector('.toolbar__left')?.contains(toolbar.querySelector('.toolbar__label')))
+      .toBe(true);
+    expect(toolbar.querySelector('.toolbar__right')?.contains(toolbar.querySelector('.toolbar__controls')))
+      .toBe(true);
     expect(toolbar.querySelector('.toolbar__add')?.textContent).toBe('+ New application');
+    expect(toolbar.querySelector('.toolbar__add')?.classList.contains('new-app-btn')).toBe(true);
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Salary"]')?.getAttribute('aria-pressed'))

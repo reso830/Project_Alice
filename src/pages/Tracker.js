@@ -165,6 +165,20 @@ function onClearAll() {
   updateToolbar();
 }
 
+function onAddApplication() {}
+
+function createFab() {
+  const button = document.createElement('button');
+
+  button.className = 'fab';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'New application');
+  button.textContent = '+';
+  button.addEventListener('click', onAddApplication);
+
+  return button;
+}
+
 function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
   emptyState.className = 'empty-state empty-state--filter';
@@ -344,12 +358,14 @@ export async function mount(container) {
     onFilterChange,
     onSortChange,
     onClearAll,
-    onAddApplication: () => {},
+    onAddApplication,
   });
+  const fab = createFab();
+
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
-  _container.append(toolbar);
+  _container.append(toolbar, fab);
 
   try {
     _applications = await api.getAll();

@@ -1262,6 +1262,19 @@ button:focus-visible,
   background: var(--surface);
 }
 
+.toolbar__left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .toolbar__label {
   display: inline-flex;
   align-items: center;
@@ -1285,7 +1298,7 @@ button:focus-visible,
 }
 
 .toolbar__add {
-  margin-left: auto;
+  margin-left: 0;
   border: 0;
   border-radius: var(--r-sm);
   padding: 7px 11px;
@@ -1297,6 +1310,31 @@ button:focus-visible,
 }
 
 .toolbar__add:hover {
+  background: var(--indigo-hover);
+}
+
+.fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: #FFFFFF;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+
+.fab:hover {
   background: var(--indigo-hover);
 }
 
@@ -2320,6 +2358,32 @@ button:focus-visible,
   }
 }
 
+@media (max-width: 768px) {
+  .fab {
+    display: flex;
+  }
+
+  .new-app-btn {
+    display: none;
+  }
+
+  .toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toolbar__left {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .toolbar__right {
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 639px) {
   .navbar {
     padding: 0 14px;
@@ -2334,34 +2398,33 @@ button:focus-visible,
   }
 
   .toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
     padding: 10px 14px;
   }
 
   .toolbar__label {
-    grid-column: 1;
     min-width: 0;
   }
 
   .toolbar__add {
-    grid-column: 2;
-    margin-left: 0;
     padding: 7px 10px;
     white-space: nowrap;
   }
 
   .toolbar__controls {
-    grid-column: 1 / -1;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 4px;
   }
 
   .toolbar__filters,
-  .toolbar__actions,
+  .toolbar__actions {
+    display: flex;
+    gap: 4px;
+  }
+
   .filter-trigger {
-    display: contents;
+    display: inline-flex;
   }
 
   .filter-panel,

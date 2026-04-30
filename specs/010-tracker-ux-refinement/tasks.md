@@ -131,13 +131,13 @@
 
 **Independent Test**: Open tracker at 375px viewport. Confirm FAB is visible at bottom-right. Tap FAB; confirm new application flow opens. Confirm subheader is one row with no wrapping. At desktop width, confirm FAB is hidden and existing button is visible.
 
-- [ ] T049 [P] [US5] Add FAB `<button>` to `src/pages/Tracker.js` markup — class `.fab`, `aria-label="New application"`, same new-application click handler as the existing subheader button
-- [ ] T050 [P] [US5] Add `.fab` base styles in `src/styles/main.css` — `position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); right: 1.5rem; z-index: 200; display: none; border-radius: 50%; width: 56px; height: 56px`
-- [ ] T051 [US5] Add `@media (max-width: 768px)` rule in `src/styles/main.css` — `display: flex` on `.fab`; `display: none` on the subheader `.new-app-btn`
-- [ ] T052 [US5] Refactor subheader markup in `src/pages/Tracker.js` — wrap content in a flex row: left div (title/context), right div (quick filter icon buttons)
-- [ ] T053 [US5] Add mobile subheader CSS in `src/styles/main.css` inside `@media (max-width: 768px)` — `flex-direction: row; align-items: center; justify-content: space-between` on the subheader container
-- [ ] T054 [US5] Responsive test at 375px, 414px, 768px — FAB visible at bottom-right, safe area padding present, no content overlapped; desktop at 1280px — FAB hidden, existing button visible
-- [ ] T055 [US5] Confirm FAB `z-index` does not cover the overlay (`Modal.js`) — verify overlay appears above FAB when open
+- [X] T049 [P] [US5] Add FAB `<button>` to `src/pages/Tracker.js` markup — class `.fab`, `aria-label="New application"`, same new-application click handler as the existing subheader button
+- [X] T050 [P] [US5] Add `.fab` base styles in `src/styles/main.css` — `position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); right: 1.5rem; z-index: 200; display: none; border-radius: 50%; width: 56px; height: 56px`
+- [X] T051 [US5] Add `@media (max-width: 768px)` rule in `src/styles/main.css` — `display: flex` on `.fab`; `display: none` on the subheader `.new-app-btn`
+- [X] T052 [US5] Refactor subheader markup in `src/pages/Tracker.js` — wrap content in a flex row: left div (title/context), right div (quick filter icon buttons)
+- [X] T053 [US5] Add mobile subheader CSS in `src/styles/main.css` inside `@media (max-width: 768px)` — `flex-direction: row; align-items: center; justify-content: space-between` on the subheader container
+- [X] T054 [US5] Responsive test at 375px, 414px, 768px — FAB visible at bottom-right, safe area padding present, no content overlapped; desktop at 1280px — FAB hidden, existing button visible
+- [X] T055 [US5] Confirm FAB `z-index` does not cover the overlay (`Modal.js`) — verify overlay appears above FAB when open
 
 **Checkpoint**: US5 complete — FAB visible on mobile, does not obstruct content, subheader is single-row on mobile.
 

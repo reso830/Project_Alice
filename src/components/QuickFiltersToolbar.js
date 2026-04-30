@@ -299,7 +299,7 @@ function createEraseButton() {
 function createAddButton() {
   const button = document.createElement('button');
 
-  button.className = 'toolbar__add';
+  button.className = 'toolbar__add new-app-btn';
   button.type = 'button';
   button.textContent = '+ New application';
   button.addEventListener('click', () => {
@@ -382,6 +382,8 @@ export function render(options = {}) {
   };
 
   const toolbar = document.createElement('div');
+  const left = document.createElement('div');
+  const right = document.createElement('div');
   const label = document.createElement('span');
   const count = document.createElement('span');
   const controls = document.createElement('div');
@@ -438,6 +440,8 @@ export function render(options = {}) {
   const addButton = createAddButton();
 
   toolbar.className = 'toolbar';
+  left.className = 'toolbar__left';
+  right.className = 'toolbar__right';
   label.className = 'toolbar__label';
   count.className = 'count-badge';
   count.setAttribute('aria-live', 'polite');
@@ -448,7 +452,9 @@ export function render(options = {}) {
   filters.append(favorites.trigger, status.trigger, salary.trigger, compat.trigger, company.trigger);
   actions.append(sort.trigger);
   controls.append(filters, actions);
-  toolbar.append(label, controls, addButton);
+  left.append(label);
+  right.append(controls, addButton);
+  toolbar.append(left, right);
 
   _toolbarEl = toolbar;
   _labelEl = label;

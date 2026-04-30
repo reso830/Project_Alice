@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const toolbarRenderOptions = vi.hoisted(() => []);
@@ -27,6 +30,8 @@ vi.mock('../../src/services/api.js', () => ({
 
 import * as api from '../../src/services/api.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
+
+const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 afterEach(() => {
   Tracker.unmount();
@@ -57,6 +62,39 @@ function createApplication(id, overrides = {}) {
 }
 
 describe('Tracker quick filter toolbar integration', () => {
+  it('renders a mobile FAB that uses the same add-application callback surface as the toolbar', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([]);
+
+    await Tracker.mount(container);
+
+    const fab = container.querySelector('.fab');
+
+    expect(fab).not.toBeNull();
+    expect(fab.type).toBe('button');
+    expect(fab.getAttribute('aria-label')).toBe('New application');
+    expect(fab.textContent).toBe('+');
+    expect(toolbarRenderOptions[0].onAddApplication).toBeTypeOf('function');
+  });
+
+  it('defines responsive FAB, safe-area, desktop-hidden, and modal stacking styles', () => {
+    expect(mainCss).toContain('bottom: calc(1.5rem + env(safe-area-inset-bottom));');
+    expect(mainCss).toContain('right: 1.5rem;');
+    expect(mainCss).toContain('z-index: 200;');
+    expect(mainCss).toContain('width: 56px;');
+    expect(mainCss).toContain('height: 56px;');
+    expect(mainCss).toContain('border-radius: 50%;');
+    expect(mainCss).toContain('@media (max-width: 768px)');
+    expect(mainCss).toMatch(/\.fab \{\r?\n    display: flex;/);
+    expect(mainCss).toMatch(/\.new-app-btn \{\r?\n    display: none;/);
+    expect(mainCss).toContain('--z-modal: 300;');
+    expect(mainCss).toMatch(
+      /\.modal-backdrop \{\r?\n  position: fixed;\r?\n  inset: 0;\r?\n  z-index: var\(--z-modal\);/,
+    );
+  });
+
   it('preserves sort state across unmount and remount in the same session', async () => {
     const container = document.createElement('main');
     const sortState = { field: 'compat', direction: 'desc' };
