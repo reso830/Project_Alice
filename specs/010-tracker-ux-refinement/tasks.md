@@ -52,11 +52,11 @@
 
 **Independent Test**: Open the tracker with applications across all 9 statuses. Verify Wishlist shows pink on the card badge, the overlay header, and the status selector. Verify no two statuses share a badge background color.
 
-- [ ] T016 [P] [US1] Verify `Card.js` status badge applies `STATUS_CONFIG[status].badgeBg` and `badgeText` as inline styles — update if hardcoded colors exist
-- [ ] T017 [P] [US1] Verify `src/components/StatusDropdown.js` renders each option with `STATUS_CONFIG[status].badgeBg` and `borderAccent` — update any hardcoded color references
-- [ ] T018 [P] [US1] Verify `QuickFiltersToolbar.js` / `FilterPanel.js` status filter chips/options read colors from `STATUS_CONFIG` — update hardcoded values
-- [ ] T019 [US1] Add assertions in `tests/models/application.test.js` — `STATUS_CONFIG.wishlisted.badgeBg === '#FCE7F3'`; all 9 `badgeBg` values are unique strings
-- [ ] T020 [US1] Run `npm run test:run`; visually verify Wishlist renders pink on card badge, overlay header area, and status selector option
+- [X] T016 [P] [US1] Verify `Card.js` status badge applies `STATUS_CONFIG[status].badgeBg` and `badgeText` as inline styles — update if hardcoded colors exist
+- [X] T017 [P] [US1] Verify `src/components/StatusDropdown.js` renders each option with `STATUS_CONFIG[status].badgeBg` and `borderAccent` — update any hardcoded color references
+- [X] T018 [P] [US1] Verify `QuickFiltersToolbar.js` / `FilterPanel.js` status filter chips/options read colors from `STATUS_CONFIG` — update hardcoded values
+- [X] T019 [US1] Add assertions in `tests/models/application.test.js` — `STATUS_CONFIG.wishlisted.badgeBg === '#FCE7F3'`; all 9 `badgeBg` values are unique strings
+- [X] T020 [US1] Run `npm run test:run`; visually verify Wishlist renders pink on card badge, overlay header area, and status selector option
 
 **Checkpoint**: US1 complete — all 9 statuses are visually distinct, Wishlist is pink everywhere.
 

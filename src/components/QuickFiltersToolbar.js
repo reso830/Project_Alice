@@ -156,7 +156,10 @@ function renderStatusPanel() {
     options: getAvailableStatuses(_allApps, _filterState),
     selected: _filterState.statuses,
     getLabel: (status) => STATUS_CONFIG[status]?.label ?? status,
-    getDot: (status) => STATUS_CONFIG[status]?.badgeBg,
+    getDot: (status) => {
+      const config = STATUS_CONFIG[status];
+      return config ? { backgroundColor: config.badgeBg, borderColor: config.borderAccent } : null;
+    },
     onChange: (statuses) => {
       _callbacks.onFilterChange?.({ ..._filterState, statuses });
     },

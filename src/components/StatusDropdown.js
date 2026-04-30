@@ -56,7 +56,8 @@ function createOption(value, currentStatus, onChange) {
   label.textContent = config.label;
   check.className = 'status-option__check';
   check.textContent = value === currentStatus ? '✓' : '';
-  dot.style.backgroundColor = config.borderAccent;
+  dot.style.backgroundColor = config.badgeBg;
+  dot.style.border = `1px solid ${config.borderAccent}`;
 
   if (value === currentStatus) {
     option.classList.add('status-option--active');

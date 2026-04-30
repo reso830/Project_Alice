@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QuickFiltersToolbar } from '../../src/components/QuickFiltersToolbar.js';
+import { STATUS_CONFIG } from '../../src/models/application.js';
 import {
   DEFAULT_FILTER_STATE,
   DEFAULT_SORT_STATE,
@@ -67,6 +68,15 @@ function setRangeTrackRect(toolbar, { width = 200 } = {}) {
     bottom: 4,
     height: 4,
   });
+}
+
+function hexToRgb(hex) {
+  const value = hex.replace('#', '');
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+
+  return `rgb(${red}, ${green}, ${blue})`;
 }
 
 describe('QuickFiltersToolbar', () => {
@@ -136,6 +146,18 @@ describe('QuickFiltersToolbar', () => {
       ...DEFAULT_FILTER_STATE,
       statuses: ['applied'],
     });
+  });
+
+  it('renders status filter dots from STATUS_CONFIG colors', () => {
+    const { toolbar } = renderToolbar();
+    const statusButton = toolbar.querySelector('[aria-label="Filter by Status"]');
+
+    statusButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const appliedDot = toolbar.querySelector('[data-value="applied"] .filter-panel__dot');
+
+    expect(appliedDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.badgeBg));
+    expect(appliedDot.style.border).toBe(`1px solid ${hexToRgb(STATUS_CONFIG.applied.borderAccent)}`);
   });
 
   it('calls onAddApplication from the primary toolbar action', () => {

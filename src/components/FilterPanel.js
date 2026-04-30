@@ -6,6 +6,18 @@ function getOptionDot(value, getDot) {
   return typeof getDot === 'function' ? getDot(value) : null;
 }
 
+function applyDotColor(dot, color) {
+  if (typeof color === 'string') {
+    dot.style.backgroundColor = color;
+    return;
+  }
+
+  if (color && typeof color === 'object') {
+    dot.style.backgroundColor = color.backgroundColor ?? '';
+    dot.style.border = color.borderColor ? `1px solid ${color.borderColor}` : '';
+  }
+}
+
 function toggleSelection(selected, value) {
   if (selected.includes(value)) {
     return selected.filter((current) => current !== value);
@@ -37,7 +49,7 @@ function createOptionRow(value, selected, options) {
   if (dotColor) {
     const dot = document.createElement('span');
     dot.className = 'filter-panel__dot';
-    dot.style.backgroundColor = dotColor;
+    applyDotColor(dot, dotColor);
     row.append(dot);
   }
 
