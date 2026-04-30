@@ -113,13 +113,13 @@
 
 **Independent Test**: Open an application with a salary value; confirm it shows `₱[amount]`. Open the salary filter slider; confirm bounds are ₱50,000 and ₱250,000+.
 
-- [ ] T042 [P] [US4] Update salary display in `src/components/Card.js` — call `formatPeso(application.salary)` from `src/utils/currency.js`; remove any prior string rendering logic
-- [ ] T043 [P] [US4] Update salary display in `src/components/Modal.js` — call `formatPeso(application.salary)`; remove any prior string rendering logic
-- [ ] T044 [P] [US4] Update salary filter slider in `src/components/QuickFiltersToolbar.js` — set slider `min = 50000`, `max = 250000`; render tick/label values through `formatPeso()`; display max as `₱250,000+`
-- [ ] T045 [P] [US4] Simplify salary parsing in `src/utils/filterSort.js` — remove `parseSalaryLower()` / `parseSalaryRange()` string-parsing branches now that salary is always a numeric integer; treat salary as integer directly in `filterBySalary()` and `getSalaryBounds()`
-- [ ] T046 [P] [US4] Add `filterBySalary()` edge case tests in `tests/utils/filterSort.test.js` — null salary is always included when no minimum is set; salary=0 is treated as absent (included regardless of filter range); values ≥250,000 are captured by the ₱250,000+ bucket
-- [ ] T047 [US4] Run `tests/utils/currency.test.js` and `tests/utils/filterSort.test.js` — all pass
-- [ ] T048 [US4] Visual check — salary shows as `₱150,000` (no decimal) on cards, modal, and filter slider labels; null/zero salary renders as empty/hidden
+- [X] T042 [P] [US4] Update salary display in `src/components/Card.js` — call `formatPeso(application.salary)` from `src/utils/currency.js`; remove any prior string rendering logic
+- [X] T043 [P] [US4] Update salary display in `src/components/Modal.js` — call `formatPeso(application.salary)`; remove any prior string rendering logic
+- [X] T044 [P] [US4] Update salary filter slider in `src/components/QuickFiltersToolbar.js` — set slider `min = 50000`, `max = 250000`; render tick/label values through `formatPeso()`; display max as `₱250,000+`
+- [X] T045 [P] [US4] Simplify salary parsing in `src/utils/filterSort.js` — remove `parseSalaryLower()` / `parseSalaryRange()` string-parsing branches now that salary is always a numeric integer; treat salary as integer directly in `filterBySalary()` and `getSalaryBounds()`
+- [X] T046 [P] [US4] Add `filterBySalary()` edge case tests in `tests/utils/filterSort.test.js` — null salary is always included when no minimum is set; salary=0 is treated as absent (included regardless of filter range); values ≥250,000 are captured by the ₱250,000+ bucket
+- [X] T047 [US4] Run `tests/utils/currency.test.js` and `tests/utils/filterSort.test.js` — all pass
+- [X] T048 [US4] Visual check — salary shows as `₱150,000` (no decimal) on cards, modal, and filter slider labels; null/zero salary renders as empty/hidden
 
 **Checkpoint**: US4 complete — salary always renders ₱ formatted with no decimals; filter range is ₱50k–₱250k+.
 

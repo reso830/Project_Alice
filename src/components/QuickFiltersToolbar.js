@@ -7,6 +7,7 @@ import {
   isDefaultSort,
   isAnyFilterActive,
 } from '../utils/filterSort.js';
+import { formatPeso } from '../utils/currency.js';
 import { FilterPanel } from './FilterPanel.js';
 import { RangeSlider } from './RangeSlider.js';
 import { SortPanel } from './SortPanel.js';
@@ -31,6 +32,9 @@ let _filterState = null;
 let _sortState = null;
 let _salaryBounds = null;
 let _callbacks = {};
+
+const SALARY_FILTER_MIN = 50000;
+const SALARY_FILTER_MAX = 250000;
 
 function createSvgIcon(pathData) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -197,15 +201,16 @@ function createRangePanel(slider) {
 }
 
 function formatSalary(value) {
-  return `$${Math.round(value / 1000)}k`;
+  const formatted = formatPeso(value);
+  return value >= SALARY_FILTER_MAX ? `${formatted}+` : formatted;
 }
 
 function renderSalaryPanel() {
   return createRangePanel(RangeSlider.render({
-    min: _salaryBounds.min,
-    max: _salaryBounds.max,
-    valueMin: _filterState.salaryMin ?? _salaryBounds.min,
-    valueMax: _filterState.salaryMax ?? _salaryBounds.max,
+    min: SALARY_FILTER_MIN,
+    max: SALARY_FILTER_MAX,
+    valueMin: _filterState.salaryMin ?? SALARY_FILTER_MIN,
+    valueMax: _filterState.salaryMax ?? SALARY_FILTER_MAX,
     step: SALARY_STEP,
     formatValue: formatSalary,
     ariaLabelMin: 'Minimum salary',
@@ -213,8 +218,8 @@ function renderSalaryPanel() {
     onCommit: (min, max) => {
       _callbacks.onFilterChange?.({
         ..._filterState,
-        salaryMin: min === _salaryBounds.min ? null : min,
-        salaryMax: max === _salaryBounds.max ? null : max,
+        salaryMin: min === SALARY_FILTER_MIN ? null : min,
+        salaryMax: max === SALARY_FILTER_MAX ? null : max,
       });
     },
   }));

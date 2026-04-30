@@ -1,4 +1,5 @@
 import { STATUS_CONFIG } from '../models/application.js';
+import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { CompatBar } from './CompatBar.js';
@@ -141,7 +142,7 @@ export function render(application, callbacks = {}) {
   responsibilities.textContent = displayValue(application.responsibilities);
 
   salary.className = 'salary';
-  salary.textContent = displayValue(application.salary);
+  salary.textContent = formatPeso(application.salary);
 
   if (application._corrupt) {
     const warning = document.createElement('span');

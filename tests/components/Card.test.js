@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Card } from '../../src/components/Card.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
+import { formatPeso } from '../../src/utils/currency.js';
 
 function application(overrides = {}) {
   return {
@@ -44,5 +45,17 @@ describe('Card', () => {
 
     expect(copyButton.textContent).toBe('');
     expect(copyButton.querySelector('svg')).not.toBeNull();
+  });
+
+  it('formats salary as Philippine Peso', () => {
+    const card = Card.render(application({ salary: 150000 }));
+
+    expect(card.querySelector('.salary').textContent).toBe(formatPeso(150000));
+  });
+
+  it('renders empty salary text for absent salary values', () => {
+    const card = Card.render(application({ salary: 0 }));
+
+    expect(card.querySelector('.salary').textContent).toBe('');
   });
 });

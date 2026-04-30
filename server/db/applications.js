@@ -1,6 +1,5 @@
 import { db } from '../db.js';
 import { STATUS_VALUES } from '../../shared/constants.js';
-import { parseSalaryLower } from '../../src/utils/filterSort.js';
 
 const FIELD_TO_COLUMN = {
   companyName: 'company_name',
@@ -53,6 +52,26 @@ function parseJson(value, fallback) {
   }
 
   return JSON.parse(value);
+}
+
+function parseSalaryLower(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  const match = value.match(/\$\s*([\d,.]+)\s*([kK])?/);
+
+  if (!match) {
+    return null;
+  }
+
+  const amount = Number(match[1].replace(/,/g, ''));
+
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
+
+  return Math.round(match[2] ? amount * 1000 : amount);
 }
 
 function normalizeSalary(value) {

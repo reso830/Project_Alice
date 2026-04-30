@@ -1,5 +1,6 @@
 import { STATUS_CONFIG } from '../models/application.js';
 import * as api from '../services/api.js';
+import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { StatusDropdown } from './StatusDropdown.js';
@@ -126,7 +127,7 @@ function updateFavoriteButton(button, isFavorite) {
   button.setAttribute('aria-pressed', String(isFavorite));
 }
 
-function createField(label, value, fullSpan = false) {
+function createField(label, value, fullSpan = false, { preserveEmpty = false } = {}) {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('span');
@@ -135,7 +136,7 @@ function createField(label, value, fullSpan = false) {
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value';
   labelEl.textContent = label;
-  valueEl.textContent = displayValue(value);
+  valueEl.textContent = preserveEmpty ? value : displayValue(value);
 
   row.append(labelEl, valueEl);
 
@@ -363,7 +364,7 @@ export function open(application, {
   body.append(
     createField('Company', application.companyName),
     createField('Recruiter', application.recruiter),
-    createField('Salary', application.salary),
+    createField('Salary', formatPeso(application.salary), false, { preserveEmpty: true }),
     createField('Compatibility', `${application.compat}%`),
     statusDateField,
     createField('Responsibilities', application.responsibilities, true),

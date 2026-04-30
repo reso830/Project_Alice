@@ -12,6 +12,8 @@ export const DEFAULT_FILTER_STATE = {
 
 export const DEFAULT_SORT_STATE = { field: 'id', direction: 'asc' };
 export const SALARY_STEP = 1000;
+const SALARY_FILTER_MIN = 50000;
+const SALARY_FILTER_MAX = 250000;
 
 function hasSelections(values) {
   return Array.isArray(values) && values.length > 0;
@@ -33,60 +35,14 @@ function compareStrings(a, b) {
   return String(a ?? '').localeCompare(String(b ?? ''));
 }
 
-export function parseSalaryLower(salaryStr) {
-  if (typeof salaryStr !== 'string' || salaryStr.trim() === '') {
-    return null;
-  }
-
-  const match = salaryStr.match(/\$\s*([\d,.]+)\s*([kK])?/);
-
-  if (!match) {
-    return null;
-  }
-
-  const amount = Number(match[1].replace(/,/g, ''));
-
-  if (!Number.isFinite(amount)) {
-    return null;
-  }
-
-  return Math.round(match[2] ? amount * 1000 : amount);
-}
-
-export function parseSalaryRange(salaryStr) {
-  if (typeof salaryStr !== 'string') {
-    return null;
-  }
-
-  const [lowerPart, upperPart] = salaryStr.split('-');
-  const min = parseSalaryLower(lowerPart ?? '');
-
-  if (min === null) {
-    return null;
-  }
-
-  const max = parseSalaryLower(upperPart ?? '');
-
-  return { min, max: max ?? min };
+function hasSalaryValue(salary) {
+  return Number.isInteger(salary) && salary > 0;
 }
 
 export function getSalaryBounds(apps) {
-  const ranges = apps
-    .map((app) => parseSalaryRange(app.salary))
-    .filter((range) => range !== null);
+  const hasSalaryData = apps.some((app) => hasSalaryValue(app.salary));
 
-  if (ranges.length === 0) {
-    return { min: 0, max: 200000, hasSalaryData: false };
-  }
-
-  const min = Math.min(...ranges.map((range) => range.min));
-  const max = Math.max(...ranges.map((range) => range.max));
-
-  return {
-    min: Math.round(min / SALARY_STEP) * SALARY_STEP,
-    max: Math.round(max / SALARY_STEP) * SALARY_STEP,
-    hasSalaryData: true,
-  };
+  return { min: SALARY_FILTER_MIN, max: SALARY_FILTER_MAX, hasSalaryData };
 }
 
 export function filterByStatus(apps, statuses) {
@@ -119,16 +75,20 @@ export function filterBySalary(apps, min, max) {
   }
 
   const lowerBound = normalizeBound(min, Number.NEGATIVE_INFINITY);
-  const upperBound = normalizeBound(max, Number.POSITIVE_INFINITY);
+  const upperBound = max === null || max >= SALARY_FILTER_MAX
+    ? Number.POSITIVE_INFINITY
+    : max;
 
   return apps.filter((app) => {
-    const range = parseSalaryRange(app.salary);
-
-    if (!range) {
-      return false;
+    if (app.salary === 0) {
+      return true;
     }
 
-    return range.min <= upperBound && range.max >= lowerBound;
+    if (!hasSalaryValue(app.salary)) {
+      return min === null;
+    }
+
+    return app.salary >= lowerBound && app.salary <= upperBound;
   });
 }
 
@@ -233,8 +193,8 @@ export function sortApplications(apps, sortState) {
       result = compareNumbers(a.compat, b.compat);
     } else if (sortState.field === 'salary') {
       result = compareNumbers(
-        parseSalaryLower(a.salary) ?? Number.POSITIVE_INFINITY,
-        parseSalaryLower(b.salary) ?? Number.POSITIVE_INFINITY,
+        hasSalaryValue(a.salary) ? a.salary : Number.POSITIVE_INFINITY,
+        hasSalaryValue(b.salary) ? b.salary : Number.POSITIVE_INFINITY,
       );
     } else if (sortState.field === 'companyName') {
       result = compareStrings(a.companyName, b.companyName);

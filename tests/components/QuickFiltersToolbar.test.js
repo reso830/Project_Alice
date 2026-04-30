@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QuickFiltersToolbar } from '../../src/components/QuickFiltersToolbar.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
+import { formatPeso } from '../../src/utils/currency.js';
 import {
   DEFAULT_FILTER_STATE,
   DEFAULT_SORT_STATE,
@@ -12,21 +13,21 @@ const apps = [
     id: 1,
     status: 'applied',
     companyName: 'Acme',
-    salary: '$110k-$130k',
+    salary: 110000,
     compat: 80,
   },
   {
     id: 2,
     status: 'interview',
     companyName: 'Beta',
-    salary: '$90k-$120k',
+    salary: 90000,
     compat: 72,
   },
   {
     id: 3,
     status: 'offer',
     companyName: 'Acme',
-    salary: '$140k',
+    salary: 140000,
     compat: 92,
   },
 ];
@@ -38,7 +39,7 @@ function renderToolbar(overrides = {}) {
     filteredCount: apps.length,
     filterState: { ...DEFAULT_FILTER_STATE },
     sortState: { ...DEFAULT_SORT_STATE },
-    salaryBounds: { min: 90000, max: 140000, hasSalaryData: true },
+    salaryBounds: { min: 50000, max: 250000, hasSalaryData: true },
     onFilterChange: vi.fn(),
     onSortChange: vi.fn(),
     onClearAll: vi.fn(),
@@ -230,7 +231,6 @@ describe('QuickFiltersToolbar', () => {
     const onFilterChange = vi.fn();
     const { toolbar } = renderToolbar({
       filterState: { ...DEFAULT_FILTER_STATE, salaryMin: 50000 },
-      salaryBounds: { min: 0, max: 200000, hasSalaryData: true },
       onFilterChange,
     });
 
@@ -274,7 +274,6 @@ describe('QuickFiltersToolbar', () => {
   it('converts partial salary range commits with full max back to a null upper bound', () => {
     const onFilterChange = vi.fn();
     const { toolbar } = renderToolbar({
-      salaryBounds: { min: 0, max: 200000, hasSalaryData: true },
       onFilterChange,
     });
 
@@ -288,7 +287,7 @@ describe('QuickFiltersToolbar', () => {
 
     expect(onFilterChange).toHaveBeenCalledWith({
       ...DEFAULT_FILTER_STATE,
-      salaryMin: 50000,
+      salaryMin: 100000,
       salaryMax: null,
     });
   });
@@ -303,7 +302,7 @@ describe('QuickFiltersToolbar', () => {
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 100, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 55, bubbles: true }));
 
-    expect(toolbar.querySelector('.range-value--max').textContent).toBe('$118k');
+    expect(toolbar.querySelector('.range-value--max').textContent).toBe(formatPeso(160000));
 
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
     toolbar.querySelector('[aria-label="Filter by Compatibility"]')
@@ -327,6 +326,16 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('[aria-label="Filter by Status"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Compatibility"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Company"]').disabled).toBe(false);
+  });
+
+  it('renders salary range bounds in Philippine Peso with the top bucket label', () => {
+    const { toolbar } = renderToolbar();
+
+    toolbar.querySelector('[aria-label="Filter by Salary"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(toolbar.querySelector('.range-bounds').textContent)
+      .toBe(`${formatPeso(50000)}${formatPeso(250000)}+`);
   });
 
   it('calls onSortChange from the sort panel and restores default sort', () => {

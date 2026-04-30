@@ -12,6 +12,7 @@ import {
   getHeaderContrastRatio,
 } from '../../src/components/Modal.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
+import { formatPeso } from '../../src/utils/currency.js';
 
 function application(overrides = {}) {
   return {
@@ -37,6 +38,12 @@ function hexToRgb(hex) {
   const blue = Number.parseInt(value.slice(4, 6), 16);
 
   return `rgb(${red}, ${green}, ${blue})`;
+}
+
+function getSalaryFieldValue() {
+  return [...document.querySelectorAll('.modal-field')]
+    .find((field) => field.querySelector('.modal-field__label')?.textContent === 'Salary')
+    ?.querySelector('.modal-field__value');
 }
 
 afterEach(() => {
@@ -75,6 +82,22 @@ describe('Modal', () => {
 
     expect([...document.querySelectorAll('.modal-quick-action')].map((button) => button.textContent))
       .toEqual(['☆ Favorite', '⇄ Change Status', 'Archive']);
+  });
+
+  it('formats salary as Philippine Peso', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ salary: 150000 }));
+
+    expect(document.body.textContent).toContain(formatPeso(150000));
+  });
+
+  it('renders empty salary text for absent salary values', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ salary: null }));
+
+    expect(getSalaryFieldValue().textContent).toBe('');
   });
 
   it('toggles favorite through PATCH and updates the quick action state', async () => {

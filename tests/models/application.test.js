@@ -18,7 +18,7 @@ function validRecord(overrides = {}) {
     fav: false,
     responsibilities: 'Build UI',
     skills: ['JavaScript'],
-    salary: '$120k',
+    salary: 120000,
     recruiter: 'Jane Smith',
     jobPostingUrl: 'https://jobs.example.com/frontend',
     ...overrides,

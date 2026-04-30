@@ -46,7 +46,7 @@ function createApplication(id, overrides = {}) {
     status: 'applied',
     lastStatusUpdate: '2026-04-27',
     compat: id,
-    salary: `$${80 + id}k-$${90 + id}k`,
+    salary: (80 + id) * 1000,
     fav: false,
     skills: [],
     responsibilities: '',
@@ -109,7 +109,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const container = document.createElement('main');
 
     window.scrollTo = vi.fn();
-    api.getAll.mockResolvedValue([createApplication(1, { salary: '$80k-$90k' })]);
+    api.getAll.mockResolvedValue([createApplication(1, { salary: 80000 })]);
 
     await Tracker.mount(container);
     toolbarRenderOptions[0].onFilterChange({
