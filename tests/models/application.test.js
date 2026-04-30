@@ -99,8 +99,14 @@ describe('normalizeApplication', () => {
     }));
 
     expect(record.responsibilities).toBe('');
-    expect(record.salary).toBe('');
+    expect(record.salary).toBeNull();
     expect(record.recruiter).toBe('');
     expect(record.jobPostingUrl).toBe('');
+  });
+
+  it('preserves positive integer salary values', () => {
+    const record = normalizeApplication(validRecord({ salary: 150000 }));
+
+    expect(record.salary).toBe(150000);
   });
 });

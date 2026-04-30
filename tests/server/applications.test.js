@@ -284,7 +284,7 @@ describe('applications API', () => {
     });
   });
 
-  it('strips archived from update payloads and keeps archived state unchanged', async () => {
+  it('updates archived state and resets fav to false through the update endpoint', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
@@ -292,19 +292,17 @@ describe('applications API', () => {
           companyName: 'Acme Corp',
           jobTitle: 'Frontend Engineer',
           status: 'applied',
+          fav: true,
         }),
-      });
-      const archived = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
-        method: 'POST',
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ archived: false }),
+        body: JSON.stringify({ archived: true }),
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toEqual(archived.body.data);
       expect(response.body.data.archived).toBe(true);
+      expect(response.body.data.fav).toBe(false);
     });
   });
 
@@ -591,6 +589,54 @@ describe('applications API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.fav).toBe(true);
+    });
+  });
+
+  it('coerces null favorite updates to false through the update endpoint', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          fav: true,
+        }),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fav: null }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.fav).toBe(false);
+    });
+  });
+
+  it('rejects string salary updates through the update endpoint', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+        }),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ salary: '$120k' }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        fields: {
+          salary: expect.any(String),
+        },
+      });
     });
   });
 });

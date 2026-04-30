@@ -17,8 +17,8 @@
 
 **Purpose**: Baseline verification and new file scaffolding before any changes.
 
-- [ ] T001 Run `npm run test:run` to record passing baseline before any modifications
-- [ ] T002 [P] Create `src/utils/currency.js` with an empty `formatPeso` export stub
+- [X] T001 Run `npm run test:run` to record passing baseline before any modifications
+- [X] T002 [P] Create `src/utils/currency.js` with an empty `formatPeso` export stub
 
 ---
 
@@ -28,19 +28,19 @@
 
 **⚠️ CRITICAL**: Phases 3–9 all depend on this phase completing first.
 
-- [ ] T003 [P] Update `wishlisted` entry in `STATUS_CONFIG` in `src/models/application.js` — set `badgeBg: '#FCE7F3'`, `badgeText: '#9D174D'`, `borderAccent: '#EC4899'`
-- [ ] T004 [P] Consolidate `shared/constants.js` — remove the duplicate `STATUS_COLORS` definition and import `STATUS_CONFIG` from `src/models/application.js` instead; update any consumers that reference `STATUS_COLORS` directly
-- [ ] T005 [P] Implement `formatPeso(value)` in `src/utils/currency.js` — `null`/`undefined`/`0`/negative → `""`, positive integer → `"₱X,XXX"` via `toLocaleString('en-PH', { maximumFractionDigits: 0 })`
-- [ ] T006 [P] Write unit tests for `formatPeso()` in `tests/utils/currency.test.js` — cover: `null` → `""`, `undefined` → `""`, `0` → `""`, `150000` → `"₱150,000"`, `50000` → `"₱50,000"`, negative integer → `""`
-- [ ] T007 [P] Add `favoritesOnly: false` to `DEFAULT_FILTER_STATE` in `src/utils/filterSort.js`
-- [ ] T008 [P] Implement `filterByFavorites(apps, favoritesOnly)` in `src/utils/filterSort.js` — returns all apps when `favoritesOnly` is false; filters to `app.fav === true` when true; add call inside `applyFilters()`
-- [ ] T009 Write unit tests for `filterByFavorites()` in `tests/utils/filterSort.test.js` — cover: `favoritesOnly: false` returns all, `favoritesOnly: true` with no favorites returns empty, partial favorites, combined with `statuses` filter returns intersection
-- [ ] T010 [P] Add server-side field normalization in the server application data layer — coerce `fav` (SQLite 0/1) to boolean; coerce `archived` (SQLite 0/1) to boolean, defaulting to `false` when absent; use `parseSalaryLower()` to convert legacy string salary to integer on read, falling back to `null` only on parse failure
-- [ ] T011 [P] Add `salary` integer validation to the `PATCH /api/applications/:id` handler in `server/routes/applications.js` — reject non-integer non-null values with HTTP 400 `{ "error": "Salary must be a positive integer or null" }`
-- [ ] T012 Write server-side validation tests in `tests/server/validation.test.js` — PATCH with string salary returns 400; PATCH with `fav: null` is coerced to `false` in the returned record; PATCH `{ archived: true }` returns `fav: false` in the response record
-- [ ] T013 [P] Check DB schema in `server/db.js` or the migration setup — if the `archived` column does not exist on the `applications` table, add an `ALTER TABLE` migration with `DEFAULT 0`; ensure this runs before seed and API handler
-- [ ] T014 [P] Convert all salary string values to integer literals in `server/db-seed.js` using `parseSalaryLower()` (e.g. `"$120,000 – $140,000"` → `120000`); set to `null` only where parsing fails
-- [ ] T015 [P] Update client-side seed in `src/main.js` — convert any salary string values to integers
+- [X] T003 [P] Update `wishlisted` entry in `STATUS_CONFIG` in `src/models/application.js` — set `badgeBg: '#FCE7F3'`, `badgeText: '#9D174D'`, `borderAccent: '#EC4899'`
+- [X] T004 [P] Consolidate `shared/constants.js` — remove the duplicate `STATUS_COLORS` definition and import `STATUS_CONFIG` from `src/models/application.js` instead; update any consumers that reference `STATUS_COLORS` directly
+- [X] T005 [P] Implement `formatPeso(value)` in `src/utils/currency.js` — `null`/`undefined`/`0`/negative → `""`, positive integer → `"₱X,XXX"` via `toLocaleString('en-PH', { maximumFractionDigits: 0 })`
+- [X] T006 [P] Write unit tests for `formatPeso()` in `tests/utils/currency.test.js` — cover: `null` → `""`, `undefined` → `""`, `0` → `""`, `150000` → `"₱150,000"`, `50000` → `"₱50,000"`, negative integer → `""`
+- [X] T007 [P] Add `favoritesOnly: false` to `DEFAULT_FILTER_STATE` in `src/utils/filterSort.js`
+- [X] T008 [P] Implement `filterByFavorites(apps, favoritesOnly)` in `src/utils/filterSort.js` — returns all apps when `favoritesOnly` is false; filters to `app.fav === true` when true; add call inside `applyFilters()`
+- [X] T009 Write unit tests for `filterByFavorites()` in `tests/utils/filterSort.test.js` — cover: `favoritesOnly: false` returns all, `favoritesOnly: true` with no favorites returns empty, partial favorites, combined with `statuses` filter returns intersection
+- [X] T010 [P] Add server-side field normalization in the server application data layer — coerce `fav` (SQLite 0/1) to boolean; coerce `archived` (SQLite 0/1) to boolean, defaulting to `false` when absent; use `parseSalaryLower()` to convert legacy string salary to integer on read, falling back to `null` only on parse failure
+- [X] T011 [P] Add `salary` integer validation to the `PATCH /api/applications/:id` handler in `server/routes/applications.js` — reject non-integer non-null values with HTTP 400 `{ "error": "Salary must be a positive integer or null" }`
+- [X] T012 Write server-side validation tests in `tests/server/validation.test.js` — PATCH with string salary returns 400; PATCH with `fav: null` is coerced to `false` in the returned record; PATCH `{ archived: true }` returns `fav: false` in the response record
+- [X] T013 [P] Check DB schema in `server/db.js` or the migration setup — if the `archived` column does not exist on the `applications` table, add an `ALTER TABLE` migration with `DEFAULT 0`; ensure this runs before seed and API handler
+- [X] T014 [P] Convert all salary string values to integer literals in `server/db-seed.js` using `parseSalaryLower()` (e.g. `"$120,000 – $140,000"` → `120000`); set to `null` only where parsing fails
+- [X] T015 [P] Update client-side seed in `src/main.js` — convert any salary string values to integers
 
 **Checkpoint**: Foundation ready — `formatPeso()` implemented and tested, STATUS_CONFIG updated and consolidated, `filterByFavorites()` tested, server normalization in place, `archived` column exists, seed data uses numeric salary. All user story phases can now begin.
 

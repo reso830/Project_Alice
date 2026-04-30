@@ -9,6 +9,9 @@ const requiredString = (fieldLabel) => z.string({
 
 const optionalText = z.string().optional();
 const emptyString = z.literal('');
+const optionalBoolean = z.union([z.boolean(), z.null()])
+  .transform((value) => value === true)
+  .optional();
 
 const dateField = (fieldLabel) => z.string()
   .regex(datePattern, `${fieldLabel} must use YYYY-MM-DD format`)
@@ -29,6 +32,13 @@ const compat = z.number()
   .transform((value) => Math.max(0, Math.min(100, value)))
   .optional();
 
+const salary = z.union([
+  z.number()
+    .int('Salary must be a positive integer or null')
+    .positive('Salary must be a positive integer or null'),
+  z.null(),
+]).optional();
+
 const metadata = z.union([
   z.record(z.string(), z.unknown()),
   z.array(z.unknown()),
@@ -47,13 +57,13 @@ const writableFields = {
   jobTitle: requiredString('Job title'),
   status,
   compat,
-  fav: z.boolean().optional(),
+  fav: optionalBoolean,
   sourcePlatform: optionalText,
   applicationDate: dateField('Application date'),
   jobPostingUrl,
   recruiter: optionalText,
   notes: optionalText,
-  salary: optionalText,
+  salary,
   responsibilities: optionalText,
   skills: z.array(z.string()).optional(),
   followUpAction: optionalText,
@@ -65,6 +75,7 @@ export const createSchema = z.object(writableFields).strip();
 
 export const updateSchema = z.object({
   ...writableFields,
+  archived: optionalBoolean,
   companyName: writableFields.companyName.optional(),
   jobTitle: writableFields.jobTitle.optional(),
   status: writableFields.status.optional(),

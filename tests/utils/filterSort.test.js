@@ -6,6 +6,7 @@ import {
   applyFilters,
   filterByCompany,
   filterByCompat,
+  filterByFavorites,
   filterBySalary,
   filterByStatus,
   getAvailableCompanies,
@@ -20,12 +21,12 @@ import {
 } from '../../src/utils/filterSort.js';
 
 const apps = [
-  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: '$110k-$130k', compat: 84 },
+  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: '$110k-$130k', compat: 84, fav: true },
   { id: 2, status: 'applied', companyName: 'Acme', salary: '$95k-$115k', compat: 72 },
   { id: 3, status: 'phone_screen', companyName: 'Beta', salary: '$80k-$90k', compat: 55 },
   { id: 4, status: 'interview', companyName: 'Acme', salary: '$125k-$145k', compat: 91 },
   { id: 5, status: 'assessment', companyName: 'Delta', salary: '$150k-$170k', compat: 64 },
-  { id: 6, status: 'offer', companyName: 'Cobalt', salary: '$120k', compat: 99 },
+  { id: 6, status: 'offer', companyName: 'Cobalt', salary: '$120k', compat: 99, fav: true },
   { id: 7, status: 'rejected', companyName: 'Beta', salary: '', compat: 15 },
   { id: 8, status: 'withdrawn', companyName: 'Echo', salary: 'competitive', compat: 0 },
   { id: 9, status: 'ghosted', companyName: 'Foxtrot', salary: '$95,000-$115,000', compat: 72 },
@@ -85,6 +86,12 @@ describe('filter helpers', () => {
     expect(ids(filterByCompat(apps, 72, 91))).toEqual([1, 2, 4, 9, 10]);
     expect(ids(filterByCompat(apps, 0, 0))).toEqual([8]);
   });
+
+  it('filters by favorites only when the favorites toggle is enabled', () => {
+    expect(filterByFavorites(apps, false)).toBe(apps);
+    expect(ids(filterByFavorites(apps, true))).toEqual([1, 6]);
+    expect(filterByFavorites([{ id: 11, fav: false }], true)).toEqual([]);
+  });
 });
 
 describe('applyFilters', () => {
@@ -100,6 +107,11 @@ describe('applyFilters', () => {
       salaryMin: 120000,
       salaryMax: 130000,
     }))).toEqual([10]);
+    expect(ids(applyFilters(apps, {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['offer'],
+      favoritesOnly: true,
+    }))).toEqual([6]);
     expect(applyFilters(apps, DEFAULT_FILTER_STATE)).toBe(apps);
   });
 });
@@ -110,6 +122,7 @@ describe('isAnyFilterActive', () => {
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, statuses: ['applied'] })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, salaryMin: 100000 })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, compatMax: 90 })).toBe(true);
+    expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, favoritesOnly: true })).toBe(true);
   });
 });
 

@@ -13,7 +13,7 @@ function validPayload(overrides = {}) {
     jobPostingUrl: 'https://example.com/jobs/frontend',
     recruiter: 'Jane Smith',
     notes: 'Referred by a friend',
-    salary: '$120k',
+    salary: 120000,
     responsibilities: 'Build product UI',
     skills: ['JavaScript', 'React'],
     followUpAction: 'Send follow-up',
@@ -112,5 +112,17 @@ describe('updateSchema', () => {
 
   it('accepts empty objects as valid no-op updates', () => {
     expect(updateSchema.parse({})).toEqual({});
+  });
+
+  it('rejects string salary updates', () => {
+    const result = updateSchema.safeParse({ salary: '$120k' });
+
+    expect(result.success).toBe(false);
+    expect(toApiError(result.error).salary).toBe('Invalid input');
+  });
+
+  it('coerces null favorite updates to false and accepts archive updates', () => {
+    expect(updateSchema.parse({ fav: null })).toEqual({ fav: false });
+    expect(updateSchema.parse({ archived: true })).toEqual({ archived: true });
   });
 });

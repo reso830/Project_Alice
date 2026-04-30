@@ -7,6 +7,7 @@ export const DEFAULT_FILTER_STATE = {
   salaryMax: null,
   compatMin: null,
   compatMax: null,
+  favoritesOnly: false,
 };
 
 export const DEFAULT_SORT_STATE = { field: 'id', direction: 'asc' };
@@ -104,6 +105,14 @@ export function filterByCompany(apps, companies) {
   return apps.filter((app) => companies.includes(app.companyName));
 }
 
+export function filterByFavorites(apps, favoritesOnly) {
+  if (!favoritesOnly) {
+    return apps;
+  }
+
+  return apps.filter((app) => app.fav === true);
+}
+
 export function filterBySalary(apps, min, max) {
   if (min === null && max === null) {
     return apps;
@@ -138,7 +147,10 @@ export function applyFilters(apps, filterState) {
   return filterByCompat(
     filterBySalary(
       filterByCompany(
-        filterByStatus(apps, filterState.statuses),
+        filterByFavorites(
+          filterByStatus(apps, filterState.statuses),
+          filterState.favoritesOnly,
+        ),
         filterState.companies,
       ),
       filterState.salaryMin,
@@ -155,7 +167,8 @@ export function isAnyFilterActive(filterState) {
     || filterState.salaryMin !== null
     || filterState.salaryMax !== null
     || filterState.compatMin !== null
-    || filterState.compatMax !== null;
+    || filterState.compatMax !== null
+    || filterState.favoritesOnly === true;
 }
 
 export function getAvailableStatuses(apps, filterState) {

@@ -1,12 +1,22 @@
 import { isValidISODate, toISODate } from '../utils/date.js';
-import { STATUS_VALUES } from '../../shared/constants.js';
+export const STATUS_VALUES = [
+  'wishlisted',
+  'applied',
+  'phone_screen',
+  'interview',
+  'assessment',
+  'offer',
+  'rejected',
+  'withdrawn',
+  'ghosted',
+];
 
 export const STATUS_CONFIG = {
   wishlisted: {
     label: 'Wishlisted',
-    badgeBg: '#F3E8FF',
-    badgeText: '#6B21A8',
-    borderAccent: '#9333EA',
+    badgeBg: '#FCE7F3',
+    badgeText: '#9D174D',
+    borderAccent: '#EC4899',
   },
   applied: {
     label: 'Applied',
@@ -58,8 +68,6 @@ export const STATUS_CONFIG = {
   },
 };
 
-export { STATUS_VALUES };
-
 function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;
 }
@@ -89,10 +97,14 @@ function clampCompat(value) {
 export function normalizeApplication(record) {
   const normalized = { ...record };
 
-  for (const field of ['responsibilities', 'salary', 'recruiter', 'jobPostingUrl']) {
+  for (const field of ['responsibilities', 'recruiter', 'jobPostingUrl']) {
     if (typeof normalized[field] !== 'string') {
       normalized[field] = '';
     }
+  }
+
+  if (!Number.isInteger(normalized.salary) || normalized.salary <= 0) {
+    normalized.salary = null;
   }
 
   return normalized;
