@@ -4,11 +4,11 @@
 
 After each implementation phase, Claude must explicitly PASS the phase before moving forward.
 
-A file is created per phase:
+A file is created per phase inside the feature directory:
 
 ```
-.ai-phase-01-review
-.ai-phase-02-review
+specs/<feature>/.ai-phase-01-review
+specs/<feature>/.ai-phase-02-review
 ```
 
 Values:
