@@ -1,5 +1,9 @@
 # REPO_MAP.md
 
+## Purpose
+
+This file guides AI-assisted implementation. It is not full documentation; it is a navigation shortcut to reduce unnecessary repo scanning.
+
 Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite persistence. No framework, no state manager.
 
 **Stack:** Vite 5 · Express 4 · better-sqlite3 · Zod · Vitest
@@ -94,6 +98,17 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 
 ---
 
+## Where to Start (Quick Guide)
+
+- UI change → `src/pages/Tracker.js` → relevant component in `src/components/`
+- Form/modal change → `src/components/Modal.js` → `src/models/application.js`
+- Data model change → `shared/constants.js` → `server/validation/application.js` → `src/models/application.js`
+- Backend/API issue → `server/routes/applications.js` → `server/db/applications.js`
+- Filter/sort behavior → `src/utils/filterSort.js` → `src/pages/Tracker.js` wiring
+- Pagination behavior → `src/utils/pagination.js` → `src/components/Pagination.js` → `src/pages/Tracker.js`
+
+---
+
 ## Key Boundaries
 
 - **Tracker page** is self-contained — filters, sort, and pagination state live only in `Tracker.js`. Calendar and Profile are independent.
@@ -124,6 +139,11 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 
 ## Notes for AI Implementation
 
+Before exploring:
+- Identify target files from `tasks.md`
+- Limit inspection to those files unless expansion is required
+- If expanding scope, state why before inspecting more files
+
 **Start here:**
 - Feature touching UI → `src/pages/Tracker.js` to understand wiring, then the relevant component
 - Feature touching data shape → `src/models/application.js` + `shared/constants.js` first
@@ -132,6 +152,6 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 **Do NOT scan unless necessary:**
 - `server/db-seed.js`, `server/db-clear.js` — dev tooling only, never touches production logic
 - `src/assets/` — static images, no logic
-- `src/data/store.js` — legacy file, likely superseded by direct API calls in Tracker.js
+- `src/data/store.js` — legacy, avoid unless task explicitly requires it
 
 **Validation lives in two places** — always update both client (`src/models/`) and server (`server/validation/`) when changing field rules.
