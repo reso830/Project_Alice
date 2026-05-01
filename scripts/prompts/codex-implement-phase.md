@@ -10,17 +10,17 @@ Inputs:
 - {{SPEC_DIR}}/tasks.md
 - {{SPEC_DIR}}/plan.md
 - {{SPEC_DIR}}/spec.md
-
-Optional (if present):
-- {{SPEC_DIR}}/context.md
 - docs/REPO_MAP.md
+
+Optional:
+- {{SPEC_DIR}}/context.md
 
 ---
 
 ## Context Loading
 
 Before implementation, read:
-- docs/REPO_MAP.md (if exists)
+- docs/REPO_MAP.md
 - {{SPEC_DIR}}/tasks.md
 - {{SPEC_DIR}}/plan.md
 - {{SPEC_DIR}}/context.md (if exists)
