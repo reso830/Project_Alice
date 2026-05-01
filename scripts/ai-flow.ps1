@@ -25,7 +25,9 @@ $ErrorActionPreference = "Stop"
 $Root = Resolve-Path "$PSScriptRoot/.."
 $PromptDir = Join-Path $Root "scripts/prompts"
 $BootstrapLogDir = Join-Path $Root "logs/ai-flow"
+$TempPromptDir = Join-Path $Root "logs/ai-flow/prompts"
 New-Item -ItemType Directory -Force -Path $BootstrapLogDir | Out-Null
+New-Item -ItemType Directory -Force -Path $TempPromptDir | Out-Null
 
 $script:FeatureSlug = $FeatureName
 $script:SpecDir = $null
@@ -113,8 +115,34 @@ function Load-Prompt {
     return $Prompt
 }
 
-function Run-Claude { param([string]$Prompt, [string]$LogFile); Write-Host "Running Claude..." -ForegroundColor Cyan; claude -p $Prompt | Tee-Object -FilePath $LogFile }
-function Run-Codex { param([string]$Prompt, [string]$LogFile); Write-Host "Running Codex..." -ForegroundColor Cyan; codex exec $Prompt | Tee-Object -FilePath $LogFile }
+function Write-PromptFile {
+    param([string]$Prompt, [string]$ToolName)
+    $SafeFeature = $FeatureName -replace '[^a-zA-Z0-9_.-]', '-'
+    $FileName = "{0}-{1}-{2}.md" -f $SafeFeature, $ToolName, ([guid]::NewGuid().ToString("N"))
+    $PromptPath = Join-Path $TempPromptDir $FileName
+    Set-Content -Path $PromptPath -Value $Prompt -Encoding UTF8
+    return (Resolve-Path $PromptPath).Path
+}
+
+function Run-Claude {
+    param([string]$Prompt, [string]$LogFile)
+    Write-Host "Running Claude..." -ForegroundColor Cyan
+    $PromptPath = Write-PromptFile -Prompt $Prompt -ToolName "claude"
+    $RunnerPrompt = "Read and follow the full instructions in this local prompt file: $PromptPath"
+    & claude -p $RunnerPrompt 2>&1 | Tee-Object -FilePath $LogFile
+    $ExitCode = $LASTEXITCODE
+    if ($ExitCode -ne 0) { throw "Claude failed with exit code $ExitCode. See log: $LogFile. Prompt file: $PromptPath" }
+}
+
+function Run-Codex {
+    param([string]$Prompt, [string]$LogFile)
+    Write-Host "Running Codex..." -ForegroundColor Cyan
+    $PromptPath = Write-PromptFile -Prompt $Prompt -ToolName "codex"
+    $RunnerPrompt = "Read and follow the full instructions in this local prompt file: $PromptPath"
+    & codex exec $RunnerPrompt 2>&1 | Tee-Object -FilePath $LogFile
+    $ExitCode = $LASTEXITCODE
+    if ($ExitCode -ne 0) { throw "Codex failed with exit code $ExitCode. See log: $LogFile. Prompt file: $PromptPath" }
+}
 
 function Require-Approval {
     param([string]$Message)
