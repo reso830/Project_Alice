@@ -126,11 +126,7 @@ function Require-Approval {
 
 function Show-GitStatus { Write-Host ""; Write-Host "Current git status:" -ForegroundColor Cyan; git status --short }
 
-function Set-RequirementsReady {
-    param([bool]$Ready)
-    if ($Ready) { Set-Content -Path $script:ReadinessPath -Value "READY" }
-    else { Set-Content -Path $script:ReadinessPath -Value "NOT_READY" }
-}
+function Set-RequirementsReady { param([bool]$Ready); if ($Ready) { Set-Content -Path $script:ReadinessPath -Value "READY" } else { Set-Content -Path $script:ReadinessPath -Value "NOT_READY" } }
 
 function Update-RequirementsReadinessFromLog {
     param([string]$LogFile)
@@ -145,13 +141,26 @@ function Update-RequirementsReadinessFromLog {
 }
 
 function Assert-RequirementsReady {
-    if (!(Test-Path $script:ReadinessPath)) {
-        throw "Requirements gate not found. Run: ./scripts/ai-flow.ps1 req-review $FeatureName"
-    }
+    if (!(Test-Path $script:ReadinessPath)) { throw "Requirements gate not found. Run: ./scripts/ai-flow.ps1 req-review $FeatureName" }
     $State = (Get-Content $script:ReadinessPath -Raw).Trim()
-    if ($State -ne "READY") {
-        throw "Requirements are not marked READY. Resolve Codex blockers, rerun req-review, then implement. Current gate: $State"
+    if ($State -ne "READY") { throw "Requirements are not marked READY. Resolve Codex blockers, rerun req-review, then implement. Current gate: $State" }
+}
+
+function Get-PhaseGatePath { param([int]$PhaseNumber); return (Join-Path $script:SpecDir (".ai-phase-{0:D2}-review" -f $PhaseNumber)) }
+function Set-PhaseGate { param([int]$PhaseNumber, [string]$State); Set-Content -Path (Get-PhaseGatePath -PhaseNumber $PhaseNumber) -Value $State }
+
+function Update-PhaseGateFromLog {
+    param([int]$PhaseNumber, [string]$LogFile)
+    $Content = Get-Content $LogFile -Raw
+    if ($Content -match '(?im)^\s*(1\.\s*)?Pass\s*(\r?\n|$)' -and $Content -notmatch '(?im)^\s*(1\.\s*)?Needs\s+Changes\s*(\r?\n|$)') {
+        Set-PhaseGate -PhaseNumber $PhaseNumber -State "PASS"
+        Write-Host "Phase $("{0:D2}" -f $PhaseNumber) review gate marked PASS." -ForegroundColor Green
+        return $true
     }
+
+    Set-PhaseGate -PhaseNumber $PhaseNumber -State "NEEDS_CHANGES"
+    Write-Host "Phase $("{0:D2}" -f $PhaseNumber) review gate marked NEEDS_CHANGES. Fix findings before advancing." -ForegroundColor Red
+    return $false
 }
 
 function Get-PhaseHeadings {
@@ -182,12 +191,18 @@ function Show-Phases {
     Write-Host ""; Write-Host "Feature directory: specs/$script:FeatureId" -ForegroundColor Cyan
     if (Test-Path $script:ReadinessPath) { Write-Host "Requirements gate: $((Get-Content $script:ReadinessPath -Raw).Trim())" -ForegroundColor Cyan }
     Write-Host "Detected phases:" -ForegroundColor Cyan
-    foreach ($Item in (Get-PhaseHeadings)) { $Marker = if ($Item.Number -eq $Current) { "*" } else { " " }; Write-Host ("{0} Phase {1:D2} - {2}" -f $Marker, $Item.Number, $Item.Title) }
+    foreach ($Item in (Get-PhaseHeadings)) {
+        $Marker = if ($Item.Number -eq $Current) { "*" } else { " " }
+        $GatePath = Get-PhaseGatePath -PhaseNumber $Item.Number
+        $Gate = if (Test-Path $GatePath) { (Get-Content $GatePath -Raw).Trim() } else { "PENDING" }
+        Write-Host ("{0} Phase {1:D2} [{2}] - {3}" -f $Marker, $Item.Number, $Gate, $Item.Title)
+    }
 }
 
 function Run-ImplementPhase {
     param([int]$SelectedPhase)
     Assert-RequirementsReady
+    Set-PhaseGate -PhaseNumber $SelectedPhase -State "PENDING_REVIEW"
     Require-Approval "Have all requirement blockers been resolved for Phase $("{0:D2}" -f $SelectedPhase)?"
     $Prompt = Load-Prompt -TemplateName "codex-implement-phase" -Phase $SelectedPhase
     Run-Codex -Prompt $Prompt -LogFile "$script:LogDir/06-codex-phase-$("{0:D2}" -f $SelectedPhase).log"
@@ -199,7 +214,10 @@ function Run-CheckImplementation {
     param([int]$SelectedPhase)
     Require-Approval "Have you reviewed Codex's Phase $("{0:D2}" -f $SelectedPhase) implementation diff locally?"
     $Prompt = Load-Prompt -TemplateName "claude-check-implementation" -Phase $SelectedPhase
-    Run-Claude -Prompt $Prompt -LogFile "$script:LogDir/07-claude-check-phase-$("{0:D2}" -f $SelectedPhase).log"
+    $ReviewLog = "$script:LogDir/07-claude-check-phase-$("{0:D2}" -f $SelectedPhase).log"
+    Run-Claude -Prompt $Prompt -LogFile $ReviewLog
+    $Passed = Update-PhaseGateFromLog -PhaseNumber $SelectedPhase -LogFile $ReviewLog
+    if (!$Passed) { Show-GitStatus; throw "Phase $("{0:D2}" -f $SelectedPhase) did not pass Claude review. Fix findings, rerun implementation/fixes, then rerun check-next." }
     $NextPhase = Get-NextPhaseAfter -Current $SelectedPhase
     if ($null -ne $NextPhase) { Set-CurrentPhase -Value $NextPhase; Write-Host ""; Write-Host "Next phase set to Phase $("{0:D2}" -f $NextPhase)." -ForegroundColor Green }
     else { Write-Host ""; Write-Host "No remaining phases detected." -ForegroundColor Green }
