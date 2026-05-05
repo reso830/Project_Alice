@@ -10,6 +10,13 @@ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 export const db = new Database(DB_PATH);
 
+function ensureColumn(targetDb, table, column, definition) {
+  const columns = targetDb.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((entry) => entry.name === column)) {
+    targetDb.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 export function initSchema(targetDb = db) {
   targetDb.exec(`
     CREATE TABLE IF NOT EXISTS applications (
@@ -42,5 +49,13 @@ export function initSchema(targetDb = db) {
       ON applications(archived);
     CREATE INDEX IF NOT EXISTS idx_applications_created
       ON applications(created_at);
+
+    CREATE TABLE IF NOT EXISTS profile (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      data        TEXT    NOT NULL,
+      updated_at  TEXT    NOT NULL
+    );
   `);
+
+  ensureColumn(targetDb, 'applications', 'archived', 'INTEGER NOT NULL DEFAULT 0');
 }

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QuickFiltersToolbar } from '../../src/components/QuickFiltersToolbar.js';
+import { STATUS_CONFIG } from '../../src/models/application.js';
 import {
   DEFAULT_FILTER_STATE,
   DEFAULT_SORT_STATE,
@@ -11,21 +12,21 @@ const apps = [
     id: 1,
     status: 'applied',
     companyName: 'Acme',
-    salary: '$110k-$130k',
+    salary: 110000,
     compat: 80,
   },
   {
     id: 2,
     status: 'interview',
     companyName: 'Beta',
-    salary: '$90k-$120k',
+    salary: 90000,
     compat: 72,
   },
   {
     id: 3,
     status: 'offer',
     companyName: 'Acme',
-    salary: '$140k',
+    salary: 140000,
     compat: 92,
   },
 ];
@@ -37,7 +38,7 @@ function renderToolbar(overrides = {}) {
     filteredCount: apps.length,
     filterState: { ...DEFAULT_FILTER_STATE },
     sortState: { ...DEFAULT_SORT_STATE },
-    salaryBounds: { min: 90000, max: 140000, hasSalaryData: true },
+    salaryBounds: { min: 50000, max: 250000, hasSalaryData: true },
     onFilterChange: vi.fn(),
     onSortChange: vi.fn(),
     onClearAll: vi.fn(),
@@ -56,8 +57,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function setRangeTrackRect(toolbar, { width = 200 } = {}) {
-  const track = toolbar.querySelector('.range-track');
+function setRangeTrackRect(_toolbar, { width = 200 } = {}) {
+  const track = document.querySelector('.range-track');
 
   track.getBoundingClientRect = () => ({
     left: 0,
@@ -69,14 +70,29 @@ function setRangeTrackRect(toolbar, { width = 200 } = {}) {
   });
 }
 
+function hexToRgb(hex) {
+  const value = hex.replace('#', '');
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
 describe('QuickFiltersToolbar', () => {
   it('renders the default label, count, and inactive filter buttons', () => {
     const { toolbar } = renderToolbar();
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`All Applications ${apps.length}`);
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`Applications ${apps.length}`);
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
     expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
+    expect(toolbar.classList.contains('subheader')).toBe(true);
+    expect(toolbar.querySelector('.toolbar__left')?.contains(toolbar.querySelector('.toolbar__label')))
+      .toBe(true);
+    expect(toolbar.querySelector('.toolbar__right')?.contains(toolbar.querySelector('.toolbar__controls')))
+      .toBe(true);
     expect(toolbar.querySelector('.toolbar__add')?.textContent).toBe('+ New application');
+    expect(toolbar.querySelector('.toolbar__add')?.classList.contains('new-app-btn')).toBe(true);
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Salary"]')?.getAttribute('aria-pressed'))
@@ -85,8 +101,12 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Company"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
     expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect([...toolbar.querySelectorAll('.filter-btn')].every((button) => button.querySelector('svg.icon')))
+      .toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
   });
 
@@ -128,7 +148,7 @@ describe('QuickFiltersToolbar', () => {
     const statusButton = toolbar.querySelector('[aria-label="Filter by Status"]');
 
     statusButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    toolbar.querySelector('[data-value="applied"]')
+    document.querySelector('[data-value="applied"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect(onFilterChange).toHaveBeenCalledOnce();
@@ -136,6 +156,47 @@ describe('QuickFiltersToolbar', () => {
       ...DEFAULT_FILTER_STATE,
       statuses: ['applied'],
     });
+  });
+
+  it('toggles favorites-only filtering from the toolbar button', () => {
+    const onFilterChange = vi.fn();
+    const { toolbar } = renderToolbar({ onFilterChange });
+
+    toolbar.querySelector('[aria-label="Favorites only"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenCalledWith({
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    });
+  });
+
+  it('updates favorites-only pressed state for active filters', () => {
+    const { toolbar } = renderToolbar();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: 1,
+      filterState: { ...DEFAULT_FILTER_STATE, favoritesOnly: true },
+      sortState: DEFAULT_SORT_STATE,
+    });
+
+    expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(toolbar.dataset.activeFilterCount).toBe('1');
+  });
+
+  it('renders status filter dots from STATUS_CONFIG colors', () => {
+    const { toolbar } = renderToolbar();
+    const statusButton = toolbar.querySelector('[aria-label="Filter by Status"]');
+
+    statusButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const appliedDot = document.querySelector('[data-value="applied"] .filter-panel__dot');
+
+    expect(appliedDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.borderAccent));
+    expect(appliedDot.style.border).toBe('');
   });
 
   it('calls onAddApplication from the primary toolbar action', () => {
@@ -156,7 +217,7 @@ describe('QuickFiltersToolbar', () => {
     });
     const buttons = [...toolbar.querySelectorAll('.filter-btn')];
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     expect(buttons.every((button) => button.disabled)).toBe(true);
     expect(buttons.every((button) => button.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
@@ -177,14 +238,13 @@ describe('QuickFiltersToolbar', () => {
     const onFilterChange = vi.fn();
     const { toolbar } = renderToolbar({
       filterState: { ...DEFAULT_FILTER_STATE, salaryMin: 50000 },
-      salaryBounds: { min: 0, max: 200000, hasSalaryData: true },
       onFilterChange,
     });
 
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar);
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 50, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
@@ -206,7 +266,7 @@ describe('QuickFiltersToolbar', () => {
     compatToolbar.querySelector('[aria-label="Filter by Compatibility"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(compatToolbar, { width: 100 });
-    compatToolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 10, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
@@ -221,21 +281,20 @@ describe('QuickFiltersToolbar', () => {
   it('converts partial salary range commits with full max back to a null upper bound', () => {
     const onFilterChange = vi.fn();
     const { toolbar } = renderToolbar({
-      salaryBounds: { min: 0, max: 200000, hasSalaryData: true },
       onFilterChange,
     });
 
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar);
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 50, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
 
     expect(onFilterChange).toHaveBeenCalledWith({
       ...DEFAULT_FILTER_STATE,
-      salaryMin: 50000,
+      salaryMin: 100000,
       salaryMax: null,
     });
   });
@@ -246,21 +305,21 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Salary"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar, { width: 100 });
-    toolbar.querySelector('.range-thumb--max')
+    document.querySelector('.range-thumb--max')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 100, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 55, bubbles: true }));
 
-    expect(toolbar.querySelector('.range-value--max').textContent).toBe('$118k');
+    expect(document.querySelector('.range-value--max').textContent).toBe('₱160k');
 
     document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
     toolbar.querySelector('[aria-label="Filter by Compatibility"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     setRangeTrackRect(toolbar, { width: 100 });
-    toolbar.querySelector('.range-thumb--min')
+    document.querySelector('.range-thumb--min')
       .dispatchEvent(new window.MouseEvent('mousedown', { clientX: 0, bubbles: true }));
     document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 33.4, bubbles: true }));
 
-    expect(toolbar.querySelector('.range-value--min').textContent).toBe('33%');
+    expect(document.querySelector('.range-value--min').textContent).toBe('33%');
   });
 
   it('disables only the salary button when there is no salary data', () => {
@@ -276,6 +335,15 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('[aria-label="Filter by Company"]').disabled).toBe(false);
   });
 
+  it('renders salary range bounds in Philippine Peso with the top bucket label', () => {
+    const { toolbar } = renderToolbar();
+
+    toolbar.querySelector('[aria-label="Filter by Salary"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(document.querySelector('.range-bounds').textContent).toBe('₱50k₱250k+');
+  });
+
   it('calls onSortChange from the sort panel and restores default sort', () => {
     const onSortChange = vi.fn();
     const { toolbar } = renderToolbar({
@@ -285,7 +353,7 @@ describe('QuickFiltersToolbar', () => {
     const sortButton = toolbar.querySelector('[aria-label="Sort"]');
 
     sortButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    [...toolbar.querySelectorAll('.sort-panel__option')]
+    [...document.querySelectorAll('.sort-panel__option')]
       .find((option) => option.textContent === 'Compatibility')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
@@ -301,12 +369,12 @@ describe('QuickFiltersToolbar', () => {
 
     sortedToolbar.querySelector('[aria-label="Sort"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    [...sortedToolbar.querySelectorAll('.sort-panel__option')]
+    [...document.querySelectorAll('.sort-panel__option')]
       .find((option) => option.textContent === 'Restore default')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_SORT_STATE);
-    expect(sortedToolbar.querySelector('.sort-panel')).toBeNull();
+    expect(document.querySelector('.sort-panel')).toBeNull();
   });
 
   it('shows erase-all for active filters and calls onClearAll', () => {
@@ -368,6 +436,7 @@ describe('QuickFiltersToolbar', () => {
       'Filter by Salary',
       'Filter by Compatibility',
       'Filter by Company',
+      'Favorites only',
       'Sort',
     ]) {
       const button = toolbar.querySelector(`[aria-label="${label}"]`);
@@ -379,7 +448,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Filter by Status"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    const checkbox = toolbar.querySelector('[data-value="applied"]');
+    const checkbox = document.querySelector('[data-value="applied"]');
 
     expect(checkbox.getAttribute('role')).toBe('checkbox');
     expect(checkbox.hasAttribute('aria-checked')).toBe(true);
@@ -387,7 +456,7 @@ describe('QuickFiltersToolbar', () => {
     toolbar.querySelector('[aria-label="Sort"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    expect(toolbar.querySelector('[aria-label="Restore default sort"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Restore default sort"]')).not.toBeNull();
   });
 
   it('returns focus to each trigger when Escape closes an open panel', () => {
@@ -403,11 +472,11 @@ describe('QuickFiltersToolbar', () => {
       const button = toolbar.querySelector(`[aria-label="${label}"]`);
 
       button.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-      expect(toolbar.querySelector('.filter-panel, .sort-panel')).not.toBeNull();
+      expect(document.querySelector('.filter-panel, .sort-panel')).not.toBeNull();
 
       document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
-      expect(toolbar.querySelector('.filter-panel, .sort-panel')).toBeNull();
+      expect(document.querySelector('.filter-panel, .sort-panel')).toBeNull();
       expect(document.activeElement).toBe(button);
     }
   });

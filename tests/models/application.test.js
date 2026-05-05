@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { normalizeApplication, validateApplication } from '../../src/models/application.js';
+import {
+  STATUS_CONFIG,
+  STATUS_VALUES,
+  normalizeApplication,
+  validateApplication,
+} from '../../src/models/application.js';
 import { toISODate } from '../../src/utils/date.js';
 
 function validRecord(overrides = {}) {
@@ -13,7 +18,7 @@ function validRecord(overrides = {}) {
     fav: false,
     responsibilities: 'Build UI',
     skills: ['JavaScript'],
-    salary: '$120k',
+    salary: 120000,
     recruiter: 'Jane Smith',
     jobPostingUrl: 'https://jobs.example.com/frontend',
     ...overrides,
@@ -99,8 +104,33 @@ describe('normalizeApplication', () => {
     }));
 
     expect(record.responsibilities).toBe('');
-    expect(record.salary).toBe('');
+    expect(record.salary).toBeNull();
     expect(record.recruiter).toBe('');
     expect(record.jobPostingUrl).toBe('');
+  });
+
+  it('preserves positive integer salary values', () => {
+    const record = normalizeApplication(validRecord({ salary: 150000 }));
+
+    expect(record.salary).toBe(150000);
+  });
+});
+
+describe('STATUS_CONFIG', () => {
+  it('assigns Wishlist the approved pink status colors', () => {
+    expect(STATUS_CONFIG.wishlisted).toMatchObject({
+      badgeBg: '#ffafcc',
+      badgeText: '#212529',
+      borderAccent: '#ffafcc',
+    });
+  });
+
+  it('defines unique badge backgrounds for all statuses', () => {
+    const badgeColors = STATUS_VALUES.map((status) => STATUS_CONFIG[status]?.badgeBg);
+
+    expect(badgeColors).toHaveLength(9);
+    expect(new Set(badgeColors).size).toBe(9);
+    expect(badgeColors.every((color) => typeof color === 'string' && color.length > 0))
+      .toBe(true);
   });
 });

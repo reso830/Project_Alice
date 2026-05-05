@@ -44,6 +44,10 @@ export function getAll() {
   return request('GET', '/api/applications');
 }
 
+export function getProfile() {
+  return request('GET', '/api/profile');
+}
+
 export function getById(id) {
   return request('GET', `/api/applications/${id}`);
 }
@@ -54,4 +58,8 @@ export function update(id, fields) {
 
 export function archive(id) {
   return request('POST', `/api/applications/${id}/archive`);
+}
+
+export function saveProfile(profile) {
+  return request('PUT', '/api/profile', profile);
 }

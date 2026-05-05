@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar.js';
 import { store } from './data/store.js';
 import { Calendar } from './pages/Calendar.js';
 import { Profile } from './pages/Profile.js';
+import { ProfileEdit } from './pages/ProfileEdit.js';
 import { Tracker } from './pages/Tracker.js';
 import { toISODate } from './utils/date.js';
 
@@ -12,90 +13,48 @@ const DAY_MS = 86400000;
 let _currentPage = null;
 let _currentUnmount = null;
 
-const SEED_DATA = [
+export const SEED_DATA = [
   {
     id: '001',
-    jobTitle: 'Frontend Engineer',
+    jobTitle: 'Design Systems Engineer',
     companyName: 'Northstar Labs',
     status: 'wishlisted',
     lastStatusUpdate: toISODate(new Date(Date.now() - 2 * DAY_MS)),
     compat: 84,
     fav: true,
-    responsibilities: 'Build responsive web interfaces and maintain shared UI patterns.',
-    skills: ['JavaScript', 'CSS', 'Accessibility'],
-    salary: '$110k-$130k',
+    responsibilities: 'Shape a shared React design system for a corporate hiring platform, pairing Storybook governance with accessibility reviews.',
+    skills: ['React', 'TypeScript', 'Storybook', 'Accessibility'],
+    salary: 125000,
     recruiter: 'Maya Chen',
     jobPostingUrl: 'https://jobs.example.com/northstar-frontend',
   },
   {
     id: '002',
-    jobTitle: 'Product Engineer',
+    jobTitle: 'Full Stack Product Engineer',
     companyName: 'Clearpath',
     status: 'applied',
     lastStatusUpdate: toISODate(new Date(Date.now() - 5 * DAY_MS)),
-    compat: 72,
+    compat: 76,
     fav: false,
-    responsibilities: '',
-    skills: [],
-    salary: '',
-    recruiter: '',
-    jobPostingUrl: '',
+    responsibilities: 'Build first-version workflow features for a Series B startup, moving quickly across React, Node.js, and PostgreSQL.',
+    skills: ['React', 'Node.js', 'PostgreSQL'],
+    salary: 118000,
+    recruiter: 'Leo Martin',
+    jobPostingUrl: 'https://jobs.example.com/clearpath-product',
   },
   {
     id: '003',
-    jobTitle: 'UI Developer',
-    companyName: 'Helio Works',
+    jobTitle: 'Senior Payments Engineer',
+    companyName: 'Helio Finance',
     status: 'interview',
     lastStatusUpdate: toISODate(new Date(Date.now() - 40 * DAY_MS)),
-    compat: 66,
+    compat: 82,
     fav: false,
-    responsibilities: 'Own customer-facing dashboard views and partner with design.',
-    skills: ['HTML', 'JavaScript'],
-    salary: '$95k-$115k',
-    recruiter: '',
-    jobPostingUrl: 'https://jobs.example.com/helio-ui',
-  },
-  {
-    id: '004',
-    jobTitle: 'Design Systems Engineer',
-    companyName: 'Prism Studio',
-    status: 'offer',
-    lastStatusUpdate: toISODate(new Date(Date.now() - DAY_MS)),
-    compat: 91,
-    fav: false,
-    responsibilities: 'Maintain component standards and documentation.',
-    skills: ['Design Systems', 'CSS'],
-    salary: '$125k-$145k',
+    responsibilities: 'Drive reliability reviews across fintech payment services, mentoring peers on Go tracing, SLO budgets, and database failover.',
+    skills: ['Go', 'PostgreSQL', 'Prometheus'],
+    salary: 145000,
     recruiter: 'Ana Rivera',
-    jobPostingUrl: 'https://jobs.example.com/prism-design-systems',
-  },
-  {
-    id: '005',
-    jobTitle: 'Web Application Developer',
-    companyName: 'MetroGrid',
-    status: 'rejected',
-    lastStatusUpdate: toISODate(new Date(Date.now() - 18 * DAY_MS)),
-    compat: 48,
-    fav: false,
-    responsibilities: 'Implement internal operations tooling.',
-    skills: ['Vanilla JS'],
-    salary: '',
-    recruiter: '',
-    jobPostingUrl: '',
-  },
-  {
-    id: '',
-    jobTitle: 'Corrupt Demo Record',
-    companyName: 'Unknown Company',
-    status: 'applied',
-    lastStatusUpdate: toISODate(),
-    compat: 12,
-    fav: false,
-    responsibilities: '',
-    skills: [],
-    salary: '',
-    recruiter: '',
-    jobPostingUrl: '',
+    jobPostingUrl: 'https://jobs.example.com/helio-payments',
   },
 ];
 
@@ -132,8 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function navigate(page) {
   const appRoot = document.querySelector('#app');
+  let activePage = page;
 
   if (!appRoot || page === _currentPage) {
+    return;
+  }
+
+  if (_currentPage === 'profile-edit' && !ProfileEdit.confirmNavigation(page)) {
     return;
   }
 
@@ -147,13 +111,17 @@ function navigate(page) {
     Calendar.mount(appRoot);
     _currentUnmount = Calendar.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot);
+    Profile.mount(appRoot, { navigate });
     _currentUnmount = Profile.unmount;
+  } else if (page === 'profile-edit') {
+    ProfileEdit.mount(appRoot, { navigate });
+    _currentUnmount = ProfileEdit.unmount;
+    activePage = 'profile';
   } else {
     Tracker.mount(appRoot);
     _currentUnmount = Tracker.unmount;
   }
 
   _currentPage = page;
-  Navbar.setActive(page);
+  Navbar.setActive(activePage);
 }

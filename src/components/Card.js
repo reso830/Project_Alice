@@ -1,14 +1,16 @@
 import { STATUS_CONFIG } from '../models/application.js';
+import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
+import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
-function createActionButton(label, className) {
+function createActionButton(className, icon) {
   const button = document.createElement('button');
   button.className = `card-btn ${className}`;
   button.type = 'button';
-  button.textContent = label;
+  button.append(icon);
 
   return button;
 }
@@ -64,11 +66,23 @@ export function render(application, callbacks = {}) {
   const company = document.createElement('span');
   const responsibilities = document.createElement('div');
   const salary = document.createElement('span');
-  const editButton = createActionButton('✎', 'card-btn--edit');
-  const statusButton = createActionButton('⇄', 'card-btn--status');
-  const copyButton = createActionButton('🔗', 'card-btn--copy');
-  const starButton = createActionButton('★', 'card-btn--star');
-  const archiveButton = createActionButton('×', 'card-btn--archive');
+  const editButton = createActionButton(
+    'card-btn--edit',
+    createSvgIcon('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z'),
+  );
+  const statusButton = createActionButton(
+    'card-btn--status',
+    createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
+  );
+  const copyButton = createActionButton('card-btn--copy', createClipboardIcon());
+  const starButton = createActionButton(
+    'card-btn--star',
+    createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+  );
+  const archiveButton = createActionButton(
+    'card-btn--archive',
+    createSvgIcon('M5 5l14 14M19 5 5 19'),
+  );
 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
@@ -112,7 +126,7 @@ export function render(application, callbacks = {}) {
   responsibilities.textContent = displayValue(application.responsibilities);
 
   salary.className = 'salary';
-  salary.textContent = displayValue(application.salary);
+  salary.textContent = formatPeso(application.salary);
 
   if (application._corrupt) {
     const warning = document.createElement('span');

@@ -13,7 +13,7 @@ function validPayload(overrides = {}) {
     jobPostingUrl: 'https://example.com/jobs/frontend',
     recruiter: 'Jane Smith',
     notes: 'Referred by a friend',
-    salary: '$120k',
+    salary: 120000,
     responsibilities: 'Build product UI',
     skills: ['JavaScript', 'React'],
     followUpAction: 'Send follow-up',
@@ -49,10 +49,13 @@ describe('createSchema', () => {
     expectFieldError(validPayload({ metadata: 'string' }), 'metadata');
   });
 
-  it('clamps compatibility score to 100', () => {
-    const result = createSchema.parse(validPayload({ compat: 150 }));
+  it('rejects out-of-range compatibility scores', () => {
+    const high = createSchema.safeParse(validPayload({ compat: 150 }));
+    const low = createSchema.safeParse(validPayload({ compat: -1 }));
 
-    expect(result.compat).toBe(100);
+    expect(high.success).toBe(false);
+    expect(low.success).toBe(false);
+    expect(toApiError(high.error).compat).toBe('Compatibility must be between 0 and 100');
   });
 
   it('accepts all optional fields omitted', () => {
@@ -73,8 +76,8 @@ describe('createSchema', () => {
     }));
 
     expect(result.jobPostingUrl).toBe('');
-    expect(result.applicationDate).toBe('');
-    expect(result.followUpDate).toBe('');
+    expect(result.applicationDate).toBeNull();
+    expect(result.followUpDate).toBeNull();
   });
 });
 
@@ -105,12 +108,24 @@ describe('updateSchema', () => {
       followUpDate: '',
     })).toEqual({
       jobPostingUrl: '',
-      applicationDate: '',
-      followUpDate: '',
+      applicationDate: null,
+      followUpDate: null,
     });
   });
 
   it('accepts empty objects as valid no-op updates', () => {
     expect(updateSchema.parse({})).toEqual({});
+  });
+
+  it('rejects string salary updates', () => {
+    const result = updateSchema.safeParse({ salary: '$120k' });
+
+    expect(result.success).toBe(false);
+    expect(toApiError(result.error).salary).toBe('Invalid input');
+  });
+
+  it('coerces null favorite updates to false and accepts archive updates', () => {
+    expect(updateSchema.parse({ fav: null })).toEqual({ fav: false });
+    expect(updateSchema.parse({ archived: true })).toEqual({ archived: true });
   });
 });

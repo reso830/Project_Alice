@@ -6,6 +6,7 @@ import {
   applyFilters,
   filterByCompany,
   filterByCompat,
+  filterByFavorites,
   filterBySalary,
   filterByStatus,
   getAvailableCompanies,
@@ -13,47 +14,32 @@ import {
   getSalaryBounds,
   isAnyFilterActive,
   isDefaultSort,
-  parseSalaryLower,
-  parseSalaryRange,
   sortApplications,
   syncDynamicSelections,
 } from '../../src/utils/filterSort.js';
 
 const apps = [
-  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: '$110k-$130k', compat: 84 },
-  { id: 2, status: 'applied', companyName: 'Acme', salary: '$95k-$115k', compat: 72 },
-  { id: 3, status: 'phone_screen', companyName: 'Beta', salary: '$80k-$90k', compat: 55 },
-  { id: 4, status: 'interview', companyName: 'Acme', salary: '$125k-$145k', compat: 91 },
-  { id: 5, status: 'assessment', companyName: 'Delta', salary: '$150k-$170k', compat: 64 },
-  { id: 6, status: 'offer', companyName: 'Cobalt', salary: '$120k', compat: 99 },
-  { id: 7, status: 'rejected', companyName: 'Beta', salary: '', compat: 15 },
-  { id: 8, status: 'withdrawn', companyName: 'Echo', salary: 'competitive', compat: 0 },
-  { id: 9, status: 'ghosted', companyName: 'Foxtrot', salary: '$95,000-$115,000', compat: 72 },
-  { id: 10, status: 'applied', companyName: 'Acme', salary: '$95k-$125k', compat: 72 },
+  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: 110000, compat: 84, fav: true },
+  { id: 2, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72 },
+  { id: 3, status: 'phone_screen', companyName: 'Beta', salary: 80000, compat: 55 },
+  { id: 4, status: 'interview', companyName: 'Acme', salary: 125000, compat: 91 },
+  { id: 5, status: 'assessment', companyName: 'Delta', salary: 150000, compat: 64 },
+  { id: 6, status: 'offer', companyName: 'Cobalt', salary: 120000, compat: 99, fav: true },
+  { id: 7, status: 'rejected', companyName: 'Beta', salary: null, compat: 15 },
+  { id: 8, status: 'withdrawn', companyName: 'Echo', salary: 0, compat: 0 },
+  { id: 9, status: 'ghosted', companyName: 'Foxtrot', salary: 95000, compat: 72 },
+  { id: 10, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72 },
 ];
 
 function ids(records) {
   return records.map((app) => app.id);
 }
 
-describe('salary parsing', () => {
-  it('parses the lower salary amount from supported formats', () => {
-    expect(parseSalaryLower('$110k-$130k')).toBe(110000);
-    expect(parseSalaryLower('$95,000-$115,000')).toBe(95000);
-    expect(parseSalaryLower('')).toBeNull();
-    expect(parseSalaryLower('competitive')).toBeNull();
-  });
-
-  it('parses salary ranges and falls back to a single-value range', () => {
-    expect(parseSalaryRange('$110k-$130k')).toEqual({ min: 110000, max: 130000 });
-    expect(parseSalaryRange('$120k')).toEqual({ min: 120000, max: 120000 });
-    expect(parseSalaryRange('$120k+')).toEqual({ min: 120000, max: 120000 });
-  });
-
-  it('computes salary bounds and reports when no salary data exists', () => {
-    expect(getSalaryBounds(apps)).toEqual({ min: 80000, max: 170000, hasSalaryData: true });
-    expect(getSalaryBounds([{ salary: '' }, { salary: 'competitive' }]))
-      .toEqual({ min: 0, max: 200000, hasSalaryData: false });
+describe('salary bounds', () => {
+  it('uses the fixed peso filter range and reports when salary data exists', () => {
+    expect(getSalaryBounds(apps)).toEqual({ min: 50000, max: 250000, hasSalaryData: true });
+    expect(getSalaryBounds([{ salary: null }, { salary: 0 }]))
+      .toEqual({ min: 50000, max: 250000, hasSalaryData: false });
   });
 });
 
@@ -73,17 +59,38 @@ describe('filter helpers', () => {
 
   it('filters by salary overlap and excludes missing salaries only when active', () => {
     expect(filterBySalary(apps, null, null)).toBe(apps);
-    expect(ids(filterBySalary(apps, 100000, 120000))).toEqual([1, 2, 6, 9, 10]);
-    expect(ids(filterBySalary(apps, 90000, 100000))).toEqual([2, 3, 9, 10]);
-    expect(ids(filterBySalary(apps, 140000, 160000))).toEqual([4, 5]);
-    expect(ids(filterBySalary(apps, 140000, null))).toEqual([4, 5]);
-    expect(ids(filterBySalary(apps, 180000, 190000))).toEqual([]);
+    expect(ids(filterBySalary(apps, 100000, 120000))).toEqual([1, 6, 8]);
+    expect(ids(filterBySalary(apps, 90000, 100000))).toEqual([2, 8, 9, 10]);
+    expect(ids(filterBySalary(apps, 140000, 160000))).toEqual([5, 8]);
+    expect(ids(filterBySalary(apps, 140000, null))).toEqual([5, 8]);
+    expect(ids(filterBySalary(apps, 180000, 190000))).toEqual([8]);
+  });
+
+  it('handles absent salaries and the top salary bucket', () => {
+    expect(ids(filterBySalary([
+      { id: 1, salary: null },
+      { id: 2, salary: 0 },
+      { id: 3, salary: 50000 },
+      { id: 4, salary: 250000 },
+      { id: 5, salary: 320000 },
+    ], null, 250000))).toEqual([1, 2, 3, 4, 5]);
+    expect(ids(filterBySalary([
+      { id: 1, salary: null },
+      { id: 2, salary: 0 },
+      { id: 3, salary: 50000 },
+    ], 50000, 250000))).toEqual([2, 3]);
   });
 
   it('filters by compatibility with null and boundary values', () => {
     expect(filterByCompat(apps, null, null)).toBe(apps);
     expect(ids(filterByCompat(apps, 72, 91))).toEqual([1, 2, 4, 9, 10]);
     expect(ids(filterByCompat(apps, 0, 0))).toEqual([8]);
+  });
+
+  it('filters by favorites only when the favorites toggle is enabled', () => {
+    expect(filterByFavorites(apps, false)).toBe(apps);
+    expect(ids(filterByFavorites(apps, true))).toEqual([1, 6]);
+    expect(filterByFavorites([{ id: 11, fav: false }], true)).toEqual([]);
   });
 });
 
@@ -99,8 +106,25 @@ describe('applyFilters', () => {
       statuses: ['applied'],
       salaryMin: 120000,
       salaryMax: 130000,
-    }))).toEqual([10]);
+    }))).toEqual([]);
+    expect(ids(applyFilters(apps, {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['offer'],
+      favoritesOnly: true,
+    }))).toEqual([6]);
     expect(applyFilters(apps, DEFAULT_FILTER_STATE)).toBe(apps);
+  });
+
+  it('composes favorites-only with status filters', () => {
+    expect(ids(applyFilters([
+      { id: 1, status: 'applied', fav: true },
+      { id: 2, status: 'applied', fav: false },
+      { id: 3, status: 'offer', fav: true },
+    ], {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['applied'],
+      favoritesOnly: true,
+    }))).toEqual([1]);
   });
 });
 
@@ -110,6 +134,7 @@ describe('isAnyFilterActive', () => {
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, statuses: ['applied'] })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, salaryMin: 100000 })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, compatMax: 90 })).toBe(true);
+    expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, favoritesOnly: true })).toBe(true);
   });
 });
 
@@ -120,8 +145,12 @@ describe('dynamic options', () => {
       statuses: ['applied'],
       salaryMin: 120000,
       salaryMax: 130000,
-    })).toEqual(['wishlisted', 'applied', 'interview', 'offer']);
+    })).toEqual(['interview', 'offer', 'withdrawn']);
     expect(getAvailableStatuses(apps, DEFAULT_FILTER_STATE)).toEqual(STATUS_VALUES);
+    expect(getAvailableStatuses(apps, {
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    })).toEqual(['wishlisted', 'offer']);
   });
 
   it('returns available companies after non-company filters alphabetically', () => {
@@ -132,6 +161,10 @@ describe('dynamic options', () => {
     })).toEqual(['Acme']);
     expect(getAvailableCompanies(apps, DEFAULT_FILTER_STATE))
       .toEqual(['Acme', 'Beta', 'Cobalt', 'Delta', 'Echo', 'Foxtrot', 'Zenith']);
+    expect(getAvailableCompanies(apps, {
+      ...DEFAULT_FILTER_STATE,
+      favoritesOnly: true,
+    })).toEqual(['Cobalt', 'Zenith']);
   });
 
   it('syncs unavailable selected statuses and companies out of state', () => {

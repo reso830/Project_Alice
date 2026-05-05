@@ -1,7 +1,12 @@
 import { STATUS_CONFIG } from '../models/application.js';
+import * as api from '../services/api.js';
+import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
+import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 import { StatusDropdown } from './StatusDropdown.js';
+import { Toast } from './Toast.js';
 
 let _savedScrollY = 0;
 let _backdrop = null;
@@ -12,8 +17,66 @@ function getFocusableElements(root) {
     .filter((element) => !element.disabled && element.offsetParent !== null);
 }
 
-function updateStatusBadge(status) {
-  const badge = document.querySelector('#modal-status-badge');
+function hexToRgb(hex) {
+  const value = hex.replace('#', '');
+  return {
+    red: Number.parseInt(value.slice(0, 2), 16),
+    green: Number.parseInt(value.slice(2, 4), 16),
+    blue: Number.parseInt(value.slice(4, 6), 16),
+  };
+}
+
+function relativeLuminance({ red, green, blue }) {
+  return [red, green, blue]
+    .map((channel) => {
+      const value = channel / 255;
+      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    })
+    .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+}
+
+function contrastRatio(first, second) {
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function getHeaderContrastClass(hexColor) {
+  const background = relativeLuminance(hexToRgb(hexColor));
+  const white = relativeLuminance({ red: 255, green: 255, blue: 255 });
+  const dark = relativeLuminance({ red: 0, green: 0, blue: 0 });
+
+  return contrastRatio(background, white) >= contrastRatio(background, dark)
+    ? 'modal-header--light'
+    : 'modal-header--dark';
+}
+
+export function getHeaderContrastRatio(hexColor) {
+  const background = relativeLuminance(hexToRgb(hexColor));
+  const text = getHeaderContrastClass(hexColor) === 'modal-header--light'
+    ? relativeLuminance({ red: 255, green: 255, blue: 255 })
+    : relativeLuminance({ red: 0, green: 0, blue: 0 });
+
+  return contrastRatio(background, text);
+}
+
+function createQuickButton(className, icon) {
+  const button = document.createElement('button');
+
+  button.className = `modal-quick-action ${className}`;
+  button.type = 'button';
+  button.append(icon);
+  return button;
+}
+
+function applyHeaderStatus(header, status) {
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
+  header.style.backgroundColor = config.borderAccent;
+  header.style.color = config.badgeText;
+  header.classList.remove('modal-header--light', 'modal-header--dark');
+}
+
+function updateStatusBadge(badge, status) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.wishlisted;
 
   if (!badge) {
@@ -33,7 +96,15 @@ function updateStatusDate(lastStatusUpdate) {
   }
 }
 
-function createField(label, value, fullSpan = false) {
+function updateFavoriteButton(button, isFavorite) {
+  const icon = createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z');
+
+  icon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
+  button.replaceChildren(icon);
+  button.setAttribute('aria-pressed', String(isFavorite));
+}
+
+function createField(label, value, fullSpan = false, { preserveEmpty = false } = {}) {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('span');
@@ -42,9 +113,38 @@ function createField(label, value, fullSpan = false) {
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value';
   labelEl.textContent = label;
-  valueEl.textContent = displayValue(value);
+  valueEl.textContent = preserveEmpty ? value : displayValue(value);
 
   row.append(labelEl, valueEl);
+
+  return row;
+}
+
+function createLinkField(value, onCopy) {
+  const row = document.createElement('button');
+  const labelEl = document.createElement('span');
+  const valueEl = document.createElement('span');
+  const hasUrl = typeof value === 'string' && value.trim() !== '';
+
+  row.className = 'modal-field modal-field--full modal-link-field';
+  row.type = 'button';
+  row.disabled = !hasUrl;
+  row.setAttribute('aria-label', hasUrl ? 'Copy job posting URL' : 'No job posting URL');
+
+  if (!hasUrl) {
+    row.classList.add('modal-link-field--disabled');
+  }
+
+  labelEl.className = 'modal-field__label';
+  valueEl.className = 'modal-field__value modal-link-field__value';
+  labelEl.textContent = 'URL';
+  valueEl.textContent = displayValue(value);
+  row.append(labelEl, valueEl);
+
+  if (hasUrl) {
+    valueEl.append(createClipboardIcon());
+    row.addEventListener('click', onCopy);
+  }
 
   return row;
 }
@@ -95,7 +195,10 @@ export function close() {
   }
 }
 
-export function open(application, { onStatusChange } = {}) {
+export function open(application, {
+  onApplicationUpdate,
+  onArchiveSuccess,
+} = {}) {
   if (!application) {
     return;
   }
@@ -112,9 +215,23 @@ export function open(application, { onStatusChange } = {}) {
   const titleRow = document.createElement('div');
   const idPill = document.createElement('span');
   const title = document.createElement('h2');
-  const statusButton = document.createElement('button');
+  const quickActions = document.createElement('div');
+  const favoriteButton = createQuickButton(
+    'modal-quick-action--favorite',
+    createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+  );
+  const statusButton = createQuickButton(
+    'modal-quick-action--status',
+    createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
+  );
+  const archiveButton = createQuickButton(
+    'modal-quick-action--archive',
+    createSvgIcon('M5 5l14 14M19 5 5 19'),
+  );
   const body = document.createElement('div');
   let currentStatus = application.status;
+  let currentFavorite = application.fav === true;
+  const statusBadge = createStatusBadge(application.status, { id: 'modal-status-badge' });
 
   backdrop.className = 'modal-backdrop';
   panel.className = 'modal-panel';
@@ -124,31 +241,71 @@ export function open(application, { onStatusChange } = {}) {
   header.className = 'modal-header';
   headerMeta.className = 'modal-header__meta';
   titleRow.className = 'modal-header__title-row';
+  quickActions.className = 'modal-quick-actions';
   idPill.className = 'id-pill';
-  statusButton.className = 'card-btn modal-status-btn';
-  statusButton.type = 'button';
   body.className = 'modal-body';
+  applyHeaderStatus(header, currentStatus);
+  updateFavoriteButton(favoriteButton, currentFavorite);
 
   idPill.textContent = application.id;
   title.id = 'modal-title';
   title.textContent = displayValue(application.jobTitle);
-  statusButton.textContent = '⇄';
-
+  favoriteButton.setAttribute('aria-label', 'Toggle favorite');
   statusButton.setAttribute('aria-label', 'Change status');
+  archiveButton.setAttribute('aria-label', 'Archive application');
+
+  favoriteButton.addEventListener('click', async () => {
+    try {
+      const updated = await api.update(application.id, { fav: !currentFavorite });
+      currentFavorite = updated.fav === true;
+      updateFavoriteButton(favoriteButton, currentFavorite);
+      onApplicationUpdate?.(updated);
+    } catch {
+      Toast.show('Favorite update failed', 'failure');
+    }
+  });
 
   statusButton.addEventListener('click', () => {
     StatusDropdown.open(statusButton, currentStatus, async (newStatus) => {
-      const updated = await (onStatusChange?.(application.id, newStatus) ?? null);
+      let updated;
 
-      if (!updated) {
+      try {
+        updated = await api.update(application.id, { status: newStatus });
+      } catch {
+        Toast.show('Status update failed', 'failure');
         return;
       }
 
-      currentStatus = newStatus;
-      updateStatusBadge(newStatus);
+      currentStatus = updated.status ?? newStatus;
+      applyHeaderStatus(header, currentStatus);
+      updateStatusBadge(statusBadge, currentStatus);
       updateStatusDate(updated.lastStatusUpdate);
+      onApplicationUpdate?.(updated);
     });
   });
+
+  archiveButton.addEventListener('click', async () => {
+    if (!await ConfirmDialog.show('Archive this application?')) {
+      return;
+    }
+
+    try {
+      const updated = await api.archive(application.id);
+      onArchiveSuccess?.(updated);
+      close();
+    } catch {
+      Toast.show('Archive failed', 'failure');
+    }
+  });
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(application.jobPostingUrl);
+      Toast.show('Link copied', 'success');
+    } catch {
+      Toast.show('Could not copy link', 'failure');
+    }
+  }
 
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) {
@@ -187,18 +344,19 @@ export function open(application, { onStatusChange } = {}) {
   const statusDateField = createField('Last status update', toDisplayDate(application.lastStatusUpdate));
   statusDateField.dataset.modalField = 'last-status-update';
 
-  headerMeta.append(idPill, createStatusBadge(application.status, { id: 'modal-status-badge' }));
-  titleRow.append(title, statusButton);
-  header.append(headerMeta, titleRow);
+  headerMeta.append(idPill, statusBadge);
+  titleRow.append(title);
+  quickActions.append(favoriteButton, statusButton, archiveButton);
+  header.append(headerMeta, titleRow, quickActions);
   body.append(
     createField('Company', application.companyName),
     createField('Recruiter', application.recruiter),
-    createField('Salary', application.salary),
+    createField('Salary', formatPeso(application.salary), false, { preserveEmpty: true }),
     createField('Compatibility', `${application.compat}%`),
     statusDateField,
     createField('Responsibilities', application.responsibilities, true),
     createSkills(application.skills),
-    createField('URL', application.jobPostingUrl, true),
+    createLinkField(application.jobPostingUrl, copyUrl),
   );
   panel.append(header, body);
   backdrop.append(panel);
