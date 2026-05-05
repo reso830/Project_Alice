@@ -54,9 +54,7 @@ function Find-SpeckitSpecDir {
     $SpecsRoot = Join-Path $Root "specs"
     if (!(Test-Path $SpecsRoot)) { throw "specs directory not found. Let Speckit create it first with /speckit.specify." }
 
-    $CurrentBranch = Get-CurrentBranch
     $Candidates = @()
-    if ($CurrentBranch -match '^\d{3}-.+') { $Candidates += Join-Path $SpecsRoot $CurrentBranch }
     if ($RequestedName -match '^\d{3}-.+') {
         $Candidates += Join-Path $SpecsRoot $RequestedName
     } else {
@@ -65,17 +63,14 @@ function Find-SpeckitSpecDir {
             Where-Object { $_.Name -match "^\d{3}-$([regex]::Escape($RequestedName))$" } |
             ForEach-Object { $_.FullName }
     }
+    $CurrentBranch = Get-CurrentBranch
+    if ($CurrentBranch -match '^\d{3}-.+') { $Candidates += Join-Path $SpecsRoot $CurrentBranch }
 
     foreach ($Candidate in $Candidates | Select-Object -Unique) {
         if ((Test-Path $Candidate) -and (Test-Path (Join-Path $Candidate "spec.md"))) { return (Resolve-Path $Candidate).Path }
     }
 
-    $LatestSpec = Get-ChildItem -Path $SpecsRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d{3}-.+' -and (Test-Path (Join-Path $_.FullName "spec.md")) } |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($null -ne $LatestSpec) { return $LatestSpec.FullName }
-    throw "Could not resolve Speckit feature directory for '$RequestedName'. Run the spec action first or pass the numbered feature name."
+    throw "Could not resolve Speckit feature directory for '$RequestedName'. Verify the feature name matches a directory under specs/ or pass the full numbered name (e.g. 005-my-feature)."
 }
 
 function Initialize-FeatureContext {
