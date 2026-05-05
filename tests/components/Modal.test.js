@@ -14,7 +14,6 @@ import * as api from '../../src/services/api.js';
 import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
 import {
   Modal,
-  getHeaderContrastClass,
   getHeaderContrastRatio,
 } from '../../src/components/Modal.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';

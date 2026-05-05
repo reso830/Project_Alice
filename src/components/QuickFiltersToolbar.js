@@ -7,7 +7,6 @@ import {
   isDefaultSort,
   isAnyFilterActive,
 } from '../utils/filterSort.js';
-import { formatPeso } from '../utils/currency.js';
 import { FilterPanel } from './FilterPanel.js';
 import { RangeSlider } from './RangeSlider.js';
 import { SortPanel } from './SortPanel.js';
