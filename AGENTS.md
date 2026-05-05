@@ -64,4 +64,4 @@ Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of 
 ## Git & Worktrees
 
 Remote: `https://github.com/reso830/Project_Alice.git` (main branch: `main`)  
-Active worktrees live under `.codex/worktrees/` (Codex-specific state, lowercase). PowerShell setup scripts are in `.specify/scripts/powershell/`.
+Codex-specific runtime files (e.g. worktrees) may live under `.codex/` if needed. PowerShell setup scripts are in `.specify/scripts/powershell/`.

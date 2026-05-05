@@ -35,10 +35,10 @@ Requirement blockers always route back to Claude or the user. Codex does not edi
 spec → req-review → implement → check-next → [repeat per phase] → create-pr → claude-pr-review → codex-pr-review
 ```
 
-Both gates must pass before Codex can implement:
+Two gates control forward progress:
 
-1. **Requirements gate** — Codex reviews the spec package and declares `Ready` or `Not Ready`
-2. **Phase gate** — Claude reviews each phase's implementation and declares `Pass` or `Needs Changes`
+1. **Requirements gate** — must pass before Codex can implement any phase; Codex reviews the spec package and declares `Ready` or `Not Ready`
+2. **Phase gate** — must pass before advancing to the next phase; Claude reviews each phase's implementation and declares `Pass` or `Needs Changes`
 
 ---
 
@@ -214,7 +214,7 @@ Pass `-Phase <n>` to override: `./scripts/ai-flow.ps1 implement my-feature -Phas
 ## FAQ
 
 **Q: Do I need to pass the full `###-feature-name` or just the slug?**
-The script accepts both. It first tries to match the branch name, then the exact name, then a `###-<slug>` prefix match, then falls back to the most recently modified spec directory.
+The script accepts both. It first tries the exact name, then a `###-<slug>` prefix match, then the current branch name as a fallback. If nothing matches, it throws — there is no silent fallback to the latest spec directory. Verify the feature name matches a directory under `specs/` or pass the full numbered form (e.g. `005-my-feature`).
 
 **Q: `implement` and `implement-next` look identical — which do I use?**
 They are currently identical. Use either. `implement-next` was added for naming clarity in a multi-phase flow.

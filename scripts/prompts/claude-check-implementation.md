@@ -8,9 +8,8 @@ Review for:
 - test coverage
 - UX risks
 
-Output MUST start with:
-1. Pass
-or
-1. Needs Changes
+The first line of your response MUST be exactly one of:
+Pass
+Needs Changes
 
 Then list findings.

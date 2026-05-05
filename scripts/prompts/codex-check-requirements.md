@@ -6,8 +6,8 @@ Check for:
 - missing acceptance criteria
 - contradictions
 
-Output MUST start with one of:
-1. Ready
-2. Not Ready
+The first line of your response MUST be exactly one of:
+Ready
+Not Ready
 
 Then list findings concisely.
