@@ -45,6 +45,36 @@ function createButton(label, className, onClick, ariaLabel = '') {
   return button;
 }
 
+function createSvgIcon(pathData) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  path.setAttribute('d', pathData);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.append(path);
+
+  return svg;
+}
+
+function createIconButton(icon, className, onClick, ariaLabel) {
+  const button = document.createElement('button');
+
+  button.type = 'button';
+  button.className = className;
+  button.setAttribute('aria-label', ariaLabel);
+  button.append(icon);
+  button.addEventListener('click', onClick);
+
+  return button;
+}
+
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -172,10 +202,20 @@ function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
   }
 
   if (onEdit) {
-    actions.append(createButton('✎', 'entry-row__edit', onEdit, 'Edit entry'));
+    actions.append(createIconButton(
+      createSvgIcon('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z'),
+      'entry-row__edit',
+      onEdit,
+      'Edit entry',
+    ));
   }
 
-  actions.append(createButton('×', 'entry-row__remove', onRemove, 'Remove entry'));
+  actions.append(createIconButton(
+    createSvgIcon('M5 5l14 14M19 5 5 19'),
+    'entry-row__remove',
+    onRemove,
+    'Remove entry',
+  ));
   row.append(content, actions);
 
   return row;

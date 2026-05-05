@@ -71,6 +71,31 @@ describe('RangeSlider', () => {
     expect(options.onCommit).toHaveBeenCalledWith(60000, 150000);
   });
 
+  it('shows only the active thumb label while dragging', () => {
+    const { slider } = renderSlider();
+    const minThumb = slider.querySelector('.range-thumb--min');
+
+    minThumb.dispatchEvent(new window.MouseEvent('mousedown', { clientX: 50, bubbles: true }));
+    document.dispatchEvent(new window.MouseEvent('mousemove', { clientX: 60, bubbles: true }));
+
+    expect(slider.querySelector('.range-value--min').hidden).toBe(false);
+    expect(slider.querySelector('.range-value--max').hidden).toBe(true);
+  });
+
+  it('hides the minimum label at rest when thumb labels would overlap', () => {
+    const { slider } = renderSlider({
+      valueMin: 100000,
+      valueMax: 120000,
+    });
+    const maxThumb = slider.querySelector('.range-thumb--max');
+
+    maxThumb.dispatchEvent(new window.MouseEvent('mousedown', { clientX: 120, bubbles: true }));
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+
+    expect(slider.querySelector('.range-value--min').hidden).toBe(true);
+    expect(slider.querySelector('.range-value--max').hidden).toBe(false);
+  });
+
   it('enforces minimum spacing when a thumb is released past the other thumb', () => {
     const { slider, options } = renderSlider();
     const minThumb = slider.querySelector('.range-thumb--min');

@@ -1,8 +1,10 @@
 import { Card } from '../components/Card.js';
+import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
+import { STATUS_VALUES } from '../../shared/constants.js';
 import * as api from '../services/api.js';
 import {
   DEFAULT_FILTER_STATE,
@@ -25,6 +27,8 @@ let _sortState = { ...DEFAULT_SORT_STATE };
 let _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
 let _toolbarEl = null;
 
+const FILTER_STORAGE_KEY = 'apptracker_filters';
+
 function coerceId(id) {
   return typeof id === 'number' ? id : parseInt(id, 10);
 }
@@ -43,6 +47,56 @@ function replaceApplication(application) {
 function removeApplication(id) {
   const numericId = coerceId(id);
   _applications = _applications.filter((application) => application.id !== numericId);
+}
+
+function normalizeIntegerOrNull(value, { min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY } = {}) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    return null;
+  }
+
+  return value;
+}
+
+export function normalizeStoredFilterState(value) {
+  const stored = value && typeof value === 'object' ? value : {};
+  const statuses = Array.isArray(stored.statuses)
+    ? stored.statuses.filter((status) => STATUS_VALUES.includes(status))
+    : [];
+  const salaryMin = normalizeIntegerOrNull(stored.salaryMin);
+  const salaryMax = normalizeIntegerOrNull(stored.salaryMax);
+  const compatMin = normalizeIntegerOrNull(stored.compatMin, { min: 0, max: 100 });
+  const compatMax = normalizeIntegerOrNull(stored.compatMax, { min: 0, max: 100 });
+
+  return {
+    ...DEFAULT_FILTER_STATE,
+    statuses,
+    companies: Array.isArray(stored.companies)
+      ? stored.companies.filter((company) => typeof company === 'string')
+      : [],
+    salaryMin: salaryMin !== null && salaryMax !== null && salaryMin > salaryMax ? null : salaryMin,
+    salaryMax: salaryMin !== null && salaryMax !== null && salaryMin > salaryMax ? null : salaryMax,
+    compatMin: compatMin !== null && compatMax !== null && compatMin > compatMax ? null : compatMin,
+    compatMax: compatMin !== null && compatMax !== null && compatMin > compatMax ? null : compatMax,
+    favoritesOnly: stored.favoritesOnly === true,
+  };
+}
+
+function loadPersistedFilterState() {
+  try {
+    const raw = window.localStorage?.getItem(FILTER_STORAGE_KEY);
+
+    return raw ? normalizeStoredFilterState(JSON.parse(raw)) : { ...DEFAULT_FILTER_STATE };
+  } catch {
+    return { ...DEFAULT_FILTER_STATE };
+  }
+}
+
+function persistFilterState(filterState) {
+  try {
+    window.localStorage?.setItem(FILTER_STORAGE_KEY, JSON.stringify(filterState));
+  } catch {
+    // localStorage can be unavailable in private or restricted browser contexts.
+  }
 }
 
 function renderMessage(message, className = 'empty-state') {
@@ -92,6 +146,7 @@ function updateToolbar() {
 function onFilterChange(newFilterState) {
   _filterState = syncDynamicSelections(newFilterState, _applications);
   _currentPage = 1;
+  persistFilterState(_filterState);
   renderPage();
   updateToolbar();
 }
@@ -106,8 +161,23 @@ function onSortChange(newSortState) {
 function onClearAll() {
   _filterState = { ...DEFAULT_FILTER_STATE };
   _currentPage = 1;
+  persistFilterState(_filterState);
   renderPage();
   updateToolbar();
+}
+
+function onAddApplication() {}
+
+function createFab() {
+  const button = document.createElement('button');
+
+  button.className = 'fab';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'New application');
+  button.textContent = '+';
+  button.addEventListener('click', onAddApplication);
+
+  return button;
 }
 
 function renderFilterEmptyState() {
@@ -168,16 +238,17 @@ function createCallbacks() {
       try {
         const application = await api.getById(coerceId(id));
         Modal.open(application, {
-          onStatusChange: async (applicationId, newStatus) => {
-            try {
-              const updated = await api.update(coerceId(applicationId), { status: newStatus });
-              replaceApplication(updated);
-              refreshCard(updated.id);
-              return updated;
-            } catch {
-              Toast.show('Status update failed', 'failure');
-              return null;
-            }
+          onApplicationUpdate: (updated) => {
+            replaceApplication(updated);
+            renderPage();
+            updateToolbar();
+          },
+          onArchiveSuccess: (updated) => {
+            removeApplication(updated.id);
+            _salaryBounds = getSalaryBounds(_applications);
+            renderPage();
+            updateToolbar();
+            focusCardList();
           },
         });
       } catch {
@@ -188,7 +259,8 @@ function createCallbacks() {
       try {
         const updated = await api.update(coerceId(id), { status: newStatus });
         replaceApplication(updated);
-        refreshCard(updated.id);
+        renderPage();
+        updateToolbar();
       } catch {
         Toast.show('Status update failed', 'failure');
       }
@@ -203,13 +275,18 @@ function createCallbacks() {
       try {
         const updated = await api.update(coerceId(id), { fav: !application.fav });
         replaceApplication(updated);
-        refreshCard(updated.id);
+        renderPage();
+        updateToolbar();
       } catch {
         Toast.show('Star update failed', 'failure');
         refreshCard(id);
       }
     },
     onArchive: async (id) => {
+      if (!await ConfirmDialog.show('Archive this application?')) {
+        return;
+      }
+
       try {
         await api.archive(coerceId(id));
         removeApplication(id);
@@ -272,7 +349,7 @@ export async function mount(container) {
   _currentPage = 1;
   _paginationEl = null;
   _applications = [];
-  _filterState = { ...DEFAULT_FILTER_STATE };
+  _filterState = loadPersistedFilterState();
   _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
   _toolbarEl = null;
 
@@ -286,15 +363,18 @@ export async function mount(container) {
     onFilterChange,
     onSortChange,
     onClearAll,
-    onAddApplication: () => {},
+    onAddApplication,
   });
+  const fab = createFab();
+
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
-  _container.append(toolbar);
+  _container.append(toolbar, fab);
 
   try {
     _applications = await api.getAll();
+    _filterState = syncDynamicSelections(_filterState, _applications);
     _salaryBounds = getSalaryBounds(_applications);
   } catch (error) {
     toolbar.removeAttribute('aria-busy');

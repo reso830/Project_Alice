@@ -18,6 +18,7 @@ const FIELD_TO_COLUMN = {
   followUpAction: 'follow_up_action',
   followUpDate: 'follow_up_date',
   metadata: 'metadata',
+  archived: 'archived',
 };
 
 const DEFAULT_STATUS = STATUS_VALUES[0];
@@ -53,6 +54,44 @@ function parseJson(value, fallback) {
   return JSON.parse(value);
 }
 
+function parseSalaryLower(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (Number.isInteger(numericValue) && numericValue > 0) {
+    return numericValue;
+  }
+
+  const match = value.match(/\$\s*([\d,.]+)\s*([kK])?/);
+
+  if (!match) {
+    return null;
+  }
+
+  const amount = Number(match[1].replace(/,/g, ''));
+
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
+
+  return Math.round(match[2] ? amount * 1000 : amount);
+}
+
+function normalizeSalary(value) {
+  if (Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return parseSalaryLower(value);
+  }
+
+  return null;
+}
+
 export function toRecord(row) {
   return {
     id: row.id,
@@ -66,7 +105,7 @@ export function toRecord(row) {
     jobPostingUrl: row.job_posting_url,
     recruiter: row.recruiter,
     notes: row.notes,
-    salary: row.salary,
+    salary: normalizeSalary(row.salary),
     responsibilities: row.responsibilities,
     skills: parseJson(row.skills, []),
     followUpAction: row.follow_up_action,
@@ -74,7 +113,7 @@ export function toRecord(row) {
     lastStatusUpdate: row.last_status_update,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    archived: Boolean(row.archived),
+    archived: Boolean(row.archived ?? false),
     metadata: parseJson(row.metadata, null),
   };
 }
@@ -88,6 +127,11 @@ export function toRow(fields) {
 
     if (field === 'fav') {
       row[column] = value ? 1 : 0;
+    } else if (field === 'archived') {
+      row[column] = value ? 1 : 0;
+      if (value) {
+        row.fav = 0;
+      }
     } else if (field === 'skills') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'metadata') {
@@ -185,7 +229,7 @@ export function archive(id, targetDb = db) {
 
   targetDb.prepare(`
     UPDATE applications
-    SET archived = 1, updated_at = @updated_at
+    SET archived = 1, fav = 0, updated_at = @updated_at
     WHERE id = @id
   `).run({ id, updated_at: currentDate() });
 

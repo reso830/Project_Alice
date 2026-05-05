@@ -20,6 +20,7 @@ let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
 let _companyButton = null;
+let _favoritesButton = null;
 let _sortButton = null;
 let _sortTrigger = null;
 let _eraseBtn = null;
@@ -31,11 +32,15 @@ let _sortState = null;
 let _salaryBounds = null;
 let _callbacks = {};
 
+const SALARY_FILTER_MIN = 50000;
+const SALARY_FILTER_MAX = 250000;
+
 function createSvgIcon(pathData) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
   svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
   svg.setAttribute('width', '15');
   svg.setAttribute('height', '15');
   svg.setAttribute('aria-hidden', 'true');
@@ -67,14 +72,15 @@ function getActiveFilterCount(filterState) {
   return (filterState.statuses?.length ?? 0)
     + (filterState.companies?.length ?? 0)
     + (filterState.salaryMin === null && filterState.salaryMax === null ? 0 : 1)
-    + (filterState.compatMin === null && filterState.compatMax === null ? 0 : 1);
+    + (filterState.compatMin === null && filterState.compatMax === null ? 0 : 1)
+    + (filterState.favoritesOnly === true ? 1 : 0);
 }
 
 function updateLabel(totalCount, filteredCount, filterState) {
   const active = isAnyFilterActive(filterState);
 
   if (_labelEl) {
-    _labelEl.textContent = active ? 'Results' : 'All Applications';
+    _labelEl.textContent = active ? 'Results' : 'Applications';
     _labelEl.append(' ', _countEl);
   }
 
@@ -125,10 +131,27 @@ function closePanel({ restoreFocus = false } = {}) {
   }
 }
 
+function positionPanel(button, panel) {
+  const rect = button.getBoundingClientRect();
+  const panelWidth = panel.offsetWidth || 220;
+  let top = rect.bottom + 8;
+  let left = rect.left;
+
+  if (left + panelWidth > window.innerWidth - 8) {
+    left = Math.max(8, rect.right - panelWidth);
+  }
+
+  panel.style.top = `${top}px`;
+  panel.style.left = `${left}px`;
+}
+
 function replaceOpenPanel(panel) {
   _openPanel?.remove();
   _openPanel = panel;
-  _openButton?.parentElement?.append(panel);
+  document.body.append(panel);
+  if (_openButton) {
+    positionPanel(_openButton, panel);
+  }
 }
 
 function openPanel(type, button, panel) {
@@ -146,7 +169,8 @@ function openPanel(type, button, panel) {
   _openButton = button;
   _openPanel = panel;
   button.classList.add('filter-btn--open');
-  button.parentElement.append(panel);
+  document.body.append(panel);
+  positionPanel(button, panel);
   attachPanelListeners();
 }
 
@@ -156,7 +180,10 @@ function renderStatusPanel() {
     options: getAvailableStatuses(_allApps, _filterState),
     selected: _filterState.statuses,
     getLabel: (status) => STATUS_CONFIG[status]?.label ?? status,
-    getDot: (status) => STATUS_CONFIG[status]?.badgeBg,
+    getDot: (status) => {
+      const config = STATUS_CONFIG[status];
+      return config ? config.borderAccent : null;
+    },
     onChange: (statuses) => {
       _callbacks.onFilterChange?.({ ..._filterState, statuses });
     },
@@ -182,57 +209,81 @@ function renderCompanyPanel() {
   });
 }
 
-function createRangePanel(slider) {
+function createRangePanel(title, slider, onClear) {
   const panel = document.createElement('div');
+  const header = document.createElement('div');
+  const titleEl = document.createElement('span');
+  const clearBtn = document.createElement('button');
 
   panel.className = 'filter-panel range-panel';
-  panel.append(slider);
+  header.className = 'filter-panel__header';
+  titleEl.className = 'filter-panel__title';
+  titleEl.textContent = title;
+  clearBtn.type = 'button';
+  clearBtn.className = 'filter-panel__clear';
+  clearBtn.textContent = 'Clear';
+  clearBtn.addEventListener('click', () => {
+    onClear();
+    closePanel();
+  });
+
+  header.append(titleEl, clearBtn);
+  panel.append(header, slider);
 
   return panel;
 }
 
 function formatSalary(value) {
-  return `$${Math.round(value / 1000)}k`;
+  const k = Math.round(value / 1000);
+  return value >= SALARY_FILTER_MAX ? `₱${k}k+` : `₱${k}k`;
 }
 
 function renderSalaryPanel() {
-  return createRangePanel(RangeSlider.render({
-    min: _salaryBounds.min,
-    max: _salaryBounds.max,
-    valueMin: _filterState.salaryMin ?? _salaryBounds.min,
-    valueMax: _filterState.salaryMax ?? _salaryBounds.max,
-    step: SALARY_STEP,
-    formatValue: formatSalary,
-    ariaLabelMin: 'Minimum salary',
-    ariaLabelMax: 'Maximum salary',
-    onCommit: (min, max) => {
-      _callbacks.onFilterChange?.({
-        ..._filterState,
-        salaryMin: min === _salaryBounds.min ? null : min,
-        salaryMax: max === _salaryBounds.max ? null : max,
-      });
-    },
-  }));
+  return createRangePanel(
+    'Salary',
+    RangeSlider.render({
+      min: SALARY_FILTER_MIN,
+      max: SALARY_FILTER_MAX,
+      valueMin: _filterState.salaryMin ?? SALARY_FILTER_MIN,
+      valueMax: _filterState.salaryMax ?? SALARY_FILTER_MAX,
+      step: SALARY_STEP,
+      formatValue: formatSalary,
+      ariaLabelMin: 'Minimum salary',
+      ariaLabelMax: 'Maximum salary',
+      onCommit: (min, max) => {
+        _callbacks.onFilterChange?.({
+          ..._filterState,
+          salaryMin: min === SALARY_FILTER_MIN ? null : min,
+          salaryMax: max === SALARY_FILTER_MAX ? null : max,
+        });
+      },
+    }),
+    () => _callbacks.onFilterChange?.({ ..._filterState, salaryMin: null, salaryMax: null }),
+  );
 }
 
 function renderCompatPanel() {
-  return createRangePanel(RangeSlider.render({
-    min: 0,
-    max: 100,
-    valueMin: _filterState.compatMin ?? 0,
-    valueMax: _filterState.compatMax ?? 100,
-    step: 1,
-    formatValue: (value) => `${Math.round(value)}%`,
-    ariaLabelMin: 'Minimum compatibility',
-    ariaLabelMax: 'Maximum compatibility',
-    onCommit: (min, max) => {
-      _callbacks.onFilterChange?.({
-        ..._filterState,
-        compatMin: min === 0 ? null : min,
-        compatMax: max === 100 ? null : max,
-      });
-    },
-  }));
+  return createRangePanel(
+    'Compatibility',
+    RangeSlider.render({
+      min: 0,
+      max: 100,
+      valueMin: _filterState.compatMin ?? 0,
+      valueMax: _filterState.compatMax ?? 100,
+      step: 1,
+      formatValue: (value) => `${Math.round(value)}%`,
+      ariaLabelMin: 'Minimum compatibility',
+      ariaLabelMax: 'Maximum compatibility',
+      onCommit: (min, max) => {
+        _callbacks.onFilterChange?.({
+          ..._filterState,
+          compatMin: min === 0 ? null : min,
+          compatMax: max === 100 ? null : max,
+        });
+      },
+    }),
+    () => _callbacks.onFilterChange?.({ ..._filterState, compatMin: null, compatMax: null }),
+  );
 }
 
 function renderSortPanel() {
@@ -289,7 +340,7 @@ function createEraseButton() {
 function createAddButton() {
   const button = document.createElement('button');
 
-  button.className = 'toolbar__add';
+  button.className = 'toolbar__add new-app-btn';
   button.type = 'button';
   button.textContent = '+ New application';
   button.addEventListener('click', () => {
@@ -320,12 +371,14 @@ function updateButtons(totalCount, filterState) {
   setButtonDisabled(_salaryButton, salaryDisabled);
   setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
+  setButtonDisabled(_favoritesButton, disabled);
   setButtonDisabled(_sortButton, disabled);
   setButtonDisabled(_eraseBtn, disabled);
   setPressed(_statusButton, (filterState.statuses?.length ?? 0) > 0);
   setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
   setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
   setPressed(_companyButton, (filterState.companies?.length ?? 0) > 0);
+  setPressed(_favoritesButton, filterState.favoritesOnly === true);
   setPressed(_sortButton, !isDefaultSort(_sortState));
   _salaryButton?.setAttribute(
     'aria-label',
@@ -370,6 +423,8 @@ export function render(options = {}) {
   };
 
   const toolbar = document.createElement('div');
+  const left = document.createElement('div');
+  const right = document.createElement('div');
   const label = document.createElement('span');
   const count = document.createElement('span');
   const controls = document.createElement('div');
@@ -403,6 +458,18 @@ export function render(options = {}) {
     icon: createSvgIcon('M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M9 7h1M9 11h1M9 15h1'),
     onClick: (button) => openPanel('company', button, renderCompanyPanel()),
   });
+  const favorites = createFilterButton({
+    className: 'filter-btn--favorites',
+    label: 'Favorites only',
+    title: 'Favorites only',
+    icon: createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+    onClick: () => {
+      _callbacks.onFilterChange?.({
+        ..._filterState,
+        favoritesOnly: _filterState.favoritesOnly !== true,
+      });
+    },
+  });
   const sort = createFilterButton({
     className: 'filter-btn--sort',
     label: 'Sort',
@@ -413,7 +480,9 @@ export function render(options = {}) {
   const erase = createEraseButton();
   const addButton = createAddButton();
 
-  toolbar.className = 'toolbar';
+  toolbar.className = 'toolbar subheader';
+  left.className = 'toolbar__left';
+  right.className = 'toolbar__right';
   label.className = 'toolbar__label';
   count.className = 'count-badge';
   count.setAttribute('aria-live', 'polite');
@@ -421,10 +490,12 @@ export function render(options = {}) {
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
 
-  filters.append(status.trigger, salary.trigger, compat.trigger, company.trigger);
+  filters.append(favorites.trigger, status.trigger, salary.trigger, compat.trigger, company.trigger);
   actions.append(sort.trigger);
   controls.append(filters, actions);
-  toolbar.append(label, controls, addButton);
+  left.append(label);
+  right.append(controls, addButton);
+  toolbar.append(left, right);
 
   _toolbarEl = toolbar;
   _labelEl = label;
@@ -434,6 +505,7 @@ export function render(options = {}) {
   _salaryButton = salary.button;
   _compatButton = compat.button;
   _companyButton = company.button;
+  _favoritesButton = favorites.button;
   _sortButton = sort.button;
   _sortTrigger = sort.trigger;
   _eraseBtn = erase;

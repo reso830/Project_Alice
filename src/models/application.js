@@ -1,64 +1,72 @@
 import { isValidISODate, toISODate } from '../utils/date.js';
-import { STATUS_VALUES } from '../../shared/constants.js';
+export const STATUS_VALUES = [
+  'wishlisted',
+  'applied',
+  'phone_screen',
+  'interview',
+  'assessment',
+  'offer',
+  'rejected',
+  'withdrawn',
+  'ghosted',
+];
 
 export const STATUS_CONFIG = {
   wishlisted: {
     label: 'Wishlisted',
-    badgeBg: '#F3E8FF',
-    badgeText: '#6B21A8',
-    borderAccent: '#9333EA',
+    badgeBg: '#ffafcc',
+    badgeText: '#212529',
+    borderAccent: '#ffafcc',
   },
   applied: {
     label: 'Applied',
-    badgeBg: '#DBEAFE',
-    badgeText: '#1E40AF',
-    borderAccent: '#3B82F6',
+    badgeBg: '#003049',
+    badgeText: '#ffffff',
+    borderAccent: '#003049',
   },
   phone_screen: {
     label: 'Phone Screen',
-    badgeBg: '#FFEDD5',
-    badgeText: '#9A3412',
-    borderAccent: '#F97316',
+    badgeBg: '#f4a259',
+    badgeText: '#212529',
+    borderAccent: '#f4a259',
   },
   interview: {
     label: 'Interview',
-    badgeBg: '#FEF9C3',
-    badgeText: '#854D0E',
-    borderAccent: '#EAB308',
+    badgeBg: '#f9c74f',
+    badgeText: '#212529',
+    borderAccent: '#f9c74f',
   },
   assessment: {
     label: 'Technical Assessment',
-    badgeBg: '#EDE9FE',
-    badgeText: '#5B21B6',
-    borderAccent: '#8B5CF6',
+    badgeBg: '#e0aaff',
+    badgeText: '#212529',
+    borderAccent: '#e0aaff',
   },
   offer: {
     label: 'Offer',
-    badgeBg: '#DCFCE7',
-    badgeText: '#166534',
-    borderAccent: '#22C55E',
+    badgeBg: '#09bc8a',
+    badgeText: '#ffffff',
+    borderAccent: '#09bc8a',
   },
   rejected: {
     label: 'Rejected',
-    badgeBg: '#FEE2E2',
-    badgeText: '#991B1B',
-    borderAccent: '#EF4444',
+    badgeBg: '#9d0208',
+    badgeText: '#ffffff',
+    borderAccent: '#9d0208',
   },
   withdrawn: {
     label: 'Withdrawn',
-    badgeBg: '#F1F5F9',
-    badgeText: '#475569',
-    borderAccent: '#64748B',
+    badgeBg: '#343a40',
+    badgeText: '#ffffff',
+    borderAccent: '#343a40',
   },
   ghosted: {
     label: 'Ghosted',
-    badgeBg: '#F8FAFC',
-    badgeText: '#64748B',
-    borderAccent: '#94A3B8',
+    badgeBg: '#ced4da',
+    badgeText: '#212529',
+    borderAccent: '#ced4da',
   },
 };
-
-export { STATUS_VALUES };
 
 function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;
@@ -89,10 +97,14 @@ function clampCompat(value) {
 export function normalizeApplication(record) {
   const normalized = { ...record };
 
-  for (const field of ['responsibilities', 'salary', 'recruiter', 'jobPostingUrl']) {
+  for (const field of ['responsibilities', 'recruiter', 'jobPostingUrl']) {
     if (typeof normalized[field] !== 'string') {
       normalized[field] = '';
     }
+  }
+
+  if (!Number.isInteger(normalized.salary) || normalized.salary <= 0) {
+    normalized.salary = null;
   }
 
   return normalized;
