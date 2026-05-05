@@ -840,6 +840,16 @@ textarea.edit-field__control {
   font-size: 11px;
   text-align: left;
   cursor: pointer;
+  transition: opacity .16s ease, color .16s ease;
+}
+
+.chart-legend__item--active {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.chart-legend__item--muted {
+  opacity: .45;
 }
 
 .chart-legend__swatch {
@@ -850,10 +860,18 @@ textarea.edit-field__control {
 }
 
 .chart-legend__label {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chart-legend__value {
+  flex: 0 0 auto;
+  color: var(--t3);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
 }
 
 .chart-tooltip {

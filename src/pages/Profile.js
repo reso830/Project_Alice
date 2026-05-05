@@ -136,11 +136,13 @@ function renderLegend(entries, { onHover, onLeave, onClick } = {}) {
     const item = document.createElement('button');
     const swatch = createElement('span', 'chart-legend__swatch');
     const label = createElement('span', 'chart-legend__label', entry.label);
+    const value = createElement('span', 'chart-legend__value', String(entry.count));
 
     item.type = 'button';
     item.className = 'chart-legend__item';
+    item.dataset.status = entry.status;
     swatch.style.background = entry.color;
-    item.append(swatch, label);
+    item.append(swatch, label, value);
     item.addEventListener('mouseover', () => onHover?.(entry.status));
     item.addEventListener('mouseleave', () => onLeave?.());
     item.addEventListener('click', () => onClick?.(entry.status, entry.count));
@@ -148,6 +150,13 @@ function renderLegend(entries, { onHover, onLeave, onClick } = {}) {
   }
 
   return legend;
+}
+
+function updateLegendHover(legend, status) {
+  for (const item of legend?.querySelectorAll('.chart-legend__item') ?? []) {
+    item.classList.toggle('chart-legend__item--active', Boolean(status) && item.dataset.status === status);
+    item.classList.toggle('chart-legend__item--muted', Boolean(status) && item.dataset.status !== status);
+  }
 }
 
 function renderApplicationsVisuals(body, applications) {
@@ -160,15 +169,18 @@ function renderApplicationsVisuals(body, applications) {
   const mobile = createElement('div', 'apps-mobile-vis');
   const mobileLabel = createElement('div', 'bar-tap-label');
   let donutChart;
+  let desktopLegend;
 
   function handleDonutHover(status, _el, pct, event) {
     if (!status) {
       donutChart.update(null);
+      updateLegendHover(desktopLegend, null);
       hideTooltip();
       return;
     }
 
     donutChart.update(status);
+    updateLegendHover(desktopLegend, status);
     const tooltip = getTooltip();
 
     tooltip.textContent = formatInteractionLabel(status, counts[status] ?? 0, pct);
@@ -198,12 +210,19 @@ function renderApplicationsVisuals(body, applications) {
   });
 
   desktopStats.append(createStatChipRow(applications));
+  desktopLegend = renderLegend(entries, {
+    onHover: (status) => {
+      donutChart.update(status);
+      updateLegendHover(desktopLegend, status);
+    },
+    onLeave: () => {
+      donutChart.update(null);
+      updateLegendHover(desktopLegend, null);
+    },
+  });
   desktopChart.append(
     donutChart.el,
-    renderLegend(entries, {
-      onHover: (status) => donutChart.update(status),
-      onLeave: () => donutChart.update(null),
-    }),
+    desktopLegend,
   );
   desktop.append(desktopStats, desktopChart);
 

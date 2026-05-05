@@ -148,6 +148,39 @@ describe('Profile page', () => {
     expect(container.querySelector('.pill-tag')).toBeNull();
   });
 
+  it('shows desktop status legend counts and highlights the matching legend item from donut hover', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockResolvedValue([
+      createApplication({ id: 1, status: 'applied' }),
+      createApplication({ id: 2, status: 'applied' }),
+      createApplication({ id: 3, status: 'offer' }),
+    ]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const legendItems = [...container.querySelectorAll('.apps-desktop-vis .chart-legend__item')];
+    const applied = legendItems.find((item) => item.dataset.status === 'applied');
+    const offer = legendItems.find((item) => item.dataset.status === 'offer');
+
+    expect(applied.querySelector('.chart-legend__label').textContent).toBe('Applied');
+    expect(applied.querySelector('.chart-legend__value').textContent).toBe('2');
+    expect(offer.querySelector('.chart-legend__value').textContent).toBe('1');
+
+    container.querySelector('.donut-chart path[data-status="applied"]')
+      .dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true, clientX: 100, clientY: 100 }));
+
+    expect(applied.classList.contains('chart-legend__item--active')).toBe(true);
+    expect(offer.classList.contains('chart-legend__item--muted')).toBe(true);
+
+    container.querySelector('.donut-chart')
+      .dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
+
+    expect(applied.classList.contains('chart-legend__item--active')).toBe(false);
+    expect(offer.classList.contains('chart-legend__item--muted')).toBe(false);
+  });
+
   it('renders certifications with structured entry hierarchy', async () => {
     const container = document.createElement('main');
 
