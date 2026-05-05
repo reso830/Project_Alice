@@ -167,3 +167,21 @@ Current version: **0.5.1**
 ## Development Workflow
 
 This project uses the [Specify](https://github.com/anthropics/claude-code) specification-driven workflow. Features are developed on numbered branches (`###-feature-name`) following a spec → plan → tasks → implement → checklist cycle. See [CLAUDE.md](CLAUDE.md) for details.
+
+### Local AI Orchestration
+
+A two-agent pipeline automates the full feature lifecycle via `scripts/ai-flow.ps1`. Claude owns specification and review; Codex owns requirements validation and implementation. Hard gates block forward progress at each stage.
+
+```powershell
+# Full pipeline for a new feature
+./scripts/ai-flow.ps1 spec <feature> <brief-path> [-DesignDoc <path>]
+./scripts/ai-flow.ps1 req-review <feature>
+./scripts/ai-flow.ps1 implement <feature>
+./scripts/ai-flow.ps1 check-next <feature>
+# ... repeat implement/check-next per phase ...
+./scripts/ai-flow.ps1 create-pr <feature>
+```
+
+See [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) for the full reference including all actions, gate system, log locations, and FAQ.
+
+For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](docs/REPO_MAP.md).

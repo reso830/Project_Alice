@@ -7,6 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `scripts/ai-flow.ps1` — PowerShell orchestrator for a two-agent AI pipeline (Claude + Codex) with hard gates at each stage; includes `run-all` action to loop through all phases automatically
+- `scripts/prompts/` — nine prompt templates covering the full pipeline: specify, plan, tasks, spec review, requirements check, phase implementation, phase review, and PR review (Claude and Codex variants)
+- `docs/AI_WORKFLOW_GUIDE.md` — full reference for the local AI workflow: actions, gate system, log locations, recovery flows, and FAQ
+- `docs/REPO_MAP.md` — codebase navigation shortcut for AI-assisted implementation; covers pages, components, backend, utilities, key boundaries, and common change patterns
+- `features/` directory with example feature brief template
+- `.gitignore` entries for AI workflow state files (`specs/**/.ai-phase`, `specs/**/.ai-requirements-ready`, `specs/**/.ai-phase-*-review`)
+
+### Changed
+- `CLAUDE.md` and `AGENTS.md` updated to reflect implemented app state (Vite/Express/SQLite), constitution v1.0.1, required date field (`lastStatusUpdate`), and correct directory conventions (`.agents/skills/` as shared source; `.codex/` lowercase for Codex-specific state)
+
+### Fixed
+- `Find-SpeckitSpecDir` now resolves the requested feature name before falling back to the current branch, preventing misrouting when `-FeatureName` differs from the active branch
+- Removed silent latest-spec fallback in `Find-SpeckitSpecDir`; unresolved names now throw immediately
+
 ## [0.5.1] — 2026-04-29
 
 ### Added

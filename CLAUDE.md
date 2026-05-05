@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project State
 
-This project uses the **Specify framework** for specification-driven development. Application code does not exist yet — the workflow runs from specification → planning → tasks → implementation.
+This project uses the **Specify framework** for specification-driven development. The application is implemented: Vite + Vanilla JS frontend, Express backend, SQLite persistence (better-sqlite3). New features follow the Speckit workflow: specification → planning → tasks → implementation.
 
 ## Specify Workflow
 
@@ -24,11 +24,11 @@ Skills are defined in `.agents/skills/` and mirrored to `.claude/skills/`. Run t
 
 Feature branches follow sequential numbering: `###-feature-name` (e.g. `001-core-tracker`), configured in `.specify/init-options.json`.
 
-## Project Constitution (v1.0.0)
+## Project Constitution (v1.0.1)
 
 Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of governing rules:
 
-**Required data fields**: company name, job title, status, created date.  
+**Required data fields**: company name, job title, status, last_status_update / lastStatusUpdate.  
 **Optional fields**: source, URL, application date, salary, notes, follow-up action/date.
 
 **Architecture constraints**:

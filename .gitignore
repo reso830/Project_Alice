@@ -16,3 +16,8 @@ Thumbs.db
 .vscode/
 .idea/
 .claude/
+
+# Local AI workflow state
+specs/**/.ai-phase
+specs/**/.ai-requirements-ready
+specs/**/.ai-phase-*-review
