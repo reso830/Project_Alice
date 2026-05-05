@@ -7,5 +7,8 @@ Check for:
 - data model risks
 - testing gaps
 
-Do not implement anything.
-Return only recommended improvements.
+Output MUST start with one of:
+1. Ready
+2. Not Ready
+
+Then list findings. Do not implement anything.
