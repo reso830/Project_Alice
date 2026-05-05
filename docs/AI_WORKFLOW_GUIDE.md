@@ -62,6 +62,7 @@ Run from the repo root:
 | `create-pr` | — | Pushes branch and opens a GitHub PR via `gh`. |
 | `claude-pr-review` | Claude | Final PR review. Logs to `08-claude-pr-review.log`. |
 | `codex-pr-review` | Codex | Final PR review. Logs to `09-codex-pr-review.log`. |
+| `run-all` | Codex + Claude | Loops through every phase automatically: implement → check-next for each. Skips phases already at PASS. Stops on NEEDS_CHANGES. Requires requirements gate = READY. |
 
 ### Parameters
 
@@ -241,3 +242,6 @@ The script throws immediately and prints the exit code and log path. Read the lo
 
 **Q: How do I see all phases and their current gate states?**
 `./scripts/ai-flow.ps1 next-phase my-feature` — prints each phase with its gate value and marks the current one with `*`.
+
+**Q: What does `run-all` do exactly?**
+It loops through every phase in `tasks.md` in order, running `implement` then `check-next` for each. Phases already at PASS are skipped so it's safe to re-run after a partial failure. Approval prompts are bypassed automatically. It stops immediately if any phase gate returns NEEDS_CHANGES — at that point read the log, fix the findings, and re-run `run-all` (it will skip the already-passed phases and retry from where it stopped).

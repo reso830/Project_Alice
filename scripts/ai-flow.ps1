@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet("spec", "req-review", "implement", "implement-next", "check-implementation", "check-next", "next-phase", "create-pr", "claude-pr-review", "codex-pr-review")]
+    [ValidateSet("spec", "req-review", "implement", "implement-next", "check-implementation", "check-next", "next-phase", "create-pr", "claude-pr-review", "codex-pr-review", "run-all")]
     [string]$Action,
 
     [Parameter(Mandatory = $true, Position = 1)]
@@ -327,4 +327,25 @@ switch ($Action) {
     "create-pr" { Initialize-FeatureContext; New-PullRequest }
     "claude-pr-review" { Initialize-FeatureContext; Require-Approval "Is the PR open and ready for Claude final review comments?"; Run-Claude -Prompt (Load-Prompt -TemplateName "claude-pr-review" -Phase (Get-CurrentPhase)) -LogFile "$script:LogDir/08-claude-pr-review.log" }
     "codex-pr-review" { Initialize-FeatureContext; Require-Approval "Is the PR open and ready for Codex final review comments?"; Run-Codex -Prompt (Load-Prompt -TemplateName "codex-pr-review" -Phase (Get-CurrentPhase)) -LogFile "$script:LogDir/09-codex-pr-review.log" }
+    "run-all" {
+        Initialize-FeatureContext
+        Assert-RequirementsReady
+        $SkipApproval = [switch]$true
+        $AllPhases = Get-PhaseHeadings
+        Write-Host ""; Write-Host "Running all phases for $script:FeatureId ($($AllPhases.Count) phase(s) detected)." -ForegroundColor Cyan
+        foreach ($PhaseItem in $AllPhases) {
+            $SelectedPhase = $PhaseItem.Number
+            $GatePath = Get-PhaseGatePath -PhaseNumber $SelectedPhase
+            if ((Test-Path $GatePath) -and ((Get-Content $GatePath -Raw).Trim() -eq "PASS")) {
+                Write-Host "Phase $("{0:D2}" -f $SelectedPhase) already PASS — skipping." -ForegroundColor DarkYellow
+                continue
+            }
+            Set-CurrentPhase -Value $SelectedPhase
+            Write-Host ""; Write-Host "=== Phase $("{0:D2}" -f $SelectedPhase) ===" -ForegroundColor Cyan
+            Run-ImplementPhase -SelectedPhase $SelectedPhase
+            Run-CheckImplementation -SelectedPhase $SelectedPhase
+        }
+        Write-Host ""; Write-Host "All phases complete." -ForegroundColor Green
+        Show-GitStatus
+    }
 }
