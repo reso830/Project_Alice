@@ -125,6 +125,10 @@ describe('STATUS_CONFIG', () => {
     });
   });
 
+  it('assigns Offer the approved dark text color', () => {
+    expect(STATUS_CONFIG.offer.badgeText).toBe('#212529');
+  });
+
   it('defines unique badge backgrounds for all statuses', () => {
     const badgeColors = STATUS_VALUES.map((status) => STATUS_CONFIG[status]?.badgeBg);
 
