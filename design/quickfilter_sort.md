@@ -1,5 +1,5 @@
 # Design Spec — Quick Filters & Sort
-**Project Alice · Wireframe v0.1.0 · Apr 2026**
+**Project Alice · v0.2.0 · Apr 2026**
 
 ---
 
@@ -14,26 +14,36 @@ Quick Filters and Sort are inline toolbar controls that let users narrow and reo
 ### 2.1 Desktop (≥ 640px)
 
 ```
-[ All Applications (23) ]  [⏱][💰][📈][🏢]  [✕]?  [↕]       [ + Add Application ]
-  subheader                 filter icons        erase  sort        primary action
+[ Applications (23) ]  [⏱][💰][📈][🏢][★]  [✕]?  [↕]       [ + New application ]
+  subheader + count badge   filter icons          erase  sort        primary action
 ```
 
 - Filter icons sit immediately to the right of the subheader label.
+- Five filter icons: Status (⏱), Salary (💰), Compatibility (📈), Company (🏢), Favorites (★).
 - Erase-all button appears **only** when ≥ 1 filter is active, between filter icons and sort icon.
 - Sort icon is always visible, to the right of the erase button (or filter icons if no active filters).
-- Primary action button is flush right.
+- Primary action button (`+ New application`) is flush right via `margin-left: auto`.
+- On mobile (`≤ 768px`): primary action button is hidden; a floating action button (FAB) `56×56px` circle appears fixed at bottom-right.
 
-### 2.2 Mobile (< 640px)
+**Count badge** — the application count is a separate pill element (`.count-badge`):
+```css
+display: inline-flex;
+align-items: center;
+border-radius: 999px;
+padding: 3px 10px;
+background: #eef2ff;   /* --indigo-dim */
+color: #4F46E5;        /* --indigo */
+font-size: 12px;
+font-weight: 500;
+```
 
-Two-row toolbar:
+### 2.2 Mobile (≤ 768px)
 
-**Row 1:** Subheader label | Primary action button (compact)
-**Row 2:** Filter icons + erase (if active) + sort icon
+The toolbar stays a single-row flex layout but condenses:
+- Primary action button (`.new-app-btn`) is hidden; FAB takes over.
+- Filter/sort buttons remain visible in the toolbar.
 
-Tapping any filter or sort icon expands an **inline panel** directly below row 2 (no floating popup). The panel retracts when:
-- The same icon is tapped again (toggle)
-- The clear button inside the panel is tapped
-- Settings are applied (user taps away or clears)
+Filter and sort panels use the same `position: fixed` popup approach as desktop — they are **not** expanded inline. Panels are appended to `document.body` and positioned via JavaScript based on the button's `getBoundingClientRect()`. The `RangeSlider` width expands to `100%` on mobile.
 
 ---
 
@@ -41,10 +51,10 @@ Tapping any filter or sort icon expands an **inline panel** directly below row 2
 
 | State | Label |
 |---|---|
-| No filters active | `All Applications (N)` where N = total entry count |
-| Any filter active | `Results (X)` where X = count of filtered entries |
+| No filters active | `Applications` + count badge showing total N |
+| Any filter active | `Results` + count badge showing filtered count X |
 
-Font: Sora, 13px, weight 500. Count is `<strong>` weight 600.
+Font: Sora, 13px, weight 500. Label text color: `#FFFFFF` (white on toolbar).
 
 ---
 
@@ -52,14 +62,15 @@ Font: Sora, 13px, weight 500. Count is `<strong>` weight 600.
 
 ### 4.1 Spec
 
-| Filter | Icon description | Tooltip |
-|---|---|---|
-| Status | Clock / circle with hand | "Filter by Status" |
-| Salary | Bag / currency icon | "Filter by Salary" |
-| Compatibility | Line-chart / trend upward | "Filter by Compatibility" |
-| Company | Building / briefcase | "Filter by Company" |
+| Filter | Tooltip |
+|---|---|
+| Status | "Status" |
+| Salary | "Salary" |
+| Compatibility | "Compatibility" |
+| Company | "Company" |
+| Favorites | "Favorites" |
 
-Each icon is rendered as an inline SVG, 13×13px, `currentColor`.
+Each icon is an inline SVG, **15×15px**, `currentColor`, `aria-hidden="true"`.
 
 **Button dimensions:** 28×28px  
 **Border radius:** 5px
@@ -70,12 +81,13 @@ Each icon is rendered as an inline SVG, 13×13px, `currentColor`.
 |---|---|
 | Default | `border: 1.5px solid #e0ddd8`, `background: #fff`, `color: #888` |
 | Hover | `border-color: #4F46E5`, `color: #4F46E5`, `background: #f4f2ff` |
-| Active (filter applied) | `border-color: #4F46E5`, `color: #4F46E5`, `background: #eef2ff` |
-| Open (popup visible) | Active styles + `box-shadow: 0 0 0 2px rgba(79,70,229,0.15)` |
+| Active (filter applied) | `border-color: #4F46E5`, `color: #4F46E5`, `background: #eef2ff`, `aria-pressed="true"` |
+| Open (popup visible) | Active styles + `box-shadow: 0 0 0 2px rgba(79,70,229,0.15)`, class `filter-btn--open` |
+| Disabled (no data) | `opacity: 0.4`, `pointer-events: none`, `aria-disabled="true"` |
 
 ### 4.2 Tooltip
 
-Appears on hover, above the icon (`bottom: calc(100% + 6px)`).
+Appears **below** the icon on hover (`top: calc(100% + 6px)`). Tooltip text comes from the `title` attribute via CSS `::before` pseudo-element.
 
 ```css
 background: #1a1a2e;
@@ -89,23 +101,23 @@ white-space: nowrap;
 
 ---
 
-## 5. Filter Pop-ups (Desktop)
+## 5. Filter Pop-ups
 
 ### 5.1 Container
 
 ```css
-position: absolute;
-top: calc(100% + 8px);
-left: 0;              /* anchored below the icon */
+position: fixed;      /* appended to document.body, positioned via JS */
 background: #ffffff;
 border: 1.5px solid #e0ddd8;
 border-radius: 8px;
 box-shadow: 0 4px 20px rgba(0,0,0,0.12);
 min-width: 220px;
-z-index: 500;
+z-index: 200;         /* var(--z-dropdown) */
 ```
 
-Closed by clicking outside (backdrop listener on `document`). The icon's open state is a toggle — tapping the same icon again closes it.
+Position calculated from the trigger button's `getBoundingClientRect()`: `top = rect.bottom + 8`, `left = rect.left` (clamped so panel doesn't overflow the right edge of the viewport).
+
+Closed by clicking outside (document click listener) or pressing Escape. The icon is a toggle — tapping the same icon again closes the panel.
 
 ### 5.2 Header (all pop-ups)
 
@@ -126,50 +138,50 @@ Multi-select checklist. Each row:
 ```
 
 - Checkbox: 14×14px, `border: 1.5px solid #e0ddd8`, `border-radius: 3px`
-- Selected: filled `#4F46E5`, white checkmark SVG inside
-- Color dot: 7px circle, color matches status badge color
-- Row height: ~34px; hover `background: #f4f2ff`
+- Selected: filled `#4F46E5`
+- Color dot: 7×7px circle, color = status `borderAccent` color (same single color used for badge/border/header)
+- Row height: 34px; hover `background: #f4f2ff`
 - Scrollable at `max-height: 220px` when list overflows
-
-> **Implementation note:** The list should only show statuses that exist among the currently visible (non-archived) entries. This is a backend/logic concern — design assumes full list for the wireframe.
+- List is limited to statuses present in the current (non-archived) dataset
 
 ### 5.4 Company Filter
 
-Identical structure to Status Filter — multi-select checklist of company names.
-
-> **Implementation note:** List should be derived from non-archived entries in the dataset. Alphabetically sorted.
+Identical structure to Status Filter — multi-select checklist of company names, alphabetically sorted, derived from the current dataset.
 
 ### 5.5 Salary Filter — Dual Range Slider
 
-Displays a two-handle range slider for filtering by salary range.
+Displays a two-handle range slider for filtering by salary range. Salary values are Philippine peso integers.
 
-**Bounds:** `$0` (or dataset minimum) → dataset maximum (rounded to nearest $1k)  
-**Step:** $1,000 (snapped on release)  
-**Display format:** Abbreviated — `$90k`, `$160k`
+**Fixed range:** `₱50,000 – ₱250,000`. Button is disabled when no applications have salary data.  
+**Step:** `SALARY_STEP` (from `filterSort.js`), snapped on mouseup/touchend.  
+**Display format:** Abbreviated with peso sign — `₱90k`, `₱160k`. At the max (`₱250k`), shows `₱250k+`.
 
 **Layout:**
 ```
-  $95k                              $180k     ← current range labels
+  $95k                              $180k     ← current range labels (float above track)
   ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●         ← track + thumbs
-$90k                                      $240k  ← min/max bounds
+$90k                                      $240k  ← min/max bounds (below track)
 ```
 
 **Behavior:**
-- Thumbs follow the pointer **smoothly in real-time** — no snapping during drag.
-- Values snap to the nearest $1k **only on mouseup/touchend**.
-- Parent component (filter state) is updated only on release, not during drag, to avoid re-renders affecting drag responsiveness.
+- Thumbs follow pointer smoothly in real-time — no snapping during drag.
+- Values snap to nearest $1k **only on mouseup/touchend**.
+- Filter state updates on release only (avoids re-renders during drag).
 - Min thumb cannot exceed `maxValue − $1k`; max thumb cannot go below `minValue + $1k`.
 
-**Track fill:**
+**Track**
 ```css
-background: #4F46E5;
 height: 4px;
 border-radius: 2px;
+background: #e0ddd8;   /* track */
+/* fill segment: */
+background: #4F46E5;   /* --color-accent */
 ```
 
-**Thumb:**
+**Thumb**
 ```css
-width: 18px; height: 18px;
+width: 18px;
+height: 18px;
 border-radius: 50%;
 background: #ffffff;
 border: 2px solid #4F46E5;
@@ -178,9 +190,7 @@ cursor: grab;
 ```
 
 Hover: `box-shadow: 0 0 0 4px rgba(79,70,229,0.12)`  
-Active drag: `cursor: grabbing`, `box-shadow: 0 0 0 5px rgba(79,70,229,0.18)`
-
-**Z-index:** The dragging thumb is elevated to `z-index: 4`; the idle thumb sits at `z-index: 2–3`.
+Active drag: `cursor: grabbing`, `box-shadow: 0 0 0 5px rgba(79,70,229,0.18)`, class `range-thumb--active`
 
 ### 5.6 Compatibility Filter — Dual Range Slider
 
@@ -192,16 +202,22 @@ Identical to Salary slider with these differences:
 | Max | 100 |
 | Step | 1 (percent) |
 | Display format | `0%` → `100%` |
-| Label format | `{value}%` |
+
+### 5.7 Favorites Filter
+
+A toggle — no popup. Clicking the ★ button sets `favoritesOnly: true` in the filter state, showing only starred applications. Clicking again clears it. No panel is opened; the button's `aria-pressed` state reflects whether the filter is active.
 
 ---
 
 ## 6. Erase-All Button
 
-Appears **only** when ≥ 1 filter is active. Positioned between the filter icons and the sort icon.
+Appears **only** when ≥ 1 filter is active. Inserted between filter icons and sort icon. Removed from DOM when no filters active.
+
+**Icon:** X cross SVG (two diagonal lines), 15×15px.
 
 ```css
-width: 28px; height: 28px;
+width: 28px;
+height: 28px;
 border: 1.5px solid #fca5a5;
 border-radius: 5px;
 background: #fff5f5;
@@ -210,7 +226,7 @@ color: #ef4444;
 
 Hover: `background: #fee2e2`, `border-color: #ef4444`
 
-**Action:** Clears all active filters simultaneously, resets page to 1, restores subheader to "All Applications (N)".
+**Action:** Clears all active filters simultaneously, resets page to 1, restores subheader to "All Applications".
 
 ---
 
@@ -218,7 +234,7 @@ Hover: `background: #fee2e2`, `border-color: #ef4444`
 
 ### 7.1 Sort Icon Button
 
-Same 28×28px icon button spec as filter icons. Active state (non-default sort applied) uses the same indigo active style.
+Same 28×28px icon button spec as filter icons. Active state (non-default sort applied) uses the same indigo active style (`aria-pressed="true"`).
 
 Tooltip: `"Sort"`
 
@@ -232,8 +248,9 @@ background: #ffffff;
 border: 1.5px solid #e0ddd8;
 border-radius: 8px;
 box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-min-width: 200px;
+min-width: 220px;
 z-index: 500;
+padding: 5px 0;
 ```
 
 **Structure:**
@@ -250,35 +267,36 @@ z-index: 500;
   ○ Ascending ↑
   ○ Descending ↓
   ─────────────
-  [✕] Restore default
+  Restore default
 ```
 
-- Section labels: 8px, uppercase, `color: #ccc`, `letter-spacing: 0.8px`
-- Options: 11px, `color: #333`; selected: `color: #4F46E5`, weight 500, prefixed with `✓`
-- Row hover: `background: #f4f2ff`
-- Dividers: `border-top: 1px solid #f0ede8`
+- Section labels: 8px, uppercase, `color: #ccc`, `letter-spacing: 0.8px`, padding `7px 10px 4px`
+- Options: 11px, `color: #333`; selected: `color: #4F46E5`, weight 500, prefixed with `✓ `
+- Row height: 32px; hover: `background: #f4f2ff`
+- Dividers: `border-top: 1px solid #f0ede8`, `margin-top: 5px`
 
 **Sort fields:**
 
 | Key | Label |
 |---|---|
 | `id` | Job ID |
-| `status` | Status |
+| `status` | Status (sorted by enum order) |
 | `compat` | Compatibility |
 | `salary` | Salary (sorts by lower bound of range) |
-| `company` | Company |
+| `companyName` | Company |
 
-**Restore default:** Resets to `field = id`, `direction = asc`. Styled in `color: #ccc`, turns red on hover. Closes the pop-up.
+**Default sort:** `field = id`, `direction = asc`. Sort icon shows no active styling when default is in effect.
 
-**Default sort:** ID ascending. This is the implicit state — no sort icon active styling when default is in effect.
+**Restore default:** Resets to default sort state and closes the panel. Styled `color: #ccc` normally; turns red (`#ef4444`) on hover.
 
 ---
 
 ## 8. Active Filter Persistence & Page Reset
 
 - Changing any filter resets the current page to `1`.
-- Filters are local UI state — they do not persist across sessions (implementation may add persistence later).
-- Sort state persists for the session alongside filters.
+- **Filter state persists to `localStorage`** (key: `apptracker_filters`) and is restored on page load. Invalid or out-of-range values are discarded on restore.
+- Sort state is session-only (not persisted to localStorage).
+- Salary filter button is disabled when no applications have salary data.
 
 ---
 
@@ -322,9 +340,8 @@ line-height: 1.8;
 
 - Each filter icon button requires `aria-label` (e.g. `aria-label="Filter by Status"`).
 - When a filter is active, add `aria-pressed="true"` to the icon button.
-- Pop-ups should be `role="dialog"` or `role="listbox"` as appropriate, with `aria-label` matching the filter name.
-- Checkboxes in Status/Company filters should use `role="checkbox"` with `aria-checked`.
-- Slider thumbs require `role="slider"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and `aria-label`.
-- Erase-all: `aria-label="Clear all filters"`.
+- The erase-all button: `aria-label="Clear all filters"`.
+- Slider thumbs require `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and `aria-label`.
 - Sort restore: `aria-label="Restore default sort"`.
-- Keyboard: pop-ups should be closeable with `Escape`; focus should return to the triggering icon button.
+- Keyboard: panels are closeable with `Escape`; focus returns to the triggering button.
+- When all apps are disabled (empty list), filter and sort buttons use `aria-disabled="true"` and `disabled`.

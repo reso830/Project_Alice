@@ -1,25 +1,28 @@
 Create a Spec Kit specification for this feature.
 
-Context:
-You are part of a multi-step local AI workflow.
-Do not assume missing information.
-Base your answers only on provided files.
+Fill in before sending:
+- Feature name:
+- Feature directory:
+- Feature brief path:
+- Design reference path, if any:
+- Workflow ledger path, if any:
 
-Feature brief:
-{{FEATURE_BRIEF}}
+Instructions:
+- Read the feature brief and design reference before writing.
+- Base the spec only on provided files and existing project context.
+- Do not assume missing information.
+- If something is unclear, list targeted questions instead of guessing.
+- Do not implement code.
 
-Design reference:
-{{DESIGN_DOC}}
-
-Output:
-- specs/{{FEATURE_NAME}}/spec.md
+Write or update:
+- `spec.md` in the feature directory
 
 Include:
 - problem statement
 - scope and non-goals
 - user behavior
+- acceptance criteria
 - edge cases
 - data considerations
 
-Do not implement code.
-If unclear, list questions instead of guessing.
+Keep the spec concise, testable, and aligned with the project constitution.

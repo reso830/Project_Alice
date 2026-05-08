@@ -1,5 +1,5 @@
 # Design Spec — Pagination & Footer
-**Project Alice · v0.2.0 · Apr 2026**
+**Project Alice · v0.3.0 · Apr 2026**
 
 ---
 
@@ -19,7 +19,7 @@ When 10 or fewer entries exist, the pagination block is fully hidden — no rule
         [page buttons]                ← centered horizontally
 ```
 - `<hr>` is a full-width horizontal rule separating cards from the nav.
-- Page buttons are centered in the container (flexbox, `justify-content: center`).
+- Page buttons are centered in the container (flexbox, `justify-content: center`, `gap: 6px`).
 
 ### 1.4 Page Window Algorithm
 
@@ -84,7 +84,7 @@ color: #555555;
 ```css
 border-color: #4F46E5;
 color: #4F46E5;
-background: #f4f2ff;
+background: #f4f2ff;   /* --indigo-soft */
 ```
 
 **Page button (active / current)**
@@ -95,7 +95,7 @@ color: #ffffff;
 font-weight: 600;
 ```
 
-**Ellipsis**
+**Ellipsis (`···`)**
 ```css
 min-width: 28px;
 height: 32px;
@@ -104,7 +104,7 @@ font-size: 12px;
 color: #bbbbbb;
 user-select: none;
 letter-spacing: 1px;
-/* content: "···" */
+/* content: "···" (middle-dot × 3) */
 ```
 
 **Wrapper padding**
@@ -124,17 +124,17 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 **Desktop (≥ 640px)** — 3-column grid inside a max-width container:
 ```
 ┌─────────────────────────────────────────────────────┐
-│  [✓] Project Alice    Your job search, organized.   │  ← brand (full width)
+│  [Alice icon] Project Alice  Your job search, org…  │  ← brand (full width)
 │ ─────────────────────────────────────────────────── │  ← <hr>
 │  VERSION         STACK            FEEDBACK          │
-│  v0.2.0          Vanilla JS · Vite Report an issue  │
+│  v0.3.0          Vanilla JS · Vite Report an issue  │
 │  Built Apr 2026  Vitest · ESLint   Request a feature│
 │ ─────────────────────────────────────────────────── │
-│  © 2026 AppTracker. All rights reserved.            │  ← copyright (full width)
+│  © 2026 Project Alice. All rights reserved. · Part of reso's Project Series.  │
 └─────────────────────────────────────────────────────┘
 ```
 
-**Mobile (< 640px)** — 2-column grid; brand and rule span full width.
+**Mobile (< 640px)** — 2-column grid; brand, rule, and copyright span full width.
 
 **Max-width container:** `900px`, centered with `margin: 0 auto`.
 
@@ -142,13 +142,13 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 
 | Section | Label | Content | Interactive? |
 |---|---|---|---|
-| Brand | — | Icon + "Project Alice" + "Your job search, organized." | No |
-| Version | `VERSION` | `v0.2.0`, `Built Apr 2026` | No |
+| Brand | — | Alice icon + "Project Alice" + "Your job search, organized." | No |
+| Version | `VERSION` | `v0.3.0`, `Built Apr 2026` | No |
 | Stack | `STACK` | `Vanilla JS · Vite`, `Vitest · ESLint` | No |
 | Feedback | `FEEDBACK` | "Report an issue", "Request a feature" | Yes (links) |
 | Copyright | — | `© 2026 Project Alice. All rights reserved. · Part of reso's Project Series.` | No |
 
-> **Implementation note:** feedback links open `https://github.com/reso830/Project_Alice/issues/new` in a new tab for this release.
+> **Implementation note:** feedback links open `https://github.com/reso830/Project_Alice/issues/new` in a new tab.
 
 > **Brand attribution:** "Part of reso's Project Series" is appended to the copyright line, separated by a `·` middot. Keep it on the same line — do not promote it to the brand section.
 
@@ -170,18 +170,23 @@ max-width: 900px;
 margin: 0 auto;
 ```
 
+**Brand row** — spans full grid width (`grid-column: 1 / -1`):
+```css
+display: flex;
+align-items: center;
+gap: 8px;
+```
+
 **Brand — icon**
 
-Inline SVG, `20×20px`, placed to the left of the name. Spec:
-```html
-<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-  <rect x="1" y="1" width="18" height="18" rx="4" fill="#4F46E5"/>
-  <path d="M6 10.5L9 13.5L14 7"
-        stroke="white" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+`<img>` tag using `Alice_White.png`, `40×40px`, `object-fit: contain`, `aria-hidden="true"`. `flex-shrink: 0`.
+
+```css
+width: 40px;
+height: 40px;
+flex-shrink: 0;
+object-fit: contain;
 ```
-Aligns to baseline of the name text (`align-items: baseline` on the brand flex row). `flex-shrink: 0`.
 
 **Brand — name**
 ```css
@@ -223,7 +228,10 @@ color: rgba(255, 255, 255, 0.38);
 background: none;
 border: none;
 padding: 0;
+text-decoration: none;
+display: block;
 cursor: pointer;
+line-height: 1.6;
 ```
 
 **Feedback links (hover)**
@@ -254,13 +262,16 @@ Content: `© 2026 Project Alice. All rights reserved. · Part of reso's Project 
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-bg-dark` | `#1a1a2e` | Topbar, footer background |
-| `--color-accent` | `#4F46E5` | Active states, primary buttons, footer icon fill |
-| `--color-bg-base` | `#f0ede8` | Page background |
-| `--color-bg-surface` | `#ffffff` | Card background |
-| `--color-border` | `#e0ddd8` | Card borders, HR rules, button borders |
-| `--color-accent` | `#4F46E5` | Active states, primary buttons |
-| `--color-accent-light` | `#f4f2ff` | Hover background on accent elements |
+| `--navy` | `#1a1a2e` | Topbar, footer background |
+| `--indigo` | `#4F46E5` | Active states, primary buttons |
+| `--indigo-soft` | `#F4F2FF` | Pagination hover background |
+| `--bg` | `#F4F1ED` | Page background |
+| `--surface` | `#FFFFFF` | Card background |
+| `--border` | `#E8E3DA` | Card borders |
+| `--color-border` | `#E0DDD8` | HR rules, pagination/filter button borders |
+| `--color-accent-light` | `#F4F2FF` | Pagination hover, filter hover background |
+| `--pagination-text` | `#555555` | Pagination button default text |
+| `--pagination-muted` | `#BBBBBB` | Ellipsis color |
 | `--font-ui` | `'Sora', sans-serif` | All UI labels and body text |
 | `--font-mono` | `'DM Mono', monospace` | IDs, dates, code values, pagination, footer |
 
@@ -270,5 +281,6 @@ Content: `© 2026 Project Alice. All rights reserved. · Part of reso's Project 
 
 - Pagination `<button>` elements must have descriptive `aria-label` attributes: e.g. `aria-label="Go to page 4"`, `aria-label="Current page, page 5"` (with `aria-current="page"`).
 - Ellipsis spans should use `aria-hidden="true"` — they carry no navigational meaning.
-- Footer feedback links require accessible labels even without visible icon context.
+- Footer feedback links require `aria-label` for full context (e.g. `"Report an issue on GitHub"`).
+- Brand icon (`<img>`) uses `alt=""` and `aria-hidden="true"` — it is decorative.
 - Ensure 4.5:1 contrast ratio on all footer text against `#1a1a2e`.
