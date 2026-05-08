@@ -1,75 +1,48 @@
-Implement the current Spec Kit task list for Phase {{PHASE}}.
+Implement one Spec Kit phase.
 
-Context:
-You are part of a controlled AI workflow.
-- Speckit defines structure and artifacts
-- Claude defines plan and tasks
-- You (Codex) implement exactly what is specified
+Fill in before sending:
+- Feature name:
+- Feature directory:
+- Phase number:
+- Workflow ledger path:
+- Spec path:
+- Plan path:
+- Tasks path:
+- Repo map path, if available:
 
-Inputs:
-- {{SPEC_DIR}}/tasks.md
-- {{SPEC_DIR}}/plan.md
-- {{SPEC_DIR}}/spec.md
-- docs/REPO_MAP.md
+Instructions:
+- Read the workflow ledger, tasks, plan, spec, and repo map if available.
+- Use the workflow ledger to identify standing findings, user notes, and accepted resolutions.
+- Address findings marked `New` for this phase unless the user marked them `Accepted`.
+- Implement only the requested phase.
+- Stop after completing this phase.
+- Do not proceed to the next phase.
 
-Optional:
-- {{SPEC_DIR}}/context.md
-
----
-
-## Context Loading
-
-Before implementation, read:
-- docs/REPO_MAP.md
-- {{SPEC_DIR}}/tasks.md
-- {{SPEC_DIR}}/plan.md
-- {{SPEC_DIR}}/context.md (if exists)
-
----
-
-## Token Discipline (MANDATORY)
-
-- Do NOT scan the entire repository
-- Only inspect files relevant to Phase {{PHASE}}
-- Start by identifying the minimal set of files required
-- Prefer targeted search over broad exploration
-- If expanding scope, explicitly state why
+Context discipline:
+- Do not scan the entire repository.
+- Start by identifying the minimal set of files required.
+- Prefer targeted search over broad exploration.
+- If expanding scope, explicitly state why.
 
 Before editing, list:
 - files to inspect
 - files to modify
 
----
+Implementation rules:
+- Follow the project constitution.
+- Do not add unrequested features.
+- Keep changes small and testable.
+- Respect target files defined in `tasks.md`.
+- Do not modify out-of-scope areas unless required and justified.
 
-## Implementation Rules
+Testing:
+- Add or update tests according to the phase tasks.
+- Run the narrowest useful tests first.
+- Report any tests that could not be run and why.
 
-- Follow the constitution
-- Do not add unrequested features
-- Keep changes small and testable
-- Respect target files defined in tasks.md
-- Do not modify out-of-scope areas unless required and justified
-
----
-
-## Testing
-
-- Add or update tests for core logic
-- Use validation guidance from tasks.md
-
----
-
-## Execution
-
-- Implement ONLY Phase {{PHASE}}
-- Stop after completing the current phase
-- Do not proceed to next phase
-
----
-
-## Output
-
-- Summary of changes
-- Files modified
-- Tests added/updated
-- Any assumptions made
-
+Output:
+- summary of changes
+- files modified
+- tests added/updated
+- tests run
+- assumptions made
