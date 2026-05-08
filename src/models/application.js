@@ -45,7 +45,7 @@ export const STATUS_CONFIG = {
   offer: {
     label: 'Offer',
     badgeBg: '#09bc8a',
-    badgeText: '#ffffff',
+    badgeText: '#212529',
     borderAccent: '#09bc8a',
   },
   rejected: {
