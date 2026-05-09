@@ -120,6 +120,8 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.title).toBe('Status');
+    expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.dataset.tooltip).toBeUndefined();
     expect([...toolbar.querySelectorAll('.filter-btn')].every((button) => button.querySelector('svg.icon')))
       .toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();

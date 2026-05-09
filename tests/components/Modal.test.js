@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/services/api.js', () => ({
@@ -19,6 +22,8 @@ import {
 } from '../../src/components/Modal.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
+
+const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 function application(overrides = {}) {
   return {
@@ -84,7 +89,7 @@ function discardButton() {
 }
 
 function closeButton() {
-  return document.querySelector('button[aria-label="Close"]');
+  return document.querySelector('.modal-quick-action--close');
 }
 
 function modalBackdrop() {
@@ -140,13 +145,59 @@ describe('Modal', () => {
     expect(actions.every((button) => button.querySelector('svg.icon'))).toBe(true);
     expect(actions.every((button) => !button.querySelector('.modal-quick-action__label'))).toBe(true);
     expect(actions.map((button) => button.title)).toEqual([
-      'Star / Unstar',
+      'Favorite',
       'Change status',
       'Archive',
       'Close',
     ]);
+    expect(actions.every((button) => !button.hasAttribute('aria-label'))).toBe(true);
     expect(document.querySelector('.modal-header__meta').contains(document.querySelector('.modal-quick-actions')))
-      .toBe(true);
+      .toBe(false);
+    expect(document.querySelector('.modal-header').lastElementChild).toBe(document.querySelector('.modal-quick-actions'));
+  });
+
+  it('keeps quick actions on a separate third header row', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application());
+
+    const header = document.querySelector('.modal-header');
+
+    expect(header.children[0].className).toBe('modal-header__meta');
+    expect(header.children[1].className).toBe('modal-header__title-row');
+    expect(header.children[2].className).toBe('modal-quick-actions');
+    expect(mainCss).toContain('.modal-header__meta');
+    expect(mainCss).toContain('justify-content: flex-start;');
+  });
+
+  it('centers status badge text for narrow wrapped header pills', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ status: 'phone_screen' }));
+
+    const badge = document.querySelector('#modal-status-badge');
+
+    expect(badge.classList.contains('status-badge')).toBe(true);
+    expect(mainCss).toContain('.modal-header .status-badge');
+    expect(mainCss).toContain('text-align: center;');
+    expect(mainCss).toContain('justify-content: center;');
+    expect(mainCss).toContain('white-space: normal;');
+  });
+
+  it('allows long modal field values to wrap inside narrow containers', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      jobPostingUrl: 'https://example.com/really/long/path/without/simple/breakpoints/that/should/wrap',
+    }));
+
+    const urlValue = getFieldByLabel('URL').querySelector('.modal-field__value');
+
+    expect(urlValue.classList.contains('modal-field__display')).toBe(true);
+    expect(mainCss).toContain('.modal-field__display');
+    expect(mainCss).toContain('overflow-wrap: break-word;');
+    expect(mainCss).toContain('word-break: break-word;');
+    expect(mainCss).toContain('min-width: 0;');
   });
 
   it('closes the overlay from the header close action', () => {
@@ -560,6 +611,15 @@ describe('Modal', () => {
 
     expect(getFieldByLabel('Required Skills').textContent).toContain('TypeScript');
 
+    const commaInput = getFieldByLabel('Required Skills').querySelector('input');
+    commaInput.value = 'Accessibility';
+    expect(() => {
+      commaInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: ',', bubbles: true }));
+      commaInput.dispatchEvent(new window.Event('blur'));
+    }).not.toThrow();
+
+    expect(getFieldByLabel('Required Skills').textContent).toContain('Accessibility');
+
     const duplicateInput = getFieldByLabel('Required Skills').querySelector('input');
     duplicateInput.value = 'TypeScript';
     duplicateInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -574,7 +634,9 @@ describe('Modal', () => {
     backspaceInput.value = '';
     backspaceInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
 
-    expect(getFieldByLabel('Required Skills').querySelectorAll('.skill-tag')).toHaveLength(0);
+    expect(getFieldByLabel('Required Skills').querySelectorAll('.skill-tag')).toHaveLength(1);
+    expect(getFieldByLabel('Required Skills').textContent).toContain('TypeScript');
+    expect(getFieldByLabel('Required Skills').textContent).not.toContain('Accessibility');
   });
 
   it('renders a hidden edit footer and reveals it for draft changes', () => {
@@ -887,12 +949,12 @@ describe('Modal', () => {
     expect(document.body.textContent).toContain(formatPeso(150000));
   });
 
-  it('renders empty salary text for absent salary values', () => {
+  it('renders placeholder salary text for absent salary values', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application({ salary: null }));
 
-    expect(getSalaryFieldValue().textContent).toBe('');
+    expect(getSalaryFieldValue().textContent).toBe('\u2014');
   });
 
   it('toggles favorite through PATCH and updates the quick action state', async () => {

@@ -188,7 +188,7 @@ function createField(label, value, fullSpan = false, { preserveEmpty = false } =
 
   row.className = fullSpan ? 'modal-field modal-field--full' : 'modal-field';
   labelEl.className = 'modal-field__label';
-  valueEl.className = 'modal-field__value';
+  valueEl.className = 'modal-field__value modal-field__display';
   labelEl.textContent = label;
   valueEl.textContent = preserveEmpty ? value : displayValue(value);
 
@@ -218,7 +218,7 @@ function createEditableShell(label, fullSpan = false, { required = false } = {})
     ? 'modal-field modal-field--full modal-field--editable'
     : 'modal-field modal-field--editable';
   labelEl.className = 'modal-field__label';
-  valueEl.className = 'modal-field__value';
+  valueEl.className = 'modal-field__value modal-field__display';
   appendFieldLabel(labelEl, label, required);
   row.append(labelEl, valueEl);
 
@@ -238,7 +238,8 @@ async function copyJobPostingUrl(event) {
 
 function renderTextDisplay(valueEl, key, formatter) {
   valueEl.replaceChildren();
-  valueEl.textContent = formatter ? formatter(_draft[key]) : displayValue(_draft[key]);
+  const value = formatter ? formatter(_draft[key]) : _draft[key];
+  valueEl.textContent = displayValue(value);
 
   if (key === 'jobPostingUrl' && typeof _draft.jobPostingUrl === 'string' && _draft.jobPostingUrl.trim() !== '') {
     const copyButton = document.createElement('button');
@@ -416,14 +417,11 @@ function makeChipEditor({ label, key }) {
     }
 
     const input = document.createElement('input');
+    let committingByKeyboard = false;
     input.className = 'modal-chip-input';
     input.setAttribute('aria-label', `Add ${label}`);
 
     function addChip() {
-      if (!input.isConnected) {
-        return;
-      }
-
       const value = input.value.trim();
 
       if (value !== '' && !values().includes(value)) {
@@ -435,11 +433,19 @@ function makeChipEditor({ label, key }) {
       renderChips();
     }
 
-    input.addEventListener('blur', addChip);
+    input.addEventListener('blur', () => {
+      if (committingByKeyboard) {
+        return;
+      }
+
+      addChip();
+    });
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ',') {
         event.preventDefault();
+        committingByKeyboard = true;
         addChip();
+        committingByKeyboard = false;
       } else if (event.key === 'Backspace' && input.value === '') {
         _draft[key] = values().slice(0, -1);
         renderChips();
@@ -463,7 +469,7 @@ function createCompatField(score) {
 
   row.className = 'modal-field';
   labelEl.className = 'modal-field__label';
-  valueEl.className = 'modal-field__value';
+  valueEl.className = 'modal-field__value modal-field__display';
   labelEl.textContent = 'Compatibility';
   valueEl.append(CompatBar.render(score));
   row.append(labelEl, valueEl);
@@ -827,11 +833,7 @@ export function open(application, {
   updateFavoriteButton(favoriteButton, currentFavorite);
 
   idPill.textContent = _mode === 'create' ? '#\u2014' : application.id;
-  favoriteButton.setAttribute('aria-label', 'Toggle favorite');
-  statusButton.setAttribute('aria-label', 'Change status');
-  archiveButton.setAttribute('aria-label', 'Archive application');
-  closeButton.setAttribute('aria-label', 'Close');
-  favoriteButton.title = 'Star / Unstar';
+  favoriteButton.title = 'Favorite';
   statusButton.title = 'Change status';
   archiveButton.title = 'Archive';
   closeButton.title = 'Close';
@@ -943,7 +945,7 @@ export function open(application, {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  headerMeta.append(idPill, statusBadge, quickActions);
+  headerMeta.append(idPill, statusBadge);
   renderTitle();
   quickActions.append(favoriteButton, statusButton);
 
@@ -952,7 +954,7 @@ export function open(application, {
   }
 
   quickActions.append(closeButton);
-  header.append(headerMeta, titleRow);
+  header.append(headerMeta, titleRow, quickActions);
   _renderBody();
   panel.append(header, body, buildFooter());
   _syncFooter();
