@@ -121,6 +121,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - What happens if the user saves with Responsibilities left empty? The system displays an inline error on the Responsibilities field and aborts the save — no API call is made. This applies in both Edit and Create mode.
 - What happens when a filter dimension is active but some applications have no value for that field? Those applications are excluded by default. The user must explicitly select "(Not set)" in that filter panel to include them.
 - What happens if the user types a skill and presses Enter while the chip input's blur handler is also firing? The chip must be added exactly once with no JavaScript errors — the blur and Enter paths must not both attempt to re-render the chip list simultaneously.
+- What is shown in the Salary field when it has no value? The field MUST display "-" as a neutral empty-state placeholder, consistent with all other optional fields. A blank display is not acceptable — on mobile (stacked layout) a completely blank salary area causes the "Salary" label to appear directly above "Shift", misleading users into thinking the label belongs to the Shift field.
 
 ---
 
@@ -158,12 +159,13 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-028**: Overlay quick action buttons (Favorite, Change Status, Archive, Close) MUST be positioned in the third row of the overlay header, below the title row, to prevent overflow and icon wrap on narrow viewports (e.g. Galaxy Z Fold).
 - **FR-029**: The Archive action icon MUST be visually distinct from the Close icon; it MUST resemble a filing box to clearly communicate its purpose.
 - **FR-030**: The Archive icon MUST be visually consistent between the application card and the overlay header.
-- **FR-031**: Overlay quick action buttons MUST have exactly one tooltip visible on hover — using the `title` attribute. The Favorite button tooltip MUST read "Favorite". Duplicate tooltips (e.g. from simultaneous `aria-label` + `title`) MUST NOT appear.
+- **FR-031**: Overlay quick action buttons MUST display exactly one tooltip on hover via the `title` attribute. The `title` attribute MUST be present on every quick action button. `aria-label` MUST NOT be set on these buttons as it causes a duplicate tooltip in some browsers. The Favorite button tooltip MUST read "Favorite". Zero tooltips is not an acceptable fix for the double-tooltip issue — `title` must be retained.
 - **FR-032**: The FAB button on mobile MUST have a drop-shadow sufficient to visually separate it from the page content beneath it.
 - **FR-033**: The version string displayed in the app footer MUST be kept in sync with the current release version on every release.
 - **FR-034**: Field display text in the overlay MUST NOT overflow its container on narrow viewports — long text (including URLs) MUST wrap using `overflow-wrap: break-word`.
 - **FR-035**: The status pill in the overlay header MUST remain legible on narrow viewports — text MUST be centered if the pill wraps to two lines, and single-line display MUST be preferred where possible.
 - **FR-036**: The chip editor (Required Skills, Preferred Skills) MUST add chips without throwing JavaScript errors regardless of whether the commit is triggered by Enter keydown or by the input losing focus — these two code paths MUST NOT execute a simultaneous DOM re-render.
+- **FR-037**: Every optional field in the overlay MUST display "-" as a neutral empty-state placeholder in display mode when its value is empty or null. The Salary field MUST NOT render a completely blank area — a blank salary row causes the "Salary" label to visually merge with the next field's label on mobile stacked layouts.
 
 ### Key Entities
 

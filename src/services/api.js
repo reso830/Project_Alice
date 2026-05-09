@@ -1,6 +1,6 @@
 const NETWORK_ERROR_MESSAGE = 'Cannot connect to the backend — is the server running?';
 
-export async function request(method, path, body) {
+export async function request(method, path, body, { signal } = {}) {
   let response;
 
   try {
@@ -10,6 +10,7 @@ export async function request(method, path, body) {
         'Content-Type': 'application/json',
       },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
   } catch (error) {
     if (error instanceof TypeError) {
@@ -52,8 +53,8 @@ export function getById(id) {
   return request('GET', `/api/applications/${id}`);
 }
 
-export function update(id, fields) {
-  return request('PATCH', `/api/applications/${id}`, fields);
+export function update(id, fields, { signal } = {}) {
+  return request('PATCH', `/api/applications/${id}`, fields, { signal });
 }
 
 export function archive(id) {

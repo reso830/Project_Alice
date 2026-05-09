@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/services/api.js', () => ({
@@ -19,6 +22,8 @@ import {
 } from '../../src/components/Modal.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
+
+const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 function application(overrides = {}) {
   return {
@@ -147,6 +152,36 @@ describe('Modal', () => {
     ]);
     expect(document.querySelector('.modal-header__meta').contains(document.querySelector('.modal-quick-actions')))
       .toBe(true);
+  });
+
+  it('centers status badge text for narrow wrapped header pills', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ status: 'phone_screen' }));
+
+    const badge = document.querySelector('#modal-status-badge');
+
+    expect(badge.classList.contains('status-badge')).toBe(true);
+    expect(mainCss).toContain('.modal-header .status-badge');
+    expect(mainCss).toContain('text-align: center;');
+    expect(mainCss).toContain('justify-content: center;');
+    expect(mainCss).toContain('white-space: normal;');
+  });
+
+  it('allows long modal field values to wrap inside narrow containers', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      jobPostingUrl: 'https://example.com/really/long/path/without/simple/breakpoints/that/should/wrap',
+    }));
+
+    const urlValue = getFieldByLabel('URL').querySelector('.modal-field__value');
+
+    expect(urlValue.classList.contains('modal-field__display')).toBe(true);
+    expect(mainCss).toContain('.modal-field__display');
+    expect(mainCss).toContain('overflow-wrap: break-word;');
+    expect(mainCss).toContain('word-break: break-word;');
+    expect(mainCss).toContain('min-width: 0;');
   });
 
   it('closes the overlay from the header close action', () => {
@@ -560,6 +595,15 @@ describe('Modal', () => {
 
     expect(getFieldByLabel('Required Skills').textContent).toContain('TypeScript');
 
+    const commaInput = getFieldByLabel('Required Skills').querySelector('input');
+    commaInput.value = 'Accessibility';
+    expect(() => {
+      commaInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: ',', bubbles: true }));
+      commaInput.dispatchEvent(new window.Event('blur'));
+    }).not.toThrow();
+
+    expect(getFieldByLabel('Required Skills').textContent).toContain('Accessibility');
+
     const duplicateInput = getFieldByLabel('Required Skills').querySelector('input');
     duplicateInput.value = 'TypeScript';
     duplicateInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -574,7 +618,9 @@ describe('Modal', () => {
     backspaceInput.value = '';
     backspaceInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
 
-    expect(getFieldByLabel('Required Skills').querySelectorAll('.skill-tag')).toHaveLength(0);
+    expect(getFieldByLabel('Required Skills').querySelectorAll('.skill-tag')).toHaveLength(1);
+    expect(getFieldByLabel('Required Skills').textContent).toContain('TypeScript');
+    expect(getFieldByLabel('Required Skills').textContent).not.toContain('Accessibility');
   });
 
   it('renders a hidden edit footer and reveals it for draft changes', () => {
@@ -637,7 +683,7 @@ describe('Modal', () => {
       companyName: 'Globex',
       skills: ['JavaScript'],
       preferredSkills: [],
-    }));
+    }), expect.anything());
     expect(document.querySelector('.modal-footer').hidden).toBe(true);
     expect(document.body.textContent).toContain('Saved.');
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyName: 'Globex' }));
@@ -670,7 +716,7 @@ describe('Modal', () => {
       followUpAction: '',
       followUpDate: '',
       generalNotes: '',
-    }));
+    }), expect.anything());
   });
 
   it('does not crash if the modal closes while save is in flight', async () => {
@@ -710,7 +756,7 @@ describe('Modal', () => {
     expect(api.update).toHaveBeenNthCalledWith(2, 1, expect.objectContaining({
       companyName: 'Globex',
       fav: true,
-    }));
+    }), expect.anything());
   });
 
   it('validates required fields and URL before saving', async () => {
@@ -876,7 +922,7 @@ describe('Modal', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({ companyName: 'Globex' }));
+    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({ companyName: 'Globex' }), expect.anything());
   });
 
   it('formats salary as Philippine Peso', () => {
@@ -887,12 +933,12 @@ describe('Modal', () => {
     expect(document.body.textContent).toContain(formatPeso(150000));
   });
 
-  it('renders empty salary text for absent salary values', () => {
+  it('renders placeholder salary text for absent salary values', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application({ salary: null }));
 
-    expect(getSalaryFieldValue().textContent).toBe('');
+    expect(getSalaryFieldValue().textContent).toBe('\u2014');
   });
 
   it('toggles favorite through PATCH and updates the quick action state', async () => {
