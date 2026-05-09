@@ -70,7 +70,7 @@ function parseListItems(body) {
 // ─── T005 — Text-field extractors ────────────────────────────────────────────
 
 function extractCompanyName(text) {
-  const labelMatch = text.match(/(?:Company|Employer|Organization)\s*:\s*(.+)/i);
+  const labelMatch = text.match(/^\s*(?:Company|Employer|Organization)\s*:\s*(.+)$/im);
   if (labelMatch) return labelMatch[1].trim();
 
   const aboutMatch = text.match(/^About\s+([A-Z].+)$/im);
@@ -82,11 +82,23 @@ function extractCompanyName(text) {
   const atMatch = text.match(/(?:At|Join)\s+([A-Z][^,\n.]{1,50}?)(?:,|\.|\n)/);
   if (atMatch) return atMatch[1].trim();
 
+  const candidates = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const plainSecondLine = candidates[1] ?? '';
+  if (
+    plainSecondLine
+    && plainSecondLine.length <= 60
+    && !plainSecondLine.includes(':')
+    && !/[.!?]$/.test(plainSecondLine)
+    && /^[A-Z0-9]/.test(plainSecondLine)
+  ) {
+    return plainSecondLine;
+  }
+
   return '';
 }
 
 function extractJobTitle(text) {
-  const labelMatch = text.match(/(?:Position|Role|Job\s+Title)\s*:\s*(.+)/i);
+  const labelMatch = text.match(/^\s*(?:Position|Role|Job\s+Title)\s*:\s*(.+)$/im);
   if (labelMatch) return labelMatch[1].trim();
 
   const skipPrefixes = /^(?:Company|Employer|Organization|Location|Based\s+in|Office|City|Salary|Contact|Recruiter|Reach\s+out|Hiring\s+Manager|Responsibilities|Requirements|Skills|Qualifications|Tech\s+Stack|About|Preferred)\s*:/i;
@@ -98,6 +110,7 @@ function extractJobTitle(text) {
     if (trimmed === trimmed.toUpperCase()) continue;
     if (/^[-*•\d]/.test(trimmed)) continue;
     if (skipPrefixes.test(trimmed)) continue;
+    if (/[.!?]$/.test(trimmed)) continue;
     return trimmed;
   }
 
@@ -112,12 +125,18 @@ const RESPONSIBILITIES_HEADINGS = [
   'Job Description',
   'Your Role',
   'Duties',
+];
+
+const RESPONSIBILITIES_FALLBACK_HEADINGS = [
   'About the Role',
 ];
 
 function extractResponsibilities(text) {
   const body = extractSectionBody(text, RESPONSIBILITIES_HEADINGS);
   if (body) return body;
+
+  const fallbackBody = extractSectionBody(text, RESPONSIBILITIES_FALLBACK_HEADINGS);
+  if (fallbackBody) return fallbackBody;
 
   const paragraphs = text.split(/\n\s*\n/);
   let longest = '';

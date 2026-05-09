@@ -271,7 +271,7 @@
 
 **Setup**: `npm run dev` (frontend) + `npm run server:dev` (backend) in two terminals. Open `http://localhost:5173`.
 
-- [ ] T030 [US1] Smart Parser happy path — paste the sample job post from `quickstart.md`:
+- [X] T030 [US1] Smart Parser happy path — paste the sample job post from `quickstart.md`:
   - Click "New Application" → selection overlay appears with two cards
   - Selection screen is visually correct (sparkle icon on parser card, pencil icon on manual card; parser card more prominent)
   - Click Smart Parser card → paste step appears (textarea + disabled Process button)
@@ -283,14 +283,14 @@
   - Click Create → record appears in list
   - **Pass criteria**: all pre-fill values match expected; existing form behavior unchanged; record saved
 
-- [ ] T031 [US2] Manual Entry path:
+- [X] T031 [US2] Manual Entry path:
   - Click "New Application" → selection overlay appears
   - Click "Manual Entry" → existing application form opens immediately (no paste step)
   - Behavior is identical to clicking "New Application" before this feature: all fields blank, Create button visible
   - Fill required fields (Job Title, Company, Responsibilities) → save
   - **Pass criteria**: form opens with zero behavioral change from pre-feature flow; record saved
 
-- [ ] T032 [US3] Error and recovery states:
+- [X] T032 [US3] Error and recovery states:
   - Click "New Application" → Smart Parser → leave textarea empty → confirm Process button is disabled
   - Type 5 characters → Process still disabled; type 20+ characters → Process enables
   - Clear textarea → Process disables again
@@ -301,7 +301,7 @@
   - Click "Enter manually" → existing application form opens
   - **Pass criteria**: each sub-step behaves exactly as described; no frozen states or blank screens
 
-- [ ] T033 Mobile viewport — open DevTools responsive mode at 390×844 (iPhone 14):
+- [X] T033 Mobile viewport — open DevTools responsive mode at 390×844 (iPhone 14):
   - Click "New Application" → selection cards are stacked vertically (not side-by-side)
   - Overlay fits within viewport with no horizontal scroll
   - Tap Smart Parser → paste step renders correctly; textarea is tappable with usable height

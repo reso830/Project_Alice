@@ -73,6 +73,36 @@ describe('parseJobPost', () => {
       const text = 'WE ARE LOOKING FOR SOMEONE TO JOIN OUR TEAM TODAY FOR AN AMAZING OPPORTUNITY.';
       expect(parseJobPost(text).jobTitle).toBe('');
     });
+
+    it('does not treat a prose sentence as a heading', () => {
+      const text = 'Lorem ipsum dolor sit amet consectetur adipiscing elit.';
+      expect(parseJobPost(text).jobTitle).toBe('');
+    });
+
+    it('keeps the top heading as title when an About the Role section exists', () => {
+      const text = `Senior Frontend Engineer
+Acme Corp
+
+Location: Manila, Philippines
+Work Setup: Remote
+Salary: PHP 100,000 - PHP 120,000 per month
+
+About the Role:
+We're looking for a Senior Frontend Engineer to join our growing team. You will
+be responsible for building and maintaining our customer-facing web applications.
+
+Responsibilities:
+- Architect and implement scalable React components
+- Collaborate with designers on UI/UX improvements
+
+Required Skills:
+React, TypeScript`;
+      const result = parseJobPost(text);
+
+      expect(result.jobTitle).toBe('Senior Frontend Engineer');
+      expect(result.companyName).toBe('Acme Corp');
+      expect(result.responsibilities).toContain('Architect and implement scalable React components');
+    });
   });
 
   describe('responsibilities', () => {
