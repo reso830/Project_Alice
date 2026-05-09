@@ -58,9 +58,14 @@ function _runParser(textarea, processBtn, loading) {
     parsed.companyName
     || parsed.jobTitle
     || parsed.location
+    || parsed.responsibilities
+    || parsed.recruiter
+    || parsed.jobPostingUrl
     || (parsed.salary !== null && parsed.salary !== undefined)
     || parsed.workSetup
-    || (Array.isArray(parsed.skills) && parsed.skills.length > 0),
+    || parsed.shift
+    || (Array.isArray(parsed.skills) && parsed.skills.length > 0)
+    || (Array.isArray(parsed.preferredSkills) && parsed.preferredSkills.length > 0),
   );
 
   if (!hasFields) {

@@ -32,6 +32,11 @@ function extractSectionBody(text, headings) {
         startIdx = i + 1;
         break;
       }
+      // Partial prefix match — catches "What will you do as X?" style headings
+      if (lower.startsWith(`${hl} `) || lower.startsWith(`${hl}?`)) {
+        startIdx = i + 1;
+        break;
+      }
     }
 
     if (startIdx !== -1) break;
@@ -39,16 +44,28 @@ function extractSectionBody(text, headings) {
 
   if (startIdx === -1) return '';
 
-  const body = firstLine ? [firstLine] : [];
+  // Collect until the next recognized section heading (no blank-line stop — let paragraph
+  // selection below pick the densest content block when multiple paragraphs are present)
+  const rawLines = firstLine ? [firstLine] : [];
   for (let i = startIdx; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     if (looksLikeSectionHeading(trimmed)) break;
-    // Stop at the first blank line once content has been captured
-    if (trimmed === '' && body.some((l) => l.trim())) break;
-    body.push(lines[i]);
+    rawLines.push(lines[i]);
   }
 
-  return body.join('\n').trim();
+  const rawBody = rawLines.join('\n').trim();
+  if (!rawBody) return '';
+
+  // When multiple paragraphs exist, prefer the one with the most non-empty lines
+  // (skips over intro prose to find the actual list of items)
+  const paragraphs = rawBody.split(/\n[ \t]*\n/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length <= 1) return rawBody;
+
+  return paragraphs.reduce((best, para) => {
+    const lineCount = para.split('\n').filter((l) => l.trim()).length;
+    const bestCount = best.split('\n').filter((l) => l.trim()).length;
+    return lineCount > bestCount ? para : best;
+  }, '');
 }
 
 function parseListItems(body) {
@@ -60,6 +77,10 @@ function parseListItems(body) {
       items.push(trimmed.replace(/^[-*•]\s+/, '').trim());
     } else if (/^\d+[.)]\s+(.+)/.test(trimmed)) {
       items.push(trimmed.replace(/^\d+[.)]\s+/, '').trim());
+    } else if (/[.!?]$/.test(trimmed)) {
+      // Prose sentence — preserve whole item and strip trailing punctuation instead of
+      // comma-splitting, which would produce fragments like "or related field"
+      items.push(trimmed.replace(/[.!?]+$/, '').trim());
     } else {
       items.push(...trimmed.split(',').map((s) => s.trim()).filter(Boolean));
     }
@@ -102,6 +123,7 @@ function extractJobTitle(text) {
   if (labelMatch) return labelMatch[1].trim();
 
   const skipPrefixes = /^(?:Company|Employer|Organization|Location|Based\s+in|Office|City|Salary|Contact|Recruiter|Reach\s+out|Hiring\s+Manager|Responsibilities|Requirements|Skills|Qualifications|Tech\s+Stack|About|Preferred)\s*:/i;
+  const sectionNounSuffix = /^(.+?)\s+(?:Responsibilities|Requirements|Qualifications|Duties|Overview|Description)s?$/i;
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
@@ -111,6 +133,15 @@ function extractJobTitle(text) {
     if (/^[-*•\d]/.test(trimmed)) continue;
     if (skipPrefixes.test(trimmed)) continue;
     if (/[.!?]$/.test(trimmed)) continue;
+
+    // Strip trailing section nouns: "Associate PM Responsibilities" → "Associate PM"
+    const suffixMatch = trimmed.match(sectionNounSuffix);
+    if (suffixMatch) {
+      const candidate = suffixMatch[1].trim();
+      if (candidate.length >= 4 && candidate.length <= 80) return candidate;
+      continue;
+    }
+
     return trimmed;
   }
 
@@ -121,8 +152,14 @@ const RESPONSIBILITIES_HEADINGS = [
   'Responsibilities',
   "What You'll Do",
   'What you will do',
+  'What will you do',
   'Role Overview',
   'Job Description',
+  'Job Description and Responsibilities',
+  'Job Description and Resonsibilities', // common LinkedIn typo
+  'Key Responsibilities',
+  'Core Responsibilities',
+  'Primary Responsibilities',
   'Your Role',
   'Duties',
 ];
