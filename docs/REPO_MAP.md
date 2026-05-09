@@ -6,7 +6,7 @@ This file guides AI-assisted implementation. It is not full documentation; it is
 
 Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite persistence. No framework, no state manager.
 
-**Stack:** Vite 5 · Express 4 · better-sqlite3 · Zod · Vitest
+**Stack:** Vite 8 · Express 4 · better-sqlite3 · Zod · Vitest
 
 ---
 
@@ -48,7 +48,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) |
+| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` |
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
 | `shared/constants.js` | `STATUS_VALUES` — 9 status strings shared between frontend and backend |
 

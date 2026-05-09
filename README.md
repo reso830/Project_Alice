@@ -165,7 +165,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.6.0** (unreleased — see [CHANGELOG.md](CHANGELOG.md))
+Current version: **0.6.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

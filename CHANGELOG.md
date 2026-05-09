@@ -7,15 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-05-09
+
 ### Added
 - Inline edit modal — click any field in the detail view to edit it in place; outside-click commits the change to draft; Esc reverts the field without committing; Cmd/Ctrl+S saves; Cmd/Ctrl+Enter commits a multi-line field
 - Create mode — `+ New application` button opens an empty draft modal with status defaulting to Wishlisted; saving creates the record and switches the modal to edit mode; Archive button hidden in create mode; footer always visible
 - Draft management — footer appears when any field differs from the saved record; Save and Discard buttons; discard confirmation guard on ✕, backdrop click, and Esc; Favorite and Archive bypass the draft
 - Six new optional application fields: `location` (free text), `shift` (Day/Mid/Night/Flexible), `workSetup` (Remote/Hybrid/On-site/Field), `compatNotes` (rich notes alongside the compatibility bar), `generalNotes` (free-text notes), `preferredSkills` (chip editor, separate from required skills)
 - Quick filters toolbar — filter the card list by Status, Salary range (₱50k–₱250k dual-handle slider), Compatibility range (0–100 dual-handle slider), Company, Favorites, Shift, Work Setup, and Location; multiple filters stack with AND logic; subheader label switches to "Results" when any filter is active; erase-all button clears all filters at once
+- "(Not set)" option in Shift, Work Setup, and Location filter panels — matches applications where that field is empty or null
 - Sort panel — sort by Job ID, Status, Compatibility, Salary, or Company in ascending or descending order; Restore default resets to Job ID ascending
 - Filter state persists to `localStorage` (key `apptracker_filters`) and is restored on page load; invalid enum values stripped on restore; location strings kept as-is; sort state is session-only
 - Empty-filter state — "No applications match the active filters." shown in place of the card list when active filters return zero results
+- Required field visual indicators (asterisk `*`) on job title, company name, and responsibilities fields within the overlay
 - `parseSalaryInput()` and `formatSalaryDisplay()` utilities in `src/utils/currency.js` — parse user-entered peso amounts from formatted strings; format integers for display
 - `scripts/ai-flow.ps1` — PowerShell orchestrator for a two-agent AI pipeline (Claude + Codex) with hard gates at each stage; includes `run-all` action to loop through all phases automatically
 - `scripts/prompts/` — nine prompt templates covering the full pipeline: specify, plan, tasks, spec review, requirements check, phase implementation, phase review, and PR review (Claude and Codex variants)
@@ -25,13 +29,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `.gitignore` entries for AI workflow state files (`specs/**/.ai-phase`, `specs/**/.ai-requirements-ready`, `specs/**/.ai-phase-*-review`)
 
 ### Changed
+- `responsibilities` field promoted to required — must be non-empty on Save and Create; existing records retain their stored value but validation is enforced on all new saves
 - Detail modal header background is now the status `borderAccent` color (not `--navy`); header text color resolves to white or black based on relative-luminance contrast
 - Status change in the modal now routes through the draft — the header color and badge update immediately but the `lastStatusUpdate` date is not written until Save
 - DB schema auto-migrates — six new nullable columns (`location`, `shift`, `work_setup`, `compat_notes`, `general_notes`, `preferred_skills`) are added via `ensureColumn` on server start; existing records are unaffected
 - `db:seed` updated — demo records include representative values for all new fields (shift, workSetup, location, compatNotes, generalNotes, preferredSkills)
+- Overlay quick action buttons (Favorite, Change Status, Archive, Close) moved to a dedicated third row in the header to prevent icon wrap on narrow viewports (e.g. Galaxy Z Fold)
+- Archive icon updated to a filing-box shape, visually distinct from Close, and consistent between card and overlay header
+- Quick filter icons on mobile (≤639px) rendered in a dedicated row below the application count text, left-aligned, so icons and count text do not overlap
+- FAB drop-shadow increased on mobile for better visual separation from page content beneath it
 - `CLAUDE.md` and `AGENTS.md` updated to reflect implemented app state (Vite/Express/SQLite), constitution v1.0.1, required date field (`lastStatusUpdate`), and correct directory conventions (`.agents/skills/` as shared source; `.codex/` lowercase for Codex-specific state)
 
 ### Fixed
+- Newline characters in multi-line fields (responsibilities, compatibility notes, general notes) now render as visual line breaks in display mode instead of collapsing to a single line
+- Sort popup no longer clips above the visible viewport when opened while the page is scrolled down on desktop
+- Overlay quick action buttons now show exactly one tooltip via the `title` attribute; duplicate `aria-label` removed to prevent double-tooltip in some browsers
+- Chip editor (Required Skills, Preferred Skills) no longer throws JavaScript errors when Enter keydown and blur fire simultaneously — a `_committingByEnter` flag prevents concurrent DOM re-renders
+- Long text and URLs in the overlay no longer overflow their containers on narrow viewports — `overflow-wrap: break-word` applied
+- Status pill in the overlay header remains legible on very narrow viewports (≤320px) — text centered when wrapped to two lines
+- Salary field now displays "–" instead of blank when no value is set, consistent with all other optional text fields
 - Modal discard in create mode no longer no-ops — `_attemptDiscardDraft()` now calls `close()` directly when `_mode === 'create'` instead of falling through the null guard
 - `Find-SpeckitSpecDir` now resolves the requested feature name before falling back to the current branch, preventing misrouting when `-FeatureName` differs from the active branch
 - Removed silent latest-spec fallback in `Find-SpeckitSpecDir`; unresolved names now throw immediately
@@ -172,7 +188,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/reso830/Project_Alice/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/reso830/Project_Alice/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/reso830/Project_Alice/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/reso830/Project_Alice/compare/v0.3.0...v0.4.0
