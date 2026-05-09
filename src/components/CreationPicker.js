@@ -130,7 +130,11 @@ function _showSelectionScreen() {
     title: 'Manual Entry',
     desc: 'Enter application details manually instead',
     extraClass: '',
-    onClick: () => { /* wired in Phase 4 (T020) */ },
+    onClick: () => {
+      const callbacks = _callbacks;
+      close();
+      Modal.open(null, { mode: 'create', ...callbacks });
+    },
   });
 
   cards.append(parserCard, manualCard);
