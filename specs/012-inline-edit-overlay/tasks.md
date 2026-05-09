@@ -1222,7 +1222,7 @@ Goal: Address all findings from manual browser testing of Phase 10. Three priori
 
 ---
 
-### [ ] Task 11.1 — Promote responsibilities to required in server validation
+### [X] Task 11.1 — Promote responsibilities to required in server validation
 
 **Target files**
 - `server/validation/application.js`
@@ -1249,7 +1249,7 @@ Both `createSchema` and `updateSchema` pick this up automatically through `writa
 
 ---
 
-### [ ] Task 11.2 — Promote responsibilities to required in client model
+### [X] Task 11.2 — Promote responsibilities to required in client model
 
 **Target files**
 - `src/models/application.js`
@@ -1274,7 +1274,7 @@ if (!validated.responsibilities?.trim()) {
 
 ---
 
-### [ ] Task 11.3 — Add responsibilities to modal Save/Create validation guards
+### [X] Task 11.3 — Add responsibilities to modal Save/Create validation guards
 
 **Target files**
 - `src/components/Modal.js`
@@ -1303,7 +1303,7 @@ If any required field is empty, show its inline error and abort — do not call 
 
 ---
 
-### [ ] Task 11.4 — Add required field visual indicators to modal
+### [X] Task 11.4 — Add required field visual indicators to modal
 
 **Target files**
 - `src/components/Modal.js`
@@ -1315,6 +1315,7 @@ Pass a `required: true` option to `makeInlineText` for `jobTitle`, `companyName`
 **Constraints**
 - `required` option is false by default — no other field should show an indicator.
 - The asterisk is `aria-hidden` — the required state is communicated via the inline error message on validation failure, not the indicator alone.
+- **Optional enhancement** *(skip if complex)*: hide the indicator in pure display mode and only show it while the field is in edit state (i.e., when the inline input/textarea is active). If this adds significant complexity, always-visible is acceptable.
 
 **Validation**
 - `tests/components/Modal.test.js`:
@@ -1327,7 +1328,7 @@ Pass a `required: true` option to `makeInlineText` for `jobTitle`, `companyName`
 
 ---
 
-### [ ] Task 11.5 — Fix newline rendering in multi-line display fields
+### [X] Task 11.5 — Fix newline rendering in multi-line display fields
 
 **Target files**
 - `src/styles/main.css` (or modal stylesheet)
@@ -1357,7 +1358,7 @@ Or add the class directly on the display element in the `makeInlineText` helper.
 
 ---
 
-### [ ] Task 11.6 — Add "(Not set)" option to optional field filter panels
+### [X] Task 11.6 — Add "(Not set)" option to optional field filter panels
 
 **Target files**
 - `src/utils/filterSort.js`
@@ -1386,7 +1387,7 @@ Or add the class directly on the display element in the `makeInlineText` helper.
 
 ---
 
-### [ ] Task 11.7 — Fix sort popup positioning on desktop scroll
+### [X] Task 11.7 — Fix sort popup positioning on desktop scroll
 
 **Target files**
 - `src/components/SortPanel.js` or `src/components/QuickFiltersToolbar.js` (whichever opens the sort panel)
@@ -1405,7 +1406,7 @@ When the sort panel opens, calculate its position using `getBoundingClientRect()
 
 ---
 
-### [ ] Task 11.8 — Move quick filter icons to third row on mobile
+### [X] Task 11.8 — Move quick filter icons to third row on mobile
 
 **Target files**
 - `src/styles/main.css`
@@ -1430,7 +1431,7 @@ CSS approach: wrap the filter icon buttons in a dedicated container (`.toolbar-f
 
 ---
 
-### [ ] Task 11.9 — Update footer version to match current release
+### [X] Task 11.9 — Update footer version to match current release
 
 **Target files**
 - `src/components/Footer.js` (or wherever the version string is rendered)
@@ -1450,26 +1451,30 @@ Update the version string to `0.6.0` (or whatever the current `package.json` ver
 
 ---
 
-### [ ] Task 11.10 — Move quick action buttons to overlay header row 1, right-aligned
+### [X] Task 11.10 — Move quick action buttons to overlay header row 3
 
 **Target files**
 - `src/components/Modal.js`
 - `src/styles/main.css`
 
 **Expected behavior**
-The `quickActions` container (Favorite, Change Status, Archive, Close buttons) moves to the first row of the modal header, right-aligned. The current header layout has the ID pill and title on row 1 and quick actions below — this reverses the row order so actions are on row 1 and the title is on row 2 (or the header uses a single flex row with title left and actions right).
+The `quickActions` container (Favorite, Change Status, Archive, Close buttons) appears as a third row in the modal header — below the ID pill / title row and below any subtitle row. On very narrow viewports (e.g. Galaxy Z Fold at ~280px) placing actions on row 1 caused them to wrap and overlap the title. Row 3 gives each row enough horizontal space.
+
+> **⚠ Revision note**: An earlier version of this task specified "row 1, right-aligned". That caused icon overflow on narrow mobile viewports. The correct placement is row 3.
 
 **Constraints**
 - All quick action button behaviors (Favorite, Status, Archive, Close) are unchanged.
-- Mobile bottom-sheet header must also apply the new layout.
+- Desktop layout must also place quick actions below the title (row 3), not inline with it.
+- Ensure the header does not become excessively tall on desktop — use compact padding.
 
 **Validation**
-- Manual: open the overlay and confirm quick action buttons are in the first header row, right-aligned.
+- Manual: open the overlay at 375px viewport — confirm quick actions are on a separate row, no overlap with title.
+- Manual: open on desktop — confirm layout is compact and buttons are accessible.
 - `tests/components/Modal.test.js`: quick action buttons are still present in the DOM (regression guard only).
 
 ---
 
-### [ ] Task 11.11 — Update Archive icon to filing box in overlay and card
+### [X] Task 11.11 — Update Archive icon to filing box in overlay and card
 
 **Target files**
 - `src/utils/icons.js` (or wherever SVG icon helpers are defined)
@@ -1491,28 +1496,35 @@ Add `iconArchive()` to `icons.js` (or update the existing archive icon helper) w
 
 ---
 
-### [ ] Task 11.12 — Add tooltips to overlay quick action buttons
+### [X] Task 11.12 — Add tooltips to overlay quick action buttons
 
 **Target files**
 - `src/components/Modal.js`
 
 **Expected behavior**
-Add a `title` attribute to each quick action button with a human-readable label:
-- Favorite: `title="Star / Unstar"`
+Each overlay quick action button must show exactly one tooltip on hover. Use the `title` attribute:
+- Favorite: `title="Favorite"`
 - Change Status: `title="Change status"`
 - Archive: `title="Archive"`
 - Close: `title="Close"`
 
+Remove or do not set `aria-label` on these buttons if it duplicates the `title` — some browser/OS combinations render both as visible tooltips simultaneously, producing a double-tooltip. Use only `title`; accessibility is satisfied by the visible icon + tooltip.
+
+> **⚠ Revision notes**:
+> - Favorite label corrected from "Star / Unstar" to "Favorite" for consistency with the UI.
+> - Double tooltip was reported after initial implementation — caused by `aria-label` + `title` both being set. Remove `aria-label` where `title` already provides the accessible name.
+
 **Constraints**
-- Native `title` tooltip is sufficient for v1 — no custom tooltip component needed.
-- `aria-label` is already set on these buttons and takes precedence for screen readers; `title` adds the visual tooltip only.
+- Quick filter toolbar buttons (Shift, Work Setup, etc.) are unaffected — do not touch QuickFiltersToolbar.js.
+- Only one tooltip must appear per button on hover.
 
 **Validation**
-- Manual: hover each quick action button — confirm tooltip appears.
+- Manual: hover each overlay quick action button — confirm exactly one tooltip appears per button.
+- Manual: confirm Favorite tooltip reads "Favorite" (not "Star" or "Star / Unstar").
 
 ---
 
-### [ ] Task 11.13 — Increase FAB drop-shadow on mobile
+### [X] Task 11.13 — Increase FAB drop-shadow on mobile
 
 **Target files**
 - `src/styles/main.css`
@@ -1526,3 +1538,102 @@ At mobile viewport (≤639px), increase the `.fab` button's `box-shadow` to clea
 
 **Validation**
 - Manual: open the app on a 375px viewport — confirm the FAB is visually distinct from the content behind it.
+
+---
+
+### [ ] Task 11.14 — Fix chip editor blur/Enter race condition
+
+**Target files**
+- `src/components/Modal.js`
+
+**Expected behavior**
+When the user types a skill and presses Enter, `addChip` is called which internally calls `input.blur()`. This triggers the blur handler which also calls `renderChips`, replacing the chip DOM. Then `addChip` calls `renderChips` again on the now-orphaned node, throwing:
+
+```
+NotFoundError: Failed to execute 'replaceChildren' on 'Element':
+The node to be removed is no longer a child of this node.
+```
+
+Fix: prevent the blur handler from calling `renderChips` when the Enter keydown handler is already handling the commit. Use a flag:
+
+```js
+let _committingByEnter = false;
+
+// In Enter keydown handler:
+_committingByEnter = true;
+input.blur();
+_committingByEnter = false;
+
+// In blur handler:
+if (_committingByEnter) return;
+// ... rest of blur handler
+```
+
+Alternatively, call `addChip` logic directly in the Enter handler without relying on `blur()` to trigger commit, then manually clear and refocus the input.
+
+> **Note**: A prior fix attempt (commit `a379645`) did not fully resolve this. The error was reproduced at `Modal.js:397` after that commit. The race condition must be eliminated, not just guarded.
+
+**Constraints**
+- The fix must work for both the Enter keydown path and the blur path independently.
+- Comma (`,`) keydown chip commit must also be guarded against the same race.
+- Do not introduce a debounce or setTimeout — the fix must be synchronous.
+
+**Validation**
+- `tests/components/Modal.test.js`:
+  - Simulate Enter on the chip input — no error thrown; chip appears in DOM; `_draft.skills` updated
+  - Simulate blur on the chip input with a value — chip appears; no double-render error
+- Manual: open any application, type a skill, press Enter repeatedly — no console errors.
+
+---
+
+### [ ] Task 11.15 — Fix text overflow on narrow viewports
+
+**Target files**
+- `src/styles/main.css` (or modal stylesheet)
+
+**Expected behavior**
+On very narrow viewports (e.g. Galaxy Z Fold ~280px), long text values in modal fields (especially URLs and multi-line fields) overflow the container's right edge and get clipped. Apply:
+
+```css
+.modal-field__display {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+```
+
+`min-width: 0` is needed on flex children to allow shrinking below content size. Apply to all field display elements inside the modal body.
+
+**Constraints**
+- Desktop layout must be unaffected.
+- URL field: breaking is preferable to overflowing — URLs with no natural break points must wrap.
+- Do not truncate (`text-overflow: ellipsis`) — full content must remain readable.
+
+**Validation**
+- Manual: open Chrome DevTools, set width to 280px (Galaxy Z Fold), open an application with a long URL and long Responsibilities — confirm text wraps inside the container, no overflow into the margin.
+
+---
+
+### [ ] Task 11.16 — Fix status pill wrapping and centering on narrow viewport
+
+**Target files**
+- `src/styles/main.css` (or modal stylesheet)
+
+**Expected behavior**
+On very narrow viewports (≤320px), the status pill text in the overlay header can wrap to two lines. When this happens, the text must remain centered within the pill. Ensure:
+
+```css
+.modal-status-badge {   /* or whichever class the status pill uses */
+  text-align: center;
+  white-space: normal;   /* allow wrap — do not clip */
+}
+```
+
+If possible, prefer keeping the pill on one line by reducing font size or padding at narrow breakpoints (`@media (max-width: 360px)`). Only fall back to centered two-line wrap if single-line is not achievable without truncation.
+
+**Constraints**
+- Desktop and standard mobile (375px+) appearance is unchanged.
+- Do not truncate the status text — "Phone Screen", "Assessment" must remain fully readable.
+
+**Validation**
+- Manual: open Chrome DevTools, set width to 280px, open the overlay — confirm status pill text either stays on one line or wraps with centered text.

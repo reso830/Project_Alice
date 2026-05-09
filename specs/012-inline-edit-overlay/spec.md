@@ -150,12 +150,14 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-025**: Filter panels for optional enum/text fields (Shift, Work Setup, Location) MUST include a "(Not set)" option that matches applications where that field is empty or null.
 - **FR-026**: On mobile viewports (≤639px), quick filter icons in the toolbar MUST appear in a dedicated row below the application count text, left-aligned, so neither overlaps the other.
 - **FR-027**: The sort panel popup MUST remain visible on screen when opened while the page is scrolled down on desktop — it MUST NOT clip above the visible viewport.
-- **FR-028**: Overlay quick action buttons (Favorite, Change Status, Archive, Close) MUST be positioned in the first row of the overlay header, right-aligned.
+- **FR-028**: Overlay quick action buttons (Favorite, Change Status, Archive, Close) MUST be positioned in the third row of the overlay header, below the title row, to prevent overflow and icon wrap on narrow viewports (e.g. Galaxy Z Fold).
 - **FR-029**: The Archive action icon MUST be visually distinct from the Close icon; it MUST resemble a filing box to clearly communicate its purpose.
 - **FR-030**: The Archive icon MUST be visually consistent between the application card and the overlay header.
-- **FR-031**: Overlay quick action buttons MUST have accessible tooltip labels (title attribute or equivalent) visible on hover and focus.
+- **FR-031**: Overlay quick action buttons MUST have exactly one tooltip visible on hover — using the `title` attribute. The Favorite button tooltip MUST read "Favorite". Duplicate tooltips (e.g. from simultaneous `aria-label` + `title`) MUST NOT appear.
 - **FR-032**: The FAB button on mobile MUST have a drop-shadow sufficient to visually separate it from the page content beneath it.
 - **FR-033**: The version string displayed in the app footer MUST be kept in sync with the current release version on every release.
+- **FR-034**: Field display text in the overlay MUST NOT overflow its container on narrow viewports — long text (including URLs) MUST wrap using `overflow-wrap: break-word`.
+- **FR-035**: The status pill in the overlay header MUST remain legible on narrow viewports — text MUST be centered if the pill wraps to two lines, and single-line display MUST be preferred where possible.
 
 ### Key Entities
 
