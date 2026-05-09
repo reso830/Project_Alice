@@ -44,6 +44,8 @@ A user clicks any editable field directly within the application overlay and typ
 7. **Given** no unsaved changes exist, **Then** the Save and Discard footer is hidden.
 8. **Given** an open overlay on a mobile-width screen, **When** the user taps a field, **Then** inline editing works the same as on desktop.
 9. **Given** a multi-line Notes field is being edited, **When** the user presses Cmd/Ctrl+Enter, **Then** the field edit is committed to the draft.
+10. **Given** the overlay is open in Edit mode, **When** the user saves with a required field (job title, company name, or responsibilities) left empty, **Then** an inline error appears on each offending field and no API call is made.
+11. **Given** a multi-line text field (responsibilities, compatibility notes, general notes) with line breaks, **When** the field is in display mode, **Then** the line breaks are rendered visually, not collapsed into a single line.
 
 ---
 
@@ -63,6 +65,7 @@ A user clicks "+ New application" and sees the same overlay used for editing exi
 4. **Given** the Create overlay is open, **Then** the footer is always visible regardless of field content.
 5. **Given** a new application is successfully created, **Then** a toast confirms "Application created." and the overlay remains open in Edit mode.
 6. **Given** the Create overlay, **Then** the Archive quick action is not present in the header.
+7. **Given** the Create overlay with Job Title and Company Name filled but Responsibilities empty, **When** the user clicks Create, **Then** an inline error appears on the Responsibilities field and no record is created.
 
 ---
 
@@ -111,6 +114,8 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - What is shown in the Compatibility Notes field when no compatibility score has been computed yet? The notes field is still editable; the read-only bar shows 0% or an empty state.
 - What happens if Cmd/Ctrl+S is pressed when there are no unsaved changes? Nothing happens — no save request is made.
 - What happens when the Favorite or Archive quick actions are used while a dirty draft exists? These actions persist immediately to the stored record; the local draft is unaffected.
+- What happens if the user saves with Responsibilities left empty? The system displays an inline error on the Responsibilities field and aborts the save — no API call is made. This applies in both Edit and Create mode.
+- What happens when a filter dimension is active but some applications have no value for that field? Those applications are excluded by default. The user must explicitly select "(Not set)" in that filter panel to include them.
 
 ---
 
@@ -129,8 +134,8 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-009**: System MUST support a Create mode that uses the same overlay as Edit mode, with all fields empty and a visible Create footer button.
 - **FR-010**: System MUST disable the Create button until at least Job Title and Company Name are filled.
 - **FR-011**: System MUST default Status to "Wishlisted" for new applications opened in Create mode.
-- **FR-012**: System MUST preserve required fields (company name, job title, status, last status update) on every save.
-- **FR-013**: System MUST validate required fields and URL format before persisting any changes.
+- **FR-012**: System MUST preserve required fields (company name, job title, status, last status update, responsibilities) on every save.
+- **FR-013**: System MUST validate that all required fields (job title, company name, responsibilities) are non-empty and that URL format is valid before persisting any changes. Validation failures MUST surface as inline errors on the offending field(s) and abort the save.
 - **FR-014**: System MUST allow filtering applications by Location, Shift, and Work Setup.
 - **FR-015**: System MUST display an error notification and retain the local draft if a save request fails.
 - **FR-016**: System MUST support the overlay on desktop and mobile browsers, with labeled fields and full keyboard navigation.
@@ -140,10 +145,21 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-020**: Work Setup field MUST accept only the values: Remote, Hybrid, On-site, Field.
 - **FR-021**: System MUST NOT apply Favorite or Archive actions to the local draft — these actions persist immediately to the stored record.
 - **FR-022**: System MUST hide the Archive action from the overlay header when in Create mode.
+- **FR-023**: System MUST display a visual required-field indicator (e.g. asterisk `*`) on each required field (job title, company name, responsibilities) within the overlay.
+- **FR-024**: System MUST render newline characters in multi-line text fields (responsibilities, compatNotes, generalNotes) as visual line breaks in display mode.
+- **FR-025**: Filter panels for optional enum/text fields (Shift, Work Setup, Location) MUST include a "(Not set)" option that matches applications where that field is empty or null.
+- **FR-026**: On mobile viewports (≤639px), quick filter icons in the toolbar MUST appear in a dedicated row below the application count text, left-aligned, so neither overlaps the other.
+- **FR-027**: The sort panel popup MUST remain visible on screen when opened while the page is scrolled down on desktop — it MUST NOT clip above the visible viewport.
+- **FR-028**: Overlay quick action buttons (Favorite, Change Status, Archive, Close) MUST be positioned in the first row of the overlay header, right-aligned.
+- **FR-029**: The Archive action icon MUST be visually distinct from the Close icon; it MUST resemble a filing box to clearly communicate its purpose.
+- **FR-030**: The Archive icon MUST be visually consistent between the application card and the overlay header.
+- **FR-031**: Overlay quick action buttons MUST have accessible tooltip labels (title attribute or equivalent) visible on hover and focus.
+- **FR-032**: The FAB button on mobile MUST have a drop-shadow sufficient to visually separate it from the page content beneath it.
+- **FR-033**: The version string displayed in the app footer MUST be kept in sync with the current release version on every release.
 
 ### Key Entities
 
-- **Job Application**: A tracked application record. Required fields: company name, job title, status, last status update. Newly added optional fields: location (free text), shift (Day / Mid / Night / Flexible), work setup (Remote / Hybrid / On-site / Field), compatibility notes (free text), general notes (free text), preferred skills (array of text tags). All pre-existing optional fields are unchanged.
+- **Job Application**: A tracked application record. Required fields: company name, job title, status, last status update, responsibilities. Newly added optional fields: location (free text), shift (Day / Mid / Night / Flexible), work setup (Remote / Hybrid / On-site / Field), compatibility notes (free text), general notes (free text), preferred skills (array of text tags). All pre-existing optional fields are unchanged.
 - **Application Draft**: A local, in-memory working copy held by the overlay while it is open. Discarded on modal close without saving; written to storage only on Save / Create. Not shared across sessions.
 
 ---

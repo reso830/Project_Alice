@@ -25,6 +25,14 @@ Field mapping across all three layers for the six new fields added by this featu
 
 ---
 
+## Existing fields with validation changes (Amendment 1.2.0)
+
+| JS field          | DB column          | Old validation  | New validation                        | Notes                                             |
+|-------------------|--------------------|-----------------|---------------------------------------|---------------------------------------------------|
+| `responsibilities`| `responsibilities` | `optionalText`  | Required — must be non-empty on save  | Promoted to required by constitution v1.2.0. DB column remains TEXT (nullable for backward compat with pre-012 records); validation enforced at API and client save time only. |
+
+---
+
 ## Field defaults (client-side normalization)
 
 `normalizeApplication()` ensures these types are always present, regardless of whether the server returns them:

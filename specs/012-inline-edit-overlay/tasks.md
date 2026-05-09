@@ -1209,3 +1209,320 @@ Goal: verify the full feature end-to-end in a real browser against a running ser
 - Single-column body layout.
 - Header and footer stay fixed while body scrolls.
 - Inline editing functions correctly at mobile width.
+
+---
+
+## Phase 11 — Post-Launch Manual Testing Fixes
+
+Goal: Address all findings from manual browser testing of Phase 10. Three priority groups executed as a single implementation phase. Run `npm test` and full browser smoke-test after completing all groups.
+
+---
+
+### Group A — Required Field Compliance (Constitution v1.2.0)
+
+---
+
+### [ ] Task 11.1 — Promote responsibilities to required in server validation
+
+**Target files**
+- `server/validation/application.js`
+
+**Expected behavior**
+Change `responsibilities` from `optionalText` to a required non-empty string:
+
+```js
+responsibilities: z.string().min(1, 'Responsibilities is required'),
+```
+
+Both `createSchema` and `updateSchema` pick this up automatically through `writableFields`.
+
+**Constraints**
+- DB column stays TEXT nullable — no schema migration. Enforcement is at the API layer only.
+- Do not change any other field's validation rule.
+
+**Validation**
+- `tests/server/validation.test.js`:
+  - `createSchema` rejects a record with `responsibilities: ''`
+  - `createSchema` rejects a record with `responsibilities` omitted
+  - `createSchema` accepts a record with a non-empty `responsibilities` value
+  - `updateSchema` rejects `responsibilities: ''` when present in the patch
+
+---
+
+### [ ] Task 11.2 — Promote responsibilities to required in client model
+
+**Target files**
+- `src/models/application.js`
+
+**Expected behavior**
+Add `responsibilities` to the `validateApplication` required-field guard (same pattern as `jobTitle` and `companyName`):
+
+```js
+if (!validated.responsibilities?.trim()) {
+  validated._corrupt = true;
+}
+```
+
+**Constraints**
+- `normalizeApplication` already ensures `responsibilities` defaults to `''` — do not change that.
+- `_corrupt` flag behavior is unchanged.
+
+**Validation**
+- `tests/models/application.test.js`:
+  - `validateApplication({ ...valid, responsibilities: '' })` sets `_corrupt: true`
+  - `validateApplication({ ...valid, responsibilities: 'Some duties' })` does not set `_corrupt`
+
+---
+
+### [ ] Task 11.3 — Add responsibilities to modal Save/Create validation guards
+
+**Target files**
+- `src/components/Modal.js`
+
+**Expected behavior**
+In the Save button handler (Task 05.3) and Create button handler (Task 07.2), extend the required-field check to include `responsibilities`:
+
+```js
+if (!_draft.responsibilities?.trim()) {
+  showFieldError(responsibilitiesRow, 'Responsibilities is required');
+  hasError = true;
+}
+```
+
+If any required field is empty, show its inline error and abort — do not call `api.update` or `api.create`.
+
+**Constraints**
+- Show errors for all missing required fields simultaneously, not just the first one found.
+- Inline error display must match the existing pattern used for jobTitle and companyName errors.
+
+**Validation**
+- `tests/components/Modal.test.js`:
+  - In Edit mode: Save with empty responsibilities shows inline error, does not call `api.update`
+  - In Create mode: Create with empty responsibilities shows inline error, does not call `api.create`
+  - With all three required fields non-empty, save proceeds normally
+
+---
+
+### [ ] Task 11.4 — Add required field visual indicators to modal
+
+**Target files**
+- `src/components/Modal.js`
+- `src/styles/main.css` (or `src/styles/modal.css` if modal has its own stylesheet)
+
+**Expected behavior**
+Pass a `required: true` option to `makeInlineText` for `jobTitle`, `companyName`, and `responsibilities`. The helper appends a `<span class="modal-field__required" aria-hidden="true">*</span>` after the label text when `required` is true. CSS styles it as a small red/accent asterisk.
+
+**Constraints**
+- `required` option is false by default — no other field should show an indicator.
+- The asterisk is `aria-hidden` — the required state is communicated via the inline error message on validation failure, not the indicator alone.
+
+**Validation**
+- `tests/components/Modal.test.js`:
+  - Job Title, Company, and Responsibilities field labels each contain a `*` indicator element
+  - No other field label contains the indicator
+
+---
+
+### Group B — Rendering & Filter Fixes
+
+---
+
+### [ ] Task 11.5 — Fix newline rendering in multi-line display fields
+
+**Target files**
+- `src/styles/main.css` (or modal stylesheet)
+- `src/components/Modal.js` (only if CSS alone is insufficient)
+
+**Expected behavior**
+Multi-line text fields (responsibilities, compatNotes, generalNotes) render with `white-space: pre-wrap` in display mode so that `\n` characters produce visible line breaks. No content escaping required — `textContent` assignment already prevents XSS.
+
+Add to the display span element inside `makeInlineText` when `multiline: true`:
+
+```css
+.modal-field__display--multiline {
+  white-space: pre-wrap;
+}
+```
+
+Or add the class directly on the display element in the `makeInlineText` helper.
+
+**Constraints**
+- Single-line fields must not be affected.
+- The `<textarea>` edit element is unaffected — it already handles newlines correctly.
+
+**Validation**
+- `tests/components/Modal.test.js`:
+  - A `responsibilities` value containing `\n` renders a display element with `white-space: pre-wrap` (check the computed style or class)
+- Manual: enter a multi-line value in Responsibilities, save, reopen — confirm line breaks are visible.
+
+---
+
+### [ ] Task 11.6 — Add "(Not set)" option to optional field filter panels
+
+**Target files**
+- `src/utils/filterSort.js`
+- `src/components/FilterPanel.js`
+- `src/components/QuickFiltersToolbar.js`
+
+**Expected behavior**
+1. `filterSort.js` — update `filterByShift`, `filterByWorkSetup`, and `filterByLocation` to treat a sentinel value `''` (empty string) as "Not set": if the selected values include `''`, also include applications where the field is null or empty string.
+
+2. `FilterPanel.js` — when rendering a filter panel, prepend a "(Not set)" option (value `''`) above the enum/text options when the panel type supports it (Shift, Work Setup, Location).
+
+3. `QuickFiltersToolbar.js` — pass the `includeNotSet: true` flag (or equivalent) to the three new filter panel render calls.
+
+**Constraints**
+- Status, Company, Salary, Compat, and Favorites filters are unaffected.
+- "(Not set)" must appear as the first option in the panel, above all enum values.
+- `isAnyFilterActive` treats `['']` as active (user explicitly selected "Not set").
+
+**Validation**
+- `tests/utils/filterSort.test.js`:
+  - `filterByShift(apps, [''])` returns only apps with null or empty shift
+  - `filterByShift(apps, ['Day', ''])` returns Day-shift apps AND apps with no shift
+  - Same pattern for `filterByWorkSetup` and `filterByLocation`
+- `tests/components/FilterPanel.test.js` (or equivalent):
+  - Filter panel rendered with `includeNotSet: true` has "(Not set)" as first option
+
+---
+
+### [ ] Task 11.7 — Fix sort popup positioning on desktop scroll
+
+**Target files**
+- `src/components/SortPanel.js` or `src/components/QuickFiltersToolbar.js` (whichever opens the sort panel)
+- `src/styles/main.css`
+
+**Expected behavior**
+When the sort panel opens, calculate its position using `getBoundingClientRect()` on the trigger button and apply `position: fixed` with a computed `top` value — the same strategy already used by filter popups. The panel must not clip above the visible viewport when the user has scrolled down.
+
+**Constraints**
+- Fix must not affect filter popup positioning (those already work correctly).
+- On mobile the panel either follows the same fixed-position approach or uses the bottom-sheet pattern — do not regress mobile sort behavior.
+
+**Validation**
+- Manual: scroll to the page footer, click the sort button — confirm the panel is visible on screen.
+- `tests/components/QuickFiltersToolbar.test.js`: no regression in sort panel open/close behavior.
+
+---
+
+### [ ] Task 11.8 — Move quick filter icons to third row on mobile
+
+**Target files**
+- `src/styles/main.css`
+- `src/components/QuickFiltersToolbar.js` (only if DOM restructuring is needed)
+
+**Expected behavior**
+On mobile (≤639px), the toolbar uses three rows:
+1. Row 1: "+ New application" button and active filter count badge
+2. Row 2: "X applications / Y results" count text
+3. Row 3: filter icon buttons, left-aligned, wrapping as needed
+
+CSS approach: wrap the filter icon buttons in a dedicated container (`.toolbar-filters`) that renders as its own row (`flex-wrap` or `flex-direction: column` on the outer toolbar, then `flex-basis: 100%` on the count row and the filters row).
+
+**Constraints**
+- Desktop layout (≥640px) is unchanged.
+- No filter functionality changes.
+- Filter buttons must remain accessible by keyboard and touch.
+
+**Validation**
+- Manual: open Chrome DevTools, set width to 375px — confirm three distinct rows with no text/icon overlap.
+- No automated test required; note the manual verification in the test file.
+
+---
+
+### [ ] Task 11.9 — Update footer version to match current release
+
+**Target files**
+- `src/components/Footer.js` (or wherever the version string is rendered)
+
+**Expected behavior**
+Update the version string to `0.6.0` (or whatever the current `package.json` version is). Add a comment or convention note that this string must be updated on every release.
+
+**Constraints**
+- Do not pull `package.json` dynamically at runtime — keep it a static string.
+
+**Validation**
+- Manual: confirm footer displays the correct version.
+
+---
+
+### Group C — UI/UX Polish
+
+---
+
+### [ ] Task 11.10 — Move quick action buttons to overlay header row 1, right-aligned
+
+**Target files**
+- `src/components/Modal.js`
+- `src/styles/main.css`
+
+**Expected behavior**
+The `quickActions` container (Favorite, Change Status, Archive, Close buttons) moves to the first row of the modal header, right-aligned. The current header layout has the ID pill and title on row 1 and quick actions below — this reverses the row order so actions are on row 1 and the title is on row 2 (or the header uses a single flex row with title left and actions right).
+
+**Constraints**
+- All quick action button behaviors (Favorite, Status, Archive, Close) are unchanged.
+- Mobile bottom-sheet header must also apply the new layout.
+
+**Validation**
+- Manual: open the overlay and confirm quick action buttons are in the first header row, right-aligned.
+- `tests/components/Modal.test.js`: quick action buttons are still present in the DOM (regression guard only).
+
+---
+
+### [ ] Task 11.11 — Update Archive icon to filing box in overlay and card
+
+**Target files**
+- `src/utils/icons.js` (or wherever SVG icon helpers are defined)
+- `src/components/Modal.js`
+- `src/components/Card.js`
+
+**Expected behavior**
+Replace the current Archive button icon with a filing-box SVG (📦 or a simplified box-with-slot SVG). The same icon must be used in both the card's quick-action area and the overlay header Archive button to ensure visual consistency.
+
+Add `iconArchive()` to `icons.js` (or update the existing archive icon helper) with the filing-box SVG markup, then reference it in both Modal.js and Card.js.
+
+**Constraints**
+- Do not change Archive button behavior.
+- Close button icon (✕) is unchanged.
+- Accessible `aria-label="Archive"` must remain on both buttons.
+
+**Validation**
+- Manual: confirm archive icon is a filing box in both the card and the overlay, and differs clearly from the Close icon.
+
+---
+
+### [ ] Task 11.12 — Add tooltips to overlay quick action buttons
+
+**Target files**
+- `src/components/Modal.js`
+
+**Expected behavior**
+Add a `title` attribute to each quick action button with a human-readable label:
+- Favorite: `title="Star / Unstar"`
+- Change Status: `title="Change status"`
+- Archive: `title="Archive"`
+- Close: `title="Close"`
+
+**Constraints**
+- Native `title` tooltip is sufficient for v1 — no custom tooltip component needed.
+- `aria-label` is already set on these buttons and takes precedence for screen readers; `title` adds the visual tooltip only.
+
+**Validation**
+- Manual: hover each quick action button — confirm tooltip appears.
+
+---
+
+### [ ] Task 11.13 — Increase FAB drop-shadow on mobile
+
+**Target files**
+- `src/styles/main.css`
+
+**Expected behavior**
+At mobile viewport (≤639px), increase the `.fab` button's `box-shadow` to clearly lift it above the page content. Suggested value: `0 4px 16px rgba(0,0,0,0.28)` or equivalent — adjust to match the design aesthetic.
+
+**Constraints**
+- Desktop FAB shadow is unchanged.
+- Do not change FAB size, position, or behavior.
+
+**Validation**
+- Manual: open the app on a 375px viewport — confirm the FAB is visually distinct from the content behind it.

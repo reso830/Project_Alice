@@ -43,6 +43,18 @@ Modified sections:
   mandatory final phase for UI features
 Templates updated: .specify/templates/tasks-template.md (browser smoke test phase added)
 Follow-up TODOs: none
+
+Amendment 1.2.0 — 2026-05-09
+Reason: Promoted `responsibilities` (the stated duties / role description from a job
+posting) from optional to required. A record without responsibilities lacks sufficient
+context to evaluate role fit and is practically unusable as a tracking record. Identified
+during manual browser testing of feature 012.
+Modified principles:
+- I. User-First Application Tracking — responsibilities added to required field set
+Templates updated: none
+Follow-up TODOs: server/validation/application.js — responsibilities to required text;
+src/models/application.js — add responsibilities to required field validation;
+src/components/Modal.js — add responsibilities to inline error guard in Save/Create handlers
 -->
 
 # Application Tracker Constitution
@@ -51,9 +63,10 @@ Follow-up TODOs: none
 
 ### I. User-First Application Tracking
 The system MUST help users track job applications clearly and quickly. Every job
-application record MUST include company name, job title, application status, and
+application record MUST include company name, job title, application status,
 a last_status_update date (set automatically on entry creation and on every status
-change). Optional fields MAY include source platform, job posting URL, salary,
+change), and responsibilities (the stated duties or role description from the job
+posting). Optional fields MAY include source platform, job posting URL, salary,
 notes, follow-up action, and follow-up date. Status values MUST be controlled,
 consistent, and easy to filter.
 
@@ -150,4 +163,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-09
+**Version**: 1.2.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-09
