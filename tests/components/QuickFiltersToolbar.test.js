@@ -14,6 +14,9 @@ const apps = [
     companyName: 'Acme',
     salary: 110000,
     compat: 80,
+    location: 'Manila',
+    shift: 'Day',
+    workSetup: 'Remote',
   },
   {
     id: 2,
@@ -21,6 +24,9 @@ const apps = [
     companyName: 'Beta',
     salary: 90000,
     compat: 72,
+    location: 'Cebu',
+    shift: 'Night',
+    workSetup: 'Hybrid',
   },
   {
     id: 3,
@@ -28,6 +34,9 @@ const apps = [
     companyName: 'Acme',
     salary: 140000,
     compat: 92,
+    location: 'Manila',
+    shift: 'Mid',
+    workSetup: 'Remote',
   },
 ];
 
@@ -101,6 +110,12 @@ describe('QuickFiltersToolbar', () => {
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Filter by Company"]')?.getAttribute('aria-pressed'))
       .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Filter by Shift"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Filter by Work Setup"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
+    expect(toolbar.querySelector('[aria-label="Filter by Location"]')?.getAttribute('aria-pressed'))
+      .toBe('false');
     expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
       .toBe('false');
     expect(toolbar.querySelector('[aria-label="Sort"]')?.getAttribute('aria-pressed'))
@@ -108,6 +123,22 @@ describe('QuickFiltersToolbar', () => {
     expect([...toolbar.querySelectorAll('.filter-btn')].every((button) => button.querySelector('svg.icon')))
       .toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
+  });
+
+  it('renders the new filter buttons after the existing filters', () => {
+    const { toolbar } = renderToolbar();
+
+    expect([...toolbar.querySelectorAll('.toolbar__filters .filter-btn')]
+      .map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Favorites only',
+      'Filter by Status',
+      'Filter by Salary',
+      'Filter by Compatibility',
+      'Filter by Company',
+      'Filter by Shift',
+      'Filter by Work Setup',
+      'Filter by Location',
+    ]);
   });
 
   it('updates the label, count, and status pressed state for active filters', () => {
@@ -171,6 +202,87 @@ describe('QuickFiltersToolbar', () => {
     });
   });
 
+  it('opens the shift panel and calls onFilterChange with selected shifts', () => {
+    const onFilterChange = vi.fn();
+    const { toolbar } = renderToolbar({ onFilterChange });
+
+    toolbar.querySelector('[aria-label="Filter by Shift"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect([...document.querySelectorAll('.filter-panel__option-label')]
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Day', 'Mid', 'Night', 'Flexible']);
+
+    document.querySelector('[data-value="Day"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenCalledWith({
+      ...DEFAULT_FILTER_STATE,
+      shifts: ['Day'],
+    });
+
+    document.querySelector('[data-value=""]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_FILTER_STATE,
+      shifts: [''],
+    });
+  });
+
+  it('opens work setup and location panels and updates the matching arrays', () => {
+    const onFilterChange = vi.fn();
+    const { toolbar } = renderToolbar({ onFilterChange });
+
+    toolbar.querySelector('[aria-label="Filter by Work Setup"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect([...document.querySelectorAll('.filter-panel__option-label')]
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Remote', 'Hybrid', 'On-site', 'Field']);
+
+    document.querySelector('[data-value="Remote"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    toolbar.querySelector('[aria-label="Filter by Location"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect([...document.querySelectorAll('.filter-panel__option-label')]
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Cebu', 'Manila']);
+
+    document.querySelector('[data-value="Manila"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenNthCalledWith(1, {
+      ...DEFAULT_FILTER_STATE,
+      workSetups: ['Remote'],
+    });
+    expect(onFilterChange).toHaveBeenNthCalledWith(2, {
+      ...DEFAULT_FILTER_STATE,
+      locations: ['Manila'],
+    });
+  });
+
+  it('positions the sort panel with viewport-fixed coordinates', () => {
+    const { toolbar } = renderToolbar();
+    const sortButton = toolbar.querySelector('[aria-label="Sort"]');
+    sortButton.getBoundingClientRect = () => ({
+      left: 320,
+      right: 348,
+      top: 540,
+      bottom: 568,
+      width: 28,
+      height: 28,
+    });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 360 });
+
+    sortButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const panel = document.querySelector('.sort-panel');
+
+    expect(panel).not.toBeNull();
+    expect(panel.style.top).toBe('576px');
+    expect(panel.style.left).toBe('128px');
+  });
+
   it('updates favorites-only pressed state for active filters', () => {
     const { toolbar } = renderToolbar();
 
@@ -185,6 +297,28 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('[aria-label="Favorites only"]')?.getAttribute('aria-pressed'))
       .toBe('true');
     expect(toolbar.dataset.activeFilterCount).toBe('1');
+  });
+
+  it('counts and presses the new filter arrays', () => {
+    const { toolbar } = renderToolbar();
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: 1,
+      filterState: {
+        ...DEFAULT_FILTER_STATE,
+        shifts: ['Day', 'Night'],
+        workSetups: ['Remote'],
+        locations: ['Manila'],
+      },
+      sortState: DEFAULT_SORT_STATE,
+    });
+
+    expect(toolbar.dataset.activeFilterCount).toBe('4');
+    expect(toolbar.querySelector('[aria-label="Filter by Shift"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(toolbar.querySelector('[aria-label="Filter by Work Setup"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(toolbar.querySelector('[aria-label="Filter by Location"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('renders status filter dots from STATUS_CONFIG colors', () => {
@@ -217,7 +351,7 @@ describe('QuickFiltersToolbar', () => {
     });
     const buttons = [...toolbar.querySelectorAll('.filter-btn')];
 
-    expect(buttons).toHaveLength(6);
+    expect(buttons).toHaveLength(9);
     expect(buttons.every((button) => button.disabled)).toBe(true);
     expect(buttons.every((button) => button.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
@@ -333,6 +467,7 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('[aria-label="Filter by Status"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Compatibility"]').disabled).toBe(false);
     expect(toolbar.querySelector('[aria-label="Filter by Company"]').disabled).toBe(false);
+    expect(toolbar.querySelector('[aria-label="Filter by Location"]').disabled).toBe(false);
   });
 
   it('renders salary range bounds in Philippine Peso with the top bucket label', () => {
@@ -436,6 +571,9 @@ describe('QuickFiltersToolbar', () => {
       'Filter by Salary',
       'Filter by Compatibility',
       'Filter by Company',
+      'Filter by Shift',
+      'Filter by Work Setup',
+      'Filter by Location',
       'Favorites only',
       'Sort',
     ]) {
@@ -467,6 +605,9 @@ describe('QuickFiltersToolbar', () => {
       'Filter by Salary',
       'Filter by Compatibility',
       'Filter by Company',
+      'Filter by Shift',
+      'Filter by Work Setup',
+      'Filter by Location',
       'Sort',
     ]) {
       const button = toolbar.querySelector(`[aria-label="${label}"]`);

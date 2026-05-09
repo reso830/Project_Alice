@@ -1,4 +1,8 @@
 function getOptionLabel(value, getLabel) {
+  if (value === '') {
+    return '(Not set)';
+  }
+
   return typeof getLabel === 'function' ? getLabel(value) : value;
 }
 
@@ -98,7 +102,11 @@ export function render(options = {}) {
   separator.className = 'filter-panel__separator';
   list.className = 'filter-panel__list';
 
-  for (const value of options.options ?? []) {
+  const optionValues = options.includeNotSet
+    ? ['', ...(options.options ?? []).filter((value) => value !== '')]
+    : (options.options ?? []);
+
+  for (const value of optionValues) {
     list.append(createOptionRow(value, selected, options));
   }
 

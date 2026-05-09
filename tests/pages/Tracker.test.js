@@ -34,6 +34,7 @@ vi.mock('../../src/components/ConfirmDialog.js', () => ({
 
 import * as api from '../../src/services/api.js';
 import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
+import { Modal } from '../../src/components/Modal.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
@@ -82,6 +83,55 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(fab.getAttribute('aria-label')).toBe('New application');
     expect(fab.textContent).toBe('+');
     expect(toolbarRenderOptions[0].onAddApplication).toBeTypeOf('function');
+  });
+
+  it('opens create mode from New application and prepends created records', async () => {
+    const container = document.createElement('main');
+    const existing = createApplication(1);
+    const created = createApplication(42, {
+      jobTitle: 'New Role',
+      companyName: 'New Company',
+      salary: 250000,
+    });
+    const openSpy = vi.spyOn(Modal, 'open');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([existing]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onAddApplication();
+
+    expect(openSpy).toHaveBeenCalledWith(null, expect.objectContaining({
+      mode: 'create',
+      onApplicationCreate: expect.any(Function),
+    }));
+
+    openSpy.mock.calls.at(-1)[1].onApplicationCreate(created);
+
+    expect(toolbarUpdateOptions.at(-1).apps[0]).toEqual(created);
+    expect(toolbarUpdateOptions.at(-1).salaryBounds.max).toBe(250000);
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(2);
+    expect(container.textContent).toContain('New Role');
+  });
+
+  it('renders the first created record after mounting with an empty list', async () => {
+    const container = document.createElement('main');
+    const created = createApplication(42, {
+      jobTitle: 'First Role',
+      companyName: 'First Company',
+    });
+    const openSpy = vi.spyOn(Modal, 'open');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onAddApplication();
+    openSpy.mock.calls.at(-1)[1].onApplicationCreate(created);
+
+    expect(container.querySelector('.empty-state')).toBeNull();
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+    expect(container.textContent).toContain('First Role');
   });
 
   it('defines responsive FAB, safe-area, desktop-hidden, and modal stacking styles', () => {
@@ -297,15 +347,13 @@ describe('Tracker quick filter toolbar integration', () => {
       .toBe(true);
   });
 
-  it('re-renders cards after overlay status updates', async () => {
+  it('keeps overlay status changes local until save exists', async () => {
     const container = document.createElement('main');
     const original = createApplication(1, { status: 'applied' });
-    const updated = { ...original, status: 'offer' };
 
     window.scrollTo = vi.fn();
     api.getAll.mockResolvedValue([original]);
     api.getById.mockResolvedValue(original);
-    api.update.mockResolvedValue(updated);
 
     await Tracker.mount(container);
     container.querySelector('.card').click();
@@ -314,8 +362,9 @@ describe('Tracker quick filter toolbar integration', () => {
     document.querySelector('[data-status="offer"]').click();
     await Promise.resolve();
 
-    expect(api.update).toHaveBeenCalledWith(1, { status: 'offer' });
-    expect(container.querySelector('.status-badge').textContent).toBe('Offer');
+    expect(api.update).not.toHaveBeenCalled();
+    expect(document.querySelector('#modal-status-badge').textContent).toBe('Offer');
+    expect(container.querySelector('.status-badge').textContent).toBe('Applied');
   });
 
   it('removes cards after overlay archive confirmation', async () => {
@@ -393,9 +442,23 @@ describe('Tracker stored filter validation', () => {
     expect(normalizeStoredFilterState({
       statuses: ['applied', 'missing'],
       favoritesOnly: 'yes',
+      shifts: ['Day', 'InvalidValue'],
+      workSetups: ['Remote', 'Bad'],
+      locations: ['Manila', 42, null],
     })).toEqual(expect.objectContaining({
       statuses: ['applied'],
       favoritesOnly: false,
+      shifts: ['Day'],
+      workSetups: ['Remote'],
+      locations: ['Manila'],
+    }));
+  });
+
+  it('defaults missing new filter arrays to empty arrays', () => {
+    expect(normalizeStoredFilterState({})).toEqual(expect.objectContaining({
+      shifts: [],
+      workSetups: [],
+      locations: [],
     }));
   });
 
@@ -406,6 +469,34 @@ describe('Tracker stored filter validation', () => {
     })).toEqual(expect.objectContaining({
       salaryMin: null,
       salaryMax: null,
+    }));
+  });
+
+  it('round-trips new filter arrays through serialized storage', () => {
+    const restored = normalizeStoredFilterState(JSON.parse(JSON.stringify({
+      shifts: ['Day'],
+      workSetups: ['Remote'],
+      locations: ['Manila'],
+    })));
+
+    expect(restored).toEqual(expect.objectContaining({
+      shifts: ['Day'],
+      workSetups: ['Remote'],
+      locations: ['Manila'],
+    }));
+  });
+
+  it('strips invalid new filter values after serialized storage restore', () => {
+    const restored = normalizeStoredFilterState(JSON.parse(JSON.stringify({
+      shifts: ['Day', 'InvalidValue'],
+      workSetups: ['Remote', 'Invalid'],
+      locations: ['Manila', 123],
+    })));
+
+    expect(restored).toEqual(expect.objectContaining({
+      shifts: ['Day'],
+      workSetups: ['Remote'],
+      locations: ['Manila'],
     }));
   });
 });

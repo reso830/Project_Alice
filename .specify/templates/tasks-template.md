@@ -166,6 +166,23 @@ Examples of foundational tasks (adjust based on your project):
 
 ---
 
+## Phase N+1: Browser Smoke Test (REQUIRED for UI features)
+
+**Purpose**: Verify the feature end-to-end in a real browser against a running server. Catches rendering, CSS layout, real keyboard interaction, and mobile viewport issues that automated tests cannot detect. Required by the project constitution for any feature with user-facing UI changes.
+
+**Setup**: start the dev server, start the backend, and load seed or fixture data before running these tasks.
+
+For each user story in this feature, add one task using the Independent Test from spec.md as the acceptance bar. Expand to multi-step walkthroughs when the story has complex interaction patterns (multiple triggers, keyboard shortcuts, error states).
+
+- [ ] TXXX [US1] [User Story 1 title] — complete spec.md Independent Test in browser; verify acceptance scenarios 1–N pass
+- [ ] TXXX [US2] [User Story 2 title] — complete spec.md Independent Test in browser; verify acceptance scenarios 1–N pass
+- [ ] TXXX [US3] [User Story 3 title] — complete spec.md Independent Test in browser; verify acceptance scenarios 1–N pass
+- [ ] TXXX Mobile layout — open DevTools at ≤ 640px; confirm no broken layout, single-column stacking, and all interactions work with touch/click
+
+**Note**: Each task MUST define clear pass criteria. A task is complete only when a human has walked through the steps in a real browser and all pass criteria are met. Document any deviations or deferred items with rationale.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

@@ -32,6 +32,16 @@ async function request(baseUrl, path, options = {}) {
   };
 }
 
+function validApplicationPayload(overrides = {}) {
+  return {
+    companyName: 'Acme Corp',
+    jobTitle: 'Frontend Engineer',
+    status: 'applied',
+    responsibilities: 'Build product UI',
+    ...overrides,
+  };
+}
+
 describe('applications API', () => {
   it('returns health status', async () => {
     await withServer(async (baseUrl) => {
@@ -55,11 +65,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const response = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       expect(response.status).toBe(201);
@@ -71,6 +77,12 @@ describe('applications API', () => {
         fav: false,
         archived: false,
         skills: [],
+        location: null,
+        shift: null,
+        workSetup: null,
+        compatNotes: null,
+        generalNotes: null,
+        preferredSkills: [],
         metadata: null,
       });
       expect(Number.isInteger(response.body.data.id)).toBe(true);
@@ -84,11 +96,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const response = await request(baseUrl, '/api/applications');
 
@@ -98,15 +106,65 @@ describe('applications API', () => {
     });
   });
 
+  it('creates applications with extended metadata fields', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({
+          location: 'Manila',
+          shift: 'Day',
+          workSetup: 'Remote',
+          compatNotes: 'Strong frontend match.',
+          generalNotes: 'Applied via referral.',
+          preferredSkills: ['GraphQL', 'Figma'],
+        })),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toMatchObject({
+        location: 'Manila',
+        shift: 'Day',
+        workSetup: 'Remote',
+        compatNotes: 'Strong frontend match.',
+        generalNotes: 'Applied via referral.',
+        preferredSkills: ['GraphQL', 'Figma'],
+      });
+    });
+  });
+
+  it('returns extended metadata in camelCase when fetched by id', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({
+          location: 'Manila',
+          shift: 'Mid',
+          workSetup: 'Hybrid',
+          compatNotes: 'Compatibility detail',
+          generalNotes: 'General detail',
+          preferredSkills: ['GraphQL'],
+        })),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        location: 'Manila',
+        shift: 'Mid',
+        workSetup: 'Hybrid',
+        compatNotes: 'Compatibility detail',
+        generalNotes: 'General detail',
+        preferredSkills: ['GraphQL'],
+      });
+    });
+  });
+
   it('returns one application by id', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
 
@@ -142,6 +200,7 @@ describe('applications API', () => {
         fields: {
           companyName: expect.any(String),
           jobTitle: expect.any(String),
+          responsibilities: expect.any(String),
           status: expect.any(String),
         },
       });
@@ -152,12 +211,9 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const response = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
+        body: JSON.stringify(validApplicationPayload({
           jobPostingUrl: 'not-a-url',
-        }),
+        })),
       });
 
       expect(response.status).toBe(400);
@@ -189,12 +245,9 @@ describe('applications API', () => {
     await withServer(async (baseUrl, db) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
+        body: JSON.stringify(validApplicationPayload({
           notes: 'Original note',
-        }),
+        })),
       });
       const original = created.body.data;
       db.prepare(`
@@ -223,11 +276,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -243,12 +292,9 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
+        body: JSON.stringify(validApplicationPayload({
           notes: 'Original note',
-        }),
+        })),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -264,11 +310,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -288,12 +330,9 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
+        body: JSON.stringify(validApplicationPayload({
           fav: true,
-        }),
+        })),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -310,14 +349,11 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
+        body: JSON.stringify(validApplicationPayload({
           applicationDate: '2026-04-26',
           followUpDate: '2026-04-30',
           jobPostingUrl: 'https://example.com/job',
-        }),
+        })),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -337,15 +373,49 @@ describe('applications API', () => {
     });
   });
 
+  it('updates and clears extended metadata fields', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({
+          location: 'Manila',
+          shift: 'Day',
+          workSetup: 'Remote',
+          compatNotes: 'Initial notes',
+          generalNotes: 'General notes',
+          preferredSkills: ['GraphQL'],
+        })),
+      });
+
+      const updated = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          location: '',
+          shift: '',
+          workSetup: '',
+          compatNotes: '',
+          generalNotes: '',
+          preferredSkills: [],
+        }),
+      });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body.data).toMatchObject({
+        location: '',
+        shift: '',
+        workSetup: '',
+        compatNotes: '',
+        generalNotes: '',
+        preferredSkills: [],
+      });
+    });
+  });
+
   it('returns validation fields for invalid update URLs', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
         method: 'PATCH',
@@ -406,19 +476,16 @@ describe('applications API', () => {
     await withServer(async (baseUrl, db) => {
       const active = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const archived = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
+        body: JSON.stringify(validApplicationPayload({
           companyName: 'Beta Inc',
           jobTitle: 'Backend Engineer',
           status: 'wishlisted',
-        }),
+          responsibilities: 'Build backend services',
+        })),
       });
       db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
 
@@ -434,11 +501,12 @@ describe('applications API', () => {
     await withServer(async (baseUrl, db) => {
       const archived = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
+        body: JSON.stringify(validApplicationPayload({
           companyName: 'Beta Inc',
           jobTitle: 'Backend Engineer',
           status: 'wishlisted',
-        }),
+          responsibilities: 'Build backend services',
+        })),
       });
       db.prepare('UPDATE applications SET archived = 1 WHERE id = ?').run(archived.body.data.id);
 
@@ -456,11 +524,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
@@ -479,11 +543,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
@@ -505,19 +565,16 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const active = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
       const archived = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
+        body: JSON.stringify(validApplicationPayload({
           companyName: 'Beta Inc',
           jobTitle: 'Backend Engineer',
           status: 'wishlisted',
-        }),
+          responsibilities: 'Build backend services',
+        })),
       });
 
       await request(baseUrl, `/api/applications/${archived.body.data.id}/archive`, {
@@ -534,11 +591,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
@@ -574,11 +627,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       await request(baseUrl, `/api/applications/${created.body.data.id}`, {
@@ -596,12 +645,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-          fav: true,
-        }),
+        body: JSON.stringify(validApplicationPayload({ fav: true })),
       });
 
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
@@ -618,11 +662,7 @@ describe('applications API', () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
-        body: JSON.stringify({
-          companyName: 'Acme Corp',
-          jobTitle: 'Frontend Engineer',
-          status: 'applied',
-        }),
+        body: JSON.stringify(validApplicationPayload()),
       });
 
       const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {

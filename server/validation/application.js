@@ -66,10 +66,16 @@ const writableFields = {
   recruiter: optionalText,
   notes: optionalText,
   salary,
-  responsibilities: optionalText,
+  responsibilities: requiredString('Responsibilities'),
   skills: z.array(z.string()).optional(),
   followUpAction: optionalText,
   followUpDate: dateField('Follow-up date'),
+  location: optionalText,
+  shift: z.enum(['Day', 'Mid', 'Night', 'Flexible']).or(emptyString).optional(),
+  workSetup: z.enum(['Remote', 'Hybrid', 'On-site', 'Field']).or(emptyString).optional(),
+  compatNotes: optionalText,
+  generalNotes: optionalText,
+  preferredSkills: z.array(z.string()).optional(),
   metadata,
 };
 
@@ -80,6 +86,7 @@ export const updateSchema = z.object({
   archived: optionalBoolean,
   companyName: writableFields.companyName.optional(),
   jobTitle: writableFields.jobTitle.optional(),
+  responsibilities: writableFields.responsibilities.optional(),
   status: writableFields.status.optional(),
 }).strip();
 

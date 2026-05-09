@@ -1,12 +1,5 @@
 Create a technical plan for this Spec Kit feature.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Spec path:
-- Design reference path, if any:
-- Workflow ledger path, if any:
-
 Instructions:
 - Read the spec before writing the plan.
 - Use the design reference only if one is provided.

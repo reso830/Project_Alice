@@ -5,6 +5,7 @@ import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
 import { STATUS_VALUES } from '../../shared/constants.js';
+import { SHIFT_VALUES, WORK_SETUP_VALUES } from '../models/application.js';
 import * as api from '../services/api.js';
 import {
   DEFAULT_FILTER_STATE,
@@ -66,6 +67,15 @@ export function normalizeStoredFilterState(value) {
   const salaryMax = normalizeIntegerOrNull(stored.salaryMax);
   const compatMin = normalizeIntegerOrNull(stored.compatMin, { min: 0, max: 100 });
   const compatMax = normalizeIntegerOrNull(stored.compatMax, { min: 0, max: 100 });
+  const shifts = Array.isArray(stored.shifts)
+    ? stored.shifts.filter((shift) => SHIFT_VALUES.includes(shift))
+    : [];
+  const workSetups = Array.isArray(stored.workSetups)
+    ? stored.workSetups.filter((workSetup) => WORK_SETUP_VALUES.includes(workSetup))
+    : [];
+  const locations = Array.isArray(stored.locations)
+    ? stored.locations.filter((location) => typeof location === 'string')
+    : [];
 
   return {
     ...DEFAULT_FILTER_STATE,
@@ -73,6 +83,9 @@ export function normalizeStoredFilterState(value) {
     companies: Array.isArray(stored.companies)
       ? stored.companies.filter((company) => typeof company === 'string')
       : [],
+    shifts,
+    workSetups,
+    locations,
     salaryMin: salaryMin !== null && salaryMax !== null && salaryMin > salaryMax ? null : salaryMin,
     salaryMax: salaryMin !== null && salaryMax !== null && salaryMin > salaryMax ? null : salaryMax,
     compatMin: compatMin !== null && compatMax !== null && compatMin > compatMax ? null : compatMin,
@@ -113,6 +126,19 @@ function clampCurrentPage(filteredCount) {
 
 function removeEmptyState() {
   _container?.querySelector('.empty-state')?.remove();
+}
+
+function ensureCardList() {
+  if (_cardList || !_container) {
+    return;
+  }
+
+  removeEmptyState();
+  _cardList = document.createElement('div');
+  _cardList.className = 'card-list';
+  _cardList.tabIndex = -1;
+  _cardList.setAttribute('aria-label', 'Application list');
+  _container.append(_cardList);
 }
 
 function focusCardList() {
@@ -166,7 +192,30 @@ function onClearAll() {
   updateToolbar();
 }
 
-function onAddApplication() {}
+function onAddApplication() {
+  Modal.open(null, {
+    mode: 'create',
+    onApplicationCreate: (newRecord) => {
+      _applications = [newRecord, ..._applications];
+      _salaryBounds = getSalaryBounds(_applications);
+      ensureCardList();
+      renderPage();
+      updateToolbar();
+    },
+    onApplicationUpdate: (updated) => {
+      replaceApplication(updated);
+      renderPage();
+      updateToolbar();
+    },
+    onArchiveSuccess: (updated) => {
+      removeApplication(updated.id);
+      _salaryBounds = getSalaryBounds(_applications);
+      renderPage();
+      updateToolbar();
+      focusCardList();
+    },
+  });
+}
 
 function createFab() {
   const button = document.createElement('button');
@@ -408,12 +457,7 @@ export async function mount(container) {
     return;
   }
 
-  _cardList = document.createElement('div');
-  _cardList.className = 'card-list';
-  _cardList.tabIndex = -1;
-  _cardList.setAttribute('aria-label', 'Application list');
-
-  _container.append(_cardList);
+  ensureCardList();
   renderPage();
   window.scrollTo(0, 0);
 }

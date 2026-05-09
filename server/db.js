@@ -58,4 +58,10 @@ export function initSchema(targetDb = db) {
   `);
 
   ensureColumn(targetDb, 'applications', 'archived', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(targetDb, 'applications', 'location', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'shift', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'work_setup', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'compat_notes', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'general_notes', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
 }

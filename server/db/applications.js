@@ -17,6 +17,12 @@ const FIELD_TO_COLUMN = {
   skills: 'skills',
   followUpAction: 'follow_up_action',
   followUpDate: 'follow_up_date',
+  location: 'location',
+  shift: 'shift',
+  workSetup: 'work_setup',
+  compatNotes: 'compat_notes',
+  generalNotes: 'general_notes',
+  preferredSkills: 'preferred_skills',
   metadata: 'metadata',
   archived: 'archived',
 };
@@ -38,6 +44,12 @@ const INSERTABLE_COLUMNS = [
   'skills',
   'follow_up_action',
   'follow_up_date',
+  'location',
+  'shift',
+  'work_setup',
+  'compat_notes',
+  'general_notes',
+  'preferred_skills',
   'last_status_update',
   'created_at',
   'updated_at',
@@ -51,7 +63,11 @@ function parseJson(value, fallback) {
     return fallback;
   }
 
-  return JSON.parse(value);
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
 }
 
 function parseSalaryLower(value) {
@@ -110,6 +126,12 @@ export function toRecord(row) {
     skills: parseJson(row.skills, []),
     followUpAction: row.follow_up_action,
     followUpDate: row.follow_up_date,
+    location: row.location,
+    shift: row.shift,
+    workSetup: row.work_setup,
+    compatNotes: row.compat_notes,
+    generalNotes: row.general_notes,
+    preferredSkills: parseJson(row.preferred_skills, []),
     lastStatusUpdate: row.last_status_update,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -133,6 +155,8 @@ export function toRow(fields) {
         row.fav = 0;
       }
     } else if (field === 'skills') {
+      row[column] = JSON.stringify(Array.isArray(value) ? value : []);
+    } else if (field === 'preferredSkills') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'metadata') {
       row[column] = value != null ? JSON.stringify(value) : null;

@@ -5,8 +5,11 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 ## Features
 
 - **Application cards** — surface company, role, status, date, and compatibility at a glance
-- **Full detail view** — modal with all fields including salary, source URL, recruiter, and notes
+- **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
+- **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
+- **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
+- **Quick filters & sort** — filter by Status, Salary range, Compatibility range, Company, Favorites, Shift, Work Setup, and Location; stack multiple filters with AND logic; sort by Job ID, Status, Compatibility, Salary, or Company; filter state persists across reloads
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
 - **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
 - **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections
@@ -162,7 +165,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.5.1**
+Current version: **0.6.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

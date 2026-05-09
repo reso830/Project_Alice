@@ -42,3 +42,7 @@ export function createClipboardIcon() {
   svg.append(rect, path);
   return svg;
 }
+
+export function createArchiveIcon() {
+  return createSvgIcon('M4 7h16v12H4V7Zm2-4h12l2 4H4l2-4Zm4 8h4');
+}

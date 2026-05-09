@@ -1,12 +1,5 @@
 Review this PR as a senior engineer.
 
-Fill in before sending:
-- Feature name:
-- PR link or branch:
-- Base branch:
-- Workflow ledger path, if any:
-- Spec/plan/tasks paths, if relevant:
-
 Instructions:
 - Read the PR diff and workflow ledger if one exists.
 - Honor user notes, accepted findings, and prior review history unless they conflict with the project constitution.

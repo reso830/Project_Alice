@@ -1,13 +1,5 @@
 Review this Spec Kit package as a software architect.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Spec path:
-- Plan path:
-- Tasks path:
-- Workflow ledger path, if any:
-
 Instructions:
 - Read the spec, plan, tasks, and workflow ledger if one exists.
 - Honor user notes, accepted findings, and prior review history unless they conflict with the project constitution.

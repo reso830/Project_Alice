@@ -1,8 +1,9 @@
-import { STATUS_CONFIG } from '../models/application.js';
+import { SHIFT_VALUES, STATUS_CONFIG, WORK_SETUP_VALUES } from '../models/application.js';
 import {
   DEFAULT_SORT_STATE,
   SALARY_STEP,
   getAvailableCompanies,
+  getAvailableLocations,
   getAvailableStatuses,
   isDefaultSort,
   isAnyFilterActive,
@@ -20,6 +21,9 @@ let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
 let _companyButton = null;
+let _shiftButton = null;
+let _workSetupButton = null;
+let _locationButton = null;
 let _favoritesButton = null;
 let _sortButton = null;
 let _sortTrigger = null;
@@ -71,6 +75,9 @@ function setPressed(button, pressed) {
 function getActiveFilterCount(filterState) {
   return (filterState.statuses?.length ?? 0)
     + (filterState.companies?.length ?? 0)
+    + (filterState.shifts?.length ?? 0)
+    + (filterState.workSetups?.length ?? 0)
+    + (filterState.locations?.length ?? 0)
     + (filterState.salaryMin === null && filterState.salaryMax === null ? 0 : 1)
     + (filterState.compatMin === null && filterState.compatMax === null ? 0 : 1)
     + (filterState.favoritesOnly === true ? 1 : 0);
@@ -204,6 +211,54 @@ function renderCompanyPanel() {
     },
     onClear: () => {
       _callbacks.onFilterChange?.({ ..._filterState, companies: [] });
+      closePanel();
+    },
+  });
+}
+
+function renderShiftPanel() {
+  return FilterPanel.render({
+    title: 'Shift',
+    options: SHIFT_VALUES,
+    includeNotSet: true,
+    selected: _filterState.shifts,
+    onChange: (shifts) => {
+      _callbacks.onFilterChange?.({ ..._filterState, shifts });
+    },
+    onClear: () => {
+      _callbacks.onFilterChange?.({ ..._filterState, shifts: [] });
+      closePanel();
+    },
+  });
+}
+
+function renderWorkSetupPanel() {
+  return FilterPanel.render({
+    title: 'Work Setup',
+    options: WORK_SETUP_VALUES,
+    includeNotSet: true,
+    selected: _filterState.workSetups,
+    onChange: (workSetups) => {
+      _callbacks.onFilterChange?.({ ..._filterState, workSetups });
+    },
+    onClear: () => {
+      _callbacks.onFilterChange?.({ ..._filterState, workSetups: [] });
+      closePanel();
+    },
+  });
+}
+
+function renderLocationPanel() {
+  return FilterPanel.render({
+    title: 'Location',
+    options: getAvailableLocations(_allApps, _filterState),
+    includeNotSet: true,
+    selected: _filterState.locations,
+    onChange: (locations) => {
+      _callbacks.onFilterChange?.({ ..._filterState, locations });
+    },
+    onClear: () => {
+      _callbacks.onFilterChange?.({ ..._filterState, locations: [] });
       closePanel();
     },
   });
@@ -371,6 +426,9 @@ function updateButtons(totalCount, filterState) {
   setButtonDisabled(_salaryButton, salaryDisabled);
   setButtonDisabled(_compatButton, disabled);
   setButtonDisabled(_companyButton, disabled);
+  setButtonDisabled(_shiftButton, disabled);
+  setButtonDisabled(_workSetupButton, disabled);
+  setButtonDisabled(_locationButton, disabled);
   setButtonDisabled(_favoritesButton, disabled);
   setButtonDisabled(_sortButton, disabled);
   setButtonDisabled(_eraseBtn, disabled);
@@ -378,6 +436,9 @@ function updateButtons(totalCount, filterState) {
   setPressed(_salaryButton, filterState.salaryMin !== null || filterState.salaryMax !== null);
   setPressed(_compatButton, filterState.compatMin !== null || filterState.compatMax !== null);
   setPressed(_companyButton, (filterState.companies?.length ?? 0) > 0);
+  setPressed(_shiftButton, (filterState.shifts?.length ?? 0) > 0);
+  setPressed(_workSetupButton, (filterState.workSetups?.length ?? 0) > 0);
+  setPressed(_locationButton, (filterState.locations?.length ?? 0) > 0);
   setPressed(_favoritesButton, filterState.favoritesOnly === true);
   setPressed(_sortButton, !isDefaultSort(_sortState));
   _salaryButton?.setAttribute(
@@ -399,6 +460,12 @@ function refreshOpenPanel() {
     replaceOpenPanel(renderStatusPanel());
   } else if (_openPanelType === 'company') {
     replaceOpenPanel(renderCompanyPanel());
+  } else if (_openPanelType === 'shift') {
+    replaceOpenPanel(renderShiftPanel());
+  } else if (_openPanelType === 'workSetup') {
+    replaceOpenPanel(renderWorkSetupPanel());
+  } else if (_openPanelType === 'location') {
+    replaceOpenPanel(renderLocationPanel());
   } else if (_openPanelType === 'salary') {
     replaceOpenPanel(renderSalaryPanel());
   } else if (_openPanelType === 'compat') {
@@ -458,6 +525,27 @@ export function render(options = {}) {
     icon: createSvgIcon('M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M9 7h1M9 11h1M9 15h1'),
     onClick: (button) => openPanel('company', button, renderCompanyPanel()),
   });
+  const shift = createFilterButton({
+    className: 'filter-btn--shift',
+    label: 'Filter by Shift',
+    title: 'Shift',
+    icon: createSvgIcon('M12 6v6l4 2m4-2a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'),
+    onClick: (button) => openPanel('shift', button, renderShiftPanel()),
+  });
+  const workSetup = createFilterButton({
+    className: 'filter-btn--work-setup',
+    label: 'Filter by Work Setup',
+    title: 'Work Setup',
+    icon: createSvgIcon('M4 19V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11M8 19v-4h8v4M8 10h.01M12 10h.01M16 10h.01'),
+    onClick: (button) => openPanel('workSetup', button, renderWorkSetupPanel()),
+  });
+  const location = createFilterButton({
+    className: 'filter-btn--location',
+    label: 'Filter by Location',
+    title: 'Location',
+    icon: createSvgIcon('M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Zm0-8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'),
+    onClick: (button) => openPanel('location', button, renderLocationPanel()),
+  });
   const favorites = createFilterButton({
     className: 'filter-btn--favorites',
     label: 'Favorites only',
@@ -490,7 +578,16 @@ export function render(options = {}) {
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
 
-  filters.append(favorites.trigger, status.trigger, salary.trigger, compat.trigger, company.trigger);
+  filters.append(
+    favorites.trigger,
+    status.trigger,
+    salary.trigger,
+    compat.trigger,
+    company.trigger,
+    shift.trigger,
+    workSetup.trigger,
+    location.trigger,
+  );
   actions.append(sort.trigger);
   controls.append(filters, actions);
   left.append(label);
@@ -505,6 +602,9 @@ export function render(options = {}) {
   _salaryButton = salary.button;
   _compatButton = compat.button;
   _companyButton = company.button;
+  _shiftButton = shift.button;
+  _workSetupButton = workSetup.button;
+  _locationButton = location.button;
   _favoritesButton = favorites.button;
   _sortButton = sort.button;
   _sortTrigger = sort.trigger;

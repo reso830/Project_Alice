@@ -1,12 +1,5 @@
 Review the current PR or branch as an engineer.
 
-Fill in before sending:
-- Feature name:
-- PR link or branch:
-- Base branch:
-- Workflow ledger path, if any:
-- Spec/plan/tasks paths, if relevant:
-
 Instructions:
 - Read the PR diff or current branch diff.
 - Read the workflow ledger if one exists.
