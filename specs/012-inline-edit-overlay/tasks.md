@@ -1642,3 +1642,41 @@ If possible, prefer keeping the pill on one line by reducing font size or paddin
 
 **Validation**
 - Manual: open Chrome DevTools, set width to 280px, open the overlay — confirm status pill text either stays on one line or wraps with centered text.
+
+---
+
+### [ ] Task 11.17 — Fix Salary field empty-state display in overlay
+
+**Spec reference**: FR-037
+
+**Target files**
+- `src/components/Modal.js` — salary field display rendering
+
+**Background**
+The Salary field renders a completely blank area when the application has no salary value. All other optional fields display "-" as a neutral placeholder. On mobile, where overlay fields are stacked vertically, the blank salary area causes the "Salary" label to appear directly above the "Shift" label with nothing between them — misleading users into thinking Salary is not a separate editable field.
+
+**Expected behavior**
+In display mode (non-edit state), the salary field MUST show "-" when its value is empty, null, or zero. This is consistent with how other optional fields (Location, Work Setup, Shift, etc.) are already rendered.
+
+**What to change**
+Locate the salary field's display-mode render path in `Modal.js`. Where the salary display value is set, apply the same "-" fallback used for other optional text fields. For example:
+
+```js
+// before
+const displaySalary = formatSalaryDisplay(app.salary);
+
+// after
+const displaySalary = formatSalaryDisplay(app.salary) || '–';
+```
+
+Confirm the same fallback pattern used by Location, Shift, and Work Setup fields is applied consistently.
+
+**Constraints**
+- Only the display-mode render is affected — the edit-mode input field is unchanged.
+- Do not change `formatSalaryDisplay` itself; apply the fallback at the render call site in `Modal.js`.
+- Formatted salary values (e.g. "₱50,000") must continue to display normally.
+
+**Validation**
+- Open any application with no salary set — Salary field must show "–" in the overlay.
+- Open any application with a salary value set — Salary field must show the formatted value normally.
+- Manual mobile check (≤640px): Salary field now shows "–", making the label clearly belong to its own row above Shift.

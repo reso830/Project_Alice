@@ -121,6 +121,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - What happens if the user saves with Responsibilities left empty? The system displays an inline error on the Responsibilities field and aborts the save — no API call is made. This applies in both Edit and Create mode.
 - What happens when a filter dimension is active but some applications have no value for that field? Those applications are excluded by default. The user must explicitly select "(Not set)" in that filter panel to include them.
 - What happens if the user types a skill and presses Enter while the chip input's blur handler is also firing? The chip must be added exactly once with no JavaScript errors — the blur and Enter paths must not both attempt to re-render the chip list simultaneously.
+- What is shown in the Salary field when it has no value? The field MUST display "-" as a neutral empty-state placeholder, consistent with all other optional fields. A blank display is not acceptable — on mobile (stacked layout) a completely blank salary area causes the "Salary" label to appear directly above "Shift", misleading users into thinking the label belongs to the Shift field.
 
 ---
 
@@ -164,6 +165,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-034**: Field display text in the overlay MUST NOT overflow its container on narrow viewports — long text (including URLs) MUST wrap using `overflow-wrap: break-word`.
 - **FR-035**: The status pill in the overlay header MUST remain legible on narrow viewports — text MUST be centered if the pill wraps to two lines, and single-line display MUST be preferred where possible.
 - **FR-036**: The chip editor (Required Skills, Preferred Skills) MUST add chips without throwing JavaScript errors regardless of whether the commit is triggered by Enter keydown or by the input losing focus — these two code paths MUST NOT execute a simultaneous DOM re-render.
+- **FR-037**: Every optional field in the overlay MUST display "-" as a neutral empty-state placeholder in display mode when its value is empty or null. The Salary field MUST NOT render a completely blank area — a blank salary row causes the "Salary" label to visually merge with the next field's label on mobile stacked layouts.
 
 ### Key Entities
 
