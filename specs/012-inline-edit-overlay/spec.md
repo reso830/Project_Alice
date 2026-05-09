@@ -46,6 +46,10 @@ A user clicks any editable field directly within the application overlay and typ
 9. **Given** a multi-line Notes field is being edited, **When** the user presses Cmd/Ctrl+Enter, **Then** the field edit is committed to the draft.
 10. **Given** the overlay is open in Edit mode, **When** the user saves with a required field (job title, company name, or responsibilities) left empty, **Then** an inline error appears on each offending field and no API call is made.
 11. **Given** a multi-line text field (responsibilities, compatibility notes, general notes) with line breaks, **When** the field is in display mode, **Then** the line breaks are rendered visually, not collapsed into a single line.
+12. **Given** a chip editor field (Required Skills, Preferred Skills), **When** the user types a value and presses Enter, **Then** the chip is added to the list with no JavaScript errors thrown.
+13. **Given** the overlay is open on a very narrow viewport (≤320px), **When** a field contains long text or a URL, **Then** the text wraps within its container and does not overflow into the page margin.
+14. **Given** the overlay header is rendered on a very narrow viewport, **Then** the status pill text remains legible — centered within the pill if it wraps to two lines.
+15. **Given** the overlay header is rendered on a very narrow viewport, **Then** the quick action buttons (Favorite, Change Status, Archive, Close) appear on their own row and do not overlap the application title.
 
 ---
 
@@ -116,6 +120,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - What happens when the Favorite or Archive quick actions are used while a dirty draft exists? These actions persist immediately to the stored record; the local draft is unaffected.
 - What happens if the user saves with Responsibilities left empty? The system displays an inline error on the Responsibilities field and aborts the save — no API call is made. This applies in both Edit and Create mode.
 - What happens when a filter dimension is active but some applications have no value for that field? Those applications are excluded by default. The user must explicitly select "(Not set)" in that filter panel to include them.
+- What happens if the user types a skill and presses Enter while the chip input's blur handler is also firing? The chip must be added exactly once with no JavaScript errors — the blur and Enter paths must not both attempt to re-render the chip list simultaneously.
 
 ---
 
@@ -158,6 +163,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-033**: The version string displayed in the app footer MUST be kept in sync with the current release version on every release.
 - **FR-034**: Field display text in the overlay MUST NOT overflow its container on narrow viewports — long text (including URLs) MUST wrap using `overflow-wrap: break-word`.
 - **FR-035**: The status pill in the overlay header MUST remain legible on narrow viewports — text MUST be centered if the pill wraps to two lines, and single-line display MUST be preferred where possible.
+- **FR-036**: The chip editor (Required Skills, Preferred Skills) MUST add chips without throwing JavaScript errors regardless of whether the commit is triggered by Enter keydown or by the input losing focus — these two code paths MUST NOT execute a simultaneous DOM re-render.
 
 ### Key Entities
 
