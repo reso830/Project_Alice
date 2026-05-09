@@ -17,8 +17,8 @@
 
 **Purpose**: Create the two new module stubs so subsequent phases have import targets. Both can be done simultaneously.
 
-- [ ] T001 [P] Create `src/utils/jobPostParser.js` — export a single `parseJobPost(text)` stub that returns `{}`; no logic yet; establishes the module entry point that later tasks fill in
-- [ ] T002 [P] Create `src/components/CreationPicker.js` — export `open(callbacks)` and `close()` as no-op stubs; establishes the component module that later tasks implement
+- [X] T001 [P] Create `src/utils/jobPostParser.js` — export a single `parseJobPost(text)` stub that returns `{}`; no logic yet; establishes the module entry point that later tasks fill in
+- [X] T002 [P] Create `src/components/CreationPicker.js` — export `open(callbacks)` and `close()` as no-op stubs; establishes the component module that later tasks implement
 
 **Checkpoint**: Two new files exist and are importable. Running `npm run lint` on them passes.
 
@@ -32,7 +32,7 @@
 
 ### Tests (write first — must FAIL before implementation)
 
-- [ ] T003 [P] Write unit tests in `tests/utils/jobPostParser.test.js` covering:
+- [X] T003 [P] Write unit tests in `tests/utils/jobPostParser.test.js` covering:
   - `parseJobPost('')` and `parseJobPost('short')` (< 20 chars) → all fields empty/null/`[]`
   - Company name: labeled "Company: Acme Corp" → `companyName: 'Acme Corp'`; "About Acme Corp" → `companyName: 'Acme Corp'`; no signal → `companyName: ''`
   - Job title: first heading line → correct string; no heading → `jobTitle: ''`
@@ -46,7 +46,7 @@
   - Recruiter: "Contact: Jane Reyes" → `recruiter: 'Jane Reyes'`; none → `recruiter: ''`
   - `compat` is always an integer between 0 and 100 inclusive
 
-- [ ] T004 [P] Add prefill test cases to `tests/components/Modal.test.js`:
+- [X] T004 [P] Add prefill test cases to `tests/components/Modal.test.js`:
   - `Modal.open(null, { mode: 'create', prefill: { companyName: 'Acme', jobTitle: 'Engineer' } })` → draft has `companyName: 'Acme'` and `jobTitle: 'Engineer'`
   - `Modal.open(null, { mode: 'create' })` (no prefill) → draft has `companyName: ''` (existing default behavior unchanged)
   - `Modal.open(existingApp, { mode: 'edit', prefill: { companyName: 'X' } })` → prefill is ignored; draft comes from `existingApp`
@@ -54,18 +54,18 @@
 
 ### Implementation
 
-- [ ] T005 Implement text-field extractors in `src/utils/jobPostParser.js`:
+- [X] T005 Implement text-field extractors in `src/utils/jobPostParser.js`:
   - `extractCompanyName(text)` — label match ("Company:", "Employer:"), "About [Name]" section header, "At [Name]," sentence opener; fallback `''`
   - `extractJobTitle(text)` — first non-empty line 4–80 chars, not all-caps, not bullet/number; or line after "Position:" / "Role:" / "Job Title:" label; fallback `''`
   - `extractResponsibilities(text)` — body of section headed by "Responsibilities", "What You'll Do", "Your Role", "Job Description", "Duties", "About the Role"; fallback: longest paragraph > 100 chars; fallback `''`
   - `extractLocation(text)` — "Location:" / "Based in:" / "Office:" label; fallback `''`
   - `extractRecruiter(text)` — "Contact:" / "Recruiter:" / "Hiring Manager:" label on same line; fallback `''`
 
-- [ ] T006 Implement enum extractors in `src/utils/jobPostParser.js`:
+- [X] T006 Implement enum extractors in `src/utils/jobPostParser.js`:
   - `extractWorkSetup(text)` — case-insensitive scan: `remote` → `'Remote'`; `hybrid` → `'Hybrid'`; `on-site` / `onsite` / `in-office` → `'On-site'`; `field` as standalone word → `'Field'`; first match wins; fallback `''`
   - `extractShift(text)` — `day shift` → `'Day'`; `mid shift` / `mid-shift` → `'Mid'`; `night shift` → `'Night'`; `flexible` (schedule/hours) → `'Flexible'`; fallback `''`
 
-- [ ] T007 Implement salary extractor `extractSalary(text)` in `src/utils/jobPostParser.js`:
+- [X] T007 Implement salary extractor `extractSalary(text)` in `src/utils/jobPostParser.js`:
   - Regex: `/(₱|PHP|USD|\$)\s*[\d,]+(?:\s*[-–—to]+\s*[\d,]+)?(?:\s*(per\s+month|\/mo|monthly|per\s+year|\/yr|annually|annual|yearly))?/i`
   - Parse both bounds of a range; use the lower bound
   - Monthly indicator (per month, /mo, monthly): lower bound × 12
@@ -75,26 +75,26 @@
   - Return positive integer or `null` on failure
   - Constraint: do NOT import `parseSalaryInput` from `src/utils/currency.js` — that utility is for form input parsing; keep parser self-contained
 
-- [ ] T008 Implement URL and skills extractors in `src/utils/jobPostParser.js`:
+- [X] T008 Implement URL and skills extractors in `src/utils/jobPostParser.js`:
   - `extractUrl(text)` — regex for first `https?://` URL; pass through `validateUrl` imported from `src/utils/validate.js`; return valid URL string or `''`
   - `extractSkills(text)` — find sections "Required Skills", "Skills", "Qualifications", "Requirements", "Tech Stack", "Technologies"; extract comma-separated or bullet-delimited items; return deduped string array
   - `extractPreferredSkills(text)` — find sections "Preferred Skills", "Nice to Have", "Bonus", "Preferred Qualifications"; extract items; return deduped string array (these are also unioned into `skills`)
 
-- [ ] T009 Implement `parseJobPost(text)` in `src/utils/jobPostParser.js` (depends on T005–T008):
+- [X] T009 Implement `parseJobPost(text)` in `src/utils/jobPostParser.js` (depends on T005–T008):
   - Call all extractors; assemble result object using field names from `data-model.md`
   - Union `extractPreferredSkills(text)` result into the `skills` array (deduped)
   - Set `compat: Math.floor(Math.random() * 101)`
   - Return the assembled partial object; do NOT call `normalizeApplication` here (Modal's `open()` already calls it via the spread)
   - Constraint: no DOM access, no network calls, no imports from `src/components/` or `src/services/`
 
-- [ ] T010 Add `prefill` optional parameter to `Modal.open()` in `src/components/Modal.js`:
+- [X] T010 Add `prefill` optional parameter to `Modal.open()` in `src/components/Modal.js`:
   - Signature change: `open(application, { mode, prefill, onApplicationUpdate, onApplicationCreate, onArchiveSuccess } = {})`
   - In create-mode branch only: `_draft = { ...normalizeApplication({}), status: 'wishlisted', compat: 0, ...(prefill ?? {}) }`
   - Edit-mode branch: unchanged — `prefill` is ignored
   - All existing `Modal.open()` call sites pass no `prefill`; default behavior is fully preserved
   - Out-of-scope: no changes to `_renderBody()`, `validateDraft()`, `saveDraft()`, or any other Modal internals
 
-- [ ] T011 Verify foundational tests pass (depends on T003–T010):
+- [X] T011 Verify foundational tests pass (depends on T003–T010):
   - Run `npx vitest run tests/utils/jobPostParser.test.js` → all tests green
   - Run `npx vitest run tests/components/Modal.test.js` → all tests green (including new prefill cases)
   - Run `npm run lint` on `src/utils/jobPostParser.js` and `src/components/Modal.js` → no errors
@@ -111,7 +111,7 @@
 
 ### Implementation
 
-- [ ] T012 [US1] Implement CreationPicker overlay shell in `src/components/CreationPicker.js`:
+- [X] T012 [US1] Implement CreationPicker overlay shell in `src/components/CreationPicker.js`:
   - Module-level state vars: `_backdrop`, `_panel`, `_keydownHandler`, `_callbacks`
   - `open(callbacks)`: saves callbacks, builds backdrop + panel DOM, appends to `document.body`, traps focus, registers Escape keydown handler
   - `close()`: removes backdrop, removes keydown handler, nulls state vars
@@ -120,7 +120,7 @@
   - `panel`: `role="dialog"`, `aria-modal="true"`, `aria-labelledby="creation-picker-title"`
   - Out-of-scope: no view rendering yet (placeholder content only)
 
-- [ ] T013 [US1] Implement selection screen view in `src/components/CreationPicker.js`:
+- [X] T013 [US1] Implement selection screen view in `src/components/CreationPicker.js`:
   - Renders inside the panel when the picker opens
   - Two cards: Smart Parser (sparkle/magic-wand SVG icon, title "Paste the job post and the app will parse", short description) and Manual Entry (pencil SVG icon, title "Enter it manually instead", short description)
   - Smart Parser card is visually more prominent (different background or border)
@@ -129,7 +129,7 @@
   - Clicking Manual Entry card is wired in Phase 4 (US2) — leave as a no-op stub for now
   - Layout class: `.creation-picker-cards` (styled in T017)
 
-- [ ] T014 [US1] Implement paste step view in `src/components/CreationPicker.js`:
+- [X] T014 [US1] Implement paste step view in `src/components/CreationPicker.js`:
   - `_showPasteStep()`: replaces panel content with paste-step view (no full re-open)
   - Paste step contains: a `<textarea>` (large, multiline, `aria-label="Paste job posting text"`), a Process `<button>` (disabled when `textarea.value.trim().length < 20`)
   - Textarea `input` event: enable/disable Process button in real time
@@ -137,20 +137,20 @@
   - Loading state during `_runParser()`: show loading message ("Analyzing job post..." or spinner), disable textarea and Process button
   - Constraint: do not call `parseJobPost` yet — just wire the flow shell; `_runParser()` is implemented in T015
 
-- [ ] T015 [US1] Implement Smart Parser success path `_runParser()` in `src/components/CreationPicker.js`:
+- [X] T015 [US1] Implement Smart Parser success path `_runParser()` in `src/components/CreationPicker.js`:
   - Calls `parseJobPost(textarea.value)` from `src/utils/jobPostParser.js`
   - Zero-fields check: if all of `companyName`, `jobTitle`, `location`, `salary`, `workSetup`, `skills` are empty/null/`[]` in the result → trigger error state (T022, Phase 5)
   - On ≥1 useful field: call `close()`, then `Modal.open(null, { mode: 'create', prefill: parsedData, ...callbacks })`
   - Import `Modal` from `./Modal.js` and `parseJobPost` from `../utils/jobPostParser.js`
   - Constraint: `parseJobPost` is synchronous; no async/await needed for the parse call itself
 
-- [ ] T016 [US1] Update `onAddApplication()` in `src/pages/Tracker.js`:
+- [X] T016 [US1] Update `onAddApplication()` in `src/pages/Tracker.js`:
   - Add import: `import { CreationPicker } from '../components/CreationPicker.js'`
   - Replace the `Modal.open(null, { mode: 'create', ...callbacks })` call with `CreationPicker.open({ onApplicationCreate, onApplicationUpdate, onArchiveSuccess })`
   - Remove the direct `Modal` import only if it is no longer used elsewhere in the file; otherwise keep it
   - Out-of-scope: no other changes to `Tracker.js`
 
-- [ ] T017 [US1] Add CreationPicker styles to `src/styles/main.css`:
+- [X] T017 [US1] Add CreationPicker styles to `src/styles/main.css`:
   - `.creation-picker-backdrop` — full-screen fixed overlay, same visual layer as `.modal-backdrop`
   - `.creation-picker-panel` — centered card, max-width ~600px on desktop, full-width with padding on mobile
   - `.creation-picker-title` — visible panel heading (used as `aria-labelledby` target)
@@ -165,12 +165,12 @@
   - `.parser-loading` — loading indicator container
   - Responsive: at ≤640px, `.creation-picker-cards` switches to flex-column (cards stacked)
 
-- [ ] T018 [US1] Update `tests/pages/Tracker.test.js`:
+- [X] T018 [US1] Update `tests/pages/Tracker.test.js`:
   - Find test(s) that call or stub `onAddApplication` and assert `Modal.open` is called
   - Update to: stub `CreationPicker.open` instead of `Modal.open`; assert `CreationPicker.open` is called with the correct callback shape
   - Constraint: do not change any other test in the file
 
-- [ ] T019 [US1] Verify US1 checkpoint:
+- [X] T019 [US1] Verify US1 checkpoint:
   - Run `npx vitest run tests/pages/Tracker.test.js` → passes
   - Run `npm run test:run` → all existing tests still pass (no regressions)
   - Manual check: in browser, click "New Application" → picker opens → Smart Parser card visible → paste step appears → Process button disabled until text typed
@@ -187,12 +187,12 @@
 
 ### Implementation
 
-- [ ] T020 [US2] Wire Manual Entry card in `src/components/CreationPicker.js`:
+- [X] T020 [US2] Wire Manual Entry card in `src/components/CreationPicker.js`:
   - In the selection screen (T013), replace the Manual Entry card no-op with: `close()` then `Modal.open(null, { mode: 'create', ...callbacks })`
   - This is the only change in this phase — one event-handler wire-up
   - Constraint: `Modal.open` call here must be identical in arguments to the pre-feature `onAddApplication()` call (no `prefill`, no extra options)
 
-- [ ] T021 [US2] Verify US2 checkpoint:
+- [X] T021 [US2] Verify US2 checkpoint:
   - Run `npm run test:run` → all tests pass
   - Manual check: click "New Application" → Manual Entry → existing form opens → fill required fields → save → record in list (identical to pre-feature behavior)
 
@@ -208,13 +208,13 @@
 
 ### Implementation
 
-- [ ] T022 [US3] Enforce empty/short input guard in `src/components/CreationPicker.js` paste step:
+- [X] T022 [US3] Enforce empty/short input guard in `src/components/CreationPicker.js` paste step:
   - Confirm T014's `input` event handler correctly sets `Process.disabled = textarea.value.trim().length < 20`
   - Also disable on paste events: listen to `paste` event and evaluate `setTimeout(() => ..., 0)` after paste lands
   - Verify that a textarea with exactly 19 characters keeps Process disabled; 20 characters enables it
   - Out-of-scope: no tooltip or inline message is required — disabled button is sufficient per spec
 
-- [ ] T023 [US3] Implement parse failure error state in `src/components/CreationPicker.js`:
+- [X] T023 [US3] Implement parse failure error state in `src/components/CreationPicker.js`:
   - In `_runParser()` (T015), when zero-fields check fails, replace paste-step content with error view:
     - Error message: "Unable to extract application details. Please review the pasted content or enter details manually."
     - Retry button: restores the paste step with the textarea content preserved (user does not need to re-paste)
@@ -222,12 +222,12 @@
   - Error view must not be a modal-on-top-of-modal — it renders inside the existing CreationPicker panel
   - Focus moves to the first focusable element in the error view on render
 
-- [ ] T024 [US3] Add error state styles to `src/styles/main.css`:
+- [X] T024 [US3] Add error state styles to `src/styles/main.css`:
   - `.parser-error` — error state container, non-blocking (no red overlay), inside `.parser-step`
   - `.parser-error__message` — readable error text, muted or warning color
   - `.parser-error__actions` — row of Retry and "Enter manually" buttons
 
-- [ ] T025 [US3] Verify US3 checkpoint:
+- [X] T025 [US3] Verify US3 checkpoint:
   - Run `npm run test:run` → all tests pass
   - Manual check: (a) empty paste → Process disabled; (b) garbage paste → error message with both recovery options; (c) Retry → textarea still editable; (d) "Enter manually" → form opens
 
@@ -239,7 +239,7 @@
 
 **Purpose**: Accessibility, responsive layout, lint/format, and full test suite verification.
 
-- [ ] T026 [P] Accessibility pass on `src/components/CreationPicker.js`:
+- [X] T026 [P] Accessibility pass on `src/components/CreationPicker.js`:
   - Confirm all interactive elements have `aria-label` or visible text
   - Confirm focus moves to first focusable element when picker opens (`getFocusableElements` pattern from `Modal.js`)
   - Confirm focus is trapped within the panel (Tab and Shift+Tab cycle within overlay)
@@ -247,17 +247,17 @@
   - Confirm Smart Parser and Manual Entry cards respond to Enter and Space keys
   - Confirm both recovery buttons in error state (Retry, Enter manually) are keyboard-reachable
 
-- [ ] T027 [P] Responsive layout verification in `src/styles/main.css`:
+- [X] T027 [P] Responsive layout verification in `src/styles/main.css`:
   - At ≤640px viewport: confirm `.creation-picker-cards` stacks vertically with no horizontal scroll
   - Confirm `.creation-picker-panel` has adequate padding and does not clip on small screens
   - Confirm `.parser-textarea` is usable on a mobile viewport (min-height, font-size)
   - Confirm the Process button and error state buttons are tap-target sized (≥44px height)
 
-- [ ] T028 [P] Run lint and fix any issues:
+- [X] T028 [P] Run lint and fix any issues:
   - `npm run lint` targeting: `src/utils/jobPostParser.js`, `src/components/CreationPicker.js`, `src/components/Modal.js`, `src/pages/Tracker.js`
   - Fix any ESLint errors before proceeding; do not suppress rules with inline comments
 
-- [ ] T029 Run full test suite and confirm clean:
+- [X] T029 Run full test suite and confirm clean:
   - `npm run test:run` → all tests pass, zero failures
   - Confirm `tests/utils/jobPostParser.test.js`, `tests/components/Modal.test.js`, `tests/pages/Tracker.test.js` are all green
 
