@@ -1195,7 +1195,7 @@ Goal: verify the full feature end-to-end in a real browser against a running ser
 
 ---
 
-### [ ] Task 10.6 — Mobile bottom-sheet layout
+### [X] Task 10.6 — Mobile bottom-sheet layout
 
 **Steps**
 1. Open Chrome DevTools and set device width to 375px (e.g., iPhone SE preset).
