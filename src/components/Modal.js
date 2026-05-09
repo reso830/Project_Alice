@@ -672,7 +672,7 @@ async function saveDraft() {
   }
 
   try {
-    _saveController = new AbortController();
+    _saveController = new globalThis.AbortController();
     const updated = await api.update(_draft.id, _draft, { signal: _saveController.signal });
     _saveController = null;
 
