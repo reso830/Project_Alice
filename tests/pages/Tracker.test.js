@@ -34,7 +34,7 @@ vi.mock('../../src/components/ConfirmDialog.js', () => ({
 
 import * as api from '../../src/services/api.js';
 import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
-import { Modal } from '../../src/components/Modal.js';
+import { CreationPicker } from '../../src/components/CreationPicker.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
@@ -93,7 +93,7 @@ describe('Tracker quick filter toolbar integration', () => {
       companyName: 'New Company',
       salary: 250000,
     });
-    const openSpy = vi.spyOn(Modal, 'open');
+    const openSpy = vi.spyOn(CreationPicker, 'open').mockImplementation(() => {});
 
     window.scrollTo = vi.fn();
     api.getAll.mockResolvedValue([existing]);
@@ -101,12 +101,11 @@ describe('Tracker quick filter toolbar integration', () => {
     await Tracker.mount(container);
     toolbarRenderOptions[0].onAddApplication();
 
-    expect(openSpy).toHaveBeenCalledWith(null, expect.objectContaining({
-      mode: 'create',
+    expect(openSpy).toHaveBeenCalledWith(expect.objectContaining({
       onApplicationCreate: expect.any(Function),
     }));
 
-    openSpy.mock.calls.at(-1)[1].onApplicationCreate(created);
+    openSpy.mock.calls.at(-1)[0].onApplicationCreate(created);
 
     expect(toolbarUpdateOptions.at(-1).apps[0]).toEqual(created);
     expect(toolbarUpdateOptions.at(-1).salaryBounds.max).toBe(250000);
@@ -120,14 +119,14 @@ describe('Tracker quick filter toolbar integration', () => {
       jobTitle: 'First Role',
       companyName: 'First Company',
     });
-    const openSpy = vi.spyOn(Modal, 'open');
+    const openSpy = vi.spyOn(CreationPicker, 'open').mockImplementation(() => {});
 
     window.scrollTo = vi.fn();
     api.getAll.mockResolvedValue([]);
 
     await Tracker.mount(container);
     toolbarRenderOptions[0].onAddApplication();
-    openSpy.mock.calls.at(-1)[1].onApplicationCreate(created);
+    openSpy.mock.calls.at(-1)[0].onApplicationCreate(created);
 
     expect(container.querySelector('.empty-state')).toBeNull();
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
