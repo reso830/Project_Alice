@@ -52,7 +52,9 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
 | `shared/constants.js` | `STATUS_VALUES` — 9 status strings shared between frontend and backend |
 
-**Application fields:** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `compat` (0–100), `skills[]`, `preferredSkills[]`, `fav` (starred), `jobPostingUrl`, `recruiter`, `salary`, `location`, `shift`, `workSetup`, `compatNotes`, `generalNotes`
+**Application fields (required):** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `responsibilities`
+
+**Application fields (optional):** `compat` (0–100), `skills[]`, `preferredSkills[]`, `fav` (starred), `jobPostingUrl`, `recruiter`, `salary`, `location`, `shift`, `workSetup`, `compatNotes`, `generalNotes`
 
 **Status values:** `wishlisted → applied → phone_screen → interview → assessment → offer → rejected / withdrawn / ghosted`
 
