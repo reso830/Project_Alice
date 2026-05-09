@@ -1508,19 +1508,24 @@ Each overlay quick action button must show exactly one tooltip on hover. Use the
 - Archive: `title="Archive"`
 - Close: `title="Close"`
 
-Remove or do not set `aria-label` on these buttons if it duplicates the `title` — some browser/OS combinations render both as visible tooltips simultaneously, producing a double-tooltip. Use only `title`; accessibility is satisfied by the visible icon + tooltip.
+The fix for double-tooltip is to **remove `aria-label`** on these buttons, not to remove `title`. The `title` attribute is what produces the visible tooltip and MUST remain. `aria-label` was the source of the duplicate — remove it where `title` already provides the accessible name.
+
+**Do NOT remove `title`** — doing so leaves buttons with zero tooltips, which is wrong. The end state must be: `title` present, `aria-label` absent, exactly one tooltip visible on hover.
 
 > **⚠ Revision notes**:
-> - Favorite label corrected from "Star / Unstar" to "Favorite" for consistency with the UI.
-> - Double tooltip was reported after initial implementation — caused by `aria-label` + `title` both being set. Remove `aria-label` where `title` already provides the accessible name.
+> - Favorite label corrected from "Star / Unstar" to "Favorite".
+> - Double tooltip was caused by `aria-label` + `title` both set. Fix = remove `aria-label`, keep `title`.
+> - Over-removing both attributes (leaving zero tooltips) is also incorrect — `title` must stay.
 
 **Constraints**
 - Quick filter toolbar buttons (Shift, Work Setup, etc.) are unaffected — do not touch QuickFiltersToolbar.js.
-- Only one tooltip must appear per button on hover.
+- Each button must have `title` set and must NOT have `aria-label` set.
+- Hovering any overlay quick action button must show exactly one tooltip.
 
 **Validation**
-- Manual: hover each overlay quick action button — confirm exactly one tooltip appears per button.
-- Manual: confirm Favorite tooltip reads "Favorite" (not "Star" or "Star / Unstar").
+- Manual: hover each overlay quick action button — confirm exactly one tooltip appears.
+- Manual: confirm Favorite tooltip reads "Favorite".
+- Manual: confirm no button shows two tooltips simultaneously.
 
 ---
 
@@ -1541,7 +1546,7 @@ At mobile viewport (≤639px), increase the `.fab` button's `box-shadow` to clea
 
 ---
 
-### [ ] Task 11.14 — Fix chip editor blur/Enter race condition
+### [X] Task 11.14 — Fix chip editor blur/Enter race condition
 
 **Target files**
 - `src/components/Modal.js`
@@ -1586,7 +1591,7 @@ Alternatively, call `addChip` logic directly in the Enter handler without relyin
 
 ---
 
-### [ ] Task 11.15 — Fix text overflow on narrow viewports
+### [X] Task 11.15 — Fix text overflow on narrow viewports
 
 **Target files**
 - `src/styles/main.css` (or modal stylesheet)
@@ -1614,7 +1619,7 @@ On very narrow viewports (e.g. Galaxy Z Fold ~280px), long text values in modal 
 
 ---
 
-### [ ] Task 11.16 — Fix status pill wrapping and centering on narrow viewport
+### [X] Task 11.16 — Fix status pill wrapping and centering on narrow viewport
 
 **Target files**
 - `src/styles/main.css` (or modal stylesheet)

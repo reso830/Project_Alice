@@ -158,7 +158,7 @@ A user can filter the application list by Location, Shift, and Work Setup so the
 - **FR-028**: Overlay quick action buttons (Favorite, Change Status, Archive, Close) MUST be positioned in the third row of the overlay header, below the title row, to prevent overflow and icon wrap on narrow viewports (e.g. Galaxy Z Fold).
 - **FR-029**: The Archive action icon MUST be visually distinct from the Close icon; it MUST resemble a filing box to clearly communicate its purpose.
 - **FR-030**: The Archive icon MUST be visually consistent between the application card and the overlay header.
-- **FR-031**: Overlay quick action buttons MUST have exactly one tooltip visible on hover — using the `title` attribute. The Favorite button tooltip MUST read "Favorite". Duplicate tooltips (e.g. from simultaneous `aria-label` + `title`) MUST NOT appear.
+- **FR-031**: Overlay quick action buttons MUST display exactly one tooltip on hover via the `title` attribute. The `title` attribute MUST be present on every quick action button. `aria-label` MUST NOT be set on these buttons as it causes a duplicate tooltip in some browsers. The Favorite button tooltip MUST read "Favorite". Zero tooltips is not an acceptable fix for the double-tooltip issue — `title` must be retained.
 - **FR-032**: The FAB button on mobile MUST have a drop-shadow sufficient to visually separate it from the page content beneath it.
 - **FR-033**: The version string displayed in the app footer MUST be kept in sync with the current release version on every release.
 - **FR-034**: Field display text in the overlay MUST NOT overflow its container on narrow viewports — long text (including URLs) MUST wrap using `overflow-wrap: break-word`.
