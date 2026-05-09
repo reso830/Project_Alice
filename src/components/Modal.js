@@ -747,6 +747,7 @@ export function close() {
 
 export function open(application, {
   mode,
+  prefill,
   onApplicationUpdate,
   onApplicationCreate,
   onArchiveSuccess,
@@ -760,7 +761,7 @@ export function open(application, {
   close();
   _mode = nextMode;
   _draft = nextMode === 'create'
-    ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0 }
+    ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0, ...(prefill ?? {}) }
     : copyApplication(application);
   _original = nextMode === 'create' ? null : copyApplication(application);
   _onApplicationUpdate = onApplicationUpdate;

@@ -1027,4 +1027,42 @@ describe('Modal', () => {
 
     expect(document.body.textContent).toContain('Could not copy link');
   });
+
+  describe('prefill option in create mode', () => {
+    it('seeds string fields into the draft when prefill is provided', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create', prefill: { companyName: 'Acme', jobTitle: 'Engineer' } });
+
+      expect(inputField('Company').value).toBe('Acme');
+      document.querySelector('#modal-title').click();
+      expect(document.querySelector('.modal-title-input').value).toBe('Engineer');
+    });
+
+    it('uses normalized defaults for fields absent from prefill', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create' });
+
+      expect(inputField('Company').value).toBe('');
+    });
+
+    it('ignores prefill in edit mode — draft comes from the existing application', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(application({ companyName: 'Original Corp' }), { prefill: { companyName: 'X' } });
+
+      expect(inputField('Company').value).toBe('Original Corp');
+    });
+
+    it('merges prefill skills array into the create-mode draft', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create', prefill: { skills: ['React'] } });
+
+      const skillsField = getFieldByLabel('Required Skills');
+      expect(skillsField.querySelectorAll('.skill-tag')).toHaveLength(1);
+      expect(skillsField.textContent).toContain('React');
+    });
+  });
 });
