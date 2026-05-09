@@ -1936,7 +1936,8 @@ button:focus-visible,
 }
 
 .modal-header__meta {
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .modal-header__title-row {
@@ -1944,7 +1945,6 @@ button:focus-visible,
 }
 
 .modal-quick-actions {
-  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1980,7 +1980,10 @@ button:focus-visible,
 }
 
 .modal-header .status-badge {
+  justify-content: center;
   border: 1px solid #212529;
+  text-align: center;
+  white-space: normal;
 }
 
 .modal-body {
@@ -1994,6 +1997,7 @@ button:focus-visible,
 .modal-field {
   display: grid;
   gap: 5px;
+  min-width: 0;
 }
 
 .modal-field--full {
@@ -2023,6 +2027,15 @@ button:focus-visible,
   color: var(--t1);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.modal-field__display {
+  min-width: 0;
+  color: var(--t1);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .modal-field__display--multiline {
@@ -2697,6 +2710,17 @@ textarea.modal-inline-control {
     justify-content: flex-end;
   }
 
+}
+
+@media (max-width: 360px) {
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-header .status-badge {
+    padding: 3px 7px;
+    font-size: 9px;
+  }
 }
 
 @media (max-width: 639px) {

@@ -1645,7 +1645,7 @@ If possible, prefer keeping the pill on one line by reducing font size or paddin
 
 ---
 
-### [ ] Task 11.17 — Fix Salary field empty-state display in overlay
+### [X] Task 11.17 — Fix Salary field empty-state display in overlay
 
 **Spec reference**: FR-037
 
