@@ -3061,4 +3061,8 @@ textarea.modal-inline-control {
     max-height: 95vh;
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  .parser-textarea {
+    font-size: 1rem;
+  }
 }

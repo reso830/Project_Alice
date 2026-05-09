@@ -236,10 +236,6 @@ export function open(callbacks) {
 
   _keydownHandler = (event) => {
     if (event.key === 'Escape') {
-      if (event.target && typeof event.target.closest === 'function'
-        && event.target.closest('input, select, textarea')) {
-        return;
-      }
       close();
       return;
     }
