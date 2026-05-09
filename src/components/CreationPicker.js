@@ -16,8 +16,36 @@ function getFocusableElements(root) {
     .filter((el) => !el.disabled && el.offsetParent !== null);
 }
 
-function _showErrorState() {
-  // Phase 5 (T023) — stub; paste step remains visible and re-enabled by _runParser
+function _showErrorState(savedText, callbacks) {
+  const content = _panel.querySelector('.creation-picker-content');
+
+  const errorView = document.createElement('div');
+  errorView.className = 'parser-error';
+
+  const message = document.createElement('p');
+  message.className = 'parser-error__message';
+  message.textContent = 'Unable to extract application details. Please review the pasted content or enter details manually.';
+
+  const actions = document.createElement('div');
+  actions.className = 'parser-error__actions';
+
+  const retryBtn = document.createElement('button');
+  retryBtn.type = 'button';
+  retryBtn.textContent = 'Retry';
+  retryBtn.addEventListener('click', () => _showPasteStep(savedText));
+
+  const manualBtn = document.createElement('button');
+  manualBtn.type = 'button';
+  manualBtn.textContent = 'Enter manually';
+  manualBtn.addEventListener('click', () => {
+    close();
+    Modal.open(null, { mode: 'create', ...callbacks });
+  });
+
+  actions.append(retryBtn, manualBtn);
+  errorView.append(message, actions);
+  content.replaceChildren(errorView);
+  getFocusableElements(errorView)[0]?.focus();
 }
 
 function _runParser(textarea, processBtn, loading) {
@@ -37,9 +65,7 @@ function _runParser(textarea, processBtn, loading) {
 
   if (!hasFields) {
     loading.hidden = true;
-    textarea.disabled = false;
-    processBtn.disabled = textarea.value.trim().length < 20;
-    _showErrorState();
+    _showErrorState(textarea.value, _callbacks);
     return;
   }
 
@@ -48,7 +74,7 @@ function _runParser(textarea, processBtn, loading) {
   Modal.open(null, { mode: 'create', prefill: parsed, ...callbacks });
 }
 
-function _showPasteStep() {
+function _showPasteStep(initialValue = '') {
   const content = _panel.querySelector('.creation-picker-content');
 
   const step = document.createElement('div');
@@ -58,6 +84,7 @@ function _showPasteStep() {
   textarea.className = 'parser-textarea';
   textarea.setAttribute('aria-label', 'Paste job posting text');
   textarea.setAttribute('placeholder', 'Paste the job posting text here…');
+  textarea.value = initialValue;
 
   const loading = document.createElement('div');
   loading.className = 'parser-loading';
@@ -68,10 +95,16 @@ function _showPasteStep() {
   processBtn.type = 'button';
   processBtn.className = 'parser-process-btn';
   processBtn.textContent = 'Process';
-  processBtn.disabled = true;
+  processBtn.disabled = initialValue.trim().length < 20;
 
   textarea.addEventListener('input', () => {
     processBtn.disabled = textarea.value.trim().length < 20;
+  });
+
+  textarea.addEventListener('paste', () => {
+    setTimeout(() => {
+      processBtn.disabled = textarea.value.trim().length < 20;
+    }, 0);
   });
 
   processBtn.addEventListener('click', () => {

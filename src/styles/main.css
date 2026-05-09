@@ -3003,6 +3003,55 @@ textarea.modal-inline-control {
   padding: .5rem 0;
 }
 
+/* Error state */
+
+.parser-error {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.parser-error__message {
+  font-size: .875rem;
+  color: var(--t2);
+  line-height: 1.5;
+}
+
+.parser-error__actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+
+.parser-error__actions button {
+  min-height: 44px;
+  padding: .5rem 1.25rem;
+  border-radius: var(--r-md);
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.parser-error__actions button:first-child {
+  background: var(--indigo);
+  color: #fff;
+  border: none;
+}
+
+.parser-error__actions button:first-child:hover {
+  background: var(--indigo-hover);
+}
+
+.parser-error__actions button:last-child {
+  background: transparent;
+  color: var(--t1);
+  border: 1px solid var(--border-2);
+}
+
+.parser-error__actions button:last-child:hover {
+  background: var(--bg);
+}
+
 @media (max-width: 640px) {
   .creation-picker-cards {
     flex-direction: column;
