@@ -2,7 +2,7 @@ import { STATUS_CONFIG } from '../models/application.js';
 import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
-import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
@@ -81,7 +81,7 @@ export function render(application, callbacks = {}) {
   );
   const archiveButton = createActionButton(
     'card-btn--archive',
-    createSvgIcon('M5 5l14 14M19 5 5 19'),
+    createArchiveIcon(),
   );
 
   editButton.setAttribute('aria-label', 'Open application details');

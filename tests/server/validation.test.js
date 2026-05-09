@@ -41,10 +41,12 @@ describe('createSchema', () => {
     expect(createSchema.safeParse(validPayload()).success).toBe(true);
   });
 
-  it('requires companyName, jobTitle, and status', () => {
+  it('requires companyName, jobTitle, status, and responsibilities', () => {
     expectFieldError(validPayload({ companyName: undefined }), 'companyName');
     expectFieldError(validPayload({ jobTitle: undefined }), 'jobTitle');
     expectFieldError(validPayload({ status: undefined }), 'status');
+    expectFieldError(validPayload({ responsibilities: undefined }), 'responsibilities');
+    expectFieldError(validPayload({ responsibilities: '' }), 'responsibilities');
   });
 
   it('rejects invalid status, URL, date, skills, and metadata values', () => {
@@ -69,6 +71,7 @@ describe('createSchema', () => {
       companyName: 'Acme Corp',
       jobTitle: 'Frontend Engineer',
       status: 'applied',
+      responsibilities: 'Build product UI',
     });
 
     expect(result.success).toBe(true);
@@ -117,6 +120,7 @@ describe('createSchema', () => {
       companyName: 'Acme Corp',
       jobTitle: 'Frontend Engineer',
       status: 'wishlisted',
+      responsibilities: 'Build product UI',
     });
 
     expect(result.success).toBe(true);
@@ -182,6 +186,13 @@ describe('updateSchema', () => {
 
     expect(result.success).toBe(false);
     expect(toApiError(result.error).salary).toBe('Invalid input');
+  });
+
+  it('rejects empty responsibilities updates when present', () => {
+    const result = updateSchema.safeParse({ responsibilities: '' });
+
+    expect(result.success).toBe(false);
+    expect(toApiError(result.error).responsibilities).toBe('Responsibilities is required');
   });
 
   it('coerces null favorite updates to false and accepts archive updates', () => {

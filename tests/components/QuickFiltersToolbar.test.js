@@ -210,7 +210,7 @@ describe('QuickFiltersToolbar', () => {
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect([...document.querySelectorAll('.filter-panel__option-label')]
-      .map((label) => label.textContent)).toEqual(['Day', 'Mid', 'Night', 'Flexible']);
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Day', 'Mid', 'Night', 'Flexible']);
 
     document.querySelector('[data-value="Day"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
@@ -218,6 +218,14 @@ describe('QuickFiltersToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({
       ...DEFAULT_FILTER_STATE,
       shifts: ['Day'],
+    });
+
+    document.querySelector('[data-value=""]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onFilterChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_FILTER_STATE,
+      shifts: [''],
     });
   });
 
@@ -229,7 +237,7 @@ describe('QuickFiltersToolbar', () => {
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect([...document.querySelectorAll('.filter-panel__option-label')]
-      .map((label) => label.textContent)).toEqual(['Remote', 'Hybrid', 'On-site', 'Field']);
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Remote', 'Hybrid', 'On-site', 'Field']);
 
     document.querySelector('[data-value="Remote"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
@@ -238,7 +246,7 @@ describe('QuickFiltersToolbar', () => {
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     expect([...document.querySelectorAll('.filter-panel__option-label')]
-      .map((label) => label.textContent)).toEqual(['Cebu', 'Manila']);
+      .map((label) => label.textContent)).toEqual(['(Not set)', 'Cebu', 'Manila']);
 
     document.querySelector('[data-value="Manila"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
@@ -251,6 +259,28 @@ describe('QuickFiltersToolbar', () => {
       ...DEFAULT_FILTER_STATE,
       locations: ['Manila'],
     });
+  });
+
+  it('positions the sort panel with viewport-fixed coordinates', () => {
+    const { toolbar } = renderToolbar();
+    const sortButton = toolbar.querySelector('[aria-label="Sort"]');
+    sortButton.getBoundingClientRect = () => ({
+      left: 320,
+      right: 348,
+      top: 540,
+      bottom: 568,
+      width: 28,
+      height: 28,
+    });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 360 });
+
+    sortButton.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const panel = document.querySelector('.sort-panel');
+
+    expect(panel).not.toBeNull();
+    expect(panel.style.top).toBe('576px');
+    expect(panel.style.left).toBe('128px');
   });
 
   it('updates favorites-only pressed state for active filters', () => {

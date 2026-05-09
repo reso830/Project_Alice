@@ -66,7 +66,7 @@ const writableFields = {
   recruiter: optionalText,
   notes: optionalText,
   salary,
-  responsibilities: optionalText,
+  responsibilities: requiredString('Responsibilities'),
   skills: z.array(z.string()).optional(),
   followUpAction: optionalText,
   followUpDate: dateField('Follow-up date'),
@@ -86,6 +86,7 @@ export const updateSchema = z.object({
   archived: optionalBoolean,
   companyName: writableFields.companyName.optional(),
   jobTitle: writableFields.jobTitle.optional(),
+  responsibilities: writableFields.responsibilities.optional(),
   status: writableFields.status.optional(),
 }).strip();
 

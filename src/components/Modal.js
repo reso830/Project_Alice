@@ -8,7 +8,7 @@ import * as api from '../services/api.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
-import { createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { validateUrl } from '../utils/validate.js';
 import { CompatBar } from './CompatBar.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
@@ -148,9 +148,7 @@ function _syncFooter() {
 
   if (_saveButton) {
     _saveButton.textContent = _mode === 'create' ? 'Create' : 'Save';
-    _saveButton.disabled = _mode === 'create'
-      && (typeof _draft?.jobTitle !== 'string' || _draft.jobTitle.trim() === ''
-        || typeof _draft.companyName !== 'string' || _draft.companyName.trim() === '');
+    _saveButton.disabled = false;
   }
 
   if (_mode === 'create') {
@@ -167,7 +165,7 @@ function clearInlineErrors() {
 
 function showFieldError(label, message) {
   const field = [...document.querySelectorAll('.modal-field')]
-    .find((element) => element.querySelector('.modal-field__label')?.textContent === label);
+    .find((element) => element.querySelector('.modal-field__label')?.firstChild?.textContent === label);
   const error = document.createElement('span');
 
   error.className = 'modal-field-error';
@@ -199,7 +197,19 @@ function createField(label, value, fullSpan = false, { preserveEmpty = false } =
   return row;
 }
 
-function createEditableShell(label, fullSpan = false) {
+function appendFieldLabel(labelEl, label, required) {
+  labelEl.textContent = label;
+
+  if (required) {
+    const indicator = document.createElement('span');
+    indicator.className = 'modal-field__required';
+    indicator.setAttribute('aria-hidden', 'true');
+    indicator.textContent = '*';
+    labelEl.append(indicator);
+  }
+}
+
+function createEditableShell(label, fullSpan = false, { required = false } = {}) {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('span');
@@ -209,7 +219,7 @@ function createEditableShell(label, fullSpan = false) {
     : 'modal-field modal-field--editable';
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value';
-  labelEl.textContent = label;
+  appendFieldLabel(labelEl, label, required);
   row.append(labelEl, valueEl);
 
   return { row, valueEl };
@@ -241,9 +251,10 @@ function renderTextDisplay(valueEl, key, formatter) {
   }
 }
 
-function makeInlineText({ label, key, multiline = false, fullSpan = false }) {
-  const { row, valueEl } = createEditableShell(label, fullSpan);
+function makeInlineText({ label, key, multiline = false, fullSpan = false, required = false }) {
+  const { row, valueEl } = createEditableShell(label, fullSpan, { required });
   const formatter = key === 'salary' ? formatPeso : null;
+  const displayClass = multiline ? ' modal-field__display--multiline' : '';
 
   function commit(input) {
     _draft[key] = key === 'salary'
@@ -301,6 +312,10 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false }) {
       }
     });
   });
+
+  if (multiline) {
+    valueEl.className += displayClass;
+  }
 
   renderTextDisplay(valueEl, key, formatter);
 
@@ -405,6 +420,10 @@ function makeChipEditor({ label, key }) {
     input.setAttribute('aria-label', `Add ${label}`);
 
     function addChip() {
+      if (!input.isConnected) {
+        return;
+      }
+
       const value = input.value.trim();
 
       if (value !== '' && !values().includes(value)) {
@@ -454,8 +473,12 @@ function createCompatField(score) {
 
 function renderTitle() {
   const title = document.createElement('h2');
+  const required = document.createElement('span');
   title.id = 'modal-title';
   title.textContent = displayValue(_draft.jobTitle);
+  required.className = 'modal-field__required modal-title-required';
+  required.setAttribute('aria-hidden', 'true');
+  required.textContent = '*';
 
   title.addEventListener('click', () => {
     const previousValue = _draft.jobTitle;
@@ -465,7 +488,7 @@ function renderTitle() {
     input.id = 'modal-title';
     input.className = 'modal-title-input';
     input.value = _draft.jobTitle ?? '';
-    _titleRow.replaceChildren(input);
+      _titleRow.replaceChildren(input);
     input.focus();
     input.select();
 
@@ -495,7 +518,7 @@ function renderTitle() {
     });
   });
 
-  _titleRow.replaceChildren(title);
+  _titleRow.replaceChildren(title, required);
 }
 
 function _renderBody() {
@@ -503,16 +526,16 @@ function _renderBody() {
   statusDateField.dataset.modalField = 'last-status-update';
 
   _body.replaceChildren(
-    makeInlineText({ label: 'Company', key: 'companyName' }),
+    makeInlineText({ label: 'Company', key: 'companyName', required: true }),
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
     makeInlineText({ label: 'Location', key: 'location' }),
     makeInlineText({ label: 'Salary', key: 'salary' }),
     makeInlineSelect({ label: 'Shift', key: 'shift', options: SHIFT_VALUES }),
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
     createCompatField(_draft.compat),
-    makeInlineText({ label: 'Compat Notes', key: 'compatNotes' }),
+    makeInlineText({ label: 'Compat Notes', key: 'compatNotes', multiline: true }),
     statusDateField,
-    makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true }),
+    makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
     makeChipEditor({ label: 'Required Skills', key: 'skills' }),
     makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills' }),
     makeInlineText({ label: 'URL', key: 'jobPostingUrl', fullSpan: true }),
@@ -557,15 +580,21 @@ function buildFooter() {
 
 function validateDraft() {
   clearInlineErrors();
+  let isValid = true;
 
   if (typeof _draft.jobTitle !== 'string' || _draft.jobTitle.trim() === '') {
     showTitleError('Job Title is required.');
-    return false;
+    isValid = false;
   }
 
   if (typeof _draft.companyName !== 'string' || _draft.companyName.trim() === '') {
     showFieldError('Company', 'Company is required.');
-    return false;
+    isValid = false;
+  }
+
+  if (typeof _draft.responsibilities !== 'string' || _draft.responsibilities.trim() === '') {
+    showFieldError('Responsibilities', 'Responsibilities is required.');
+    isValid = false;
   }
 
   if (typeof _draft.jobPostingUrl === 'string' && _draft.jobPostingUrl.trim() !== '') {
@@ -573,11 +602,11 @@ function validateDraft() {
 
     if (urlError) {
       showFieldError('URL', urlError);
-      return false;
+      isValid = false;
     }
   }
 
-  return true;
+  return isValid;
 }
 
 async function saveDraft() {
@@ -757,7 +786,7 @@ export function open(application, {
   );
   const archiveButton = createQuickButton(
     'modal-quick-action--archive',
-    createSvgIcon('M5 5l14 14M19 5 5 19'),
+    createArchiveIcon(),
   );
   const closeButton = createQuickButton(
     'modal-quick-action--close',
@@ -802,6 +831,10 @@ export function open(application, {
   statusButton.setAttribute('aria-label', 'Change status');
   archiveButton.setAttribute('aria-label', 'Archive application');
   closeButton.setAttribute('aria-label', 'Close');
+  favoriteButton.title = 'Star / Unstar';
+  statusButton.title = 'Change status';
+  archiveButton.title = 'Archive';
+  closeButton.title = 'Close';
   statusBadge.setAttribute('role', 'button');
   statusBadge.setAttribute('tabindex', '0');
   statusBadge.setAttribute('aria-label', 'Change status');
@@ -910,7 +943,7 @@ export function open(application, {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  headerMeta.append(idPill, statusBadge);
+  headerMeta.append(idPill, statusBadge, quickActions);
   renderTitle();
   quickActions.append(favoriteButton, statusButton);
 
@@ -919,7 +952,7 @@ export function open(application, {
   }
 
   quickActions.append(closeButton);
-  header.append(headerMeta, titleRow, quickActions);
+  header.append(headerMeta, titleRow);
   _renderBody();
   panel.append(header, body, buildFooter());
   _syncFooter();

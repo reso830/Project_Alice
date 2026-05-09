@@ -42,6 +42,18 @@ function hasSalaryValue(salary) {
   return Number.isInteger(salary) && salary > 0;
 }
 
+function isBlankValue(value) {
+  return typeof value !== 'string' || value.trim() === '';
+}
+
+function matchesOptionalFilter(value, selectedValues) {
+  if (selectedValues.includes('') && isBlankValue(value)) {
+    return true;
+  }
+
+  return selectedValues.includes(value);
+}
+
 export function getSalaryBounds(apps) {
   const hasSalaryData = apps.some((app) => hasSalaryValue(app.salary));
 
@@ -69,7 +81,7 @@ export function filterByShift(apps, shifts) {
     return apps;
   }
 
-  return apps.filter((app) => shifts.includes(app.shift));
+  return apps.filter((app) => matchesOptionalFilter(app.shift, shifts));
 }
 
 export function filterByWorkSetup(apps, workSetups) {
@@ -77,7 +89,7 @@ export function filterByWorkSetup(apps, workSetups) {
     return apps;
   }
 
-  return apps.filter((app) => workSetups.includes(app.workSetup));
+  return apps.filter((app) => matchesOptionalFilter(app.workSetup, workSetups));
 }
 
 export function filterByLocation(apps, locations) {
@@ -85,7 +97,7 @@ export function filterByLocation(apps, locations) {
     return apps;
   }
 
-  return apps.filter((app) => locations.includes(app.location));
+  return apps.filter((app) => matchesOptionalFilter(app.location, locations));
 }
 
 export function filterByFavorites(apps, favoritesOnly) {
@@ -258,7 +270,7 @@ export function getAvailableLocations(apps, filterState) {
 export function syncDynamicSelections(filterState, apps) {
   const availableLocations = getAvailableLocations(apps, filterState);
   const locations = (filterState.locations ?? []).filter((location) => (
-    availableLocations.includes(location)
+    location === '' || availableLocations.includes(location)
   ));
   const stateWithSyncedLocations = { ...filterState, locations };
   const availableStatuses = getAvailableStatuses(apps, stateWithSyncedLocations);

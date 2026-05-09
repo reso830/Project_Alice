@@ -220,6 +220,7 @@ function renderShiftPanel() {
   return FilterPanel.render({
     title: 'Shift',
     options: SHIFT_VALUES,
+    includeNotSet: true,
     selected: _filterState.shifts,
     onChange: (shifts) => {
       _callbacks.onFilterChange?.({ ..._filterState, shifts });
@@ -235,6 +236,7 @@ function renderWorkSetupPanel() {
   return FilterPanel.render({
     title: 'Work Setup',
     options: WORK_SETUP_VALUES,
+    includeNotSet: true,
     selected: _filterState.workSetups,
     onChange: (workSetups) => {
       _callbacks.onFilterChange?.({ ..._filterState, workSetups });
@@ -250,6 +252,7 @@ function renderLocationPanel() {
   return FilterPanel.render({
     title: 'Location',
     options: getAvailableLocations(_allApps, _filterState),
+    includeNotSet: true,
     selected: _filterState.locations,
     onChange: (locations) => {
       _callbacks.onFilterChange?.({ ..._filterState, locations });

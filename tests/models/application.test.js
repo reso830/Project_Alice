@@ -109,6 +109,12 @@ describe('validateApplication', () => {
     expect(record.jobTitle).toBe('Frontend Engineer');
     expect(record.status).toBe('applied');
     expect(record.lastStatusUpdate).toBe('2026-04-25');
+    expect(record.responsibilities).toBe('Build UI');
+  });
+
+  it('marks records with missing responsibilities as corrupt', () => {
+    expect(validateApplication(validRecord({ responsibilities: '' }))._corrupt).toBe(true);
+    expect(validateApplication(validRecord({ responsibilities: 'Some duties' }))._corrupt).toBeUndefined();
   });
 
   it('returns a validated copy without mutating the input record', () => {

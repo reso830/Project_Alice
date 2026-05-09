@@ -1,6 +1,8 @@
 import aliceWhite from '../assets/Alice_White.png';
 
 const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
+// Keep this static release string in sync with package.json for each release.
+const APP_VERSION = 'v0.6.0';
 
 function createText(className, text) {
   const element = document.createElement('p');
@@ -95,7 +97,7 @@ export function render() {
   inner.append(
     createBrand(),
     rule,
-    createSection('VERSION', ['v0.3.0', 'Built Apr 2026']),
+    createSection('VERSION', [APP_VERSION, 'Built May 2026']),
     createSection('STACK', ['Vanilla JS \u00b7 Vite', 'Vitest \u00b7 ESLint']),
     createFeedback(),
     createText(

@@ -1631,9 +1631,7 @@ button:focus-visible,
 }
 
 .sort-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed;
   z-index: 500;
   min-width: 220px;
   border: 1.5px solid var(--color-border);
@@ -1937,11 +1935,16 @@ button:focus-visible,
   gap: 10px;
 }
 
-.modal-header__title-row {
+.modal-header__meta {
   justify-content: space-between;
 }
 
+.modal-header__title-row {
+  justify-content: flex-start;
+}
+
 .modal-quick-actions {
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1998,15 +2001,32 @@ button:focus-visible,
 }
 
 .modal-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--t3);
   font-size: 11px;
   font-weight: 500;
+}
+
+.modal-field__required {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.modal-title-required {
+  align-self: flex-start;
+  margin-top: 1px;
 }
 
 .modal-field__value {
   color: var(--t1);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.modal-field__display--multiline {
+  white-space: pre-wrap;
 }
 
 .modal-field-error,
@@ -2554,11 +2574,19 @@ textarea.modal-inline-control {
 
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
     padding: 10px 14px;
   }
 
   .toolbar__label {
+    width: 100%;
     min-width: 0;
+  }
+
+  .toolbar__left {
+    flex: 1 1 100%;
   }
 
   .toolbar__add {
@@ -2568,14 +2596,24 @@ textarea.modal-inline-control {
 
   .toolbar__controls {
     display: flex;
-    flex-wrap: nowrap;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
     gap: 4px;
   }
 
   .toolbar__filters,
   .toolbar__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
+  }
+
+  .toolbar__right {
+    width: 100%;
+  }
+
+  .fab {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
   }
 
   .filter-trigger {

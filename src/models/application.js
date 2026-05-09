@@ -146,6 +146,10 @@ export function validateApplication(record) {
     validated._corrupt = true;
   }
 
+  if (typeof validated.responsibilities !== 'string' || validated.responsibilities.trim() === '') {
+    validated._corrupt = true;
+  }
+
   if (!STATUS_VALUES.includes(validated.status)) {
     validated.status = 'wishlisted';
   }

@@ -60,7 +60,7 @@ function getSalaryFieldValue() {
 
 function getFieldByLabel(label) {
   return [...document.querySelectorAll('.modal-field')]
-    .find((field) => field.querySelector('.modal-field__label')?.textContent === label);
+    .find((field) => field.querySelector('.modal-field__label')?.firstChild?.textContent === label);
 }
 
 function inputField(label) {
@@ -139,6 +139,14 @@ describe('Modal', () => {
     expect(actions[3].classList.contains('modal-quick-action--close')).toBe(true);
     expect(actions.every((button) => button.querySelector('svg.icon'))).toBe(true);
     expect(actions.every((button) => !button.querySelector('.modal-quick-action__label'))).toBe(true);
+    expect(actions.map((button) => button.title)).toEqual([
+      'Star / Unstar',
+      'Change status',
+      'Archive',
+      'Close',
+    ]);
+    expect(document.querySelector('.modal-header__meta').contains(document.querySelector('.modal-quick-actions')))
+      .toBe(true);
   });
 
   it('closes the overlay from the header close action', () => {
@@ -253,7 +261,7 @@ describe('Modal', () => {
     expect(modalBackdrop()).not.toBeNull();
   });
 
-  it('opens create mode with an empty wishlisted draft and disabled Create action', () => {
+  it('opens create mode with an empty wishlisted draft and active Create validation', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(null, { mode: 'create' });
@@ -262,7 +270,7 @@ describe('Modal', () => {
     expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.wishlisted.label);
     expect(document.querySelector('.modal-footer').hidden).toBe(false);
     expect(saveButton().textContent).toBe('Create');
-    expect(saveButton().disabled).toBe(true);
+    expect(saveButton().disabled).toBe(false);
     expect(document.querySelector('.modal-quick-action--archive')).toBeNull();
     expect(document.querySelector('.id-pill')?.textContent).toBe('#\u2014');
     expect(inputField('Company').value).toBe('');
@@ -271,20 +279,17 @@ describe('Modal', () => {
     expect(document.querySelector('.compat-bar__label').textContent).toBe('0%');
   });
 
-  it('enables Create after Job Title and Company are filled', () => {
+  it('shows all missing required fields when Create is clicked blank', async () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(null, { mode: 'create' });
-    document.querySelector('#modal-title').click();
-    const titleInput = document.querySelector('.modal-title-input');
-    titleInput.value = 'Product Engineer';
-    titleInput.dispatchEvent(new window.Event('blur'));
+    saveButton().click();
+    await flushPromises();
 
-    expect(saveButton().disabled).toBe(true);
-
-    editTextField('Company', 'Globex');
-
-    expect(saveButton().disabled).toBe(false);
+    expect(api.create).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Job Title is required.');
+    expect(document.body.textContent).toContain('Company is required.');
+    expect(document.body.textContent).toContain('Responsibilities is required.');
   });
 
   it('creates an application and switches the modal to edit mode on success', async () => {
@@ -306,6 +311,7 @@ describe('Modal', () => {
     titleInput.value = 'Product Engineer';
     titleInput.dispatchEvent(new window.Event('blur'));
     editTextField('Company', 'Globex');
+    editTextField('Responsibilities', 'Build product UI');
     editTextField('Location', 'Manila');
     saveButton().click();
     await flushPromises();
@@ -313,6 +319,7 @@ describe('Modal', () => {
     expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
       jobTitle: 'Product Engineer',
       companyName: 'Globex',
+      responsibilities: 'Build product UI',
       location: 'Manila',
       status: 'wishlisted',
     }));
@@ -334,6 +341,7 @@ describe('Modal', () => {
     titleInput.value = 'Product Engineer';
     titleInput.dispatchEvent(new window.Event('blur'));
     editTextField('Company', 'Globex');
+    editTextField('Responsibilities', 'Build product UI');
     saveButton().click();
     await flushPromises();
 
@@ -407,6 +415,18 @@ describe('Modal', () => {
     for (const label of ['Responsibilities', 'Required Skills', 'Preferred Skills', 'URL', 'General Notes']) {
       expect(getFieldByLabel(label).classList.contains('modal-field--full')).toBe(true);
     }
+  });
+
+  it('marks only required fields with visual indicators', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application());
+
+    expect(document.querySelector('.modal-header__title-row .modal-field__required')).not.toBeNull();
+    expect(getFieldByLabel('Company').querySelector('.modal-field__required')).not.toBeNull();
+    expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__required')).not.toBeNull();
+    expect(getFieldByLabel('Recruiter').querySelector('.modal-field__required')).toBeNull();
+    expect(getFieldByLabel('URL').querySelector('.modal-field__required')).toBeNull();
   });
 
   it('renders Last Updated as read-only text', () => {
@@ -533,7 +553,10 @@ describe('Modal', () => {
 
     const input = field.querySelector('input');
     input.value = 'TypeScript';
-    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(() => {
+      input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      input.dispatchEvent(new window.Event('blur'));
+    }).not.toThrow();
 
     expect(getFieldByLabel('Required Skills').textContent).toContain('TypeScript');
 
@@ -713,12 +736,39 @@ describe('Modal', () => {
     expect(document.body.textContent).toContain('Company is required.');
 
     Modal.open(application());
+    editTextField('Responsibilities', '');
+    saveButton().click();
+    await Promise.resolve();
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Responsibilities is required.');
+
+    Modal.open(application());
     editTextField('URL', 'ftp://example.com/job');
     saveButton().click();
     await Promise.resolve();
 
     expect(api.update).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('Please enter a valid URL');
+  });
+
+  it('renders multiline display fields with newline-preserving class', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      responsibilities: 'Line one\nLine two',
+      compatNotes: 'Good fit\nStrong stack',
+      generalNotes: 'Ask comp\nCheck visa',
+    }));
+
+    expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__value').classList)
+      .toContain('modal-field__display--multiline');
+    expect(getFieldByLabel('Compat Notes').querySelector('.modal-field__value').classList)
+      .toContain('modal-field__display--multiline');
+    expect(getFieldByLabel('General Notes').querySelector('.modal-field__value').classList)
+      .toContain('modal-field__display--multiline');
+    expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__value').textContent)
+      .toBe('Line one\nLine two');
   });
 
   it('keeps the footer visible and draft intact when save fails', async () => {

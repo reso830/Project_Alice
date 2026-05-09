@@ -40,6 +40,13 @@ describe('Footer', () => {
     expect(footer.textContent).toContain('\u00a9 2026 Project Alice');
   });
 
+  it('renders the current static app version', () => {
+    const footer = Footer.render();
+
+    expect(footer.textContent).toContain('v0.6.0');
+    expect(footer.textContent).toContain('Built May 2026');
+  });
+
   it('uses visual labels without adding footer headings', () => {
     const footer = Footer.render();
 

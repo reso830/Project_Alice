@@ -56,6 +56,13 @@ describe('Card', () => {
     expect([...actions].every((button) => button.querySelector('svg.icon'))).toBe(true);
   });
 
+  it('uses a filing-box archive icon distinct from close semantics', () => {
+    const card = Card.render(application());
+    const archiveButton = card.querySelector('[aria-label="Archive application permanently from active list"]');
+
+    expect(archiveButton.querySelector('path')?.getAttribute('d')).toContain('M4 7h16v12H4V7');
+  });
+
   it('formats salary as Philippine Peso', () => {
     const card = Card.render(application({ salary: 150000 }));
 

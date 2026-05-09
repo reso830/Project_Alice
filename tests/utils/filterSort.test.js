@@ -100,10 +100,16 @@ describe('filter helpers', () => {
   it('filters by shift, work setup, and location with empty arrays as no-ops', () => {
     expect(filterByShift(apps, [])).toBe(apps);
     expect(ids(filterByShift(apps, ['Night']))).toEqual([2, 6]);
+    expect(ids(filterByShift(apps, ['']))).toEqual([7]);
+    expect(ids(filterByShift(apps, ['Day', '']))).toEqual([1, 4, 7, 9]);
     expect(filterByWorkSetup(apps, [])).toBe(apps);
     expect(ids(filterByWorkSetup(apps, ['Remote']))).toEqual([1, 4, 6, 9]);
+    expect(ids(filterByWorkSetup(apps, ['']))).toEqual([7]);
+    expect(ids(filterByWorkSetup(apps, ['Remote', '']))).toEqual([1, 4, 6, 7, 9]);
     expect(filterByLocation(apps, [])).toBe(apps);
     expect(ids(filterByLocation(apps, ['Manila']))).toEqual([1, 3, 9]);
+    expect(ids(filterByLocation(apps, ['']))).toEqual([5, 7]);
+    expect(ids(filterByLocation(apps, ['Manila', '']))).toEqual([1, 3, 5, 7, 9]);
   });
 });
 
@@ -226,6 +232,14 @@ describe('dynamic options', () => {
     expect(synced).toEqual({ ...current, statuses: ['offer'] });
     expect(unchanged).toEqual({ ...DEFAULT_FILTER_STATE, statuses: ['applied'] });
     expect(syncDynamicSelections(unchanged, apps)).toBe(unchanged);
+
+    expect(syncDynamicSelections({
+      ...DEFAULT_FILTER_STATE,
+      locations: ['', 'Missing'],
+    }, apps)).toEqual({
+      ...DEFAULT_FILTER_STATE,
+      locations: [''],
+    });
   });
 
   it('syncs unavailable selected locations out of state', () => {
