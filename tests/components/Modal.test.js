@@ -507,6 +507,22 @@ describe('Modal', () => {
     expect(getFieldByLabel('Shift').querySelector('.modal-field__value').textContent).toBe('Night');
   });
 
+  it('re-syncs the footer when Escape reverts a select back to clean', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ shift: 'Night' }));
+    const select = inputField('Shift');
+    select.value = 'Day';
+    select.dispatchEvent(new window.Event('change'));
+
+    expect(document.querySelector('.modal-footer').hidden).toBe(false);
+
+    select.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(getFieldByLabel('Shift').querySelector('.modal-field__value').textContent).toBe('Night');
+    expect(document.querySelector('.modal-footer').hidden).toBe(true);
+  });
+
   it('adds, removes, backspaces, and rejects duplicate Required Skills chips', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

@@ -63,7 +63,11 @@ function parseJson(value, fallback) {
     return fallback;
   }
 
-  return JSON.parse(value);
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
 }
 
 function parseSalaryLower(value) {

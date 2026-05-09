@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { create, getById } from '../../server/db/applications.js';
+import { create, getAll, getById } from '../../server/db/applications.js';
 import { initSchema } from '../../server/db.js';
 import { makeTestDb } from './helpers.js';
 
@@ -112,6 +112,36 @@ describe('SQLite persistence', () => {
     expect(row.last_status_update).toBe(row.created_at);
 
     reopened.close();
+    testDb.cleanup();
+  });
+
+  it('falls back when stored JSON columns are malformed', () => {
+    const testDb = makeTestDb();
+    const created = create({
+      companyName: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+      skills: ['JavaScript'],
+      preferredSkills: ['GraphQL'],
+      metadata: { source: 'manual' },
+    }, testDb.db);
+
+    testDb.db.prepare(`
+      UPDATE applications
+      SET skills = ?, preferred_skills = ?, metadata = ?
+      WHERE id = ?
+    `).run('not-json', 'also-not-json', '{broken', created.id);
+
+    const records = getAll(testDb.db);
+
+    expect(records[0]).toMatchObject({
+      id: created.id,
+      skills: [],
+      preferredSkills: [],
+      metadata: null,
+    });
+
+    testDb.close();
     testDb.cleanup();
   });
 });

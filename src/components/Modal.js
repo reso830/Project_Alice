@@ -354,6 +354,7 @@ function makeInlineSelect({ label, key, options, fullSpan = false }) {
         _draft[key] = previousValue;
         renderDisplay();
         row.classList.remove('modal-field--editing');
+        _syncFooter();
       }
     });
   });
