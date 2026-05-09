@@ -202,6 +202,18 @@ function onAddApplication() {
       renderPage();
       updateToolbar();
     },
+    onApplicationUpdate: (updated) => {
+      replaceApplication(updated);
+      renderPage();
+      updateToolbar();
+    },
+    onArchiveSuccess: (updated) => {
+      removeApplication(updated.id);
+      _salaryBounds = getSalaryBounds(_applications);
+      renderPage();
+      updateToolbar();
+      focusCardList();
+    },
   });
 }
 

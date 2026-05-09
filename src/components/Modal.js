@@ -866,6 +866,9 @@ export function open(application, {
   _keydownHandler = (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
+      if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+      }
       saveDraft();
       return;
     }
