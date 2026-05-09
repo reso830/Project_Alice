@@ -699,7 +699,7 @@ describe('Modal', () => {
       companyName: 'Globex',
       skills: ['JavaScript'],
       preferredSkills: [],
-    }));
+    }), expect.anything());
     expect(document.querySelector('.modal-footer').hidden).toBe(true);
     expect(document.body.textContent).toContain('Saved.');
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyName: 'Globex' }));
@@ -732,7 +732,7 @@ describe('Modal', () => {
       followUpAction: '',
       followUpDate: '',
       generalNotes: '',
-    }));
+    }), expect.anything());
   });
 
   it('does not crash if the modal closes while save is in flight', async () => {
@@ -772,7 +772,7 @@ describe('Modal', () => {
     expect(api.update).toHaveBeenNthCalledWith(2, 1, expect.objectContaining({
       companyName: 'Globex',
       fav: true,
-    }));
+    }), expect.anything());
   });
 
   it('validates required fields and URL before saving', async () => {
@@ -938,7 +938,7 @@ describe('Modal', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({ companyName: 'Globex' }));
+    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({ companyName: 'Globex' }), expect.anything());
   });
 
   it('formats salary as Philippine Peso', () => {

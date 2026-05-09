@@ -28,6 +28,7 @@ let _idPill = null;
 let _archiveButton = null;
 let _quickActions = null;
 let _mode = 'edit';
+let _saveController = null;
 let _onApplicationUpdate = null;
 let _onApplicationCreate = null;
 
@@ -217,6 +218,7 @@ function createEditableShell(label, fullSpan = false, { required = false } = {})
   row.className = fullSpan
     ? 'modal-field modal-field--full modal-field--editable'
     : 'modal-field modal-field--editable';
+  row.setAttribute('tabindex', '0');
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value modal-field__display';
   appendFieldLabel(labelEl, label, required);
@@ -308,10 +310,18 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
 
       if (shouldCommit) {
         keyboardEvent.preventDefault();
+        keyboardEvent.stopPropagation();
         finished = true;
         commit(input);
       }
     });
+  });
+
+  row.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !row.classList.contains('modal-field--editing')) {
+      event.preventDefault();
+      row.click();
+    }
   });
 
   if (multiline) {
@@ -373,6 +383,13 @@ function makeInlineSelect({ label, key, options, fullSpan = false }) {
         _syncFooter();
       }
     });
+  });
+
+  row.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !row.classList.contains('modal-field--editing')) {
+      event.preventDefault();
+      row.click();
+    }
   });
 
   renderDisplay();
@@ -655,7 +672,9 @@ async function saveDraft() {
   }
 
   try {
-    const updated = await api.update(_draft.id, _draft);
+    _saveController = new AbortController();
+    const updated = await api.update(_draft.id, _draft, { signal: _saveController.signal });
+    _saveController = null;
 
     if (!_body || !_titleRow) {
       return updated;
@@ -669,7 +688,11 @@ async function saveDraft() {
     Toast.show('Saved.', 'success');
     _onApplicationUpdate?.(updated);
     return updated;
-  } catch {
+  } catch (error) {
+    _saveController = null;
+    if (error?.name === 'AbortError') {
+      return null;
+    }
     Toast.show('Failed to save', 'failure');
     _syncFooter();
     return null;
@@ -737,6 +760,8 @@ export function close() {
     window.scrollTo(0, _savedScrollY);
   }
 
+  _saveController?.abort();
+  _saveController = null;
   _draft = null;
   _original = null;
   _body = null;
