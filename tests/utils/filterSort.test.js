@@ -7,9 +7,13 @@ import {
   filterByCompany,
   filterByCompat,
   filterByFavorites,
+  filterByLocation,
   filterBySalary,
+  filterByShift,
   filterByStatus,
+  filterByWorkSetup,
   getAvailableCompanies,
+  getAvailableLocations,
   getAvailableStatuses,
   getSalaryBounds,
   isAnyFilterActive,
@@ -19,16 +23,16 @@ import {
 } from '../../src/utils/filterSort.js';
 
 const apps = [
-  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: 110000, compat: 84, fav: true },
-  { id: 2, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72 },
-  { id: 3, status: 'phone_screen', companyName: 'Beta', salary: 80000, compat: 55 },
-  { id: 4, status: 'interview', companyName: 'Acme', salary: 125000, compat: 91 },
-  { id: 5, status: 'assessment', companyName: 'Delta', salary: 150000, compat: 64 },
-  { id: 6, status: 'offer', companyName: 'Cobalt', salary: 120000, compat: 99, fav: true },
-  { id: 7, status: 'rejected', companyName: 'Beta', salary: null, compat: 15 },
-  { id: 8, status: 'withdrawn', companyName: 'Echo', salary: 0, compat: 0 },
-  { id: 9, status: 'ghosted', companyName: 'Foxtrot', salary: 95000, compat: 72 },
-  { id: 10, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72 },
+  { id: 1, status: 'wishlisted', companyName: 'Zenith', salary: 110000, compat: 84, fav: true, location: 'Manila', shift: 'Day', workSetup: 'Remote' },
+  { id: 2, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72, location: 'Cebu', shift: 'Night', workSetup: 'Hybrid' },
+  { id: 3, status: 'phone_screen', companyName: 'Beta', salary: 80000, compat: 55, location: 'Manila', shift: 'Mid', workSetup: 'On-site' },
+  { id: 4, status: 'interview', companyName: 'Acme', salary: 125000, compat: 91, location: 'Quezon City', shift: 'Day', workSetup: 'Remote' },
+  { id: 5, status: 'assessment', companyName: 'Delta', salary: 150000, compat: 64, location: '', shift: 'Flexible', workSetup: 'Field' },
+  { id: 6, status: 'offer', companyName: 'Cobalt', salary: 120000, compat: 99, fav: true, location: 'Cebu', shift: 'Night', workSetup: 'Remote' },
+  { id: 7, status: 'rejected', companyName: 'Beta', salary: null, compat: 15, location: null, shift: '', workSetup: '' },
+  { id: 8, status: 'withdrawn', companyName: 'Echo', salary: 0, compat: 0, location: 'Baguio', shift: 'Flexible', workSetup: 'Hybrid' },
+  { id: 9, status: 'ghosted', companyName: 'Foxtrot', salary: 95000, compat: 72, location: 'Manila', shift: 'Day', workSetup: 'Remote' },
+  { id: 10, status: 'applied', companyName: 'Acme', salary: 95000, compat: 72, location: 'Davao', shift: 'Mid', workSetup: 'Field' },
 ];
 
 function ids(records) {
@@ -92,6 +96,15 @@ describe('filter helpers', () => {
     expect(ids(filterByFavorites(apps, true))).toEqual([1, 6]);
     expect(filterByFavorites([{ id: 11, fav: false }], true)).toEqual([]);
   });
+
+  it('filters by shift, work setup, and location with empty arrays as no-ops', () => {
+    expect(filterByShift(apps, [])).toBe(apps);
+    expect(ids(filterByShift(apps, ['Night']))).toEqual([2, 6]);
+    expect(filterByWorkSetup(apps, [])).toBe(apps);
+    expect(ids(filterByWorkSetup(apps, ['Remote']))).toEqual([1, 4, 6, 9]);
+    expect(filterByLocation(apps, [])).toBe(apps);
+    expect(ids(filterByLocation(apps, ['Manila']))).toEqual([1, 3, 9]);
+  });
 });
 
 describe('applyFilters', () => {
@@ -112,6 +125,13 @@ describe('applyFilters', () => {
       statuses: ['offer'],
       favoritesOnly: true,
     }))).toEqual([6]);
+    expect(ids(applyFilters(apps, {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['applied'],
+      shifts: ['Mid'],
+      workSetups: ['Field'],
+      locations: ['Davao'],
+    }))).toEqual([10]);
     expect(applyFilters(apps, DEFAULT_FILTER_STATE)).toBe(apps);
   });
 
@@ -126,6 +146,15 @@ describe('applyFilters', () => {
       favoritesOnly: true,
     }))).toEqual([1]);
   });
+
+  it('applies single new-field filters independently', () => {
+    expect(ids(applyFilters(apps, { ...DEFAULT_FILTER_STATE, shifts: ['Day'] })))
+      .toEqual([1, 4, 9]);
+    expect(ids(applyFilters(apps, { ...DEFAULT_FILTER_STATE, workSetups: ['Remote'] })))
+      .toEqual([1, 4, 6, 9]);
+    expect(ids(applyFilters(apps, { ...DEFAULT_FILTER_STATE, locations: ['Manila'] })))
+      .toEqual([1, 3, 9]);
+  });
 });
 
 describe('isAnyFilterActive', () => {
@@ -135,6 +164,9 @@ describe('isAnyFilterActive', () => {
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, salaryMin: 100000 })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, compatMax: 90 })).toBe(true);
     expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, favoritesOnly: true })).toBe(true);
+    expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, shifts: ['Day'] })).toBe(true);
+    expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, workSetups: ['Remote'] })).toBe(true);
+    expect(isAnyFilterActive({ ...DEFAULT_FILTER_STATE, locations: ['Manila'] })).toBe(true);
   });
 });
 
@@ -167,6 +199,20 @@ describe('dynamic options', () => {
     })).toEqual(['Cobalt', 'Zenith']);
   });
 
+  it('returns sorted distinct non-empty locations after non-location filters', () => {
+    expect(getAvailableLocations(apps, DEFAULT_FILTER_STATE))
+      .toEqual(['Baguio', 'Cebu', 'Davao', 'Manila', 'Quezon City']);
+    expect(getAvailableLocations(apps, {
+      ...DEFAULT_FILTER_STATE,
+      statuses: ['applied'],
+    })).toEqual(['Cebu', 'Davao']);
+    expect(getAvailableLocations(apps, {
+      ...DEFAULT_FILTER_STATE,
+      locations: ['Manila'],
+      favoritesOnly: true,
+    })).toEqual(['Cebu', 'Manila']);
+  });
+
   it('syncs unavailable selected statuses and companies out of state', () => {
     const current = {
       ...DEFAULT_FILTER_STATE,
@@ -180,6 +226,19 @@ describe('dynamic options', () => {
     expect(synced).toEqual({ ...current, statuses: ['offer'] });
     expect(unchanged).toEqual({ ...DEFAULT_FILTER_STATE, statuses: ['applied'] });
     expect(syncDynamicSelections(unchanged, apps)).toBe(unchanged);
+  });
+
+  it('syncs unavailable selected locations out of state', () => {
+    const current = {
+      ...DEFAULT_FILTER_STATE,
+      locations: ['Manila', 'Missing'],
+      statuses: ['applied'],
+    };
+
+    expect(syncDynamicSelections(current, apps)).toEqual({
+      ...current,
+      locations: [],
+    });
   });
 });
 

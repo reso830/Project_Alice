@@ -11,6 +11,9 @@ export const STATUS_VALUES = [
   'ghosted',
 ];
 
+export const SHIFT_VALUES = ['Day', 'Mid', 'Night', 'Flexible'];
+export const WORK_SETUP_VALUES = ['Remote', 'Hybrid', 'On-site', 'Field'];
+
 export const STATUS_CONFIG = {
   wishlisted: {
     label: 'Wishlisted',
@@ -97,10 +100,28 @@ function clampCompat(value) {
 export function normalizeApplication(record) {
   const normalized = { ...record };
 
-  for (const field of ['responsibilities', 'recruiter', 'jobPostingUrl']) {
+  for (const field of [
+    'responsibilities',
+    'sourcePlatform',
+    'recruiter',
+    'jobPostingUrl',
+    'notes',
+    'applicationDate',
+    'followUpAction',
+    'followUpDate',
+    'location',
+    'shift',
+    'workSetup',
+    'compatNotes',
+    'generalNotes',
+  ]) {
     if (typeof normalized[field] !== 'string') {
       normalized[field] = '';
     }
+  }
+
+  if (!Array.isArray(normalized.preferredSkills)) {
+    normalized.preferredSkills = [];
   }
 
   if (!Number.isInteger(normalized.salary) || normalized.salary <= 0) {
@@ -127,6 +148,14 @@ export function validateApplication(record) {
 
   if (!STATUS_VALUES.includes(validated.status)) {
     validated.status = 'wishlisted';
+  }
+
+  if (!SHIFT_VALUES.includes(validated.shift) && validated.shift !== '') {
+    validated.shift = '';
+  }
+
+  if (!WORK_SETUP_VALUES.includes(validated.workSetup) && validated.workSetup !== '') {
+    validated.workSetup = '';
   }
 
   if (!isValidISODate(validated.lastStatusUpdate)) {

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  SHIFT_VALUES,
   STATUS_CONFIG,
   STATUS_VALUES,
+  WORK_SETUP_VALUES,
   normalizeApplication,
   validateApplication,
 } from '../../src/models/application.js';
@@ -21,9 +23,22 @@ function validRecord(overrides = {}) {
     salary: 120000,
     recruiter: 'Jane Smith',
     jobPostingUrl: 'https://jobs.example.com/frontend',
+    location: 'Manila',
+    shift: 'Day',
+    workSetup: 'Remote',
+    compatNotes: 'Strong match',
+    generalNotes: 'Applied via referral',
+    preferredSkills: ['GraphQL'],
     ...overrides,
   };
 }
+
+describe('application metadata constants', () => {
+  it('exports shift and work setup enum values', () => {
+    expect(SHIFT_VALUES).toEqual(['Day', 'Mid', 'Night', 'Flexible']);
+    expect(WORK_SETUP_VALUES).toEqual(['Remote', 'Hybrid', 'On-site', 'Field']);
+  });
+});
 
 describe('validateApplication', () => {
   it('marks missing and non-integer ids as corrupt', () => {
@@ -67,6 +82,26 @@ describe('validateApplication', () => {
     expect(validateApplication(validRecord({ jobPostingUrl: 'not-a-url' })).jobPostingUrl).toBe('');
   });
 
+  it('coerces invalid shift and work setup values to empty strings', () => {
+    const record = validateApplication(validRecord({
+      shift: 'Morning',
+      workSetup: 'Office',
+    }));
+
+    expect(record.shift).toBe('');
+    expect(record.workSetup).toBe('');
+  });
+
+  it('preserves valid shift and work setup values', () => {
+    const record = validateApplication(validRecord({
+      shift: 'Flexible',
+      workSetup: 'On-site',
+    }));
+
+    expect(record.shift).toBe('Flexible');
+    expect(record.workSetup).toBe('On-site');
+  });
+
   it('leaves required fields unchanged on a valid record', () => {
     const record = validateApplication(validRecord());
 
@@ -98,15 +133,42 @@ describe('normalizeApplication', () => {
   it('fills absent optional string fields', () => {
     const record = normalizeApplication(validRecord({
       responsibilities: undefined,
+      sourcePlatform: undefined,
       salary: undefined,
       recruiter: undefined,
       jobPostingUrl: undefined,
+      notes: undefined,
+      applicationDate: undefined,
+      followUpAction: undefined,
+      followUpDate: undefined,
+      location: undefined,
+      shift: undefined,
+      workSetup: undefined,
+      compatNotes: undefined,
+      generalNotes: undefined,
     }));
 
     expect(record.responsibilities).toBe('');
+    expect(record.sourcePlatform).toBe('');
     expect(record.salary).toBeNull();
     expect(record.recruiter).toBe('');
     expect(record.jobPostingUrl).toBe('');
+    expect(record.notes).toBe('');
+    expect(record.applicationDate).toBe('');
+    expect(record.followUpAction).toBe('');
+    expect(record.followUpDate).toBe('');
+    expect(record.location).toBe('');
+    expect(record.shift).toBe('');
+    expect(record.workSetup).toBe('');
+    expect(record.compatNotes).toBe('');
+    expect(record.generalNotes).toBe('');
+  });
+
+  it('fills absent or invalid preferred skills with an empty array', () => {
+    expect(normalizeApplication(validRecord({ preferredSkills: undefined })).preferredSkills)
+      .toEqual([]);
+    expect(normalizeApplication(validRecord({ preferredSkills: 'GraphQL' })).preferredSkills)
+      .toEqual([]);
   });
 
   it('preserves positive integer salary values', () => {

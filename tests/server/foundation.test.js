@@ -33,6 +33,12 @@ describe('initSchema', () => {
       'updated_at',
       'archived',
       'metadata',
+      'location',
+      'shift',
+      'work_setup',
+      'compat_notes',
+      'general_notes',
+      'preferred_skills',
     ]);
     expect(indexes.map((index) => index.name)).toEqual(expect.arrayContaining([
       'idx_applications_status',

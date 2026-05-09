@@ -1,15 +1,5 @@
 Review one implemented Spec Kit phase.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Phase number:
-- Workflow ledger path:
-- Spec path:
-- Plan path:
-- Tasks path:
-- Relevant diff or changed files:
-
 Instructions:
 - Read the workflow ledger, phase tasks, plan, spec, and changed files.
 - Honor user notes, accepted findings, and prior review history unless they conflict with the project constitution.

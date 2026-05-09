@@ -18,6 +18,12 @@ function validPayload(overrides = {}) {
     skills: ['JavaScript', 'React'],
     followUpAction: 'Send follow-up',
     followUpDate: '2026-04-30',
+    location: 'Manila',
+    shift: 'Day',
+    workSetup: 'Remote',
+    compatNotes: 'Strong React match',
+    generalNotes: 'Applied via referral',
+    preferredSkills: ['GraphQL', 'Figma'],
     metadata: { source: 'manual' },
     ...overrides,
   };
@@ -79,6 +85,42 @@ describe('createSchema', () => {
     expect(result.applicationDate).toBeNull();
     expect(result.followUpDate).toBeNull();
   });
+
+  it('accepts valid shift and work setup values', () => {
+    for (const shift of ['Day', 'Mid', 'Night', 'Flexible']) {
+      expect(createSchema.safeParse(validPayload({ shift })).success).toBe(true);
+    }
+
+    for (const workSetup of ['Remote', 'Hybrid', 'On-site', 'Field']) {
+      expect(createSchema.safeParse(validPayload({ workSetup })).success).toBe(true);
+    }
+  });
+
+  it('rejects invalid shift and work setup values', () => {
+    expectFieldError(validPayload({ shift: 'Morning' }), 'shift');
+    expectFieldError(validPayload({ workSetup: 'Office' }), 'workSetup');
+  });
+
+  it('accepts empty shift and work setup values', () => {
+    expect(createSchema.safeParse(validPayload({ shift: '', workSetup: '' })).success).toBe(true);
+  });
+
+  it('rejects non-array preferred skills', () => {
+    expectFieldError(validPayload({ preferredSkills: 'React' }), 'preferredSkills');
+  });
+
+  it('accepts preferred skills arrays and all extended metadata omitted', () => {
+    expect(createSchema.parse(validPayload({ preferredSkills: ['GraphQL'] })).preferredSkills)
+      .toEqual(['GraphQL']);
+
+    const result = createSchema.safeParse({
+      companyName: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      status: 'wishlisted',
+    });
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('updateSchema', () => {
@@ -115,6 +157,24 @@ describe('updateSchema', () => {
 
   it('accepts empty objects as valid no-op updates', () => {
     expect(updateSchema.parse({})).toEqual({});
+  });
+
+  it('accepts partial updates with extended metadata fields', () => {
+    expect(updateSchema.parse({
+      location: 'Cebu',
+      shift: 'Flexible',
+      workSetup: 'Hybrid',
+      compatNotes: 'Updated compatibility notes',
+      generalNotes: 'Updated general notes',
+      preferredSkills: ['GraphQL'],
+    })).toEqual({
+      location: 'Cebu',
+      shift: 'Flexible',
+      workSetup: 'Hybrid',
+      compatNotes: 'Updated compatibility notes',
+      generalNotes: 'Updated general notes',
+      preferredSkills: ['GraphQL'],
+    });
   });
 
   it('rejects string salary updates', () => {

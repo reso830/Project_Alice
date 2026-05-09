@@ -1,14 +1,5 @@
 Address standing requirements-review findings for this feature.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Workflow ledger path:
-- Spec path:
-- Plan path:
-- Tasks path:
-- Constitution path:
-
 Instructions:
 - Read the workflow ledger, spec, plan, tasks, and constitution.
 - Inspect the Req-Review findings table in the workflow ledger.

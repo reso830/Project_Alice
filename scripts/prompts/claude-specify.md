@@ -1,12 +1,5 @@
 Create a Spec Kit specification for this feature.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Feature brief path:
-- Design reference path, if any:
-- Workflow ledger path, if any:
-
 Instructions:
 - Read the feature brief and design reference before writing.
 - Base the spec only on provided files and existing project context.

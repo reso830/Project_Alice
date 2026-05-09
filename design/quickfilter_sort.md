@@ -14,12 +14,12 @@ Quick Filters and Sort are inline toolbar controls that let users narrow and reo
 ### 2.1 Desktop (≥ 640px)
 
 ```
-[ Applications (23) ]  [⏱][💰][📈][🏢][★]  [✕]?  [↕]       [ + New application ]
-  subheader + count badge   filter icons          erase  sort        primary action
+[ Applications (23) ]  [⏱][💰][📈][🏢][★][⏰][🏠][📍]  [✕]?  [↕]       [ + New application ]
+  subheader + count badge        filter icons               erase  sort        primary action
 ```
 
 - Filter icons sit immediately to the right of the subheader label.
-- Five filter icons: Status (⏱), Salary (💰), Compatibility (📈), Company (🏢), Favorites (★).
+- Eight filter icons: Status (⏱), Salary (💰), Compatibility (📈), Company (🏢), Favorites (★), Shift (⏰), Work Setup (🏠), Location (📍).
 - Erase-all button appears **only** when ≥ 1 filter is active, between filter icons and sort icon.
 - Sort icon is always visible, to the right of the erase button (or filter icons if no active filters).
 - Primary action button (`+ New application`) is flush right via `margin-left: auto`.
@@ -69,6 +69,9 @@ Font: Sora, 13px, weight 500. Label text color: `#FFFFFF` (white on toolbar).
 | Compatibility | "Compatibility" |
 | Company | "Company" |
 | Favorites | "Favorites" |
+| Shift | "Shift" |
+| Work Setup | "Work Setup" |
+| Location | "Location" |
 
 Each icon is an inline SVG, **15×15px**, `currentColor`, `aria-hidden="true"`.
 
@@ -207,6 +210,38 @@ Identical to Salary slider with these differences:
 
 A toggle — no popup. Clicking the ★ button sets `favoritesOnly: true` in the filter state, showing only starred applications. Clicking again clears it. No panel is opened; the button's `aria-pressed` state reflects whether the filter is active.
 
+### 5.8 Shift Filter
+
+Identical structure to Status Filter — multi-select checklist. Fixed options (not derived from data):
+
+| Value | Label |
+|---|---|
+| `Day` | Day |
+| `Mid` | Mid |
+| `Night` | Night |
+| `Flexible` | Flexible |
+
+Button is disabled when no applications exist (`totalCount === 0`).
+
+### 5.9 Work Setup Filter
+
+Identical structure to Status Filter — multi-select checklist. Fixed options (not derived from data):
+
+| Value | Label |
+|---|---|
+| `Remote` | Remote |
+| `Hybrid` | Hybrid |
+| `On-site` | On-site |
+| `Field` | Field |
+
+Button is disabled when no applications exist (`totalCount === 0`).
+
+### 5.10 Location Filter
+
+Identical structure to Company Filter — multi-select checklist derived from the current dataset. Only non-empty, distinct `location` values from applications passing all other active filters are listed, sorted alphabetically. Empty and null location values are excluded.
+
+Button is disabled when no applications exist (`totalCount === 0`).
+
 ---
 
 ## 6. Erase-All Button
@@ -294,7 +329,7 @@ padding: 5px 0;
 ## 8. Active Filter Persistence & Page Reset
 
 - Changing any filter resets the current page to `1`.
-- **Filter state persists to `localStorage`** (key: `apptracker_filters`) and is restored on page load. Invalid or out-of-range values are discarded on restore.
+- **Filter state persists to `localStorage`** (key: `apptracker_filters`) and is restored on page load. Invalid or out-of-range values are discarded on restore. This includes the `shifts`, `workSetups`, and `locations` arrays — invalid enum values are stripped on restore; unrecognised location strings are kept as-is since location is free text.
 - Sort state is session-only (not persisted to localStorage).
 - Salary filter button is disabled when no applications have salary data.
 
@@ -338,7 +373,7 @@ line-height: 1.8;
 
 ## 11. Accessibility Notes
 
-- Each filter icon button requires `aria-label` (e.g. `aria-label="Filter by Status"`).
+- Each filter icon button requires `aria-label` (e.g. `aria-label="Filter by Status"`, `aria-label="Filter by Shift"`, `aria-label="Filter by Work Setup"`, `aria-label="Filter by Location"`).
 - When a filter is active, add `aria-pressed="true"` to the icon button.
 - The erase-all button: `aria-label="Clear all filters"`.
 - Slider thumbs require `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and `aria-label`.

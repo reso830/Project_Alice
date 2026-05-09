@@ -1,12 +1,5 @@
 Create phased implementation tasks for this Spec Kit feature.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Spec path:
-- Plan path:
-- Workflow ledger path, if any:
-
 Instructions:
 - Read the spec and plan before writing tasks.
 - Do not assume missing information.

@@ -28,6 +28,21 @@ Modified principles:
 - IV. Practical User Experience — "date applied" reference updated
 Removed from optional fields: application date (consolidated into last_status_update)
 Templates updated: .specify/templates/plan-template.md (constitution check bullet)
+
+Amendment 1.1.0 — 2026-05-09
+Reason: Added mandatory browser smoke test requirement for all features with
+user-facing UI. Automated tests are necessary but not sufficient — rendering,
+CSS layout, real keyboard interaction, and mobile viewports require human
+verification in a live browser session. This was identified as a gap after
+features shipped without browser verification exposed issues only visible
+in the browser.
+Modified principles:
+- V. Testing and Quality Gates — added browser smoke test requirement for UI features
+Modified sections:
+- Development Workflow and Review Gates — added browser smoke test phase as
+  mandatory final phase for UI features
+Templates updated: .specify/templates/tasks-template.md (browser smoke test phase added)
+Follow-up TODOs: none
 -->
 
 # Application Tracker Constitution
@@ -80,6 +95,12 @@ fields, URL validation, and date handling MUST be tested. New features MUST NOT
 break existing tests. Code MUST be linted and formatted consistently before a
 feature is considered complete.
 
+For features with user-facing UI, a browser smoke test MUST verify each user
+story's Independent Test scenario in a live browser session before the feature
+is considered complete. Automated tests are necessary but not sufficient for UI
+features — rendering, CSS layout, real keyboard interaction, and mobile viewports
+require human verification in the browser.
+
 Rationale: Validation and status behavior define the reliability of the tracker,
 so they require repeatable automated checks.
 
@@ -108,8 +129,10 @@ the feature touches application records, forms, filtering, persistence, or statu
 behavior.
 
 Before completion, contributors MUST run the relevant automated tests and the
-project's lint/format checks when those commands exist. Any skipped check MUST be
-documented with the reason and residual risk.
+project's lint/format checks when those commands exist. Features with user-facing
+UI changes MUST include a browser smoke test phase as the final implementation
+phase, walking through each user story's Independent Test from spec.md in a real
+browser. Any skipped check MUST be documented with the reason and residual risk.
 
 ## Governance
 
@@ -127,4 +150,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.0.1 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-04-25
+**Version**: 1.1.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-09

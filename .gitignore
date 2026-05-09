@@ -22,3 +22,6 @@ __codex_tmp_*
 specs/**/.ai-phase
 specs/**/.ai-requirements-ready
 specs/**/.ai-phase-*-review
+
+# Codex browser profiles (smoke test artifacts)
+.codex/

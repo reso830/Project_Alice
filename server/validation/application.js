@@ -70,6 +70,12 @@ const writableFields = {
   skills: z.array(z.string()).optional(),
   followUpAction: optionalText,
   followUpDate: dateField('Follow-up date'),
+  location: optionalText,
+  shift: z.enum(['Day', 'Mid', 'Night', 'Flexible']).or(emptyString).optional(),
+  workSetup: z.enum(['Remote', 'Hybrid', 'On-site', 'Field']).or(emptyString).optional(),
+  compatNotes: optionalText,
+  generalNotes: optionalText,
+  preferredSkills: z.array(z.string()).optional(),
   metadata,
 };
 

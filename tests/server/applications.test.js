@@ -71,6 +71,12 @@ describe('applications API', () => {
         fav: false,
         archived: false,
         skills: [],
+        location: null,
+        shift: null,
+        workSetup: null,
+        compatNotes: null,
+        generalNotes: null,
+        preferredSkills: [],
         metadata: null,
       });
       expect(Number.isInteger(response.body.data.id)).toBe(true);
@@ -95,6 +101,66 @@ describe('applications API', () => {
       expect(response.status).toBe(200);
       expect(response.body.data).toHaveLength(1);
       expect(response.body.data[0]).toMatchObject(created.body.data);
+    });
+  });
+
+  it('creates applications with extended metadata fields', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          location: 'Manila',
+          shift: 'Day',
+          workSetup: 'Remote',
+          compatNotes: 'Strong frontend match.',
+          generalNotes: 'Applied via referral.',
+          preferredSkills: ['GraphQL', 'Figma'],
+        }),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toMatchObject({
+        location: 'Manila',
+        shift: 'Day',
+        workSetup: 'Remote',
+        compatNotes: 'Strong frontend match.',
+        generalNotes: 'Applied via referral.',
+        preferredSkills: ['GraphQL', 'Figma'],
+      });
+    });
+  });
+
+  it('returns extended metadata in camelCase when fetched by id', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          location: 'Manila',
+          shift: 'Mid',
+          workSetup: 'Hybrid',
+          compatNotes: 'Compatibility detail',
+          generalNotes: 'General detail',
+          preferredSkills: ['GraphQL'],
+        }),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        location: 'Manila',
+        shift: 'Mid',
+        workSetup: 'Hybrid',
+        compatNotes: 'Compatibility detail',
+        generalNotes: 'General detail',
+        preferredSkills: ['GraphQL'],
+      });
     });
   });
 
@@ -333,6 +399,47 @@ describe('applications API', () => {
         applicationDate: null,
         followUpDate: null,
         jobPostingUrl: '',
+      });
+    });
+  });
+
+  it('updates and clears extended metadata fields', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName: 'Acme Corp',
+          jobTitle: 'Frontend Engineer',
+          status: 'applied',
+          location: 'Manila',
+          shift: 'Day',
+          workSetup: 'Remote',
+          compatNotes: 'Initial notes',
+          generalNotes: 'General notes',
+          preferredSkills: ['GraphQL'],
+        }),
+      });
+
+      const updated = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          location: '',
+          shift: '',
+          workSetup: '',
+          compatNotes: '',
+          generalNotes: '',
+          preferredSkills: [],
+        }),
+      });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body.data).toMatchObject({
+        location: '',
+        shift: '',
+        workSetup: '',
+        compatNotes: '',
+        generalNotes: '',
+        preferredSkills: [],
       });
     });
   });

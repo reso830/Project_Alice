@@ -10,8 +10,8 @@ A responsive web application for tracking job applications. Built with **Sora** 
 
 | Token | Hex | Usage |
 |---|---|---|
-| `--navy` | `#1A1A2E` | Top bar background, ID pills, modal header, footer |
-| `--navy-2` | `#232342` | Modal status button background |
+| `--navy` | `#1A1A2E` | Top bar background, ID pills, footer |
+| `--navy-2` | `#232342` | (reserved) |
 | `--indigo` | `#4F46E5` | Primary accent, active nav, primary buttons |
 | `--indigo-hover` | `#4338CA` | Button hover state |
 | `--indigo-dim` | `#EEF2FF` | Hover backgrounds, count badge bg, skill tag bg |
@@ -57,7 +57,7 @@ A responsive web application for tracking job applications. Built with **Sora** 
 | ID Pill | DM Mono | 10px | 500 | |
 | Status badge | Sora | 10px | 500 | |
 | Compat bar label | DM Mono | 9px | 500 | |
-| Modal title | Sora | 18px | 600 | |
+| Modal title (job title) | Sora | 24px | 600 | click-to-edit inline in header |
 | Modal field label | Sora | 11px | 500 | |
 | Modal field value | Sora | 13px | 400 | line-height 1.5 |
 | Toolbar label | Sora | 13px | 500 | |
@@ -215,25 +215,13 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 - Entrance: `translateY(8px) → translateY(0)` + fade in, 180ms ease
 - Exit: same in reverse, 180ms ease, `forwards` fill
 
-### Detail Modal
-- Overlay: `rgba(8,8,24,.52)` + `backdrop-filter: blur(4px)`
-- Max-width: `740px`, max-height: `90vh`, scrollable
-- Border-radius: `--r-lg` (14px)
+### Detail Modal (Edit / Create)
+
+> Full spec: [`design/application_overlay.md`](application_overlay.md)
+
+- Overlay: `rgba(8,8,24,.52)` + `backdrop-filter: blur(4px)`; body scroll locked while open; `z-index: var(--z-modal)` (300)
 - Entrance: scale `0.97→1` + `translateY(8px→0)` + fade in, 200ms ease
-- **Header background: status `borderAccent` color** (NOT `--navy`; changes dynamically when status is updated)
-- Header structure (3 rows):
-  - Row 1 (`.modal-header__meta`): ID pill + status badge
-  - Row 2 (`.modal-header__title-row`): job title (`<h2>`)
-  - Row 3 (`.modal-quick-actions`): ★ Favorite · ⇄ Change Status · × Archive — each a `modal-quick-action` button with `background: rgba(255,255,255,.14)`, `border: 1px solid currentColor`
-- Body: 2-column CSS grid, `gap: 16px 28px`, padding `22px`
-- Full-span fields (`grid-column: 1 / -1`): Responsibilities, Skills, URL
-- Closes on: backdrop click, Escape key; body scroll locked (`overflow: hidden`) while open
-
-**Modal fields:** Company · Recruiter · Salary · Compatibility (%) · Last status update · Responsibilities · Skills · URL (clickable copy button)
-
-**URL field behavior:** URL is rendered as a `<button>` (`modal-link-field`) that copies to clipboard. Disabled + dimmed (`opacity: 0.4`) when no URL is on file.
-
-**Mobile modal:** bottom-sheet — fixed to bottom edge, `border-radius: 14px 14px 0 0`, max-height 90vh, slides up (`translateY(100%) → 0`, 250ms ease-out). Body becomes 1-column.
+- **Header background:** status `borderAccent` color — NOT `--navy`
 
 ---
 
@@ -243,19 +231,7 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 |---|---|
 | **Desktop** `> 1024px` | 3-row card, compat bar 30%, 2-col modal, toolbar single row |
 | **Tablet** `640–1023px` | Compat bar 36%, Responsibilities spans full detail row, modal 1-col |
-| **Mobile** `< 640px` | Card becomes flex-column via CSS `order`, compat bar full-width, modal is bottom-sheet, toolbar is 2-row grid, filter panels expand inline |
-
-### Mobile card stacking order (CSS `order` property):
-```
-1: [ID Pill] [Status Badge] [Updated date]
-2: Position (job title)
-3: Company
-4: Responsibilities (2-line clamp)
-5: Skills tags
-6: Salary
-7: [Compat Bar — full width]
-8: action buttons (right-aligned) [✎] [⇄] [🔗] [★] [×]
-```
+| **Mobile** `< 640px` | Card collapses to flex-column via CSS `order` (ID/badge/date → title → company → responsibilities → skills → salary → compat bar → actions); compat bar full-width; modal is bottom-sheet; toolbar is 2-row grid; filter panels expand inline |
 
 ---
 
@@ -273,16 +249,23 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 
 | Interaction | Behavior |
 |---|---|
-| Click card body | Opens Detail Modal |
-| ✎ button (card) | Opens Detail Modal (same behavior as card click) |
+| Click card body | Opens Detail Modal in Edit mode |
+| ✎ button (card) | Opens Detail Modal in Edit mode (same as card click) |
+| + New application | Opens Detail Modal in Create mode — empty draft, status defaults to Wishlisted |
 | ⇄ button (card or modal) | Opens Status Dropdown anchored below button |
 | 🔗 button | Copies `jobPostingUrl` to clipboard; fires toast |
-| ★ button | Toggles favorite state (gold / default); persisted |
-| × button | Archives application; removes from list; updates count |
-| Status change (modal) | Dropdown appears; on select, updates badge + date in modal header |
-| Click outside modal | Closes modal |
+| ★ button | Toggles favorite state (gold / default); persisted immediately, bypasses draft |
+| × button (card) | Archives application after confirmation; removes from active list |
+| 🗄 button (modal) | Archives application after confirmation; modal closes |
+| ✕ button (modal) | Attempts close — shows discard confirmation if draft has unsaved changes |
+| Status change (modal) | Dropdown appears; on select, updates badge + header bg color immediately; counts as a draft change (date updates only on Save) |
+| Click outside modal (backdrop) | Attempts close — shows discard confirmation if draft has unsaved changes |
 | Click outside dropdown | Backdrop closes it |
-| Escape | Closes modal or dropdown |
+| Escape (in field) | Reverts that field's edit without committing to draft |
+| Escape (modal level) | Attempts close — shows discard confirmation if draft is dirty |
+| Escape (dropdown / confirm dialog) | Closes dropdown or confirmation dialog only |
+| `Cmd/Ctrl + S` | Saves modal draft if any changes are present; no-op when clean |
+| `Cmd/Ctrl + Enter` | Commits a multi-line field edit and returns focus to modal |
 | Body scroll with modal open | Locked (`overflow: hidden`) |
 | Page navigation tabs | Mounts/unmounts page; resets scroll to top |
 
@@ -313,5 +296,11 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 | `skills` | String[] | Rendered as pill tags |
 | `salary` | Integer \| null | Stored as raw integer (e.g. `110000`). Displayed as `₱{value.toLocaleString('en-PH')}` (Philippine peso). `null` when no salary data. Lower bound used for sort/filter. |
 | `recruiter` | String | Modal only |
-| `jobPostingUrl` | String (URL) | Copy URL button; displayed in modal |
+| `jobPostingUrl` | String (URL) | Inline-editable in modal; clipboard copy button shown when non-empty |
+| `location` | String \| null | Optional free text; filter dimension (Location filter) |
+| `shift` | Enum \| null | `Day` · `Mid` · `Night` · `Flexible`; modal dropdown; filter dimension |
+| `workSetup` | Enum \| null | `Remote` · `Hybrid` · `On-site` · `Field`; modal dropdown; filter dimension |
+| `compatNotes` | String \| null | Editable notes alongside the read-only compatibility bar |
+| `generalNotes` | String \| null | Free-text notes; full-span field at bottom of modal body |
+| `preferredSkills` | String[] | Chip editor in modal; separate from `skills` (required skills); starts empty for all records |
 | `_corrupt` | Boolean | Validation flag — set when `id`, `jobTitle`, or `companyName` is invalid |

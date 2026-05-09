@@ -1,15 +1,5 @@
 Implement one Spec Kit phase.
 
-Fill in before sending:
-- Feature name:
-- Feature directory:
-- Phase number:
-- Workflow ledger path:
-- Spec path:
-- Plan path:
-- Tasks path:
-- Repo map path, if available:
-
 Instructions:
 - Read the workflow ledger, tasks, plan, spec, and repo map if available.
 - Use the workflow ledger to identify standing findings, user notes, and accepted resolutions.
