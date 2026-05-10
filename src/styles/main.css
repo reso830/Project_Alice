@@ -2948,6 +2948,13 @@ textarea.modal-inline-control {
   margin: 0;
 }
 
+.creation-picker-card__note {
+  font-size: .75rem;
+  color: var(--t3);
+  margin: .25rem 0 0;
+  font-style: italic;
+}
+
 /* Paste step */
 
 .parser-step {
