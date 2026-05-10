@@ -34,10 +34,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Status change in the modal now routes through the draft — the header color and badge update immediately but the `lastStatusUpdate` date is not written until Save
 - DB schema auto-migrates — six new nullable columns (`location`, `shift`, `work_setup`, `compat_notes`, `general_notes`, `preferred_skills`) are added via `ensureColumn` on server start; existing records are unaffected
 - `db:seed` updated — demo records include representative values for all new fields (shift, workSetup, location, compatNotes, generalNotes, preferredSkills)
-- Overlay quick action buttons (Favorite, Change Status, Archive, Close) moved to a dedicated third row in the header to prevent icon wrap on narrow viewports (e.g. Galaxy Z Fold)
-- Archive icon updated to a filing-box shape, visually distinct from Close, and consistent between card and overlay header
-- Quick filter icons on mobile (≤639px) rendered in a dedicated row below the application count text, left-aligned, so icons and count text do not overlap
-- FAB drop-shadow increased on mobile for better visual separation from page content beneath it
 - `CLAUDE.md` and `AGENTS.md` updated to reflect implemented app state (Vite/Express/SQLite), constitution v1.0.1, required date field (`lastStatusUpdate`), and correct directory conventions (`.agents/skills/` as shared source; `.codex/` lowercase for Codex-specific state)
 
 ### Fixed

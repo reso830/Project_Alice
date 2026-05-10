@@ -89,7 +89,7 @@ function discardButton() {
 }
 
 function closeButton() {
-  return document.querySelector('.modal-quick-action--close');
+  return document.querySelector('button[aria-label="Close"]');
 }
 
 function modalBackdrop() {
@@ -145,29 +145,13 @@ describe('Modal', () => {
     expect(actions.every((button) => button.querySelector('svg.icon'))).toBe(true);
     expect(actions.every((button) => !button.querySelector('.modal-quick-action__label'))).toBe(true);
     expect(actions.map((button) => button.title)).toEqual([
-      'Favorite',
+      'Star / Unstar',
       'Change status',
       'Archive',
       'Close',
     ]);
-    expect(actions.every((button) => !button.hasAttribute('aria-label'))).toBe(true);
     expect(document.querySelector('.modal-header__meta').contains(document.querySelector('.modal-quick-actions')))
-      .toBe(false);
-    expect(document.querySelector('.modal-header').lastElementChild).toBe(document.querySelector('.modal-quick-actions'));
-  });
-
-  it('keeps quick actions on a separate third header row', () => {
-    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-
-    Modal.open(application());
-
-    const header = document.querySelector('.modal-header');
-
-    expect(header.children[0].className).toBe('modal-header__meta');
-    expect(header.children[1].className).toBe('modal-header__title-row');
-    expect(header.children[2].className).toBe('modal-quick-actions');
-    expect(mainCss).toContain('.modal-header__meta');
-    expect(mainCss).toContain('justify-content: flex-start;');
+      .toBe(true);
   });
 
   it('centers status badge text for narrow wrapped header pills', () => {
@@ -1088,5 +1072,43 @@ describe('Modal', () => {
     await Promise.resolve();
 
     expect(document.body.textContent).toContain('Could not copy link');
+  });
+
+  describe('prefill option in create mode', () => {
+    it('seeds string fields into the draft when prefill is provided', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create', prefill: { companyName: 'Acme', jobTitle: 'Engineer' } });
+
+      expect(inputField('Company').value).toBe('Acme');
+      document.querySelector('#modal-title').click();
+      expect(document.querySelector('.modal-title-input').value).toBe('Engineer');
+    });
+
+    it('uses normalized defaults for fields absent from prefill', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create' });
+
+      expect(inputField('Company').value).toBe('');
+    });
+
+    it('ignores prefill in edit mode — draft comes from the existing application', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(application({ companyName: 'Original Corp' }), { prefill: { companyName: 'X' } });
+
+      expect(inputField('Company').value).toBe('Original Corp');
+    });
+
+    it('merges prefill skills array into the create-mode draft', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create', prefill: { skills: ['React'] } });
+
+      const skillsField = getFieldByLabel('Required Skills');
+      expect(skillsField.querySelectorAll('.skill-tag')).toHaveLength(1);
+      expect(skillsField.textContent).toContain('React');
+    });
   });
 });

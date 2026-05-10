@@ -778,6 +778,7 @@ export function close() {
 
 export function open(application, {
   mode,
+  prefill,
   onApplicationUpdate,
   onApplicationCreate,
   onArchiveSuccess,
@@ -791,7 +792,7 @@ export function open(application, {
   close();
   _mode = nextMode;
   _draft = nextMode === 'create'
-    ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0 }
+    ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0, ...(prefill ?? {}) }
     : copyApplication(application);
   _original = nextMode === 'create' ? null : copyApplication(application);
   _onApplicationUpdate = onApplicationUpdate;
@@ -858,7 +859,11 @@ export function open(application, {
   updateFavoriteButton(favoriteButton, currentFavorite);
 
   idPill.textContent = _mode === 'create' ? '#\u2014' : application.id;
-  favoriteButton.title = 'Favorite';
+  favoriteButton.setAttribute('aria-label', 'Toggle favorite');
+  statusButton.setAttribute('aria-label', 'Change status');
+  archiveButton.setAttribute('aria-label', 'Archive application');
+  closeButton.setAttribute('aria-label', 'Close');
+  favoriteButton.title = 'Star / Unstar';
   statusButton.title = 'Change status';
   archiveButton.title = 'Archive';
   closeButton.title = 'Close';
@@ -970,7 +975,7 @@ export function open(application, {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  headerMeta.append(idPill, statusBadge);
+  headerMeta.append(idPill, statusBadge, quickActions);
   renderTitle();
   quickActions.append(favoriteButton, statusButton);
 
@@ -979,7 +984,7 @@ export function open(application, {
   }
 
   quickActions.append(closeButton);
-  header.append(headerMeta, titleRow, quickActions);
+  header.append(headerMeta, titleRow);
   _renderBody();
   panel.append(header, body, buildFooter());
   _syncFooter();

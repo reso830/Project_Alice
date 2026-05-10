@@ -1,5 +1,6 @@
 import { Card } from '../components/Card.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
+import { CreationPicker } from '../components/CreationPicker.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
@@ -193,8 +194,7 @@ function onClearAll() {
 }
 
 function onAddApplication() {
-  Modal.open(null, {
-    mode: 'create',
+  CreationPicker.open({
     onApplicationCreate: (newRecord) => {
       _applications = [newRecord, ..._applications];
       _salaryBounds = getSalaryBounds(_applications);
