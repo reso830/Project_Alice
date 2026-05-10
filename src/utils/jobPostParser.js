@@ -9,6 +9,8 @@ function looksLikeSectionHeading(line) {
   if (!line) return false;
   if (/^[A-Za-z][^\n]{0,60}:\s*$/.test(line)) return true;
   if (/^[A-Z][A-Z\s&/()'"-]{3,}$/.test(line)) return true;
+  if (/^[A-Z][A-Za-z\s/&-]{2,60}$/.test(line)
+    && /\b(Responsibilities|Qualifications|Requirements|Skills|Abilities|Benefits|Values)$/i.test(line)) return true;
   return false;
 }
 
@@ -23,6 +25,14 @@ function extractSectionBody(text, headings) {
 
     for (const h of headings) {
       const hl = h.toLowerCase();
+      if (hl === 'responsibilities' && /^.+\s+responsibilities:?$/i.test(trimmed)) {
+        startIdx = i + 1;
+        break;
+      }
+      if (hl === 'skills' && /^skills\s*[/&]\s*(tools|abilities)/i.test(trimmed)) {
+        startIdx = i + 1;
+        break;
+      }
       if (lower === hl || lower === `${hl}:`) {
         startIdx = i + 1;
         break;
@@ -33,7 +43,7 @@ function extractSectionBody(text, headings) {
         break;
       }
       // Partial prefix match — catches "What will you do as X?" style headings
-      if (lower.startsWith(`${hl} `) || lower.startsWith(`${hl}?`)) {
+      if (hl === 'what will you do' && (lower.startsWith(`${hl} `) || lower.startsWith(`${hl}?`))) {
         startIdx = i + 1;
         break;
       }
@@ -68,21 +78,65 @@ function extractSectionBody(text, headings) {
   }, '');
 }
 
+function splitSkillTokens(value) {
+  return value
+    .replace(/\betc\.?\b/gi, '')
+    .split(/,|\band\b|\bor\b/i)
+    .map((item) => item.trim())
+    .map((item) => item
+      .replace(/^(and|or)\s+/i, '')
+      .replace(/\s+skills?$/i, '')
+      .replace(/[.!?]+$/, '')
+      .trim())
+    .filter((item) => item && !/^(related field|other .+ tools?)$/i.test(item))
+    .map((item) => (/^[a-z]/.test(item) ? `${item.charAt(0).toUpperCase()}${item.slice(1)}` : item));
+}
+
+function parseSkillLine(line) {
+  const trimmed = line.trim().replace(/[.!?]+$/, '');
+  if (!trimmed) return [];
+
+  if (/^(Bachelor'?s|Bachelor’s|Master'?s|Master’s|College)\s+degree\b/i.test(trimmed)) return [];
+  if (/^Proven experience\b/i.test(trimmed)) return [];
+
+  const suchAsMatch = trimmed.match(/^Proficiency in .+ such as (.+)$/i);
+  if (suchAsMatch) return splitSkillTokens(suchAsMatch[1]);
+
+  const familiarityMatch = trimmed.match(/^Familiarity with (.+)$/i);
+  if (familiarityMatch) return splitSkillTokens(familiarityMatch[1]);
+
+  if (/certification/i.test(trimmed)) return [trimmed];
+
+  if (/^Strong .+\bskills?$/i.test(trimmed)) {
+    return splitSkillTokens(trimmed.replace(/\s+skills?$/i, ''));
+  }
+
+  if (/\bpreferred$/i.test(trimmed)) {
+    return splitSkillTokens(trimmed.replace(/\bpreferred$/i, ''));
+  }
+
+  if (/[.!?]$/.test(line.trim())) {
+    return [trimmed];
+  }
+
+  return splitSkillTokens(trimmed);
+}
+
 function parseListItems(body) {
   const items = [];
   for (const line of body.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     if (/^[-*•]\s+(.+)/.test(trimmed)) {
-      items.push(trimmed.replace(/^[-*•]\s+/, '').trim());
+      items.push(...parseSkillLine(trimmed.replace(/^[-*•]\s+/, '').trim()));
     } else if (/^\d+[.)]\s+(.+)/.test(trimmed)) {
-      items.push(trimmed.replace(/^\d+[.)]\s+/, '').trim());
+      items.push(...parseSkillLine(trimmed.replace(/^\d+[.)]\s+/, '').trim()));
     } else if (/[.!?]$/.test(trimmed)) {
       // Prose sentence — preserve whole item and strip trailing punctuation instead of
       // comma-splitting, which would produce fragments like "or related field"
-      items.push(trimmed.replace(/[.!?]+$/, '').trim());
+      items.push(...parseSkillLine(trimmed));
     } else {
-      items.push(...trimmed.split(',').map((s) => s.trim()).filter(Boolean));
+      items.push(...parseSkillLine(trimmed));
     }
   }
   return [...new Set(items)];
@@ -132,6 +186,7 @@ function extractJobTitle(text) {
     if (trimmed === trimmed.toUpperCase()) continue;
     if (/^[-*•\d]/.test(trimmed)) continue;
     if (skipPrefixes.test(trimmed)) continue;
+    if (/^About the job$/i.test(trimmed)) continue;
     if (/[.!?]$/.test(trimmed)) continue;
 
     // Strip trailing section nouns: "Associate PM Responsibilities" → "Associate PM"

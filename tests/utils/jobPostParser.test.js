@@ -216,6 +216,90 @@ React, TypeScript`;
     });
   });
 
+  describe('real posting parser quality', () => {
+    it('extracts a title from a role-specific responsibilities heading', () => {
+      const text = `About the job
+The Associate Project Manager is responsible for planning, executing, and closing moderately complex projects.
+
+Associate Project Manager Responsibilities
+
+Planning and coordination: Maintains and validates project scope, objectives, timelines, and deliverables.
+Lead and organize meetings: Prepare agendas, facilitate discussions, document notes, and track action items to completion.
+
+Skills/tools/abilities
+
+English proficiency
+Proficiency in project management software and tools, such as Smartsheet
+Six Sigma and Lean Sigma preferred`;
+
+      const result = parseJobPost(text);
+
+      expect(result.jobTitle).toBe('Associate Project Manager');
+      expect(result.responsibilities).toContain('Planning and coordination');
+      expect(result.skills).toContain('Smartsheet');
+      expect(result.skills).toContain('Six Sigma');
+    });
+
+    it('filters qualification prose down to skill-like items', () => {
+      const text = `Position: Scrum Master
+Work Set-Up: Hybrid-2x per week onsite.
+Location: Ayala, Makati City
+
+JOB DESCRIPTION AND RESONSIBILITIES:
+Lead Scrum ceremonies such as sprint planning, daily stand-ups, and retrospectives.
+Ensure the team follows Agile processes and removes impediments.
+
+QUALIFICATIONS:
+Bachelor's degree in IT, Business, or related field.
+Scrum Master certification (CSM, SAFe).
+Proven experience as a Scrum Master with Agile teams.
+Strong communication, coaching, and facilitation skills.
+Familiarity with Jira, Agile DevOps, or other Agile tools.`;
+
+      const result = parseJobPost(text);
+
+      expect(result.skills).toContain('Scrum Master certification (CSM, SAFe)');
+      expect(result.skills).toContain('Strong communication');
+      expect(result.skills).toContain('Coaching');
+      expect(result.skills).toContain('Facilitation');
+      expect(result.skills).toContain('Jira');
+      expect(result.skills).toContain('Agile DevOps');
+      expect(result.skills).not.toContain("Bachelor's degree in IT, Business, or related field");
+      expect(result.skills).not.toContain('Proven experience as a Scrum Master with Agile teams');
+      expect(result.skills).not.toContain('or other Agile tools');
+    });
+
+    it('does not treat responsibility lines as a skills section', () => {
+      const text = `Senior Technical Product Owner
+
+What will you do as a Senior Technical Product Owner?
+
+Each product has different needs, but your day can typically involve the following:
+
+Collaborating with product management and stakeholders on the development of product roadmaps
+Identifying opportunities to add value to the product
+Requirements gathering
+Backlog management
+Working closely with the developers and user experience (UX) teams to define solutions
+Facilitating team ceremonies
+Supporting QA and UAT strategy
+Supporting incident management
+
+What makes you the ideal candidate for this role?
+
+Essential:
+
+That you apply the Modern Agile values to your work
+Great communication skills and the ability to develop strong working relationships`;
+
+      const result = parseJobPost(text);
+
+      expect(result.responsibilities).toContain('Collaborating with product management');
+      expect(result.responsibilities).toContain('Supporting incident management');
+      expect(result.skills).toEqual([]);
+    });
+  });
+
   describe('recruiter', () => {
     it('extracts recruiter from "Contact:" label', () => {
       const text = 'Senior Frontend Engineer\nCompany: Acme Corp\nLocation: Manila\nContact: Jane Reyes\n\nWe are looking for a skilled developer.';
