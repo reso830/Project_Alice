@@ -368,9 +368,10 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
 - For DOCX: a Node.js extraction library (e.g. `mammoth`) strips formatting and
   extracts plain text
 - For TXT: raw text is passed directly to the field-parsing logic
-- "Current role/title" has no corresponding field in the existing profile model and is
-  not extracted in V1; if a `headline` field is introduced in a future spec, extraction
-  can be added then
+- "Current role/title" extraction was requested in the feature brief but is explicitly
+  excluded in V1 (FR-015); the existing profile model has no standalone headline field.
+  This is an accepted scope reduction from the brief. If a `headline` field is
+  introduced in a future spec, extraction can be added then
 - "Attendance dates" for education means start and end years; only the graduation/end
   year is stored as `yearCompleted`; start year is discarded in V1 to match the
   existing model
@@ -384,3 +385,5 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
   handling is needed
 - No new profile model fields are required in V1; all extracted data maps to existing
   fields via the merge rules defined above
+- V1 supports English-language resumes only; non-English content will produce poor
+  extraction results and is not a supported case. Multi-language support is out of scope

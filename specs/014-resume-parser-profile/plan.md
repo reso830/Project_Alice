@@ -62,11 +62,16 @@ No database changes. No new profile model fields. All resume data is transient.
 ## New Files
 
 ### `server/resume/extractor.js`
-Exports `extractText(buffer, mimetype)`.
+Exports `extractText(buffer, mimetype, originalname)`.
 - `application/pdf` → `pdf-parse(buffer).text`
 - `application/vnd.openxmlformats-officedocument.wordprocessingml.document` → `mammoth.extractRawText({ buffer }).value`
 - `text/plain` → `buffer.toString('utf8')`
-- Other mimetypes → throw (caught by route handler, returns 400)
+- `application/octet-stream` or empty mimetype → fall back to file extension from
+  `originalname` (`.pdf`, `.docx`, `.txt`) to determine extraction method; this
+  handles browsers (e.g. Firefox on Windows) that report a generic MIME type for
+  DOCX files that the client accepted via extension fallback
+- Other mimetypes (and unrecognized extensions on fallback) → throw `Unsupported file type`
+  (caught by route handler, returns 400)
 
 ### `server/resume/parser.js`
 Exports `parseResumeText(text)` → `ParsedProfileData`.
