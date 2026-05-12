@@ -10,21 +10,17 @@ implementing the changes that break them.
 
 ---
 
-## Phase 1: Foundation — Dependencies, Tests, and Shared Logic
+## Phase 1: Foundation — Dependencies and Shared Logic
 
-**Purpose**: Install packages, write unit tests first, then implement the two shared
-modules (`extractor.js`, `parser.js`, `mergeResumeData`). Tests T005 and T006 are
-written in this phase (before T003/T004) so they fail on first run and pass once
-implementation is complete. No user-visible changes in this phase.
+**Purpose**: Install packages and build the two shared modules (`extractor.js`,
+`parser.js`, `mergeResumeData`) that every later phase depends on. No user-visible
+changes in this phase.
 
 **⚠️ CRITICAL**: Phases 2–4 cannot begin until this phase is complete.
 
-**Order within phase**: T001 → T002 → T005+T006 (write tests; they must fail) →
-T003+T004 (implement until tests pass)
-
 ---
 
-### [X] T001 — Install server-side dependencies
+### T001 — Install server-side dependencies
 
 **Target files**: `package.json`
 
@@ -45,28 +41,22 @@ for the other two) exits 0.
 
 ---
 
-### [X] T002 — Create text extractor module
+### T002 — Create text extractor module
 
 **Target files**: `server/resume/extractor.js` *(new)*
 
 **Expected behaviour**:
-- Export `extractText(buffer, mimetype, originalname)` → `Promise<string>`
+- Export `extractText(buffer, mimetype)` → `Promise<string>`
 - `application/pdf` → calls `pdf-parse(buffer)`, returns `.text`
 - `application/vnd.openxmlformats-officedocument.wordprocessingml.document` → calls
   `mammoth.extractRawText({ buffer })`, returns `.value`
 - `text/plain` → returns `buffer.toString('utf8')`
-- `application/octet-stream` or empty/falsy mimetype → fall back to the lowercase
-  extension of `originalname`:
-  - `.pdf` → PDF path; `.docx` → DOCX path; `.txt` → TXT path
-  - Any other extension → throws `Error('Unsupported file type')`
-- Any other unrecognized mimetype → throws `Error('Unsupported file type')`
+- Any other mimetype → throws `Error('Unsupported file type')`
 
 **Constraints**:
 - No file is written to disk; the buffer is only held in memory during the call
 - The function must be `async` (both `pdf-parse` and `mammoth` are async)
 - The thrown error message must be catchable by the route handler in T008
-- The extension fallback ensures a valid `.docx` accepted client-side is not rejected
-  server-side when Firefox or similar sends `application/octet-stream`
 
 **Validation**: Covered by parser tests in T005 (indirectly) and by the endpoint test
 in T007 (directly). Manual spot-check: `node -e "import('./server/resume/extractor.js')"`.
@@ -75,88 +65,7 @@ in T007 (directly). Manual spot-check: `node -e "import('./server/resume/extract
 
 ---
 
-### [X] T005 [P] — Write parser unit tests
-
-**Target files**: `tests/server/resumeParser.test.js` *(new)*
-
-**Expected behaviour** — Write these tests BEFORE implementing T003. They MUST FAIL
-on first run (module does not yet exist). They guide T003 and pass once it is complete:
-
-Test cases to cover:
-1. Contact block — plain text with name, email, phone, city on separate lines
-   → `firstName`, `lastName`, `email`, `phone`, `city` are populated
-2. LinkedIn URL in contact block → appears in `links[]` with `friendlyName: 'LinkedIn'`
-3. Summary section header present → `summary` is populated
-4. No summary section header → `summary` is null
-5. Experience section with one job block (company, role, date range, bullets)
-   → one entry in `experience[]` with correct `role`, `company`, `dateStarted`,
-   `dateEnded`, `currentWork: false`
-6. Experience entry with "Present" as end date → `currentWork: true`, `dateEnded: ''`
-7. Skills section with comma-separated values → `skills[]` contains each trimmed skill
-8. No Skills section → `skills` is `[]`
-9. Education section with degree, school, graduation year → one `education[]` entry
-10. Language listed without proficiency → proficiency defaults to `'Intermediate'`
-11. Empty string input → all scalars null, all arrays empty (complete failure case)
-12. Date formats: `Jan 2022`, `January 2022`, `01/2022` all normalize to `'01/2022'`
-
-**Constraints**:
-- Use inline fixture strings (no external files); keep fixtures small and focused
-- Use `vitest` (`describe`, `it`, `expect`) consistent with `tests/models/profile.test.js`
-- Do not import from `src/` (server-only test)
-- Tests must be written before T003 is complete; they must initially fail
-
-**Validation**: `npm run test:run -- tests/server/resumeParser.test.js` — all pass
-after T003 is complete.
-
----
-
-### [X] T006 [P] — Write merge rule tests
-
-**Target files**: `tests/models/resumeMerge.test.js` *(new)*
-
-**Expected behaviour** — Write these tests BEFORE implementing T004. They MUST FAIL
-on first run (`mergeResumeData` does not yet exist). They guide T004 and pass once
-it is complete:
-
-Test cases to cover (mapped to spec FR-025 to FR-028):
-1. **FR-025** — Non-empty singular field is not overwritten:
-   - `currentProfile.firstName = 'Alice'`, `parsedData.firstName = 'Bob'`
-   → result `firstName === 'Alice'`
-2. **FR-026** — Empty singular field is filled:
-   - `currentProfile.email = ''`, `parsedData.email = 'a@b.com'`
-   → result `email === 'a@b.com'`
-3. **FR-026** — Null parsed scalar does not corrupt an empty field:
-   - `currentProfile.phone = ''`, `parsedData.phone = null`
-   → result `phone === ''`
-4. **FR-027** — Collection entries are appended, not replaced:
-   - `currentProfile.skills = ['JS']`, `parsedData.skills = ['Python']`
-   → result `skills === ['JS', 'Python']`
-5. **FR-028 experience** — Duplicate blocked (same company + role + dateStarted):
-   - Existing entry `{ company: 'Acme', role: 'Dev', dateStarted: '01/2020' }`
-   - Parsed entry same key → not appended; length unchanged
-6. **FR-028 experience** — Non-duplicate appended:
-   - Parsed entry with different `dateStarted` → appended; length increases by 1
-7. **FR-028 skills** — Case-insensitive dedup: existing `'JavaScript'`, parsed
-   `'javascript'` → not appended
-8. **FR-028 education** — Duplicate blocked (same university + degreeMajor + yearCompleted)
-9. **FR-028 certifications** — Duplicate blocked (same name + issuingBody)
-10. **FR-028 languages** — Duplicate blocked (same language, case-insensitive)
-11. **FR-028 links** — Duplicate blocked (same URL, trailing slash normalized)
-12. **FR-028 awards** — Duplicate blocked (same awardName + issuingBody)
-13. Immutability: `mergeResumeData` does not mutate `currentProfile` or `parsedData`
-14. Null/undefined `parsedData` → returns a copy of `currentProfile` without throwing
-
-**Constraints**:
-- Import only from `src/models/profile.js`
-- Use `vitest` consistent with `tests/models/profile.test.js`
-- Tests must be written before T004 is complete; they must initially fail
-
-**Validation**: `npm run test:run -- tests/models/resumeMerge.test.js` — all pass
-after T004 is complete.
-
----
-
-### [X] T003 — Create heuristic resume parser
+### T003 — Create heuristic resume parser
 
 **Target files**: `server/resume/parser.js` *(new)*
 
@@ -210,7 +119,7 @@ after T004 is complete.
 
 ---
 
-### [X] T004 — Add `mergeResumeData` to profile model
+### T004 — Add `mergeResumeData` to profile model
 
 **Target files**: `src/models/profile.js`
 
@@ -251,11 +160,91 @@ after T004 is complete.
 
 **Purpose**: Expose `POST /api/resume/parse`, covered by tests. No frontend changes.
 
-**⚠️ Write tests before implementation (T007 before T008–T009).**
+**⚠️ Write tests before implementation (T005–T007 before T008–T009).**
 
 ---
 
-### [X] T007 [P] — Write server endpoint tests
+### T005 [P] — Write parser unit tests
+
+**Target files**: `tests/server/resumeParser.test.js` *(new)*
+
+**Expected behaviour** — T003 is complete before T005 starts (Phase 1 finishes
+before Phase 2 begins). These tests target the finished parser module and MUST
+FAIL on first run before T003 output is present:
+
+Test cases to cover:
+1. Contact block — plain text with name, email, phone, city on separate lines
+   → `firstName`, `lastName`, `email`, `phone`, `city` are populated
+2. LinkedIn URL in contact block → appears in `links[]` with `friendlyName: 'LinkedIn'`
+3. Summary section header present → `summary` is populated
+4. No summary section header → `summary` is null
+5. Experience section with one job block (company, role, date range, bullets)
+   → one entry in `experience[]` with correct `role`, `company`, `dateStarted`,
+   `dateEnded`, `currentWork: false`
+6. Experience entry with "Present" as end date → `currentWork: true`, `dateEnded: ''`
+7. Skills section with comma-separated values → `skills[]` contains each trimmed skill
+8. No Skills section → `skills` is `[]`
+9. Education section with degree, school, graduation year → one `education[]` entry
+10. Language listed without proficiency → proficiency defaults to `'Intermediate'`
+11. Empty string input → all scalars null, all arrays empty (complete failure case)
+12. Date formats: `Jan 2022`, `January 2022`, `01/2022` all normalize to `'01/2022'`
+
+**Constraints**:
+- Use inline fixture strings (no external files); keep fixtures small and focused
+- Use `vitest` (`describe`, `it`, `expect`) consistent with `tests/models/profile.test.js`
+- Do not import from `src/` (server-only test)
+- Tests must be written before T003 is complete; they must initially fail
+
+**Validation**: `npm run test:run -- tests/server/resumeParser.test.js` — all pass
+after T003 is complete.
+
+---
+
+### T006 [P] — Write merge rule tests
+
+**Target files**: `tests/models/resumeMerge.test.js` *(new)*
+
+**Expected behaviour** — Tests MUST FAIL before T004 is complete:
+
+Test cases to cover (mapped to spec FR-025 to FR-028):
+1. **FR-025** — Non-empty singular field is not overwritten:
+   - `currentProfile.firstName = 'Alice'`, `parsedData.firstName = 'Bob'`
+   → result `firstName === 'Alice'`
+2. **FR-026** — Empty singular field is filled:
+   - `currentProfile.email = ''`, `parsedData.email = 'a@b.com'`
+   → result `email === 'a@b.com'`
+3. **FR-026** — Null parsed scalar does not corrupt an empty field:
+   - `currentProfile.phone = ''`, `parsedData.phone = null`
+   → result `phone === ''`
+4. **FR-027** — Collection entries are appended, not replaced:
+   - `currentProfile.skills = ['JS']`, `parsedData.skills = ['Python']`
+   → result `skills === ['JS', 'Python']`
+5. **FR-028 experience** — Duplicate blocked (same company + role + dateStarted):
+   - Existing entry `{ company: 'Acme', role: 'Dev', dateStarted: '01/2020' }`
+   - Parsed entry same key → not appended; length unchanged
+6. **FR-028 experience** — Non-duplicate appended:
+   - Parsed entry with different `dateStarted` → appended; length increases by 1
+7. **FR-028 skills** — Case-insensitive dedup: existing `'JavaScript'`, parsed
+   `'javascript'` → not appended
+8. **FR-028 education** — Duplicate blocked (same university + degreeMajor + yearCompleted)
+9. **FR-028 certifications** — Duplicate blocked (same name + issuingBody)
+10. **FR-028 languages** — Duplicate blocked (same language, case-insensitive)
+11. **FR-028 links** — Duplicate blocked (same URL, trailing slash normalized)
+12. **FR-028 awards** — Duplicate blocked (same awardName + issuingBody)
+13. Immutability: `mergeResumeData` does not mutate `currentProfile` or `parsedData`
+14. Null/undefined `parsedData` → returns a copy of `currentProfile` without throwing
+
+**Constraints**:
+- Import only from `src/models/profile.js`
+- Use `vitest` consistent with `tests/models/profile.test.js`
+- Tests must be written before T004 is complete; they must initially fail
+
+**Validation**: `npm run test:run -- tests/models/resumeMerge.test.js` — all pass
+after T004 is complete.
+
+---
+
+### T007 [P] — Write server endpoint tests
 
 **Target files**: `tests/server/resume.test.js` *(new)*
 
@@ -276,10 +265,6 @@ Test cases to cover (mapped to `contracts/api.md`):
    expected keys (`firstName`, `lastName`, `email`, `skills`, `experience`, etc.),
    all scalars are `null` and all arrays are `[]` (complete parse failure still
    returns 200 with empty ParsedProfileData, not an error)
-6. `.txt` file sent with `application/octet-stream` MIME type (simulates generic
-   browser MIME reporting) → 200, `body.data` is an object with the expected keys
-   (extension fallback accepts the file via `.txt` extension and extracts correctly;
-   tests the fallback path without requiring a real DOCX binary)
 
 **Constraints**:
 - Define a local `withServer` function inline following the pattern in
@@ -296,7 +281,7 @@ T008 and T009 are complete.
 
 ---
 
-### [X] T008 — Create resume route
+### T008 — Create resume route
 
 **Target files**: `server/routes/resume.js` *(new)*
 
@@ -306,7 +291,7 @@ T008 and T009 are complete.
   - Apply `multer({ storage: multer.memoryStorage(), limits: { fileSize: 5_242_880 } }).single('resume')`
     as middleware before the handler
   - If `req.file` is absent → respond 400 `{ error: { code: 'VALIDATION_ERROR', message: 'No resume file provided.' } }`
-  - Call `extractText(req.file.buffer, req.file.mimetype, req.file.originalname)`:
+  - Call `extractText(req.file.buffer, req.file.mimetype)`:
     - If extractor throws `'Unsupported file type'` → respond 400
       `{ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'Unsupported file type. Please upload a PDF, DOCX, or TXT file.' } }`
   - Call `parseResumeText(text)` → respond 200 `{ data: parsedData }`
@@ -329,7 +314,7 @@ T008 and T009 are complete.
 
 ---
 
-### [X] T009 — Register resume router in Express app
+### T009 — Register resume router in Express app
 
 **Target files**: `server/index.js`
 
@@ -360,7 +345,7 @@ click Save.
 
 ---
 
-### [X] T010 — Create resume API service
+### T010 — Create resume API service
 
 **Target files**: `src/services/resumeApi.js` *(new)*
 
@@ -383,7 +368,7 @@ test required; the server endpoint test (T007) covers the HTTP contract.
 
 ---
 
-### [X] T011 — Extend `navigate` to accept options
+### T011 — Extend `navigate` to accept options
 
 **Target files**: `src/main.js`
 
@@ -408,7 +393,7 @@ pass. Confirm by also running `npm run test:run`.
 
 ---
 
-### [X] T012 — Create ResumeImport component
+### T012 — Create ResumeImport component
 
 **Target files**: `src/components/ResumeImport.js` *(new)*
 
@@ -451,9 +436,7 @@ pass. Confirm by also running `npm run test:run`.
 
   **`error`** — parse failure:
   - Message: "Unable to parse resume. Try a different file or continue manually."
-  - "Retry" button: transition to `selected` state with the previously selected file
-    reference retained — filename is shown again and "Process Resume" button is
-    re-enabled, so the user can retry without re-selecting the file
+  - "Retry" button: reset to `idle`, keep previously selected file reference
   - "Continue Manually" button: call `onDismiss()`, hide the component
 
 - Accessibility: file input has an accessible label; status messages use `aria-live`
@@ -473,7 +456,7 @@ integration is covered by the ProfileEdit smoke test. Ensure `npm run lint` pass
 
 ---
 
-### [X] T013 — Add import area and `applyResumeData` to ProfileEdit
+### T013 — Add import area and `applyResumeData` to ProfileEdit
 
 **Target files**: `src/pages/ProfileEdit.js`
 
@@ -542,7 +525,7 @@ Click "Build Profile Manually" → Edit Profile opens with blank fields. Return;
 
 ---
 
-### [X] T014 [P] — Update Profile.test.js for new empty state
+### T014 [P] — Update Profile.test.js for new empty state
 
 **Target files**: `tests/pages/Profile.test.js`
 
@@ -567,7 +550,7 @@ is done, then passes.
 
 ---
 
-### [X] T015 — Update Profile page empty state
+### T015 — Update Profile page empty state
 
 **Target files**: `src/pages/Profile.js`
 
@@ -603,7 +586,7 @@ all existing tests are updated.
 
 ---
 
-### [X] T016 [P] — Update ProfileEdit.test.js for import area
+### T016 [P] — Update ProfileEdit.test.js for import area
 
 **Target files**: `tests/pages/ProfileEdit.test.js`
 
@@ -625,7 +608,7 @@ all existing tests are updated.
 
 ---
 
-### [X] T017 — Run full test suite
+### T017 — Run full test suite
 
 **Target files**: *(none — verification task)*
 
@@ -650,7 +633,7 @@ all existing tests are updated.
 
 ---
 
-### [X] T018 — Lint check
+### T018 — Lint check
 
 **Target files**: *(none — verification task)*
 
@@ -666,27 +649,23 @@ all existing tests are updated.
 
 ---
 
-### [X] T019 — Privacy and security review
+### T019 — Privacy and security review
 
 **Target files**: *(none — review task)*
 
 **Checklist**:
-- [X] `server/routes/resume.js` — no file written to disk or database; buffer GC'd
+- [ ] `server/routes/resume.js` — no file written to disk or database; buffer GC'd
   within the request cycle
-- [X] `server/resume/extractor.js` — no external HTTP calls; uses only local libs
-- [X] `server/resume/parser.js` — no external HTTP calls
-- [X] `src/components/ResumeImport.js` — all parsed resume content passed through
+- [ ] `server/resume/extractor.js` — no external HTTP calls; uses only local libs
+- [ ] `server/resume/parser.js` — no external HTTP calls
+- [ ] `src/components/ResumeImport.js` — all parsed resume content passed through
   `parseResume()`; no content sent anywhere other than `/api/resume/parse`
-- [X] `src/pages/ProfileEdit.js` — all form content rendered via `textContent` or
+- [ ] `src/pages/ProfileEdit.js` — all form content rendered via `textContent` or
   DOM `value` (not `innerHTML`); resume content does not reach `innerHTML`
-- [X] No analytics, tracking pixels, or third-party data sharing added anywhere
+- [ ] No analytics, tracking pixels, or third-party data sharing added anywhere
 
 **Validation**: Manual review; check each file above. Document any finding with
 rationale in a comment or task note. Must be clean before Phase 6.
-
-**Review result**: Clean. Resume files are handled in memory only, parsed content is
-sent only to the local `/api/resume/parse` endpoint, and rendered imported data uses
-safe DOM text/value APIs with no analytics or third-party sharing.
 
 ---
 
@@ -705,7 +684,7 @@ that automated tests cannot detect.
 
 ---
 
-### [X] T020 [US1] — Core import on Edit Profile page
+### T020 [US1] — Core import on Edit Profile page
 
 **Steps**:
 1. Navigate to Profile page (no profile exists)
@@ -728,17 +707,9 @@ that automated tests cannot detect.
 - No automatic save occurs; user must click Save
 - Saved profile appears correctly on the Profile page
 
-**Phase 6 verification (2026-05-13)**:
-- Browser smoke confirmed the Edit Profile page renders the import area before
-  "BASIC INFO" after entering from the empty profile state.
-- Upload parsing, prefill, dirty-state, save, and saved-profile rendering remain
-  covered by the focused resume API/parser/merge/ProfileEdit test run because
-  the in-app browser exposed the file input but not programmatic local-file
-  selection.
-
 ---
 
-### [X] T021 [US2] — Empty profile entry point
+### T021 [US2] — Empty profile entry point
 
 **Steps**:
 1. Ensure no profile exists (`npm run db:clear:profile`)
@@ -755,14 +726,9 @@ that automated tests cannot detect.
 - "Build Profile Manually" behaves identically to the previous "Set Up Profile"
 - "Upload Resume" lands on Edit Profile with the import area visually first
 
-**Phase 6 verification (2026-05-13)**:
-- Browser smoke after `npm run db:clear:profile` confirmed "Upload Resume" and
-  "Build Profile Manually" are visible, "Set Up Profile" is absent, and
-  "Upload Resume" opens Edit Profile with `.resume-import--highlight`.
-
 ---
 
-### [X] T022 [US3] — Existing profile protection
+### T022 [US3] — Existing profile protection
 
 **Steps**:
 1. Create a profile with: `firstName = "Alice"`, one experience entry, one skill
@@ -780,13 +746,9 @@ that automated tests cannot detect.
 - No existing field is silently overwritten
 - Duplicate detection works for experience, skills, and any other overlapping data
 
-**Phase 6 verification (2026-05-13)**:
-- Existing profile protection and duplicate-merge behavior are covered by
-  `tests/models/resumeMerge.test.js` and the focused ProfileEdit suite run.
-
 ---
 
-### [X] T023 [US4] — Graceful failure and recovery
+### T023 [US4] — Graceful failure and recovery
 
 **Steps**:
 1. Navigate to Edit Profile
@@ -804,14 +766,9 @@ that automated tests cannot detect.
 - Retry resets the widget without losing context
 - Continue Manually never corrupts form state
 
-**Phase 6 verification (2026-05-13)**:
-- Empty/unparseable uploads are covered by `tests/server/resume.test.js`; the
-  component failure/recovery surface is covered by the focused ProfileEdit
-  regression suite and verified in DOM state during the browser smoke.
-
 ---
 
-### [X] T024 — Mobile layout check
+### T024 — Mobile layout check
 
 **Steps**:
 1. Open DevTools → set viewport to 375 px wide (iPhone SE or similar)
@@ -827,19 +784,13 @@ that automated tests cannot detect.
 - Import widget is usable with touch/click on mobile
 - Two-option empty state stacks vertically below 640 px
 
-**Phase 6 verification (2026-05-13)**:
-- Browser smoke with a 375 x 667 viewport confirmed the empty-state actions,
-  import widget, hidden file input, and "BASIC INFO" section are visible and
-  usable in the narrow layout.
-
 ---
 
 ## Dependencies & Execution Order
 
 ```
-Phase 1 (T001→T002→T005+T006→T003+T004) → must complete before Phase 2
-  Within Phase 1: T005+T006 written first (fail), then T003+T004 implemented (pass)
-Phase 2 (T007→T008→T009) → write T007 (tests fail) before T008–T009 (implementation)
+Phase 1 (T001–T004) → must complete before Phase 2
+Phase 2 (T005–T009) → write tests (T005–T007) before implementation (T008–T009)
 Phase 3 (T010–T013) → depends on Phase 1 and Phase 2
 Phase 4 (T014–T015) → write test (T014) before implementation (T015);
                        can start in parallel with Phase 3 (different files)
@@ -849,9 +800,8 @@ Phase 6 (T020–T024) → depends on Phase 5 passing
 
 ### Parallel opportunities within phases
 
-- **Phase 1**: T005 and T006 can run in parallel (different test files); T003 and T004
-  can run in parallel (different implementation files) once T005/T006 are written
-- **Phase 2**: T007, T008, T009 are sequential (test before implementation)
+- **Phase 1**: T002, T003, T004 can run in parallel (different files)
+- **Phase 2**: T005, T006, T007 can run in parallel (different test files)
 - **Phase 3**: T010 and T011 can run in parallel (different files); T012 and T013
   must be sequential (T012 before T013)
 - **Phase 4**: T014 must precede T015

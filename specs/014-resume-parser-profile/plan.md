@@ -51,7 +51,7 @@ No database changes. No new profile model fields. All resume data is transient.
 8. File buffer goes out of scope (GC); nothing written to disk
 9. Server responds { data: ParsedProfileData }
 10. Client: ResumeImport component calls onSuccess(parsedData)
-11. ProfileEdit: `_formState = mergeResumeData(_formState, parsedData)` (assignment; pure function, no mutation)
+11. ProfileEdit: mergeResumeData(_formState, parsedData) mutates _formState
 12. ProfileEdit: renderEditPage(container) re-renders with updated state
     _initialState is unchanged → isDirty() returns true → Save enabled
 13. User reviews, edits, and saves manually
@@ -62,16 +62,11 @@ No database changes. No new profile model fields. All resume data is transient.
 ## New Files
 
 ### `server/resume/extractor.js`
-Exports `extractText(buffer, mimetype, originalname)`.
+Exports `extractText(buffer, mimetype)`.
 - `application/pdf` → `pdf-parse(buffer).text`
 - `application/vnd.openxmlformats-officedocument.wordprocessingml.document` → `mammoth.extractRawText({ buffer }).value`
 - `text/plain` → `buffer.toString('utf8')`
-- `application/octet-stream` or empty mimetype → fall back to file extension from
-  `originalname` (`.pdf`, `.docx`, `.txt`) to determine extraction method; this
-  handles browsers (e.g. Firefox on Windows) that report a generic MIME type for
-  DOCX files that the client accepted via extension fallback
-- Other mimetypes (and unrecognized extensions on fallback) → throw `Unsupported file type`
-  (caught by route handler, returns 400)
+- Other mimetypes → throw (caught by route handler, returns 400)
 
 ### `server/resume/parser.js`
 Exports `parseResumeText(text)` → `ParsedProfileData`.
@@ -112,7 +107,7 @@ Exports `createResumeRouter({ })` (no db dependency).
 ```
 POST /api/resume/parse
   multer({ storage: memoryStorage(), limits: { fileSize: 5_242_880 } }).single('resume')
-  → extractText(req.file.buffer, req.file.mimetype, req.file.originalname)
+  → extractText(req.file.buffer, req.file.mimetype)
   → parseResumeText(text)
   → res.json({ data: parsedData })
 ```
@@ -278,7 +273,7 @@ No new frontend dependencies.
 ### Tests to Add
 - `tests/server/resume.test.js` — endpoint: valid upload → parsed data, wrong type
   → 400, oversized → 400, no file → 400
-- `tests/models/resumeMerge.test.js` — all merge rule cases (FR-025 to FR-028)
+- `tests/models/resumeMerge.test.js` — all merge rule cases (FR-024 to FR-027)
 - `tests/server/resumeParser.test.js` — parser unit tests with fixture text strings
 
 ### Tests to Update

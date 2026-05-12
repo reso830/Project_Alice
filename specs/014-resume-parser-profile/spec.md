@@ -54,28 +54,35 @@ Save — verify the saved profile reflects all changes.
 
 ### User Story 2 — Resume Import from Empty Profile State (Priority: P1)
 
-A user with no saved profile visits the Profile page and sees a single "Set Up Profile"
-button. Clicking it navigates to the Edit Profile page with the Resume Import area
-prominently presented at the top, where the user can either upload a resume to pre-fill
-fields or fill them in manually.
+A user with no saved profile visits the Profile page and sees two distinct options:
+"Upload Resume" and "Build Profile Manually". Choosing "Upload Resume" navigates to
+the Edit Profile page with the Resume Import area prominently presented at the top.
+Choosing "Build Profile Manually" goes directly to Edit Profile with blank fields,
+identical to the previous "Set Up Profile" behavior.
 
 **Why this priority**: The empty state is the primary onboarding path for new users.
-Surfacing the resume import option on Edit Profile reduces setup friction at the moment
-of first use without requiring a separate decision step at the Profile page.
+Surfacing the resume import option here reduces setup friction at the moment of first
+use.
 
-**Independent Test**: With no profile saved, navigate to the Profile page. Verify a
-single "Set Up Profile" button is shown. Click it — verify the Edit Profile page opens
-with the Resume Import area prominently shown at the top. Upload and process a file,
-then confirm pre-filled fields appear in the form.
+**Independent Test**: With no profile saved, navigate to the Profile page. Verify two
+distinct options appear: "Upload Resume" and "Build Profile Manually". Click "Build
+Profile Manually" — verify it navigates to the Edit Profile page with blank fields.
+Return; click "Upload Resume" — verify the Edit Profile page opens with the Resume
+Import area prominently shown at the top. Upload and process a file, then confirm
+pre-filled fields appear in the form.
 
 **Acceptance Scenarios**:
 
 1. **Given** no profile exists, **When** the user visits the Profile page, **Then**
-   the empty state shows a single "Set Up Profile" button
-2. **Given** the user clicks "Set Up Profile", **When** the action fires, **Then** the
+   the empty state shows two options: "Upload Resume" and "Build Profile Manually"
+   instead of the previous single "Set Up Profile" button
+2. **Given** the user clicks "Build Profile Manually", **When** the action fires,
+   **Then** the user is navigated to the Edit Profile page with all fields blank,
+   behavior identical to the previous "Set Up Profile" path
+3. **Given** the user clicks "Upload Resume", **When** the action fires, **Then** the
    user is navigated to the Edit Profile page with the Resume Import area visually
    prominent (e.g. auto-scrolled to or highlighted)
-3. **Given** the user arrives on Edit Profile via "Set Up Profile", **When** they
+4. **Given** the user arrives on Edit Profile via "Upload Resume", **When** they
    process a file and parsing succeeds, **Then** the Edit Profile form is pre-filled
    and dirty-state tracking begins
 
@@ -190,9 +197,7 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
 **Resume Import UI**
 
 - **FR-001**: The Edit Profile page MUST include a Resume Import area visible near the
-  top of the page, before the profile section cards; the area MUST display a section
-  header (e.g. "Import Resume") consistent with the heading style used by other section
-  cards on the page
+  top of the page, before the profile section cards
 - **FR-002**: The Resume Import area MUST support click-to-upload on all supported
   viewports (desktop and mobile)
 - **FR-003**: The Resume Import area MUST support drag-and-drop on desktop viewports;
@@ -288,10 +293,11 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
 
 **Empty Profile State**
 
-- **FR-031**: When no profile exists, the Profile page empty state MUST present a
-  single "Set Up Profile" button
-- **FR-032**: ~~"Build Profile Manually" MUST navigate to the Edit Profile page with blank fields~~ — removed; single-button design adopted (manual testing feedback)
-- **FR-033**: "Set Up Profile" MUST navigate to the Edit Profile page with the Resume
+- **FR-031**: When no profile exists, the Profile page empty state MUST present two
+  options: "Upload Resume" and "Build Profile Manually"
+- **FR-032**: "Build Profile Manually" MUST navigate to the Edit Profile page with
+  blank fields, identical to the previous "Set Up Profile" behavior
+- **FR-033**: "Upload Resume" MUST navigate to the Edit Profile page with the Resume
   Import area visually prominent at the top (e.g. auto-scrolled to or highlighted)
 
 **Error Handling**
@@ -347,9 +353,8 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
   explicit Save action is always required before any data is persisted
 - **SC-006**: The Resume Import UI renders and operates correctly on both desktop and
   mobile viewports without horizontal scrolling
-- **SC-007**: All existing automated test suites pass after required test updates
-  are applied (Profile.test.js and ProfileEdit.test.js require updates per plan;
-  Tracker and Calendar tests require no modification)
+- **SC-007**: All existing Tracker, Calendar, and Profile page automated tests pass
+  without modification after this feature is delivered
 
 ---
 
@@ -363,22 +368,19 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
 - For DOCX: a Node.js extraction library (e.g. `mammoth`) strips formatting and
   extracts plain text
 - For TXT: raw text is passed directly to the field-parsing logic
-- "Current role/title" extraction was requested in the feature brief but is explicitly
-  excluded in V1 (FR-015); the existing profile model has no standalone headline field.
-  This is an accepted scope reduction from the brief. If a `headline` field is
-  introduced in a future spec, extraction can be added then
+- "Current role/title" has no corresponding field in the existing profile model and is
+  not extracted in V1; if a `headline` field is introduced in a future spec, extraction
+  can be added then
 - "Attendance dates" for education means start and end years; only the graduation/end
   year is stored as `yearCompleted`; start year is discarded in V1 to match the
   existing model
 - Language proficiency defaults to "Intermediate" when no level is stated in the resume
-- The empty-profile entry point retains a single "Set Up Profile" button; clicking it
-  navigates to Edit Profile with the Resume Import area highlighted; the user may upload
-  a resume or fill fields manually from there
+- The empty-profile entry point replaces the existing single "Set Up Profile" button
+  with a two-option layout; the new layout must match existing Profile page design
+  conventions
 - Client-side file size validation (5 MB) is enforced before upload; the server applies
   a second defense via multipart size limits
 - A single user profile record per database instance is assumed; no multi-profile
   handling is needed
 - No new profile model fields are required in V1; all extracted data maps to existing
   fields via the merge rules defined above
-- V1 supports English-language resumes only; non-English content will produce poor
-  extraction results and is not a supported case. Multi-language support is out of scope

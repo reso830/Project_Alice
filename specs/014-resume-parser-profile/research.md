@@ -10,16 +10,15 @@
 
 | Library | Approach | Notes |
 |---|---|---|
-| `pdf-parse` | Pure JS, uses PDF.js core | Class-based Buffer API; no native bindings; actively maintained; ~50k weekly downloads |
+| `pdf-parse` | Pure JS, uses PDF.js core | Simple Buffer API; no native bindings; actively maintained; ~50k weekly downloads |
 | `pdfjs-dist` | Full PDF.js for Node | Designed for browser; larger bundle; more complex API for server-side use |
 | `pdf2json` | Wraps Poppler | Native dependency; more complex install |
 | `pdfreader` | Row/cell based output | Better for tables; not ideal for unstructured resume text |
 
 **Selected**: `pdf-parse`
 
-**Rationale**: `pdf-parse` v2 exposes a class-based Node API:
-`new PDFParse({ data: buffer })`, then `getText()` for extracted text. No native
-bindings means no platform-specific install issues. Handles standard text-based PDFs. Image-based
+**Rationale**: Simple `pdf-parse(buffer)` API returns `{ text }`. No native bindings
+means no platform-specific install issues. Handles standard text-based PDFs. Image-based
 PDFs return empty text — this is expected and handled by the graceful failure path
 (OCR is explicitly out of scope for V1).
 
