@@ -353,8 +353,9 @@ with Retry and Continue Manually actions, and the Edit Profile form is not corru
   explicit Save action is always required before any data is persisted
 - **SC-006**: The Resume Import UI renders and operates correctly on both desktop and
   mobile viewports without horizontal scrolling
-- **SC-007**: All existing Tracker, Calendar, and Profile page automated tests pass
-  without modification after this feature is delivered
+- **SC-007**: All existing automated test suites pass after required test updates
+  are applied (Profile.test.js and ProfileEdit.test.js require updates per plan;
+  Tracker and Calendar tests require no modification)
 
 ---
 

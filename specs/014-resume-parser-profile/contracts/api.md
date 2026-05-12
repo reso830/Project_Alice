@@ -25,6 +25,14 @@ Field: resume  (file)
 | Accepted MIME types | `application/pdf` |
 | | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` |
 | | `text/plain` |
+| | `application/octet-stream` or empty MIME (extension fallback — see note below) |
+
+> **Note on MIME fallback**: Some browsers (e.g. Firefox on Windows) report
+> `application/octet-stream` or an empty MIME type for DOCX files. The server
+> accepts these when the original filename has a recognized extension (`.pdf`,
+> `.docx`, `.txt`) and uses the extension to determine the extraction path.
+> Files with an unrecognized extension under a generic MIME type are rejected
+> with `UNSUPPORTED_FILE_TYPE`.
 
 ### Success Response
 
@@ -119,9 +127,12 @@ HTTP 500 Internal Server Error — Extraction failure
 {
   "error": {
     "code": "INTERNAL_ERROR",
-    "message": "Failed to process the resume file."
+    "message": "<provided by the global Express error handler; exact text is implementation-defined>"
   }
 }
+> **Note**: Unexpected extraction/parse errors propagate to the global Express error
+> handler in `server/index.js`. The route does not wrap these with a fixed message;
+> the handler's response shape and message text are determined by the global handler.
 ```
 
 ---
