@@ -112,7 +112,7 @@ Exports `createResumeRouter({ })` (no db dependency).
 ```
 POST /api/resume/parse
   multer({ storage: memoryStorage(), limits: { fileSize: 5_242_880 } }).single('resume')
-  → extractText(req.file.buffer, req.file.mimetype)
+  → extractText(req.file.buffer, req.file.mimetype, req.file.originalname)
   → parseResumeText(text)
   → res.json({ data: parsedData })
 ```

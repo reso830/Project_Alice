@@ -276,6 +276,9 @@ Test cases to cover (mapped to `contracts/api.md`):
    expected keys (`firstName`, `lastName`, `email`, `skills`, `experience`, etc.),
    all scalars are `null` and all arrays are `[]` (complete parse failure still
    returns 200 with empty ParsedProfileData, not an error)
+6. `.docx` file sent with `application/octet-stream` MIME type (Firefox on Windows
+   behaviour) → 200, `body.data` is an object with the expected keys (extension
+   fallback accepts the file and extracts text correctly)
 
 **Constraints**:
 - Define a local `withServer` function inline following the pattern in
