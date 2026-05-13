@@ -971,6 +971,96 @@ textarea.edit-field__control {
   width: min(100%, 360px);
 }
 
+.resume-import {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  border: 1.5px solid #E0DDD8;
+  border-radius: var(--r-md);
+  padding: 16px;
+  background: #FFFFFF;
+  box-shadow: var(--shadow-soft);
+}
+
+.resume-import--highlight {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, .12), var(--shadow-soft);
+}
+
+.resume-import__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  min-height: 74px;
+  border: 1.5px dashed var(--border-2);
+  border-radius: var(--r-sm);
+  padding: 14px;
+  background: #F7F6F3;
+  color: var(--t1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resume-import__dropzone:hover,
+.resume-import__dropzone:focus-visible {
+  border-color: var(--indigo);
+  background: #F0EEFF;
+}
+
+.resume-import__hint,
+.resume-import__filename,
+.resume-import__status,
+.resume-import__error,
+.resume-import__error-message {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.resume-import__hint {
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.resume-import__filename {
+  color: var(--t1);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.resume-import__status {
+  color: var(--indigo);
+  font-weight: 700;
+}
+
+.resume-import__error,
+.resume-import__error-message {
+  color: #c1121f;
+  font-weight: 600;
+}
+
+.resume-import__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resume-import--processing {
+  border-color: #C7D2FE;
+  background: #F8FAFF;
+}
+
+.resume-import--error {
+  border-color: #F1B7BD;
+  background: #FFF7F8;
+}
+
 .profile-content {
   display: flex;
   flex-direction: column;
@@ -1189,6 +1279,18 @@ textarea.edit-field__control {
 
   .section-card + .section-card {
     margin-top: 18px;
+  }
+
+  .resume-import {
+    padding: 14px;
+  }
+
+  .resume-import__actions {
+    flex-direction: column;
+  }
+
+  .resume-import__actions .profile-btn {
+    width: 100%;
   }
 
   .profile-page h1 {

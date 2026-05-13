@@ -3,11 +3,6 @@ import multer from 'multer';
 import { extractText, UnsupportedFileTypeError } from '../resume/extractor.js';
 import { parseResumeText } from '../resume/parser.js';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5_242_880 },
-});
-
 const ERROR_RESPONSES = {
   FILE_TOO_LARGE: {
     code: 'FILE_TOO_LARGE',
@@ -33,6 +28,10 @@ function isUnsupportedFileType(error) {
 
 export function createResumeRouter() {
   const router = Router();
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5_242_880 },
+  });
 
   router.post('/parse', (req, res, next) => {
     upload.single('resume')(req, res, async (uploadError) => {
