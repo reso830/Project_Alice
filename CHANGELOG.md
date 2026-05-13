@@ -7,6 +7,20 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-13
+
+### Added
+- Resume Import — upload a PDF, DOCX, or TXT resume from the Profile page; extracted text is parsed by Claude AI and mapped into profile fields; the Edit Profile page opens pre-filled for review before the user decides to save; no automatic profile saving occurs
+- `POST /api/resume/parse` — multipart upload endpoint; enforces a 5 MB size limit; dispatches to `pdf-parse` (PDF) or `mammoth` (DOCX) for text extraction; calls Claude AI to extract structured profile data
+- `server/resume/extractor.js` — file-type dispatcher for PDF and DOCX text extraction
+- `server/resume/parser.js` — Claude AI prompt and structured-response parser; maps extracted data to typed profile field shapes
+- `src/components/ResumeImport.js` — drag-and-drop upload component with idle, uploading, success, and error states; accessible file-input fallback
+- `src/services/resumeApi.js` — frontend API client for the resume parse endpoint
+- `mergeResumeIntoProfile()` in `src/models/profile.js` — non-destructive merge of AI-extracted fields into an existing profile; existing non-empty fields are never overwritten
+- `mammoth` and `pdf-parse` server dependencies for document text extraction
+- Test suites for resume parsing (`tests/server/resumeParser.test.js`), API routes (`tests/server/resume.test.js`), and profile merge logic (`tests/models/resumeMerge.test.js`)
+- `LICENSE` — PolyForm Noncommercial License 1.0.0; Copyright 2026 Alvin
+
 ## [0.6.0] — 2026-05-09
 
 ### Added
@@ -184,7 +198,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/reso830/Project_Alice/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/reso830/Project_Alice/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/reso830/Project_Alice/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/reso830/Project_Alice/compare/v0.4.0...v0.5.0
