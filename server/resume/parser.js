@@ -1,6 +1,6 @@
 const SECTION_PATTERNS = {
   summary: /^(summary|about|profile|objective)$/i,
-  experience: /^(experience|employment|work history)$/i,
+  experience: /^(professional experience|experience|work experience|employment|work history)$/i,
   education: /^(education|academic)$/i,
   skills: /^(skills|competencies|technologies)$/i,
   certifications: /^(certif.*|license.*)$/i,
@@ -90,24 +90,66 @@ function findEmail(lines) {
 }
 
 function findPhone(lines) {
-  return lines.find((line) => {
-    if (/@|https?:\/\//i.test(line)) {
-      return false;
-    }
+  for (const line of lines) {
+    const scrubbed = line
+      .replace(/[\w.+-]+@[\w-]+\.[a-z]{2,}/gi, ' ')
+      .replace(/(?:https?:\/\/)?(?:www\.)?[^\s|,;]+?\.[^\s|,;]+/gi, ' ');
+    const matches = scrubbed.match(/(?:\+?\d[\d\s().-]{5,}\d)/g) ?? [];
+    const phone = matches.find((match) => {
+      const digits = match.replace(/\D/g, '');
+      return digits.length >= 7 && digits.length <= 15;
+    });
 
-    const digits = line.replace(/\D/g, '');
-    return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().-]+$/.test(line);
-  }) ?? null;
+    if (phone) {
+      return phone.trim().replace(/\s+/g, ' ');
+    }
+  }
+
+  return null;
 }
 
-function findCity(lines) {
-  return lines.find((line) => {
-    if (/@|https?:\/\/|linkedin\.com/i.test(line)) {
-      return false;
+function splitContactParts(lines) {
+  return lines.flatMap((line) => {
+    const delimiterParts = line.split(/\s*(?:[|•·])\s*/u);
+    return (delimiterParts.length > 1 ? delimiterParts : [line])
+      .map((part) => ({
+        text: part.trim(),
+        fromDelimitedLine: delimiterParts.length > 1,
+      }));
+  }).filter((part) => part.text);
+}
+
+function isPhoneText(value) {
+  return findPhone([value]) === value.trim().replace(/\s+/g, ' ');
+}
+
+function findCity(lines, nameLine = '') {
+  for (const part of splitContactParts(lines)) {
+    const hadLocationLabel = /^location\s*[:|-]\s*/i.test(part.text);
+    const candidate = part.text.replace(/^location\s*[:|-]\s*/i, '').trim();
+
+    if (
+      !candidate
+      || candidate === nameLine
+      || /@|https?:\/\/|www\.|linkedin\.com/i.test(candidate)
+      || /\d/.test(candidate)
+      || isPhoneText(candidate)
+    ) {
+      continue;
     }
 
-    return /^[A-Za-z][A-Za-z .'-]+,\s*[A-Za-z][A-Za-z .'-]+$/.test(line);
-  }) ?? null;
+    if (/^[A-Za-z][A-Za-z .'-]+,\s*[A-Za-z][A-Za-z .'-]+$/.test(candidate)) {
+      return candidate;
+    }
+
+    if (hadLocationLabel || part.fromDelimitedLine) {
+      if (/^[A-Za-z][A-Za-z .'-]*(?:\s+[A-Za-z][A-Za-z .'-]*){0,3}$/.test(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
 }
 
 function normalizeUrl(url) {
@@ -129,7 +171,7 @@ function parseLinks(lines) {
 
 function parseName(lines) {
   const nameLine = lines.find((line) => {
-    if (line === findPhone([line]) || line === findCity([line])) {
+    if (line === findPhone([line])) {
       return false;
     }
 
@@ -148,11 +190,14 @@ function parseName(lines) {
 }
 
 function parseContact(lines) {
+  const name = parseName(lines);
+  const nameLine = [name.firstName, name.lastName].filter(Boolean).join(' ');
+
   return {
-    ...parseName(lines),
+    ...name,
     email: findEmail(lines),
     phone: findPhone(lines),
-    city: findCity(lines),
+    city: findCity(lines, nameLine),
     links: parseLinks(lines),
   };
 }
@@ -263,6 +308,21 @@ function parseSkills(lines) {
 function parseCertifications(lines) {
   if (lines.length === 0) {
     return [];
+  }
+
+  const bulletEntries = lines
+    .filter((line) => /^[•*,-]\s*/u.test(line))
+    .map((line) => line.replace(/^[•*,-]\s*/u, '').trim())
+    .filter(Boolean)
+    .filter((line) => !parseDateRange(line));
+
+  if (bulletEntries.length > 1 && bulletEntries.length === lines.length) {
+    return bulletEntries.map((line) => ({
+      name: line,
+      issuingBody: '',
+      issuanceDate: '',
+      expiryDate: '',
+    }));
   }
 
   const dateIndex = lines.findIndex((line) => parseDateRange(line));

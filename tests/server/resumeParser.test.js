@@ -19,6 +19,19 @@ describe('resume parser', () => {
     });
   });
 
+  it('parses phone and location from a combined contact line', () => {
+    const result = parseResumeText(`
+      Jane Smith
+      jane@example.com | +63 917 555 0184 | Metro Manila
+    `);
+
+    expect(result).toMatchObject({
+      email: 'jane@example.com',
+      phone: '+63 917 555 0184',
+      city: 'Metro Manila',
+    });
+  });
+
   it('adds LinkedIn URLs from the contact block to links', () => {
     const result = parseResumeText(`
       Jane Smith
@@ -85,6 +98,26 @@ describe('resume parser', () => {
         currentWork: false,
       },
     ]);
+  });
+
+  it('recognizes professional experience as an experience section header', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Professional Experience
+      Acme Corp
+      Senior Engineer
+      Jan 2022 - Feb 2024
+      Built backend services.
+    `);
+
+    expect(result.summary).toBeNull();
+    expect(result.experience).toHaveLength(1);
+    expect(result.experience[0]).toMatchObject({
+      company: 'Acme Corp',
+      role: 'Senior Engineer',
+      responsibilities: 'Built backend services.',
+    });
   });
 
   it('marks present experience entries as current work', () => {
@@ -210,6 +243,31 @@ describe('resume parser', () => {
         issuingBody: 'Acme Corp',
         date: '12/2021',
         details: 'Recognized for platform reliability work.',
+      },
+    ]);
+  });
+
+  it('parses certification bullet lines as separate incomplete entries', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Certifications
+      - AWS Certified Cloud Practitioner
+      - Google Data Analytics Certificate
+    `);
+
+    expect(result.certifications).toEqual([
+      {
+        name: 'AWS Certified Cloud Practitioner',
+        issuingBody: '',
+        issuanceDate: '',
+        expiryDate: '',
+      },
+      {
+        name: 'Google Data Analytics Certificate',
+        issuingBody: '',
+        issuanceDate: '',
+        expiryDate: '',
       },
     ]);
   });

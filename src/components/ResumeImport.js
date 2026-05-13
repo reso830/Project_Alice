@@ -153,9 +153,17 @@ export const ResumeImport = {
       return zone;
     }
 
+    function createHeader() {
+      const header = createElement('div', 'resume-import__header');
+
+      header.append(createElement('div', 'section-label', 'RESUME IMPORT'));
+
+      return header;
+    }
+
     function renderIdle() {
       renderShell('resume-import--idle');
-      root.append(createDropZone(), error);
+      root.append(createHeader(), createDropZone(), error);
     }
 
     function renderSelected() {

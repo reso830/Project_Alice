@@ -257,8 +257,7 @@ function renderEmptyProfile(section, navigate) {
   icon.setAttribute('aria-hidden', 'true');
   icon.append(iconHead, iconBody);
   actions.append(
-    createButton('Upload Resume', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
-    createButton('Build Profile Manually', 'profile-btn profile-btn--outline', () => navigate('profile-edit')),
+    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
   );
   empty.append(
     icon,

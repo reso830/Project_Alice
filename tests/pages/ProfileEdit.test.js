@@ -515,6 +515,7 @@ describe('ProfileEdit page', () => {
 
     expect([...container.querySelectorAll('.section-label')].map((label) => label.textContent))
       .toEqual([
+        'RESUME IMPORT',
         'BASIC INFO',
         'SUMMARY',
         'PROFESSIONAL EXPERIENCE',
