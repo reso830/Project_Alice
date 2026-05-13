@@ -119,7 +119,7 @@ function parseLinks(lines) {
   const matches = text.match(/(?:https?:\/\/)?(?:www\.)?[^\s|,;]+?\.[^\s|,;]+/gi) ?? [];
 
   return matches
-    .filter((url) => /linkedin\.com|https?:\/\//i.test(url))
+    .filter((url) => /linkedin\.com|https?:\/\/|^www\./i.test(url))
     .map((url) => normalizeUrl(url))
     .map((url) => ({
       url,
@@ -238,7 +238,7 @@ function parseEducation(lines) {
   }
 
   const yearIndex = lines.findIndex((line) => /\b\d{4}\b/.test(line));
-  const yearCompleted = yearIndex === -1 ? '' : (lines[yearIndex].match(/\b\d{4}\b/)?.[0] ?? '');
+  const yearCompleted = yearIndex === -1 ? '' : (lines[yearIndex].match(/\b\d{4}\b/g)?.at(-1) ?? '');
   const detailLines = yearIndex === -1 ? lines : lines.filter((_, index) => index !== yearIndex);
 
   if (detailLines.length === 0 && !yearCompleted) {

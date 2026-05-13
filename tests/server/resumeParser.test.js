@@ -31,6 +31,18 @@ describe('resume parser', () => {
     });
   });
 
+  it('adds www. portfolio URLs from the contact block to links', () => {
+    const result = parseResumeText(`
+      Jane Smith
+      www.janesmith.dev
+    `);
+
+    expect(result.links).toContainEqual({
+      url: 'https://www.janesmith.dev',
+      friendlyName: 'Portfolio',
+    });
+  });
+
   it('populates summary only when a summary section header is present', () => {
     expect(parseResumeText(`
       Jane Smith
@@ -153,6 +165,19 @@ describe('resume parser', () => {
         yearCompleted: '2019',
       },
     ]);
+  });
+
+  it('uses the end year from an education date range as yearCompleted', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Education
+      State University
+      B.S. Computer Science
+      2018 - 2022
+    `);
+
+    expect(result.education[0].yearCompleted).toBe('2022');
   });
 
   it('parses certifications and awards sections', () => {
