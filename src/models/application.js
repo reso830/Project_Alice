@@ -6,6 +6,7 @@ export const STATUS_VALUES = [
   'interview',
   'assessment',
   'offer',
+  'accepted',
   'rejected',
   'withdrawn',
   'ghosted',
@@ -51,6 +52,12 @@ export const STATUS_CONFIG = {
     badgeText: '#212529',
     borderAccent: '#09bc8a',
   },
+  accepted: {
+    label: 'Accepted',
+    badgeBg: '#2EC4B6',
+    badgeText: '#212529',
+    borderAccent: '#2EC4B6',
+  },
   rejected: {
     label: 'Rejected',
     badgeBg: '#9d0208',
@@ -70,6 +77,29 @@ export const STATUS_CONFIG = {
     borderAccent: '#ced4da',
   },
 };
+
+export const TRANSITIONS = {
+  wishlisted: ['applied'],
+  applied: ['phone_screen', 'interview', 'assessment', 'offer', 'rejected', 'withdrawn', 'ghosted'],
+  phone_screen: ['interview', 'assessment', 'offer', 'rejected', 'withdrawn', 'ghosted'],
+  interview: ['assessment', 'offer', 'rejected', 'withdrawn', 'ghosted'],
+  assessment: ['interview', 'offer', 'rejected', 'withdrawn', 'ghosted'],
+  offer: ['accepted', 'rejected', 'withdrawn', 'ghosted'],
+  accepted: [],
+  rejected: [],
+  withdrawn: [],
+  ghosted: [],
+};
+
+export const TERMINAL_STATES = new Set(['accepted', 'rejected', 'withdrawn', 'ghosted']);
+
+export function getValidTransitions(status) {
+  return [...(TRANSITIONS[status] ?? [])];
+}
+
+export function isValidTransition(current, next) {
+  return (TRANSITIONS[current] ?? []).includes(next);
+}
 
 function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;

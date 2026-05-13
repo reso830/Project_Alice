@@ -13,7 +13,7 @@ exports that every other phase depends on. Complete it before starting Phase 02 
 
 ---
 
-### Task 01.1 — Add `accepted` to `STATUS_VALUES` and `STATUS_CONFIG`
+### [X] Task 01.1 — Add `accepted` to `STATUS_VALUES` and `STATUS_CONFIG`
 
 **Target file**: `src/models/application.js`
 
@@ -52,7 +52,7 @@ will pick up `accepted` automatically without modification.
 
 ---
 
-### Task 01.2 — Export transition map and helpers
+### [X] Task 01.2 — Export transition map and helpers
 
 **Target files**: `src/models/application.js`, `shared/constants.js`
 
@@ -122,7 +122,7 @@ than reaching into `src/` directly.
 
 ---
 
-### Task 01.3 — Add model tests for transition helpers
+### [X] Task 01.3 — Add model tests for transition helpers
 
 **Target file**: `tests/models/application.test.js`
 
@@ -159,7 +159,7 @@ than reaching into `src/` directly.
 
 ---
 
-### Task 01.4 — Inspect CreationPicker for free-form status compatibility
+### [X] Task 01.4 — Inspect CreationPicker for free-form status compatibility
 
 **Target file**: `src/components/CreationPicker.js` (read-only inspection)
 
@@ -185,7 +185,7 @@ Depends on Phase 01 (imports model helpers). No UI changes in this phase.
 
 ---
 
-### Task 02.1 — Add transition gate to PATCH handler
+### [X] Task 02.1 — Add transition gate to PATCH handler
 
 **Target file**: `server/routes/applications.js`
 
@@ -242,7 +242,7 @@ Depends on Phase 01 (imports model helpers). No UI changes in this phase.
 
 ---
 
-### Task 02.2 — Add server integration tests for transition gate
+### [X] Task 02.2 — Add server integration tests for transition gate
 
 **Target file**: `tests/server/applications.test.js`
 
@@ -292,7 +292,7 @@ block) covering:
 
 ---
 
-### Task 02.3 — Verify `accepted` passes Zod validation
+### [X] Task 02.3 — Verify `accepted` passes Zod validation
 
 **Target file**: `tests/server/validation.test.js`
 
@@ -317,7 +317,7 @@ Depends on Phase 01. Can run in parallel with Phase 02.
 
 ---
 
-### Task 03.1 — Filter dropdown options to valid next transitions
+### [X] Task 03.1 — Filter dropdown options to valid next transitions
 
 **Target file**: `src/components/StatusDropdown.js`
 
@@ -355,7 +355,7 @@ Depends on Phase 01. Can run in parallel with Phase 02.
 
 ---
 
-### Task 03.2 — Update StatusDropdown tests
+### [X] Task 03.2 — Update StatusDropdown tests
 
 **Target file**: `tests/components/StatusDropdown.test.js`
 
@@ -389,7 +389,7 @@ Depends on Phase 01. Applies to both Card and Modal independently.
 
 ---
 
-### Task 04.1 — Disable status button in Card for terminal states
+### [X] Task 04.1 — Disable status button in Card for terminal states
 
 **Target file**: `src/components/Card.js`
 
@@ -434,7 +434,7 @@ Depends on Phase 01. Applies to both Card and Modal independently.
 
 ---
 
-### Task 04.2 — Disable status controls in Modal for terminal states
+### [X] Task 04.2 — Disable status controls in Modal for terminal states
 
 **Target file**: `src/components/Modal.js`
 
@@ -500,7 +500,7 @@ status-related tests, verify they still pass.
 
 ---
 
-### Task 04.3 — Add terminal state tests to Card
+### [X] Task 04.3 — Add terminal state tests to Card
 
 **Target file**: `tests/components/Card.test.js`
 
@@ -542,7 +542,7 @@ Run after all other phases are complete.
 
 ---
 
-### Task 05.1 — Run full test suite and resolve failures
+### [X] Task 05.1 — Run full test suite and resolve failures
 
 **Command**: `npm test`
 
@@ -558,7 +558,7 @@ All tests must pass before marking this phase complete.
 
 ---
 
-### Task 05.2 — Complete plan-review checklist
+### [X] Task 05.2 — Complete plan-review checklist
 
 **File**: `specs/015-application-state-machine/checklists/plan-review.md`
 
@@ -584,7 +584,7 @@ or deferred item with rationale.
 
 ---
 
-### Task 06.1 — US1: Valid transitions filter the status picker
+### [X] Task 06.1 — US1: Valid transitions filter the status picker
 
 **Spec reference**: `spec.md` User Story 1 — Independent Test and Acceptance Scenarios 1–4
 
@@ -599,7 +599,7 @@ Steps:
 
 ---
 
-### Task 06.2 — US2: Terminal state locks the status control
+### [X] Task 06.2 — US2: Terminal state locks the status control
 
 **Spec reference**: `spec.md` User Story 2 — Independent Test and Acceptance Scenarios 1–3
 
@@ -614,7 +614,7 @@ Steps:
 
 ---
 
-### Task 06.3 — US3: Accepting an offer
+### [X] Task 06.3 — US3: Accepting an offer
 
 **Spec reference**: `spec.md` User Story 3 — Independent Test and Acceptance Scenarios 1–4
 
@@ -627,7 +627,7 @@ Steps:
 
 ---
 
-### Task 06.4 — US4: Existing records unaffected
+### [X] Task 06.4 — US4: Existing records unaffected
 
 **Spec reference**: `spec.md` User Story 4 — Independent Test and Acceptance Scenarios 1–3
 
@@ -645,7 +645,7 @@ Steps:
 
 ---
 
-### Task 06.5 — Mobile layout
+### [X] Task 06.5 — Mobile layout
 
 Steps:
 1. Open DevTools; set viewport to ≤ 640 px.

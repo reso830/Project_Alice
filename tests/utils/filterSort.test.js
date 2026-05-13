@@ -184,7 +184,8 @@ describe('dynamic options', () => {
       salaryMin: 120000,
       salaryMax: 130000,
     })).toEqual(['interview', 'offer', 'withdrawn']);
-    expect(getAvailableStatuses(apps, DEFAULT_FILTER_STATE)).toEqual(STATUS_VALUES);
+    expect(getAvailableStatuses(apps, DEFAULT_FILTER_STATE))
+      .toEqual(STATUS_VALUES.filter((status) => status !== 'accepted'));
     expect(getAvailableStatuses(apps, {
       ...DEFAULT_FILTER_STATE,
       favoritesOnly: true,

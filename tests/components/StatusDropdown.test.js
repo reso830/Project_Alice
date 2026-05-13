@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StatusDropdown } from '../../src/components/StatusDropdown.js';
-import { STATUS_CONFIG } from '../../src/models/application.js';
+import { STATUS_CONFIG, STATUS_VALUES } from '../../src/models/application.js';
 
 afterEach(() => {
   StatusDropdown.close();
@@ -25,9 +25,58 @@ describe('StatusDropdown', () => {
 
     StatusDropdown.open(anchor, 'wishlisted', vi.fn());
 
-    const wishlistDot = document.querySelector('[data-status="wishlisted"] .status-dot');
+    const appliedDot = document.querySelector('[data-status="applied"] .status-dot');
 
-    expect(wishlistDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.wishlisted.badgeBg));
-    expect(wishlistDot.style.border).toBe('');
+    expect(appliedDot.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.badgeBg));
+    expect(appliedDot.style.border).toBe('');
+  });
+
+  it('renders only the valid next transition from wishlisted', () => {
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+
+    StatusDropdown.open(anchor, 'wishlisted', vi.fn());
+
+    expect(document.querySelectorAll('.status-option')).toHaveLength(1);
+    expect(document.querySelector('[data-status="applied"]')).not.toBeNull();
+  });
+
+  it('focuses the first available transition when current status is absent', () => {
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+
+    StatusDropdown.open(anchor, 'wishlisted', vi.fn());
+
+    expect(document.activeElement).toBe(document.querySelector('[data-status="applied"]'));
+  });
+
+  it('renders only terminal options from offer', () => {
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+
+    StatusDropdown.open(anchor, 'offer', vi.fn());
+
+    expect(document.querySelectorAll('.status-option')).toHaveLength(4);
+    expect([...document.querySelectorAll('.status-option')].map((option) => option.dataset.status))
+      .toEqual(['accepted', 'rejected', 'withdrawn', 'ghosted']);
+  });
+
+  it('renders no options from terminal statuses', () => {
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+
+    StatusDropdown.open(anchor, 'accepted', vi.fn());
+
+    expect(document.querySelectorAll('.status-option')).toHaveLength(0);
+  });
+
+  it('can render all statuses for create mode callers', () => {
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+
+    StatusDropdown.openAll(anchor, 'wishlisted', vi.fn());
+
+    expect(document.querySelectorAll('.status-option')).toHaveLength(STATUS_VALUES.length);
+    expect(document.querySelector('[data-status="accepted"]')).not.toBeNull();
   });
 });

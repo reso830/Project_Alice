@@ -3,7 +3,11 @@ import {
   SHIFT_VALUES,
   STATUS_CONFIG,
   STATUS_VALUES,
+  TERMINAL_STATES,
+  TRANSITIONS,
   WORK_SETUP_VALUES,
+  getValidTransitions,
+  isValidTransition,
   normalizeApplication,
   validateApplication,
 } from '../../src/models/application.js';
@@ -197,12 +201,71 @@ describe('STATUS_CONFIG', () => {
     expect(STATUS_CONFIG.offer.badgeText).toBe('#212529');
   });
 
+  it('assigns Accepted the approved teal status colors', () => {
+    expect(STATUS_CONFIG.accepted).toMatchObject({
+      badgeBg: '#2EC4B6',
+      badgeText: '#212529',
+      borderAccent: '#2EC4B6',
+    });
+  });
+
   it('defines unique badge backgrounds for all statuses', () => {
     const badgeColors = STATUS_VALUES.map((status) => STATUS_CONFIG[status]?.badgeBg);
 
-    expect(badgeColors).toHaveLength(9);
-    expect(new Set(badgeColors).size).toBe(9);
+    expect(badgeColors).toHaveLength(10);
+    expect(new Set(badgeColors).size).toBe(10);
     expect(badgeColors.every((color) => typeof color === 'string' && color.length > 0))
       .toBe(true);
+  });
+});
+
+describe('TRANSITIONS and helpers', () => {
+  it('defines one transition row for every status value', () => {
+    expect(Object.keys(TRANSITIONS)).toEqual(STATUS_VALUES);
+  });
+
+  it('returns valid transitions for active pipeline states', () => {
+    expect(getValidTransitions('wishlisted')).toEqual(['applied']);
+    expect(getValidTransitions('applied')).toEqual([
+      'phone_screen',
+      'interview',
+      'assessment',
+      'offer',
+      'rejected',
+      'withdrawn',
+      'ghosted',
+    ]);
+    expect(getValidTransitions('offer')).toEqual(['accepted', 'rejected', 'withdrawn', 'ghosted']);
+  });
+
+  it('returns no transitions for terminal and unknown statuses', () => {
+    expect(getValidTransitions('accepted')).toEqual([]);
+    expect(getValidTransitions('rejected')).toEqual([]);
+    expect(getValidTransitions('withdrawn')).toEqual([]);
+    expect(getValidTransitions('ghosted')).toEqual([]);
+    expect(getValidTransitions('unknown_xyz')).toEqual([]);
+  });
+
+  it('returns a copy so callers cannot mutate transition rules', () => {
+    const transitions = getValidTransitions('wishlisted');
+
+    transitions.push('accepted');
+
+    expect(getValidTransitions('wishlisted')).toEqual(['applied']);
+    expect(TRANSITIONS.wishlisted).toEqual(['applied']);
+  });
+
+  it('validates allowed, blocked, terminal, and loop transitions', () => {
+    expect(isValidTransition('applied', 'phone_screen')).toBe(true);
+    expect(isValidTransition('applied', 'wishlisted')).toBe(false);
+    expect(isValidTransition('rejected', 'applied')).toBe(false);
+    expect(isValidTransition('assessment', 'interview')).toBe(true);
+    expect(isValidTransition('interview', 'assessment')).toBe(true);
+  });
+
+  it('identifies terminal statuses', () => {
+    expect([...TERMINAL_STATES]).toEqual(['accepted', 'rejected', 'withdrawn', 'ghosted']);
+    expect(TERMINAL_STATES.has('offer')).toBe(false);
+    expect(TERMINAL_STATES.has('interview')).toBe(false);
   });
 });

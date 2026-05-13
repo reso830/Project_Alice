@@ -1,4 +1,4 @@
-import { STATUS_CONFIG, STATUS_VALUES } from '../models/application.js';
+import { STATUS_CONFIG, STATUS_VALUES, getValidTransitions } from '../models/application.js';
 
 let _backdrop = null;
 let _panel = null;
@@ -80,7 +80,7 @@ function createOption(value, currentStatus, onChange) {
   return option;
 }
 
-export function open(anchorEl, currentStatus, onChange) {
+function openWithOptions(anchorEl, currentStatus, onChange, values) {
   close();
 
   const backdrop = document.createElement('div');
@@ -97,7 +97,7 @@ export function open(anchorEl, currentStatus, onChange) {
 
   backdrop.addEventListener('click', close);
 
-  for (const value of STATUS_VALUES) {
+  for (const value of values) {
     panel.append(createOption(value, currentStatus, onChange));
   }
 
@@ -105,7 +105,9 @@ export function open(anchorEl, currentStatus, onChange) {
   _backdrop = backdrop;
   _panel = panel;
   positionPanel(anchorEl, panel);
-  panel.querySelector('.status-option--active')?.focus();
+  const focusTarget = panel.querySelector('.status-option--active')
+    ?? panel.querySelector('.status-option');
+  focusTarget?.focus();
 
   _keydownHandler = (event) => {
     if (event.key === 'Escape') {
@@ -115,4 +117,12 @@ export function open(anchorEl, currentStatus, onChange) {
   document.addEventListener('keydown', _keydownHandler);
 }
 
-export const StatusDropdown = { open, close };
+export function open(anchorEl, currentStatus, onChange) {
+  openWithOptions(anchorEl, currentStatus, onChange, getValidTransitions(currentStatus));
+}
+
+export function openAll(anchorEl, currentStatus, onChange) {
+  openWithOptions(anchorEl, currentStatus, onChange, STATUS_VALUES);
+}
+
+export const StatusDropdown = { open, openAll, close };

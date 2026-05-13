@@ -92,6 +92,18 @@ describe('applications API', () => {
     });
   });
 
+  it('creates applications with accepted status', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({ status: 'accepted' })),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.status).toBe('accepted');
+    });
+  });
+
   it('lists a created application', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
@@ -285,6 +297,121 @@ describe('applications API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.lastStatusUpdate).toBe(created.body.data.lastStatusUpdate);
+    });
+  });
+
+  describe('status transition gate', () => {
+    it('returns validation error for invalid transitions', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload({ status: 'applied' })),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'wishlisted' }),
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toMatchObject({
+          code: 'VALIDATION_ERROR',
+          fields: {
+            status: expect.any(String),
+          },
+        });
+      });
+    });
+
+    it('returns validation error for status changes from terminal states', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload({ status: 'rejected' })),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'applied' }),
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error.fields.status)
+          .toBe('Cannot change status of a completed application');
+      });
+    });
+
+    it('allows valid transitions', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload({ status: 'applied' })),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'phone_screen' }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.status).toBe('phone_screen');
+      });
+    });
+
+    it('leaves patches without status fields unaffected', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload()),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ fav: true }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.fav).toBe(true);
+      });
+    });
+
+    it('allows unchanged status updates, including terminal records', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload({ status: 'rejected' })),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ notes: 'follow up', status: 'rejected' }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data).toMatchObject({
+          status: 'rejected',
+          notes: 'follow up',
+        });
+      });
+    });
+
+    it('allows offer to accepted and refreshes lastStatusUpdate', async () => {
+      await withServer(async (baseUrl, db) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload({ status: 'offer' })),
+        });
+        db.prepare(`
+          UPDATE applications
+          SET last_status_update = '2026-04-20', updated_at = '2026-04-20'
+          WHERE id = ?
+        `).run(created.body.data.id);
+
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'accepted' }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.status).toBe('accepted');
+        expect(response.body.data.lastStatusUpdate).toBeTruthy();
+        expect(response.body.data.lastStatusUpdate).not.toBe('2026-04-20');
+      });
     });
   });
 
