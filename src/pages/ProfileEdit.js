@@ -1076,7 +1076,7 @@ function renderEditPage(container) {
   container.replaceChildren(page);
   updateControlsState();
   if (_highlightImport) {
-    page.querySelector('.resume-import')?.scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
@@ -1091,6 +1091,16 @@ const ENTRY_SECTION_LABELS = {
 
 function removeSectionValidationError() {
   document.querySelector('.section-validation-error')?.remove();
+}
+
+function showSectionValidationError(message) {
+  const summary = createElement('p', 'section-validation-error', message);
+  const page = document.querySelector('.profile-edit-page');
+
+  summary.setAttribute('tabindex', '-1');
+  page?.prepend(summary);
+  summary.focus({ preventScroll: true });
+  summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function surfaceValidationErrors(errors) {
@@ -1110,12 +1120,9 @@ function surfaceValidationErrors(errors) {
   }
   removeSectionValidationError();
   if (sections.size > 0) {
-    const summary = createElement(
-      'p',
-      'section-validation-error',
+    showSectionValidationError(
       `Some entries have missing required fields (${[...sections].join(', ')}). Remove and re-add any incomplete entries.`,
     );
-    document.querySelector('.page-controls')?.after(summary);
   }
 }
 

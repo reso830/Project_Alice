@@ -560,9 +560,15 @@ textarea.edit-field__control {
 }
 
 .section-validation-error {
-  margin: 4px 0 0;
+  scroll-margin-top: 112px;
+  margin: 0 0 14px;
+  border: 1px solid #F1B7BD;
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: #FFF7F8;
   color: var(--color-danger);
   font-size: 13px;
+  font-weight: 700;
 }
 
 .confirm-backdrop {

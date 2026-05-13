@@ -1,7 +1,7 @@
 const SECTION_PATTERNS = {
   summary: /^(summary|about|profile|objective)$/i,
   experience: /^(professional experience|experience|work experience|employment|work history)$/i,
-  education: /^(education|academic)$/i,
+  education: /^(education|academic|educational attainment)$/i,
   skills: /^(skills|competencies|technologies)$/i,
   certifications: /^(certif.*|license.*)$/i,
   awards: /^(award.*|honor.*|achievement.*)$/i,
@@ -182,7 +182,11 @@ function parseName(lines) {
     return { firstName: null, lastName: null };
   }
 
-  const [firstName, ...lastParts] = nameLine.split(' ');
+  const nameWithoutTitles = nameLine.split(',')[0].trim();
+  const [firstName, ...lastParts] = nameWithoutTitles
+    .split(' ')
+    .filter((part) => !/^[A-Z]\.?$/i.test(part));
+
   return {
     firstName: firstName || null,
     lastName: lastParts.length > 0 ? lastParts.join(' ') : null,
@@ -229,6 +233,12 @@ function normalizeDate(value) {
     return month ? `${month}/${monthNameYear[2]}` : '';
   }
 
+  const yearMonthName = cleaned.match(/^(\d{4})\s+([A-Za-z]+)\.?$/);
+  if (yearMonthName) {
+    const month = MONTHS.get(yearMonthName[2].toLowerCase());
+    return month ? `${month}/${yearMonthName[1]}` : '';
+  }
+
   const yearOnly = cleaned.match(/^\d{4}$/);
   if (yearOnly) {
     return `01/${cleaned}`;
@@ -237,44 +247,152 @@ function normalizeDate(value) {
   return '';
 }
 
-function parseDateRange(line) {
-  const normalizedLine = String(line ?? '').replace(/[\u2013\u2014]/g, '-');
-  const parts = normalizedLine.split(/\s+(?:-|to)\s+/i);
+const DATE_TOKEN_PATTERN = String.raw`(?:\d{1,2}/\d{4}|\d{4}-\d{1,2}|[A-Za-z]+\.?\s+\d{4}|\d{4}\s+[A-Za-z]+\.?|\d{4}|present|current|now)`;
+const DATE_RANGE_PATTERN = new RegExp(`(${DATE_TOKEN_PATTERN})\\s*(?:-|to)\\s*(${DATE_TOKEN_PATTERN})`, 'i');
+const TRAILING_DATE_PATTERN = new RegExp(`\\b(${DATE_TOKEN_PATTERN})$`, 'i');
 
-  if (parts.length < 2) {
+function findDateRange(line) {
+  const normalizedLine = String(line ?? '').replace(/[\u2013\u2014]/g, '-');
+  const match = normalizedLine.match(DATE_RANGE_PATTERN);
+
+  if (!match) {
     return null;
   }
 
-  const start = normalizeDate(parts[0]);
-  const end = normalizeDate(parts.slice(1).join(' - '));
-  const currentWork = end === 'PRESENT';
+  const start = normalizeDate(match[1]);
+  const end = normalizeDate(match[2]);
+
+  if (!start || !end) {
+    return null;
+  }
 
   return {
-    dateStarted: start === 'PRESENT' ? '' : start,
-    dateEnded: currentWork ? '' : end,
-    currentWork,
+    matchText: match[0],
+    range: {
+      dateStarted: start === 'PRESENT' ? '' : start,
+      dateEnded: end === 'PRESENT' ? '' : end,
+      currentWork: end === 'PRESENT',
+    },
   };
 }
 
+function parseDateRange(line) {
+  return findDateRange(line)?.range ?? null;
+}
+
+function findTrailingDate(line) {
+  const match = String(line ?? '').trim().match(TRAILING_DATE_PATTERN);
+
+  if (!match) {
+    return null;
+  }
+
+  const normalizedDate = normalizeDate(match[1]);
+  return normalizedDate && normalizedDate !== 'PRESENT'
+    ? { matchText: match[1], date: normalizedDate }
+    : null;
+}
+
+function removeDateRange(line, dateRangeText) {
+  return String(line ?? '')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(dateRangeText, '')
+    .replace(/[,\s–—|-]+$/g, '')
+    .trim();
+}
+
+function isBulletLine(line) {
+  return /^[•*,-]\s*/u.test(line);
+}
+
+function isIgnoredExperienceLine(line) {
+  return /^--\s*\d+\s+of\s+\d+\s*--$/i.test(line);
+}
+
+function shouldJoinWrappedLine(previousLine, line) {
+  if (!previousLine || !line || isBulletLine(line)) {
+    return false;
+  }
+
+  return !/[.!?:;)]$/.test(previousLine) && /^[a-z(]/.test(line);
+}
+
+function joinWrappedLines(lines) {
+  return lines.reduce((paragraphs, line) => {
+    const previous = paragraphs.at(-1);
+
+    if (shouldJoinWrappedLine(previous, line)) {
+      paragraphs[paragraphs.length - 1] = `${previous} ${line}`;
+    } else {
+      paragraphs.push(line);
+    }
+
+    return paragraphs;
+  }, []).join('\n');
+}
+
+function joinParagraphLines(lines) {
+  return lines.join(' ');
+}
+
 function parseExperience(lines) {
-  const dateLines = lines
-    .map((line, index) => ({ line, index, range: parseDateRange(line) }))
-    .filter((entry) => entry.range);
+  const cleanLines = lines.filter((line) => !isIgnoredExperienceLine(line));
+  const entries = [];
+  let currentCompany = '';
 
-  return dateLines.map((entry, dateLineIndex) => {
-    const nextDateIndex = dateLines[dateLineIndex + 1]?.index ?? lines.length;
-    const responsibilityEnd = dateLines[dateLineIndex + 1]
-      ? Math.max(entry.index, nextDateIndex - 3)
-      : lines.length - 1;
-    const responsibilities = lines.slice(entry.index + 1, responsibilityEnd + 1).join('\n');
+  for (let index = 0; index < cleanLines.length; index += 1) {
+    const dateRange = findDateRange(cleanLines[index]);
 
-    return {
-      company: lines[entry.index - 2] ?? '',
-      role: lines[entry.index - 1] ?? '',
-      responsibilities,
-      ...entry.range,
-    };
-  });
+    if (!dateRange) {
+      continue;
+    }
+
+    const prefix = removeDateRange(cleanLines[index], dateRange.matchText);
+    const nextLine = cleanLines[index + 1] ?? '';
+    const nextLineRange = findDateRange(nextLine);
+    let company = '';
+    let role = '';
+    let responsibilitiesStart = index + 1;
+
+    if (prefix && nextLineRange) {
+      currentCompany = prefix;
+      continue;
+    }
+
+    if (prefix && nextLine && !nextLineRange && !isBulletLine(nextLine)) {
+      currentCompany = prefix;
+      company = prefix;
+      role = nextLine;
+      responsibilitiesStart = index + 2;
+    } else if (prefix && currentCompany) {
+      company = currentCompany;
+      role = prefix;
+    } else if (prefix) {
+      currentCompany = prefix;
+      continue;
+    } else {
+      company = cleanLines[index - 2] ?? currentCompany;
+      role = cleanLines[index - 1] ?? '';
+    }
+
+    const responsibilities = [];
+    for (let lineIndex = responsibilitiesStart; lineIndex < cleanLines.length; lineIndex += 1) {
+      if (findDateRange(cleanLines[lineIndex])) {
+        break;
+      }
+
+      responsibilities.push(cleanLines[lineIndex]);
+    }
+
+    entries.push({
+      company,
+      role,
+      responsibilities: joinWrappedLines(responsibilities),
+      ...dateRange.range,
+    });
+  }
+
+  return entries.filter((entry) => entry.company || entry.role);
 }
 
 function parseEducation(lines) {
@@ -290,9 +408,11 @@ function parseEducation(lines) {
     return [];
   }
 
+  const degreeFirst = /\b(bachelor|master|doctor|degree|science|engineering|arts|business)\b/i.test(detailLines[0] ?? '');
+
   return [{
-    university: detailLines[0] ?? '',
-    degreeMajor: detailLines[1] ?? '',
+    university: degreeFirst ? (detailLines[1] ?? '') : (detailLines[0] ?? ''),
+    degreeMajor: degreeFirst ? (detailLines[0] ?? '') : (detailLines[1] ?? ''),
     yearCompleted,
   }];
 }
@@ -311,18 +431,12 @@ function parseCertifications(lines) {
   }
 
   const bulletEntries = lines
-    .filter((line) => /^[•*,-]\s*/u.test(line))
+    .filter(isBulletLine)
     .map((line) => line.replace(/^[•*,-]\s*/u, '').trim())
-    .filter(Boolean)
-    .filter((line) => !parseDateRange(line));
+    .filter(Boolean);
 
   if (bulletEntries.length > 1 && bulletEntries.length === lines.length) {
-    return bulletEntries.map((line) => ({
-      name: line,
-      issuingBody: '',
-      issuanceDate: '',
-      expiryDate: '',
-    }));
+    return bulletEntries.map((line) => parseCertificationLine(line));
   }
 
   const dateIndex = lines.findIndex((line) => parseDateRange(line));
@@ -340,6 +454,26 @@ function parseCertifications(lines) {
     issuanceDate: range?.dateStarted ?? '',
     expiryDate: range?.dateEnded ?? '',
   }];
+}
+
+function parseCertificationLine(line) {
+  const dateRange = findDateRange(line);
+  const singleDate = dateRange ? null : findTrailingDate(line);
+  const withoutDates = dateRange
+    ? removeDateRange(line, dateRange.matchText)
+    : removeDateRange(line, singleDate?.matchText ?? '');
+  const [namePart, ...issuerParts] = withoutDates
+    .replace(/[,\s]+$/g, '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    name: namePart ?? '',
+    issuingBody: issuerParts.join(', '),
+    issuanceDate: dateRange?.range.dateStarted ?? singleDate?.date ?? '',
+    expiryDate: dateRange?.range.dateEnded ?? '',
+  };
 }
 
 function parseAwards(lines) {
@@ -363,7 +497,7 @@ function parseAwards(lines) {
     awardName,
     issuingBody: detailLines[1] ?? '',
     date,
-    details: detailLines.slice(2).join('\n'),
+    details: joinWrappedLines(detailLines.slice(2)),
   }];
 }
 
@@ -408,7 +542,7 @@ export function parseResumeText(text) {
   return {
     ...createEmptyResult(),
     ...contact,
-    summary: sections.summary?.join('\n') || null,
+    summary: sections.summary ? joinParagraphLines(sections.summary) || null : null,
     experience: parseExperience(sections.experience ?? []),
     education: parseEducation(sections.education ?? []),
     skills: parseSkills(sections.skills ?? []),

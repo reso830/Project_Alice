@@ -19,6 +19,16 @@ describe('resume parser', () => {
     });
   });
 
+  it('removes middle initials and certifications from parsed names', () => {
+    const result = parseResumeText(`
+      Alvin C. Resoso, PSM-A, RTE, SSM
+      alvin@example.com
+    `);
+
+    expect(result.firstName).toBe('Alvin');
+    expect(result.lastName).toBe('Resoso');
+  });
+
   it('parses phone and location from a combined contact line', () => {
     const result = parseResumeText(`
       Jane Smith
@@ -76,6 +86,31 @@ describe('resume parser', () => {
     `).summary).toBeNull();
   });
 
+  it('joins wrapped paragraph lines without joining bullets', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Summary
+      Agile delivery leader with experience across mobile applications and globally distributed
+      programs. Hands-on experience performing Scrum Master responsibilities.
+
+      Experience
+      Acme Corp
+      Senior Engineer
+      Jan 2022 - Feb 2024
+      • Owned release planning and execution across multiple Scrum teams; introduced
+      timeline visualizations that improved milestone clarity.
+      • Managed cross-team dependencies.
+    `);
+
+    expect(result.summary).toBe(
+      'Agile delivery leader with experience across mobile applications and globally distributed programs. Hands-on experience performing Scrum Master responsibilities.',
+    );
+    expect(result.experience[0].responsibilities).toBe(
+      '• Owned release planning and execution across multiple Scrum teams; introduced timeline visualizations that improved milestone clarity.\n• Managed cross-team dependencies.',
+    );
+  });
+
   it('parses an experience section with one job block', () => {
     const result = parseResumeText(`
       Jane Smith
@@ -117,6 +152,42 @@ describe('resume parser', () => {
       company: 'Acme Corp',
       role: 'Senior Engineer',
       responsibilities: 'Built backend services.',
+    });
+  });
+
+  it('parses company-line date ranges and grouped responsibilities from ATS resume text', () => {
+    const result = parseResumeText(`
+      Alvin Resoso
+
+      Professional Experience
+      Cognizant Technology Solutions Philippines Inc. 2025 August - 2026 April
+      Project Manager
+      • Owned release planning and execution.
+      • Managed cross-team dependencies.
+      Dyson Electronics Pte. Ltd. - Philippine Branch 2021 January - 2025 July
+      Scrum Master (Multi-team, Beauty Line)
+      • Led up to three concurrent local embedded software teams.
+      • Supported ART-level delivery.
+      Nokia Technology Center Philippines, Inc. 2014 December - 2020 June
+      Scrum Master / Software Developer, 2017 January - 2020 June
+      • Defined structured workflows.
+      Software Developer, 2016 March - 2017 January
+      • Delivered features and fixes.
+    `);
+
+    expect(result.experience).toHaveLength(4);
+    expect(result.experience[0]).toMatchObject({
+      company: 'Cognizant Technology Solutions Philippines Inc.',
+      role: 'Project Manager',
+      responsibilities: '• Owned release planning and execution.\n• Managed cross-team dependencies.',
+      dateStarted: '08/2025',
+      dateEnded: '04/2026',
+    });
+    expect(result.experience[2]).toMatchObject({
+      company: 'Nokia Technology Center Philippines, Inc.',
+      role: 'Scrum Master / Software Developer',
+      dateStarted: '01/2017',
+      dateEnded: '06/2020',
     });
   });
 
@@ -200,6 +271,25 @@ describe('resume parser', () => {
     ]);
   });
 
+  it('recognizes educational attainment as an education section header', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Educational Attainment
+      Bachelor of Science in Electronics and Communications Engineering
+      University of the Philippines - Diliman
+    `);
+
+    expect(result.certifications).toEqual([]);
+    expect(result.education).toEqual([
+      {
+        university: 'University of the Philippines - Diliman',
+        degreeMajor: 'Bachelor of Science in Electronics and Communications Engineering',
+        yearCompleted: '',
+      },
+    ]);
+  });
+
   it('uses the end year from an education date range as yearCompleted', () => {
     const result = parseResumeText(`
       Jane Smith
@@ -267,6 +357,31 @@ describe('resume parser', () => {
         name: 'Google Data Analytics Certificate',
         issuingBody: '',
         issuanceDate: '',
+        expiryDate: '',
+      },
+    ]);
+  });
+
+  it('parses certification bullet lines with issuers and dates', () => {
+    const result = parseResumeText(`
+      Jane Smith
+
+      Certifications
+      • SAFe® 6 Release Train Engineer, Scaled Agile, Inc 2026 April - 2027 April
+      • Professional Scrum Master - Advanced, Scrum.org 2026 January
+    `);
+
+    expect(result.certifications).toEqual([
+      {
+        name: 'SAFe® 6 Release Train Engineer',
+        issuingBody: 'Scaled Agile, Inc',
+        issuanceDate: '04/2026',
+        expiryDate: '04/2027',
+      },
+      {
+        name: 'Professional Scrum Master - Advanced',
+        issuingBody: 'Scrum.org',
+        issuanceDate: '01/2026',
         expiryDate: '',
       },
     ]);
