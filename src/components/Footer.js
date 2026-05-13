@@ -2,7 +2,7 @@ import aliceWhite from '../assets/Alice_White.png';
 
 const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 // Keep this static release string in sync with package.json for each release.
-const APP_VERSION = 'v0.6.0';
+const APP_VERSION = 'v0.7.0';
 
 function createText(className, text) {
   const element = document.createElement('p');
@@ -69,6 +69,26 @@ function createFeedbackLink(text, label) {
   return link;
 }
 
+function createLicense() {
+  const section = document.createElement('section');
+  const label = document.createElement('p');
+  const link = document.createElement('a');
+
+  section.className = 'footer__section';
+  label.className = 'footer__label';
+  label.textContent = 'LICENSE';
+
+  link.className = 'footer__link';
+  link.href = 'https://polyformproject.org/licenses/noncommercial/1.0.0';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'PolyForm Noncommercial 1.0.0';
+
+  section.append(label, link);
+
+  return section;
+}
+
 function createFeedback() {
   const section = document.createElement('section');
   const label = document.createElement('p');
@@ -100,6 +120,7 @@ export function render() {
     createSection('VERSION', [APP_VERSION, 'Built May 2026']),
     createSection('STACK', ['Vanilla JS \u00b7 Vite', 'Vitest \u00b7 ESLint']),
     createFeedback(),
+    createLicense(),
     createText(
       'footer__copyright',
       "\u00a9 2026 Project Alice. All rights reserved. \u00b7 Part of reso's Project Series.",

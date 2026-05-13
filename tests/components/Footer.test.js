@@ -12,7 +12,7 @@ describe('Footer', () => {
 
   it('renders feedback links to GitHub issues in new tabs', () => {
     const footer = Footer.render();
-    const links = [...footer.querySelectorAll('.footer__link')];
+    const links = [...footer.querySelectorAll('.footer__feedback .footer__link')];
 
     expect(links).toHaveLength(2);
 
@@ -26,7 +26,7 @@ describe('Footer', () => {
 
   it('adds accessible labels to feedback links', () => {
     const footer = Footer.render();
-    const links = [...footer.querySelectorAll('.footer__link')];
+    const links = [...footer.querySelectorAll('.footer__feedback .footer__link')];
 
     expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
       'Report an issue on GitHub',
@@ -34,23 +34,35 @@ describe('Footer', () => {
     ]);
   });
 
+  it('renders the license link to PolyForm in a new tab', () => {
+    const footer = Footer.render();
+    const links = [...footer.querySelectorAll('.footer__link')];
+    const licenseLink = links.find((l) => l.href.includes('polyformproject.org'));
+
+    expect(licenseLink).toBeTruthy();
+    expect(licenseLink.textContent).toBe('PolyForm Noncommercial 1.0.0');
+    expect(licenseLink.target).toBe('_blank');
+    expect(licenseLink.rel).toContain('noopener');
+    expect(licenseLink.rel).toContain('noreferrer');
+  });
+
   it('renders the copyright text', () => {
     const footer = Footer.render();
 
-    expect(footer.textContent).toContain('\u00a9 2026 Project Alice');
+    expect(footer.textContent).toContain('© 2026 Project Alice');
   });
 
   it('renders the current static app version', () => {
     const footer = Footer.render();
 
-    expect(footer.textContent).toContain('v0.6.0');
+    expect(footer.textContent).toContain('v0.7.0');
     expect(footer.textContent).toContain('Built May 2026');
   });
 
   it('uses visual labels without adding footer headings', () => {
     const footer = Footer.render();
 
-    expect(footer.querySelectorAll('.footer__label')).toHaveLength(3);
+    expect(footer.querySelectorAll('.footer__label')).toHaveLength(4);
     expect(footer.querySelectorAll('h1, h2, h3, h4, h5, h6')).toHaveLength(0);
   });
 });

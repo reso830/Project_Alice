@@ -1051,6 +1051,12 @@ textarea.edit-field__control {
   font-weight: 700;
 }
 
+.resume-import__disclaimer {
+  color: var(--t3);
+  font-size: 11px;
+  font-style: italic;
+}
+
 .resume-import__error,
 .resume-import__error-message {
   color: #c1121f;
