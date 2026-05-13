@@ -19,9 +19,12 @@
 
 ---
 
-## Implementation Review Findings
+## Implementation Review Findings (pre-implementation, Codex)
 
-_None yet._
+| ID | Severity | Summary | State | Resolution |
+|----|----------|---------|-------|------------|
+| IMPL-MAJOR-01 | MAJOR | Task 02.1 transition gate fires on any PATCH with `status` present, including unchanged-status saves — modal sends full draft payload, so non-status edits on terminal records are incorrectly rejected | Resolved | Added step c to Task 02.1 pseudocode: skip checks when `result.data.status === currentRecord.status`; updated Constraints block; added test 5 to Task 02.2 (unchanged terminal status → 200) and renumbered former test 5 to 6 |
+| IMPL-MINOR-01 | MINOR | `plan-review.md` checklist (line 31) says the PATCH route imports from the model, contradicting plan.md and tasks.md which route the server through `shared/constants.js` | Resolved | Split checklist item into two: UI components import from `src/models/application.js` directly; PATCH route imports from `shared/constants.js` per INFO-01 convention |
 
 ---
 

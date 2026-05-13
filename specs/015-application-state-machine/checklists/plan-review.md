@@ -28,7 +28,8 @@ Complete before generating tasks. Check each item; document any skip with reason
 
 - [ ] `TRANSITIONS`, `isValidTransition`, `getValidTransitions` are exported from `src/models/application.js` only
 - [ ] No other file duplicates the transition rules
-- [ ] `StatusDropdown.js`, `Card.js`, `Modal.js`, and the PATCH route all import from the model
+- [ ] `StatusDropdown.js`, `Card.js`, and `Modal.js` import helpers directly from `src/models/application.js`
+- [ ] The PATCH route imports helpers from `shared/constants.js` (re-exported from the model per INFO-01 convention), not directly from `src/models/`
 
 ---
 

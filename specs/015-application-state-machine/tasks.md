@@ -206,10 +206,12 @@ Depends on Phase 01 (imports model helpers). No UI changes in this phase.
    if result.data.status is defined:
      a. Fetch current record: const currentRecord = getById(id, db)
      b. If currentRecord is null: return 404 NOT_FOUND (same shape as line 93–98)
-     c. If TERMINAL_STATES.has(currentRecord.status):
+     c. If result.data.status === currentRecord.status: skip to update() — no
+          transition is occurring; do not run checks d or e
+     d. If TERMINAL_STATES.has(currentRecord.status):
           return 400 VALIDATION_ERROR with fields.status:
           "Cannot change status of a completed application"
-     d. If !isValidTransition(currentRecord.status, result.data.status):
+     e. If !isValidTransition(currentRecord.status, result.data.status):
           return 400 VALIDATION_ERROR with fields.status:
           "Invalid transition from <currentRecord.status> to <result.data.status>"
    ```
@@ -228,8 +230,9 @@ Depends on Phase 01 (imports model helpers). No UI changes in this phase.
    ```
 
 **Constraints**:
-- The guard runs only when `result.data.status` is defined (i.e. a partial PATCH
-  without a `status` field skips the transition check entirely).
+- The guard runs only when `result.data.status` is defined **and differs from the
+  current record's status**. A PATCH that includes the unchanged status (e.g. the
+  modal saving a full draft payload) MUST pass through without a transition error.
 - The `POST /` creation route is unaffected — no transition check at creation.
 - `POST /:id/archive` is unaffected.
 - The existing `getById` import from `'../db/applications.js'` is already present;
@@ -270,7 +273,14 @@ block) covering:
    - PATCH with `{ fav: true }` (no status field)
    - Assert response status is `200` (no transition check triggered)
 
-5. **`offer → accepted` transition returns 200 (SC-005, US3)**
+5. **PATCH with unchanged status is unaffected (including terminal records)**
+   - Create an application with `status: 'rejected'`
+   - PATCH with `{ notes: 'follow up', status: 'rejected' }` (status unchanged)
+   - Assert response status is `200`
+   - Assert `body.data.status` is `'rejected'`
+   - _(Verifies US4: non-status fields on terminal applications remain editable)_
+
+6. **`offer → accepted` transition returns 200 (SC-005, US3)**
    - Create an application with `status: 'offer'`
    - PATCH with `{ status: 'accepted' }`
    - Assert response status is `200`
