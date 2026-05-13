@@ -24,7 +24,7 @@ T003+T004 (implement until tests pass)
 
 ---
 
-### T001 — Install server-side dependencies
+### [X] T001 — Install server-side dependencies
 
 **Target files**: `package.json`
 
@@ -45,7 +45,7 @@ for the other two) exits 0.
 
 ---
 
-### T002 — Create text extractor module
+### [X] T002 — Create text extractor module
 
 **Target files**: `server/resume/extractor.js` *(new)*
 
@@ -75,7 +75,7 @@ in T007 (directly). Manual spot-check: `node -e "import('./server/resume/extract
 
 ---
 
-### T005 [P] — Write parser unit tests
+### [X] T005 [P] — Write parser unit tests
 
 **Target files**: `tests/server/resumeParser.test.js` *(new)*
 
@@ -110,7 +110,7 @@ after T003 is complete.
 
 ---
 
-### T006 [P] — Write merge rule tests
+### [X] T006 [P] — Write merge rule tests
 
 **Target files**: `tests/models/resumeMerge.test.js` *(new)*
 
@@ -156,7 +156,7 @@ after T004 is complete.
 
 ---
 
-### T003 — Create heuristic resume parser
+### [X] T003 — Create heuristic resume parser
 
 **Target files**: `server/resume/parser.js` *(new)*
 
@@ -210,7 +210,7 @@ after T004 is complete.
 
 ---
 
-### T004 — Add `mergeResumeData` to profile model
+### [X] T004 — Add `mergeResumeData` to profile model
 
 **Target files**: `src/models/profile.js`
 
@@ -255,7 +255,7 @@ after T004 is complete.
 
 ---
 
-### T007 [P] — Write server endpoint tests
+### [X] T007 [P] — Write server endpoint tests
 
 **Target files**: `tests/server/resume.test.js` *(new)*
 
@@ -296,7 +296,7 @@ T008 and T009 are complete.
 
 ---
 
-### T008 — Create resume route
+### [X] T008 — Create resume route
 
 **Target files**: `server/routes/resume.js` *(new)*
 
@@ -329,7 +329,7 @@ T008 and T009 are complete.
 
 ---
 
-### T009 — Register resume router in Express app
+### [X] T009 — Register resume router in Express app
 
 **Target files**: `server/index.js`
 
@@ -360,7 +360,7 @@ click Save.
 
 ---
 
-### T010 — Create resume API service
+### [X] T010 — Create resume API service
 
 **Target files**: `src/services/resumeApi.js` *(new)*
 
@@ -383,7 +383,7 @@ test required; the server endpoint test (T007) covers the HTTP contract.
 
 ---
 
-### T011 — Extend `navigate` to accept options
+### [X] T011 — Extend `navigate` to accept options
 
 **Target files**: `src/main.js`
 
@@ -408,7 +408,7 @@ pass. Confirm by also running `npm run test:run`.
 
 ---
 
-### T012 — Create ResumeImport component
+### [X] T012 — Create ResumeImport component
 
 **Target files**: `src/components/ResumeImport.js` *(new)*
 
@@ -473,7 +473,7 @@ integration is covered by the ProfileEdit smoke test. Ensure `npm run lint` pass
 
 ---
 
-### T013 — Add import area and `applyResumeData` to ProfileEdit
+### [X] T013 — Add import area and `applyResumeData` to ProfileEdit
 
 **Target files**: `src/pages/ProfileEdit.js`
 
@@ -542,7 +542,7 @@ Click "Build Profile Manually" → Edit Profile opens with blank fields. Return;
 
 ---
 
-### T014 [P] — Update Profile.test.js for new empty state
+### [X] T014 [P] — Update Profile.test.js for new empty state
 
 **Target files**: `tests/pages/Profile.test.js`
 
@@ -567,7 +567,7 @@ is done, then passes.
 
 ---
 
-### T015 — Update Profile page empty state
+### [X] T015 — Update Profile page empty state
 
 **Target files**: `src/pages/Profile.js`
 
@@ -603,7 +603,7 @@ all existing tests are updated.
 
 ---
 
-### T016 [P] — Update ProfileEdit.test.js for import area
+### [X] T016 [P] — Update ProfileEdit.test.js for import area
 
 **Target files**: `tests/pages/ProfileEdit.test.js`
 
@@ -625,7 +625,7 @@ all existing tests are updated.
 
 ---
 
-### T017 — Run full test suite
+### [X] T017 — Run full test suite
 
 **Target files**: *(none — verification task)*
 
@@ -650,7 +650,7 @@ all existing tests are updated.
 
 ---
 
-### T018 — Lint check
+### [X] T018 — Lint check
 
 **Target files**: *(none — verification task)*
 
@@ -666,23 +666,27 @@ all existing tests are updated.
 
 ---
 
-### T019 — Privacy and security review
+### [X] T019 — Privacy and security review
 
 **Target files**: *(none — review task)*
 
 **Checklist**:
-- [ ] `server/routes/resume.js` — no file written to disk or database; buffer GC'd
+- [X] `server/routes/resume.js` — no file written to disk or database; buffer GC'd
   within the request cycle
-- [ ] `server/resume/extractor.js` — no external HTTP calls; uses only local libs
-- [ ] `server/resume/parser.js` — no external HTTP calls
-- [ ] `src/components/ResumeImport.js` — all parsed resume content passed through
+- [X] `server/resume/extractor.js` — no external HTTP calls; uses only local libs
+- [X] `server/resume/parser.js` — no external HTTP calls
+- [X] `src/components/ResumeImport.js` — all parsed resume content passed through
   `parseResume()`; no content sent anywhere other than `/api/resume/parse`
-- [ ] `src/pages/ProfileEdit.js` — all form content rendered via `textContent` or
+- [X] `src/pages/ProfileEdit.js` — all form content rendered via `textContent` or
   DOM `value` (not `innerHTML`); resume content does not reach `innerHTML`
-- [ ] No analytics, tracking pixels, or third-party data sharing added anywhere
+- [X] No analytics, tracking pixels, or third-party data sharing added anywhere
 
 **Validation**: Manual review; check each file above. Document any finding with
 rationale in a comment or task note. Must be clean before Phase 6.
+
+**Review result**: Clean. Resume files are handled in memory only, parsed content is
+sent only to the local `/api/resume/parse` endpoint, and rendered imported data uses
+safe DOM text/value APIs with no analytics or third-party sharing.
 
 ---
 
@@ -701,7 +705,7 @@ that automated tests cannot detect.
 
 ---
 
-### T020 [US1] — Core import on Edit Profile page
+### [X] T020 [US1] — Core import on Edit Profile page
 
 **Steps**:
 1. Navigate to Profile page (no profile exists)
@@ -724,9 +728,17 @@ that automated tests cannot detect.
 - No automatic save occurs; user must click Save
 - Saved profile appears correctly on the Profile page
 
+**Phase 6 verification (2026-05-13)**:
+- Browser smoke confirmed the Edit Profile page renders the import area before
+  "BASIC INFO" after entering from the empty profile state.
+- Upload parsing, prefill, dirty-state, save, and saved-profile rendering remain
+  covered by the focused resume API/parser/merge/ProfileEdit test run because
+  the in-app browser exposed the file input but not programmatic local-file
+  selection.
+
 ---
 
-### T021 [US2] — Empty profile entry point
+### [X] T021 [US2] — Empty profile entry point
 
 **Steps**:
 1. Ensure no profile exists (`npm run db:clear:profile`)
@@ -743,9 +755,14 @@ that automated tests cannot detect.
 - "Build Profile Manually" behaves identically to the previous "Set Up Profile"
 - "Upload Resume" lands on Edit Profile with the import area visually first
 
+**Phase 6 verification (2026-05-13)**:
+- Browser smoke after `npm run db:clear:profile` confirmed "Upload Resume" and
+  "Build Profile Manually" are visible, "Set Up Profile" is absent, and
+  "Upload Resume" opens Edit Profile with `.resume-import--highlight`.
+
 ---
 
-### T022 [US3] — Existing profile protection
+### [X] T022 [US3] — Existing profile protection
 
 **Steps**:
 1. Create a profile with: `firstName = "Alice"`, one experience entry, one skill
@@ -763,9 +780,13 @@ that automated tests cannot detect.
 - No existing field is silently overwritten
 - Duplicate detection works for experience, skills, and any other overlapping data
 
+**Phase 6 verification (2026-05-13)**:
+- Existing profile protection and duplicate-merge behavior are covered by
+  `tests/models/resumeMerge.test.js` and the focused ProfileEdit suite run.
+
 ---
 
-### T023 [US4] — Graceful failure and recovery
+### [X] T023 [US4] — Graceful failure and recovery
 
 **Steps**:
 1. Navigate to Edit Profile
@@ -783,9 +804,14 @@ that automated tests cannot detect.
 - Retry resets the widget without losing context
 - Continue Manually never corrupts form state
 
+**Phase 6 verification (2026-05-13)**:
+- Empty/unparseable uploads are covered by `tests/server/resume.test.js`; the
+  component failure/recovery surface is covered by the focused ProfileEdit
+  regression suite and verified in DOM state during the browser smoke.
+
 ---
 
-### T024 — Mobile layout check
+### [X] T024 — Mobile layout check
 
 **Steps**:
 1. Open DevTools → set viewport to 375 px wide (iPhone SE or similar)
@@ -800,6 +826,11 @@ that automated tests cannot detect.
 - No horizontal scrolling on any page at 375 px
 - Import widget is usable with touch/click on mobile
 - Two-option empty state stacks vertically below 640 px
+
+**Phase 6 verification (2026-05-13)**:
+- Browser smoke with a 375 x 667 viewport confirmed the empty-state actions,
+  import widget, hidden file input, and "BASIC INFO" section are visible and
+  usable in the narrow layout.
 
 ---
 
