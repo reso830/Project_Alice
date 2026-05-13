@@ -19,6 +19,7 @@ let _renderSkillsBody = () => {};
 let _beforeUnloadHandler = null;
 let _highlightImport = false;
 let _importDone = false;
+let _importArea = null;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1039,12 +1040,14 @@ function renderResumeImportArea(page) {
 
   const importArea = ResumeImport.create({
     onSuccess: (parsedData) => {
+      if (!_container) return;
       _importDone = true;
       _formState = mergeResumeData(_formState, parsedData);
       renderEditPage(_container);
     },
     onDismiss: () => {},
   });
+  _importArea = importArea;
 
   if (_highlightImport) {
     importArea.classList.add('resume-import--highlight');
@@ -1277,6 +1280,8 @@ export function unmount() {
   _discardAction = null;
   _openOverlay = null;
   _renderSkillsBody = () => {};
+  _importArea?.destroy?.();
+  _importArea = null;
   _highlightImport = false;
   _importDone = false;
 }

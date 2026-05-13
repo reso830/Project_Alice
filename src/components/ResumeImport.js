@@ -221,6 +221,7 @@ export const ResumeImport = {
 
     input.addEventListener('change', () => selectFile(input.files?.[0]));
     renderIdle();
+    root.destroy = clearProcessingTimer;
 
     return root;
   },
