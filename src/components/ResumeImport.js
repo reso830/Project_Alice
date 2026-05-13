@@ -163,7 +163,12 @@ export const ResumeImport = {
 
     function renderIdle() {
       renderShell('resume-import--idle');
-      root.append(createHeader(), createDropZone(), error);
+      const disclaimer = createElement(
+        'p',
+        'resume-import__disclaimer',
+        'AI parsing may not be perfect — review all imported fields before saving.',
+      );
+      root.append(createHeader(), createDropZone(), disclaimer, error);
     }
 
     function renderSelected() {
