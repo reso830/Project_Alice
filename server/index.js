@@ -3,6 +3,7 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { createApplicationsRouter } from './routes/applications.js';
 import { createProfileRouter } from './routes/profile.js';
+import { createResumeRouter } from './routes/resume.js';
 
 const PORT = 3001;
 
@@ -17,6 +18,7 @@ export function createApp({ db } = {}) {
 
   app.use('/api/applications', createApplicationsRouter({ db }));
   app.use('/api/profile', createProfileRouter({ db }));
+  app.use('/api/resume', createResumeRouter());
 
   app.use((err, _req, res, _next) => {
     if (err?.status === 400 && err?.type === 'entity.parse.failed') {

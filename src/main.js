@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   navigate('tracker');
 });
 
-function navigate(page) {
+function navigate(page, options = {}) {
   const appRoot = document.querySelector('#app');
   let activePage = page;
 
@@ -114,7 +114,7 @@ function navigate(page) {
     Profile.mount(appRoot, { navigate });
     _currentUnmount = Profile.unmount;
   } else if (page === 'profile-edit') {
-    ProfileEdit.mount(appRoot, { navigate });
+    ProfileEdit.mount(appRoot, { navigate, ...options });
     _currentUnmount = ProfileEdit.unmount;
     activePage = 'profile';
   } else {

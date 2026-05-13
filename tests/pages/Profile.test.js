@@ -57,11 +57,15 @@ describe('Profile page', () => {
     expect(container.querySelector('h1')?.textContent).toBe('Welcome back.');
     expect(container.textContent).toContain('No profile set up yet.');
 
+    expect(getButton(container, 'Set Up Profile')).toBeTruthy();
+    expect(getButton(container, 'Upload Resume')).toBeUndefined();
+    expect(getButton(container, 'Build Profile Manually')).toBeUndefined();
+
     getButton(container, 'Go to Tracker').click();
     getButton(container, 'Set Up Profile').click();
 
     expect(navigate).toHaveBeenCalledWith('tracker');
-    expect(navigate).toHaveBeenCalledWith('profile-edit');
+    expect(navigate).toHaveBeenCalledWith('profile-edit', { highlightImport: true });
   });
 
   it('renders a saved profile and wires edit navigation', async () => {

@@ -231,6 +231,88 @@ export function normaliseProfile(data = {}) {
   return profile;
 }
 
+function cloneValue(value) {
+  return typeof globalThis.structuredClone === 'function'
+    ? globalThis.structuredClone(value)
+    : JSON.parse(JSON.stringify(value));
+}
+
+function normalizeDuplicatePart(value) {
+  return cleanString(value).replace(/\s+/g, ' ').toLowerCase();
+}
+
+function normalizeDuplicateUrl(value) {
+  return normalizeDuplicatePart(value).replace(/\/+$/, '');
+}
+
+const DUPLICATE_KEYS = {
+  experience: (entry) => [
+    entry?.company,
+    entry?.role,
+    entry?.dateStarted,
+  ].map(normalizeDuplicatePart).join('|'),
+  education: (entry) => [
+    entry?.university,
+    entry?.degreeMajor,
+    entry?.yearCompleted,
+  ].map(normalizeDuplicatePart).join('|'),
+  certifications: (entry) => [
+    entry?.name,
+    entry?.issuingBody,
+  ].map(normalizeDuplicatePart).join('|'),
+  skills: normalizeDuplicatePart,
+  languages: (entry) => normalizeDuplicatePart(entry?.language),
+  links: (entry) => normalizeDuplicateUrl(entry?.url),
+  awards: (entry) => [
+    entry?.awardName,
+    entry?.issuingBody,
+  ].map(normalizeDuplicatePart).join('|'),
+};
+
+function hasDuplicate(existingEntries, parsedEntry, getDuplicateKey) {
+  const parsedKey = getDuplicateKey(parsedEntry);
+
+  if (!parsedKey) {
+    return false;
+  }
+
+  return existingEntries.some((entry) => getDuplicateKey(entry) === parsedKey);
+}
+
+export function mergeResumeData(currentProfile, parsedData) {
+  const mergedProfile = isPlainObject(currentProfile)
+    ? cloneValue(currentProfile)
+    : normaliseProfile(currentProfile);
+  const safeParsedData = isPlainObject(parsedData) ? parsedData : {};
+
+  for (const field of STRING_FIELDS) {
+    const parsedValue = cleanString(safeParsedData[field]);
+
+    if (!cleanString(mergedProfile[field]) && parsedValue) {
+      mergedProfile[field] = parsedValue;
+    }
+  }
+
+  for (const field of ARRAY_FIELDS) {
+    if (!Array.isArray(mergedProfile[field])) {
+      mergedProfile[field] = [];
+    }
+
+    const parsedEntries = Array.isArray(safeParsedData[field])
+      ? cloneValue(safeParsedData[field])
+      : [];
+    const getDuplicateKey = DUPLICATE_KEYS[field];
+
+    for (const parsedEntry of parsedEntries) {
+      if (!hasDuplicate(mergedProfile[field], parsedEntry, getDuplicateKey)) {
+        mergedProfile[field].push(parsedEntry);
+      }
+    }
+  }
+
+  return mergedProfile;
+}
+
 export function validateProfile(data = {}) {
   const profile = normaliseProfile(data);
   const errors = {};

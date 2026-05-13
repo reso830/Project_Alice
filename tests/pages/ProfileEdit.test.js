@@ -472,6 +472,20 @@ describe('ProfileEdit page', () => {
     expect(getFieldInput(summary, 'Summary').value).toBe('');
   });
 
+  it('scrolls to the top when the resume import area is highlighted', async () => {
+    const container = createAppShell();
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    api.getProfile.mockResolvedValue(null);
+
+    await ProfileEdit.mount(container, { navigate: vi.fn(), highlightImport: true });
+
+    expect(container.querySelector('.resume-import--highlight')).toBeTruthy();
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+
+    scrollTo.mockRestore();
+  });
+
   it('pre-populates basic info and summary from an existing profile', async () => {
     const container = createAppShell();
 
@@ -515,6 +529,7 @@ describe('ProfileEdit page', () => {
 
     expect([...container.querySelectorAll('.section-label')].map((label) => label.textContent))
       .toEqual([
+        'RESUME IMPORT',
         'BASIC INFO',
         'SUMMARY',
         'PROFESSIONAL EXPERIENCE',
@@ -778,12 +793,17 @@ describe('ProfileEdit page', () => {
 
   it('surfaces a section-level summary when entry data has validation errors', async () => {
     const container = createAppShell();
+    const scrollIntoView = vi.fn();
+    const focus = vi.fn();
 
     api.getProfile.mockResolvedValue(createProfile({
       firstName: 'Ana',
       lastName: 'Rivera',
       languages: [{ language: 'English', proficiency: '' }],
     }));
+
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    window.HTMLElement.prototype.focus = focus;
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
@@ -795,6 +815,11 @@ describe('ProfileEdit page', () => {
     expect(api.saveProfile).not.toHaveBeenCalled();
     expect(summary).toBeTruthy();
     expect(summary.textContent).toContain('Languages');
+    expect(summary.parentElement).toBe(container.querySelector('.profile-edit-page'));
+    expect(summary.previousElementSibling).toBeNull();
+    expect(document.querySelector('.profile-edit-subheader .section-validation-error')).toBeNull();
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('navigates directly when cancelling a clean form', async () => {
