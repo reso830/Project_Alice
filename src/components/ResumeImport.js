@@ -166,7 +166,7 @@ export const ResumeImport = {
       const disclaimer = createElement(
         'p',
         'resume-import__disclaimer',
-        'AI parsing may not be perfect — review all imported fields before saving.',
+        'Auto-parsing may not be perfect — review all imported fields before saving.',
       );
       root.append(createHeader(), createDropZone(), disclaimer, error);
     }
