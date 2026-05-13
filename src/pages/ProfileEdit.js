@@ -20,6 +20,7 @@ let _beforeUnloadHandler = null;
 let _highlightImport = false;
 let _importDone = false;
 let _importArea = null;
+let _mountGeneration = 0;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1038,9 +1039,10 @@ function renderResumeImportArea(page) {
     return;
   }
 
+  const generation = _mountGeneration;
   const importArea = ResumeImport.create({
     onSuccess: (parsedData) => {
-      if (!_container) return;
+      if (!_container || _mountGeneration !== generation) return;
       _importDone = true;
       _formState = mergeResumeData(_formState, parsedData);
       renderEditPage(_container);
@@ -1232,6 +1234,7 @@ export async function mount(container, { navigate, highlightImport = false } = {
   _navigate = typeof navigate === 'function' ? navigate : () => {};
   _highlightImport = highlightImport;
   _importDone = false;
+  _mountGeneration += 1;
   container.replaceChildren(createElement('div', 'profile-loading', 'Loading profile...'));
 
   const profile = await getProfile().catch(() => null);
