@@ -1,5 +1,6 @@
+import { ResumeImport } from '../components/ResumeImport.js';
 import { Toast } from '../components/Toast.js';
-import { normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
+import { mergeResumeData, normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
 import { validateMonthYear, validateRequired, validateUrl, validateYear } from '../utils/validate.js';
@@ -16,6 +17,8 @@ let _discardAction = null;
 let _openOverlay = null;
 let _renderSkillsBody = () => {};
 let _beforeUnloadHandler = null;
+let _highlightImport = false;
+let _importDone = false;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1029,9 +1032,31 @@ function renderAwardsCard(page) {
   page.append(card);
 }
 
+function renderResumeImportArea(page) {
+  if (_importDone) {
+    return;
+  }
+
+  const importArea = ResumeImport.create({
+    onSuccess: (parsedData) => {
+      _importDone = true;
+      _formState = mergeResumeData(_formState, parsedData);
+      renderEditPage(_container);
+    },
+    onDismiss: () => {},
+  });
+
+  if (_highlightImport) {
+    importArea.classList.add('resume-import--highlight');
+  }
+
+  page.append(importArea);
+}
+
 function renderEditPage(container) {
   const page = createElement('div', 'profile-edit-page');
 
+  renderResumeImportArea(page);
   renderBasicInfoCard(page);
   renderSummaryCard(page);
   renderExperienceCard(page);
@@ -1045,6 +1070,9 @@ function renderEditPage(container) {
   page.append(renderPageControls());
   container.replaceChildren(page);
   updateControlsState();
+  if (_highlightImport) {
+    page.querySelector('.resume-import')?.scrollIntoView({ behavior: 'smooth' });
+  }
 }
 
 const ENTRY_SECTION_LABELS = {
@@ -1196,9 +1224,11 @@ export function confirmNavigation(page) {
   return false;
 }
 
-export async function mount(container, { navigate } = {}) {
+export async function mount(container, { navigate, highlightImport = false } = {}) {
   _container = container;
   _navigate = typeof navigate === 'function' ? navigate : () => {};
+  _highlightImport = highlightImport;
+  _importDone = false;
   container.replaceChildren(createElement('div', 'profile-loading', 'Loading profile...'));
 
   const profile = await getProfile().catch(() => null);
@@ -1247,6 +1277,8 @@ export function unmount() {
   _discardAction = null;
   _openOverlay = null;
   _renderSkillsBody = () => {};
+  _highlightImport = false;
+  _importDone = false;
 }
 
 export const ProfileEdit = { mount, unmount, confirmNavigation };

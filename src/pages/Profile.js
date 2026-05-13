@@ -252,14 +252,19 @@ function renderEmptyProfile(section, navigate) {
   const icon = createElement('div', 'profile-empty__icon');
   const iconHead = createElement('span', 'profile-empty__icon-head');
   const iconBody = createElement('span', 'profile-empty__icon-body');
+  const actions = createElement('div', 'profile-empty__actions');
 
   icon.setAttribute('aria-hidden', 'true');
   icon.append(iconHead, iconBody);
+  actions.append(
+    createButton('Upload Resume', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
+    createButton('Build Profile Manually', 'profile-btn profile-btn--outline', () => navigate('profile-edit')),
+  );
   empty.append(
     icon,
     createElement('p', 'profile-empty__title', 'No profile set up yet.'),
     createElement('p', 'profile-empty__copy', 'Add your background to strengthen your applications.'),
-    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => navigate('profile-edit')),
+    actions,
   );
   section.append(empty);
 }
