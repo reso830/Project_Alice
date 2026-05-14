@@ -1027,6 +1027,30 @@ describe('Modal', () => {
     expect(document.querySelector('.status-dropdown')).toBeNull();
   });
 
+  it('locks status controls after edit-mode save transitions to a terminal state', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({ status: 'accepted' }));
+
+    Modal.open(application({ status: 'offer' }));
+
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="accepted"]').click();
+
+    saveButton().click();
+    await flushPromises();
+
+    const statusButton = document.querySelector('.modal-quick-action--status');
+    const statusBadge = document.querySelector('#modal-status-badge');
+
+    expect(statusButton.disabled).toBe(true);
+    expect(statusButton.title).toBe('Workflow complete');
+    expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
+
+    statusButton.click();
+    statusBadge.click();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
   it('opens the status dropdown from the status badge without PATCH', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

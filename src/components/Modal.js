@@ -700,6 +700,24 @@ async function saveDraft() {
 
     _draft = copyApplication({ ..._draft, ...updated });
     _original = copyApplication(_draft);
+
+    if (TERMINAL_STATES.has(_draft.status)) {
+      const btn = document.querySelector('.modal-quick-action--status');
+      const badge = document.querySelector('#modal-status-badge');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.title = 'Workflow complete';
+      }
+
+      if (badge) {
+        badge.removeAttribute('role');
+        badge.removeAttribute('tabindex');
+        badge.setAttribute('aria-disabled', 'true');
+        badge.setAttribute('aria-label', 'Status locked - workflow complete');
+      }
+    }
+
     renderTitle();
     _renderBody();
     _syncFooter();
@@ -854,6 +872,8 @@ export function open(application, {
   const statusBadge = createStatusBadge(_draft.status, { id: 'modal-status-badge' });
 
   function openStatusDropdown(anchorEl) {
+    if (_mode === 'edit' && TERMINAL_STATES.has(_draft.status)) return;
+
     const openDropdown = _mode === 'create' ? StatusDropdown.openAll : StatusDropdown.open;
 
     openDropdown(anchorEl, currentStatus, (newStatus) => {
