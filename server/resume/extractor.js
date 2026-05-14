@@ -1,6 +1,3 @@
-import mammoth from 'mammoth';
-import { PDFParse } from 'pdf-parse';
-
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TXT_MIME = 'text/plain';
@@ -35,23 +32,33 @@ function resolveMimetype(mimetype, originalname) {
   }
 }
 
+async function extractPdfText(buffer) {
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: buffer });
+
+  try {
+    const result = await parser.getText();
+    return result.text;
+  } finally {
+    await parser.destroy();
+  }
+}
+
+async function extractDocxText(buffer) {
+  const { default: mammoth } = await import('mammoth');
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value;
+}
+
 export async function extractText(buffer, mimetype, originalname = '') {
   const resolvedMimetype = resolveMimetype(mimetype, originalname);
 
   if (resolvedMimetype === PDF_MIME) {
-    const parser = new PDFParse({ data: buffer });
-
-    try {
-      const result = await parser.getText();
-      return result.text;
-    } finally {
-      await parser.destroy();
-    }
+    return extractPdfText(buffer);
   }
 
   if (resolvedMimetype === DOCX_MIME) {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
+    return extractDocxText(buffer);
   }
 
   if (resolvedMimetype === TXT_MIME) {
