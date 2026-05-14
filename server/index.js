@@ -1,13 +1,13 @@
 import express from 'express';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
+import { config } from './config.js';
+import { createRepositories } from './repositories/index.js';
 import { createApplicationsRouter } from './routes/applications.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createResumeRouter } from './routes/resume.js';
 
-const PORT = 3001;
-
-export function createApp({ db } = {}) {
+export function createApp({ repositories }) {
   const app = express();
 
   app.use(express.json());
@@ -16,8 +16,8 @@ export function createApp({ db } = {}) {
     res.status(200).json({ status: 'ok' });
   });
 
-  app.use('/api/applications', createApplicationsRouter({ db }));
-  app.use('/api/profile', createProfileRouter({ db }));
+  app.use('/api/applications', createApplicationsRouter({ repo: repositories.applications }));
+  app.use('/api/profile', createProfileRouter({ repo: repositories.profile }));
   app.use('/api/resume', createResumeRouter());
 
   app.use((err, _req, res, _next) => {
@@ -43,9 +43,11 @@ export function createApp({ db } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const app = createApp();
+  const repositories = await createRepositories(config);
+  const app = createApp({ repositories });
 
-  app.listen(PORT, () => {
-    console.log(`Alice API server listening on http://localhost:${PORT}`);
+  app.listen(config.port, () => {
+    console.log(`[config] Runtime mode: ${config.runtime}`);
+    console.log(`Alice API server listening on http://localhost:${config.port}`);
   });
 }

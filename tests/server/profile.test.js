@@ -2,11 +2,13 @@ import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { getProfile, saveProfile } from '../../server/db/profile.js';
 import { createApp } from '../../server/index.js';
+import { createTestRepositories } from '../../server/repositories/index.js';
 import { makeMemoryDb, makeTestDb } from './helpers.js';
 
 async function withServer(test) {
   const db = makeMemoryDb();
-  const app = createApp({ db });
+  const repositories = await createTestRepositories(db);
+  const app = createApp({ repositories });
   const server = app.listen(0);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
