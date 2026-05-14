@@ -18,25 +18,36 @@ function expectHostedStub(method) {
 }
 
 describe('hosted repository stubs', () => {
-  it('imports the Vercel API entry without loading SQLite in hosted mode', () => {
-    const output = execFileSync(
-      process.execPath,
-      ['-e', "await import('./api/index.js'); console.log('hosted import ok');"],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          APP_RUNTIME: 'hosted',
-          SUPABASE_URL: 'https://example.supabase.co',
-          SUPABASE_ANON_KEY: 'anon-key',
-          SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
-          ALICE_DB_PATH: 'logs/__missing_dir__/alice.db',
-        },
-        encoding: 'utf8',
-      },
-    );
+  it('does not load better-sqlite3 during hosted cold start', () => {
+    // Asserts the invariant directly via require.cache introspection. A
+    // writable ALICE_DB_PATH would let SQLite open successfully even if the
+    // cold-start regression returned, so we check whether the native module
+    // was imported at all rather than whether opening the DB throws.
+    const script = [
+      "await import('./api/index.js');",
+      "const { createRequire } = await import('node:module');",
+      "const { pathToFileURL } = await import('node:url');",
+      "const require = createRequire(pathToFileURL(process.cwd() + '/package.json'));",
+      "const sqliteLoaded = Object.keys(require.cache).some((key) => key.includes('better-sqlite3'));",
+      "console.log(JSON.stringify({ ok: true, sqliteLoaded }));",
+    ].join(' ');
 
-    expect(output).toContain('hosted import ok');
+    const output = execFileSync(process.execPath, ['-e', script], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        APP_RUNTIME: 'hosted',
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_ANON_KEY: 'anon-key',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+      },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+
+    const result = JSON.parse(output.trim());
+    expect(result.ok).toBe(true);
+    expect(result.sqliteLoaded).toBe(false);
   });
 
   it('throws for every applications repository method', async () => {
