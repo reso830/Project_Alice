@@ -5,7 +5,7 @@ import { makeMemoryDb } from './helpers.js';
 
 async function withServer(test) {
   const db = makeMemoryDb();
-  const repositories = createTestRepositories(db);
+  const repositories = await createTestRepositories(db);
   const app = createApp({ repositories });
   const server = app.listen(0);
   const { port } = server.address();
