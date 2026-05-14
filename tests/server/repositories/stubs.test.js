@@ -28,8 +28,12 @@ describe('hosted repository stubs', () => {
       "const { createRequire } = await import('node:module');",
       "const { pathToFileURL } = await import('node:url');",
       "const require = createRequire(pathToFileURL(process.cwd() + '/package.json'));",
-      "const sqliteLoaded = Object.keys(require.cache).some((key) => key.includes('better-sqlite3'));",
-      "console.log(JSON.stringify({ ok: true, sqliteLoaded }));",
+      'const cacheKeys = Object.keys(require.cache);',
+      "const sqliteLoaded = cacheKeys.some((key) => key.includes('better-sqlite3'));",
+      "const pdfParseLoaded = cacheKeys.some((key) => key.includes('pdf-parse'));",
+      "const pdfjsLoaded = cacheKeys.some((key) => key.includes('pdfjs-dist'));",
+      "const mammothLoaded = cacheKeys.some((key) => key.includes('mammoth'));",
+      "console.log(JSON.stringify({ ok: true, sqliteLoaded, pdfParseLoaded, pdfjsLoaded, mammothLoaded }));",
     ].join(' ');
 
     const output = execFileSync(process.execPath, ['-e', script], {
@@ -48,6 +52,9 @@ describe('hosted repository stubs', () => {
     const result = JSON.parse(output.trim());
     expect(result.ok).toBe(true);
     expect(result.sqliteLoaded).toBe(false);
+    expect(result.pdfParseLoaded).toBe(false);
+    expect(result.pdfjsLoaded).toBe(false);
+    expect(result.mammothLoaded).toBe(false);
   });
 
   it('throws for every applications repository method', async () => {
