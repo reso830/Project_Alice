@@ -1,3 +1,5 @@
+// Keep PDF/DOCX parsers lazy: pdf-parse pulls in pdfjs-dist, which needs DOM
+// globals such as DOMMatrix that serverless Node runtimes do not provide.
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TXT_MIME = 'text/plain';
