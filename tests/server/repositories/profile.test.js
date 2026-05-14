@@ -2,26 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { createTestRepositories } from '../../../server/repositories/index.js';
 import { makeMemoryDb } from '../helpers.js';
 
-function withProfileRepository(test) {
+async function withProfileRepository(test) {
   const db = makeMemoryDb();
-  const repositories = createTestRepositories(db);
+  const repositories = await createTestRepositories(db);
 
   try {
-    test(repositories.profile);
+    await test(repositories.profile);
   } finally {
     db.close();
   }
 }
 
 describe('SQLite profile repository', () => {
-  it('returns null when no profile exists', () => {
-    withProfileRepository((repo) => {
+  it('returns null when no profile exists', async () => {
+    await withProfileRepository((repo) => {
       expect(repo.get()).toBeNull();
     });
   });
 
-  it('upserts and reads profile data', () => {
-    withProfileRepository((repo) => {
+  it('upserts and reads profile data', async () => {
+    await withProfileRepository((repo) => {
       const saved = repo.upsert({
         firstName: ' Ana ',
         lastName: ' Rivera ',

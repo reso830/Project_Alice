@@ -1,7 +1,7 @@
-import { createSqliteApplicationsRepository } from './applications.js';
-import { createSqliteProfileRepository } from './profile.js';
 // server/db.js is NOT imported at the top level; importing it triggers better-sqlite3
 // and filesystem side effects that must not run in hosted/Vercel environments.
+// SQLite repository adapters are also imported lazily because they import
+// server/db/* modules, whose default arguments import server/db.js.
 
 export class HostedRepositoryNotImplementedError extends Error {
   constructor(repositoryName) {
@@ -53,7 +53,15 @@ export async function createRepositories(config) {
  * @returns {{ applications: import('./applications.js').ApplicationsRepository,
  *             profile: import('./profile.js').ProfileRepository }}
  */
-export function createTestRepositories(db) {
+export async function createTestRepositories(db) {
+  const [
+    { createSqliteApplicationsRepository },
+    { createSqliteProfileRepository },
+  ] = await Promise.all([
+    import('./applications.js'),
+    import('./profile.js'),
+  ]);
+
   return {
     applications: createSqliteApplicationsRepository(db),
     profile: createSqliteProfileRepository(db),
