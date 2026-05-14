@@ -1001,6 +1001,32 @@ describe('Modal', () => {
     expect(document.querySelector('.status-dropdown')).toBeNull();
   });
 
+  it('locks status controls after create-mode save lands in a terminal state', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.create.mockResolvedValue(application({ id: 99, status: 'accepted' }));
+
+    Modal.open(null, {
+      mode: 'create',
+      prefill: { jobTitle: 'Engineer', companyName: 'Acme', responsibilities: 'Build UI' },
+    });
+
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="accepted"]').click();
+
+    saveButton().click();
+    await flushPromises();
+
+    const statusButton = document.querySelector('.modal-quick-action--status');
+    const statusBadge = document.querySelector('#modal-status-badge');
+
+    expect(statusButton.disabled).toBe(true);
+    expect(statusButton.title).toBe('Workflow complete');
+    expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
+
+    statusButton.click();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
   it('opens the status dropdown from the status badge without PATCH', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

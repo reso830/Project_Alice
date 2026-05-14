@@ -657,6 +657,23 @@ async function saveDraft() {
       _original = copyApplication(newRecord);
       _idPill.textContent = newRecord.id;
 
+      if (TERMINAL_STATES.has(_draft.status)) {
+        const btn = document.querySelector('.modal-quick-action--status');
+        const badge = document.querySelector('#modal-status-badge');
+
+        if (btn) {
+          btn.disabled = true;
+          btn.title = 'Workflow complete';
+        }
+
+        if (badge) {
+          badge.removeAttribute('role');
+          badge.removeAttribute('tabindex');
+          badge.setAttribute('aria-disabled', 'true');
+          badge.setAttribute('aria-label', 'Status locked - workflow complete');
+        }
+      }
+
       if (_archiveButton && !_archiveButton.isConnected) {
         _quickActions?.insertBefore(_archiveButton, _quickActions.querySelector('.modal-quick-action--close'));
       }
