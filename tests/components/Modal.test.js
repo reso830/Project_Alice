@@ -658,7 +658,7 @@ describe('Modal', () => {
 
     Modal.open(application({ status: 'wishlisted' }));
     document.querySelector('.modal-quick-action--status').click();
-    document.querySelector('[data-status="offer"]').click();
+    document.querySelector('[data-status="applied"]').click();
 
     expect(api.update).not.toHaveBeenCalled();
     expect(document.querySelector('.modal-footer').hidden).toBe(false);
@@ -969,15 +969,103 @@ describe('Modal', () => {
       .toBe(hexToRgb(STATUS_CONFIG.applied.borderAccent));
   });
 
+  it('keeps create-mode status selection free-form', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(null, { mode: 'create' });
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="offer"]').click();
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.offer.label);
+  });
+
+  it('disables terminal-state status controls without opening the dropdown', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ status: 'rejected' }));
+    const statusButton = document.querySelector('.modal-quick-action--status');
+    const statusBadge = document.querySelector('#modal-status-badge');
+
+    expect(statusButton.disabled).toBe(true);
+    expect(statusButton.title).toBe('Workflow complete');
+    expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
+    expect(statusBadge.getAttribute('aria-label')).toBe('Status locked — workflow complete');
+    expect(statusBadge.hasAttribute('role')).toBe(false);
+    expect(statusBadge.hasAttribute('tabindex')).toBe(false);
+
+    statusButton.click();
+    statusBadge.click();
+    statusBadge.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
+  it('does not style disabled modal quick actions as interactive on hover', () => {
+    expect(mainCss).toContain('.modal-quick-action:not(:disabled):hover');
+    expect(mainCss).toContain('.modal-quick-action:disabled');
+    expect(mainCss).toContain('cursor: not-allowed;');
+  });
+
+  it('locks status controls after create-mode save lands in a terminal state', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.create.mockResolvedValue(application({ id: 99, status: 'accepted' }));
+
+    Modal.open(null, {
+      mode: 'create',
+      prefill: { jobTitle: 'Engineer', companyName: 'Acme', responsibilities: 'Build UI' },
+    });
+
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="accepted"]').click();
+
+    saveButton().click();
+    await flushPromises();
+
+    const statusButton = document.querySelector('.modal-quick-action--status');
+    const statusBadge = document.querySelector('#modal-status-badge');
+
+    expect(statusButton.disabled).toBe(true);
+    expect(statusButton.title).toBe('Workflow complete');
+    expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
+
+    statusButton.click();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
+  it('locks status controls after edit-mode save transitions to a terminal state', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({ status: 'accepted' }));
+
+    Modal.open(application({ status: 'offer' }));
+
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="accepted"]').click();
+
+    saveButton().click();
+    await flushPromises();
+
+    const statusButton = document.querySelector('.modal-quick-action--status');
+    const statusBadge = document.querySelector('#modal-status-badge');
+
+    expect(statusButton.disabled).toBe(true);
+    expect(statusButton.title).toBe('Workflow complete');
+    expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
+
+    statusButton.click();
+    statusBadge.click();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
   it('opens the status dropdown from the status badge without PATCH', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application({ status: 'wishlisted' }));
     document.querySelector('#modal-status-badge').click();
-    document.querySelector('[data-status="interview"]').click();
+    document.querySelector('[data-status="applied"]').click();
 
     expect(api.update).not.toHaveBeenCalled();
-    expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.interview.label);
+    expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.applied.label);
   });
 
   it('archives only after confirmation and reports the updated record', async () => {

@@ -1,4 +1,4 @@
-import { STATUS_CONFIG } from '../models/application.js';
+import { STATUS_CONFIG, TERMINAL_STATES } from '../models/application.js';
 import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
@@ -142,13 +142,18 @@ export function render(application, callbacks = {}) {
   editButton.addEventListener('click', (event) => {
     stopAction(event, () => callbacks.onOpen?.(application.id));
   });
-  statusButton.addEventListener('click', (event) => {
-    stopAction(event, () => {
-      StatusDropdown.open(statusButton, application.status, (newStatus) => {
-        callbacks.onStatusChange?.(application.id, newStatus);
+  if (TERMINAL_STATES.has(application.status)) {
+    statusButton.disabled = true;
+    statusButton.title = 'Workflow complete';
+  } else {
+    statusButton.addEventListener('click', (event) => {
+      stopAction(event, () => {
+        StatusDropdown.open(statusButton, application.status, (newStatus) => {
+          callbacks.onStatusChange?.(application.id, newStatus);
+        });
       });
     });
-  });
+  }
   copyButton.addEventListener('click', (event) => {
     stopAction(event, () => callbacks.onCopyUrl?.(application.id));
   });

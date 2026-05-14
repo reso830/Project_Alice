@@ -41,6 +41,10 @@ describe('createSchema', () => {
     expect(createSchema.safeParse(validPayload()).success).toBe(true);
   });
 
+  it('accepts "accepted" as a valid status', () => {
+    expect(createSchema.safeParse(validPayload({ status: 'accepted' })).success).toBe(true);
+  });
+
   it('requires companyName, jobTitle, status, and responsibilities', () => {
     expectFieldError(validPayload({ companyName: undefined }), 'companyName');
     expectFieldError(validPayload({ jobTitle: undefined }), 'jobTitle');

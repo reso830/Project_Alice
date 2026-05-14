@@ -1,6 +1,7 @@
 import {
   SHIFT_VALUES,
   STATUS_CONFIG,
+  TERMINAL_STATES,
   WORK_SETUP_VALUES,
   normalizeApplication,
 } from '../models/application.js';
@@ -656,6 +657,23 @@ async function saveDraft() {
       _original = copyApplication(newRecord);
       _idPill.textContent = newRecord.id;
 
+      if (TERMINAL_STATES.has(_draft.status)) {
+        const btn = document.querySelector('.modal-quick-action--status');
+        const badge = document.querySelector('#modal-status-badge');
+
+        if (btn) {
+          btn.disabled = true;
+          btn.title = 'Workflow complete';
+        }
+
+        if (badge) {
+          badge.removeAttribute('role');
+          badge.removeAttribute('tabindex');
+          badge.setAttribute('aria-disabled', 'true');
+          badge.setAttribute('aria-label', 'Status locked — workflow complete');
+        }
+      }
+
       if (_archiveButton && !_archiveButton.isConnected) {
         _quickActions?.insertBefore(_archiveButton, _quickActions.querySelector('.modal-quick-action--close'));
       }
@@ -682,6 +700,24 @@ async function saveDraft() {
 
     _draft = copyApplication({ ..._draft, ...updated });
     _original = copyApplication(_draft);
+
+    if (TERMINAL_STATES.has(_draft.status)) {
+      const btn = document.querySelector('.modal-quick-action--status');
+      const badge = document.querySelector('#modal-status-badge');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.title = 'Workflow complete';
+      }
+
+      if (badge) {
+        badge.removeAttribute('role');
+        badge.removeAttribute('tabindex');
+        badge.setAttribute('aria-disabled', 'true');
+        badge.setAttribute('aria-label', 'Status locked — workflow complete');
+      }
+    }
+
     renderTitle();
     _renderBody();
     _syncFooter();
@@ -831,11 +867,16 @@ export function open(application, {
   _archiveButton = archiveButton;
   _quickActions = quickActions;
   let currentStatus = _draft.status;
+  const isTerminal = TERMINAL_STATES.has(currentStatus);
   let currentFavorite = _draft.fav === true;
   const statusBadge = createStatusBadge(_draft.status, { id: 'modal-status-badge' });
 
   function openStatusDropdown(anchorEl) {
-    StatusDropdown.open(anchorEl, currentStatus, (newStatus) => {
+    if (_mode === 'edit' && TERMINAL_STATES.has(_draft.status)) return;
+
+    const openDropdown = _mode === 'create' ? StatusDropdown.openAll : StatusDropdown.open;
+
+    openDropdown(anchorEl, currentStatus, (newStatus) => {
       currentStatus = newStatus;
       _draft.status = newStatus;
       applyHeaderStatus(header, newStatus);
@@ -871,6 +912,15 @@ export function open(application, {
   statusBadge.setAttribute('tabindex', '0');
   statusBadge.setAttribute('aria-label', 'Change status');
 
+  if (isTerminal) {
+    statusButton.disabled = true;
+    statusButton.title = 'Workflow complete';
+    statusBadge.removeAttribute('role');
+    statusBadge.removeAttribute('tabindex');
+    statusBadge.setAttribute('aria-disabled', 'true');
+    statusBadge.setAttribute('aria-label', 'Status locked — workflow complete');
+  }
+
   favoriteButton.addEventListener('click', async () => {
     if (_mode === 'create') {
       currentFavorite = !currentFavorite;
@@ -892,20 +942,22 @@ export function open(application, {
     }
   });
 
-  statusButton.addEventListener('click', () => {
-    openStatusDropdown(statusButton);
-  });
+  if (!isTerminal) {
+    statusButton.addEventListener('click', () => {
+      openStatusDropdown(statusButton);
+    });
 
-  statusBadge.addEventListener('click', () => {
-    openStatusDropdown(statusBadge);
-  });
-
-  statusBadge.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
+    statusBadge.addEventListener('click', () => {
       openStatusDropdown(statusBadge);
-    }
-  });
+    });
+
+    statusBadge.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openStatusDropdown(statusBadge);
+      }
+    });
+  }
 
   archiveButton.addEventListener('click', async () => {
     if (!await ConfirmDialog.show('Archive this application?')) {
