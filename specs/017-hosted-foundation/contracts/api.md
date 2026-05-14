@@ -14,10 +14,10 @@ This document defines the two interface contracts introduced by this feature:
 |----------|-------|:--------------:|:---------------:|-------|
 | `APP_RUNTIME` | server | no | yes | `"local"` or `"hosted"`. Defaults to `"local"` if absent. |
 | `PORT` | server | no | no | API listen port. Defaults to `3001`. |
-| `SUPABASE_URL` | server (client-safe future) | no | yes | Supabase project URL. |
-| `SUPABASE_ANON_KEY` | server (client-safe future) | no | yes | Supabase public/anon key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | server-only | no | yes | Supabase service role key. **Never expose to frontend.** |
-| `ALICE_DB_PATH` | server | no | no | Override path for local SQLite file. Existing variable. |
+| `ALICE_DB_PATH` | server | no | no | Override path for the local SQLite file (default `data/alice.db`). Existing variable. |
+| `SUPABASE_URL` | server | no | yes | Supabase project URL. Client-safe in future hosted features. |
+| `SUPABASE_ANON_KEY` | server | no | yes | Supabase anon/public key. Client-safe in future hosted features. |
+| `SUPABASE_SERVICE_ROLE_KEY` | server-only | no | yes | Supabase service role key. **Never expose to the frontend.** |
 
 ### Validation rules (enforced in `server/config.js`)
 

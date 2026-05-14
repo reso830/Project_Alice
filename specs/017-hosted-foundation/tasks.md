@@ -13,7 +13,7 @@ No other phase may begin until Phase 01 is complete.
 
 ---
 
-### [ ] Task 01.1 — Create `server/config.js` with runtime validation
+### [X] Task 01.1 — Create `server/config.js` with runtime validation
 
 **Target file**: `server/config.js` (new)
 
@@ -83,7 +83,7 @@ export const config = loadConfig();
 
 ---
 
-### [ ] Task 01.2 — Add config unit tests in `tests/server/config.test.js`
+### [X] Task 01.2 — Add config unit tests in `tests/server/config.test.js`
 
 **Target file**: `tests/server/config.test.js` (new)
 
@@ -145,7 +145,7 @@ Tasks 02.1 and 02.2 are independent and can be written in parallel.
 
 ---
 
-### [ ] Task 02.1 [P] — Create `server/repositories/applications.js` (SQLite adapter)
+### [X] Task 02.1 [P] — Create `server/repositories/applications.js` (SQLite adapter)
 
 **Target file**: `server/repositories/applications.js` (new)
 
@@ -204,7 +204,7 @@ export function createSqliteApplicationsRepository(db) {
 
 ---
 
-### [ ] Task 02.2 [P] — Create `server/repositories/profile.js` (SQLite adapter)
+### [X] Task 02.2 [P] — Create `server/repositories/profile.js` (SQLite adapter)
 
 **Target file**: `server/repositories/profile.js` (new)
 
@@ -241,7 +241,7 @@ export function createSqliteProfileRepository(db) {
 
 ---
 
-### [ ] Task 02.3 — Create `server/repositories/index.js` (factory)
+### [X] Task 02.3 — Create `server/repositories/index.js` (factory)
 
 **Target file**: `server/repositories/index.js` (new)
 
@@ -335,7 +335,7 @@ export function createTestRepositories(db) {
 
 ---
 
-### [ ] Task 02.4 — Add repository tests
+### [X] Task 02.4 — Add repository tests
 
 **Target files**:
 - `tests/server/repositories/applications.test.js` (new)
@@ -390,7 +390,7 @@ Depends on Phase 02. Tasks 03.1 and 03.2 are independent and can be done in para
 
 ---
 
-### [ ] Task 03.1 [P] [US1] — Migrate `server/routes/applications.js` to use `repo`
+### [X] Task 03.1 [P] [US1] — Migrate `server/routes/applications.js` to use `repo`
 
 **Target file**: `server/routes/applications.js`
 
@@ -432,7 +432,7 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [ ] Task 03.2 [P] [US1] — Migrate `server/routes/profile.js` to use `repo`
+### [X] Task 03.2 [P] [US1] — Migrate `server/routes/profile.js` to use `repo`
 
 **Target file**: `server/routes/profile.js`
 
@@ -459,7 +459,7 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [ ] Task 03.3 [US1] — Update `server/index.js` to wire config and repositories
+### [X] Task 03.3 [US1] — Update `server/index.js` to wire config and repositories
 
 **Target file**: `server/index.js`
 
@@ -518,7 +518,7 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [ ] Task 03.4 [US1] — Update `tests/server/applications.test.js` to use `createTestRepositories`
+### [X] Task 03.4 [US1] — Update `tests/server/applications.test.js` to use `createTestRepositories`
 
 **Target file**: `tests/server/applications.test.js`
 
@@ -549,7 +549,7 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [ ] Task 03.5 [US1] — Update `tests/server/profile.test.js` to use `createTestRepositories`
+### [X] Task 03.5 [US1] — Update `tests/server/profile.test.js` to use `createTestRepositories`
 
 **Target file**: `tests/server/profile.test.js`
 
@@ -560,7 +560,7 @@ replace `createApp({ db })` with `createApp({ repositories: createTestRepositori
 
 ---
 
-### [ ] Task 03.6 [US1] — Run full test suite to confirm local mode regression-free
+### [X] Task 03.6 [US1] — Run full test suite to confirm local mode regression-free
 
 **Command**: `npm test`
 
@@ -587,7 +587,7 @@ Depends on Phase 03 (routes are wired). Tasks 04.1 and 04.2 are independent.
 
 ---
 
-### [ ] Task 04.1 [P] [US2] — Create `api/index.js` (Vercel Function entry point)
+### [X] Task 04.1 [P] [US2] — Create `api/index.js` (Vercel Function entry point)
 
 **Target file**: `api/index.js` (new)
 
@@ -618,7 +618,7 @@ the default export (an Express app) is used as the request handler.
 
 ---
 
-### [ ] Task 04.2 [P] [US2] — Create `vercel.json`
+### [X] Task 04.2 [P] [US2] — Create `vercel.json`
 
 **Target file**: `vercel.json` (new, at repo root)
 
@@ -647,7 +647,7 @@ the default export (an Express app) is used as the request handler.
 
 ---
 
-### [ ] Task 04.3 [US2] — Manually verify hosted mode boots
+### [X] Task 04.3 [US2] — Manually verify hosted mode boots
 
 **How to test** (from `quickstart.md` Path 2):
 
@@ -692,7 +692,7 @@ verify no missing steps and that the expected outcome is produced at each step.
 
 ---
 
-### [ ] Task 05.1 [P] [US3] — Create `.env.example`
+### [X] Task 05.1 [P] [US3] — Create `.env.example`
 
 **Target file**: `.env.example` (new, at repo root)
 
@@ -737,7 +737,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ---
 
-### [ ] Task 05.2 [P] [US3] — Create `docs/deployment.md`
+### [X] Task 05.2 [P] [US3] — Create `docs/deployment.md`
 
 **Target file**: `docs/deployment.md` (new)
 
@@ -790,7 +790,7 @@ Run after all phases are complete.
 
 ---
 
-### [ ] Task 06.1 — Run full test suite and resolve all failures
+### [X] Task 06.1 — Run full test suite and resolve all failures
 
 **Command**: `npm test`
 
@@ -807,7 +807,7 @@ Run after all phases are complete.
 
 ---
 
-### [ ] Task 06.2 — Run lint and confirm no new violations
+### [X] Task 06.2 — Run lint and confirm no new violations
 
 **Command**: `npm run lint`
 
@@ -817,7 +817,7 @@ Unused imports, missing semicolons (if applicable to the project's rules), and s
 
 ---
 
-### [ ] Task 06.3 — Complete plan-review checklist
+### [X] Task 06.3 — Complete plan-review checklist
 
 **File**: `specs/017-hosted-foundation/checklists/plan-review.md`
 
@@ -827,7 +827,7 @@ Abstraction" sections are required to pass before this feature is accepted.
 
 ---
 
-### [ ] Task 06.4 — Manual smoke test: local mode
+### [X] Task 06.4 — Manual smoke test: local mode
 
 Follow `quickstart.md` Path 1 (local mode baseline). Start the dev stack with no env
 vars; verify create, edit, filter, and profile all function without errors.
@@ -837,7 +837,7 @@ after any debugging changes made during this test.
 
 ---
 
-### [ ] Task 06.5 — Manual smoke test: hosted mode boots and fails loudly
+### [X] Task 06.5 — Manual smoke test: hosted mode boots and fails loudly
 
 Follow `quickstart.md` Path 2 (hosted mode boot) and Path 3 (config failure).
 
@@ -853,7 +853,7 @@ Follow `quickstart.md` Path 2 (hosted mode boot) and Path 3 (config failure).
 
 ---
 
-### [ ] Task 06.6 — Verify `SUPABASE_SERVICE_ROLE_KEY` absent from Vite bundle (SC-004)
+### [X] Task 06.6 — Verify `SUPABASE_SERVICE_ROLE_KEY` absent from Vite bundle (SC-004)
 
 SC-004 requires that the service role *secret* never reach the frontend bundle. A name
 check alone is insufficient — a renamed/aliased variable could still leak the value.

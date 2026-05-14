@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { isValidTransition, TERMINAL_STATES } from '../../shared/constants.js';
-import { archive, create, getAll, getById, update } from '../db/applications.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
 function parseIdParam(value) {
@@ -38,7 +37,7 @@ function sendNotFound(res) {
   });
 }
 
-export function createApplicationsRouter({ db } = {}) {
+export function createApplicationsRouter({ repo } = {}) {
   const router = Router();
 
   router.post('/', (req, res, next) => {
@@ -54,7 +53,7 @@ export function createApplicationsRouter({ db } = {}) {
         });
       }
 
-      const record = create(result.data, db);
+      const record = repo.create(result.data);
       return res.status(201).json({ data: record });
     } catch (error) {
       return next(error);
@@ -63,7 +62,7 @@ export function createApplicationsRouter({ db } = {}) {
 
   router.get('/', (_req, res, next) => {
     try {
-      return res.status(200).json({ data: getAll(db) });
+      return res.status(200).json({ data: repo.getAll() });
     } catch (error) {
       return next(error);
     }
@@ -76,7 +75,7 @@ export function createApplicationsRouter({ db } = {}) {
         return sendInvalidId(res);
       }
 
-      const record = getById(id, db);
+      const record = repo.getById(id);
       if (!record) {
         return sendNotFound(res);
       }
@@ -106,7 +105,7 @@ export function createApplicationsRouter({ db } = {}) {
       }
 
       if (result.data.status !== undefined) {
-        const currentRecord = getById(id, db);
+        const currentRecord = repo.getById(id);
         if (!currentRecord) {
           return sendNotFound(res);
         }
@@ -128,7 +127,7 @@ export function createApplicationsRouter({ db } = {}) {
         }
       }
 
-      const record = update(id, result.data, db);
+      const record = repo.update(id, result.data);
       if (!record) {
         return sendNotFound(res);
       }
@@ -146,7 +145,7 @@ export function createApplicationsRouter({ db } = {}) {
         return sendInvalidId(res);
       }
 
-      const record = archive(id, db);
+      const record = repo.archive(id);
       if (!record) {
         return sendNotFound(res);
       }

@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { getProfile, saveProfile } from '../db/profile.js';
 import { validateProfile } from '../../src/models/profile.js';
 
-export function createProfileRouter({ db } = {}) {
+export function createProfileRouter({ repo } = {}) {
   const router = Router();
 
   router.get('/', (_req, res, next) => {
     try {
-      return res.status(200).json({ data: getProfile(db) });
+      return res.status(200).json({ data: repo.get() });
     } catch (error) {
       return next(error);
     }
@@ -26,7 +25,7 @@ export function createProfileRouter({ db } = {}) {
         });
       }
 
-      return res.status(200).json({ data: saveProfile(req.body, db) });
+      return res.status(200).json({ data: repo.upsert(req.body) });
     } catch (error) {
       return next(error);
     }
