@@ -76,12 +76,12 @@ body {
   transition: opacity 0.15s ease, color 0.15s ease;
 }
 
-.card-btn:hover .icon,
-.card-btn:focus-visible .icon,
+.card-btn:not(:disabled):hover .icon,
+.card-btn:not(:disabled):focus-visible .icon,
 .filter-btn:hover .icon,
 .filter-btn:focus-visible .icon,
-.modal-quick-action:hover .icon,
-.modal-quick-action:focus-visible .icon,
+.modal-quick-action:not(:disabled):hover .icon,
+.modal-quick-action:not(:disabled):focus-visible .icon,
 .entry-row__edit:hover .icon,
 .entry-row__edit:focus-visible .icon,
 .entry-row__remove:hover .icon,
@@ -1988,10 +1988,15 @@ button:focus-visible,
   cursor: pointer;
 }
 
-.card-btn:hover {
+.card-btn:not(:disabled):hover {
   border-color: var(--indigo);
   background: var(--indigo-dim);
   color: var(--indigo);
+}
+
+.card-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 
 .card-btn--starred {
@@ -2097,9 +2102,14 @@ button:focus-visible,
   cursor: pointer;
 }
 
-.modal-quick-action:hover,
-.modal-quick-action:focus-visible {
+.modal-quick-action:not(:disabled):hover,
+.modal-quick-action:not(:disabled):focus-visible {
   background: rgba(255, 255, 255, .24);
+}
+
+.modal-quick-action:disabled {
+  opacity: .55;
+  cursor: not-allowed;
 }
 
 .modal-header h2 {

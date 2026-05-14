@@ -1001,6 +1001,12 @@ describe('Modal', () => {
     expect(document.querySelector('.status-dropdown')).toBeNull();
   });
 
+  it('does not style disabled modal quick actions as interactive on hover', () => {
+    expect(mainCss).toContain('.modal-quick-action:not(:disabled):hover');
+    expect(mainCss).toContain('.modal-quick-action:disabled');
+    expect(mainCss).toContain('cursor: not-allowed;');
+  });
+
   it('locks status controls after create-mode save lands in a terminal state', async () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     api.create.mockResolvedValue(application({ id: 99, status: 'accepted' }));

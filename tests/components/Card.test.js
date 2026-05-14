@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { describe, expect, it } from 'vitest';
 import { Card } from '../../src/components/Card.js';
 import { STATUS_CONFIG, TERMINAL_STATES } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
+
+const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 function application(overrides = {}) {
   return {
@@ -64,6 +69,12 @@ describe('Card', () => {
       expect(statusButton.disabled).toBe(true);
       expect(statusButton.title).toBe('Workflow complete');
     }
+  });
+
+  it('does not style disabled card actions as interactive on hover', () => {
+    expect(mainCss).toContain('.card-btn:not(:disabled):hover');
+    expect(mainCss).toContain('.card-btn:disabled');
+    expect(mainCss).toContain('cursor: not-allowed;');
   });
 
   it('keeps the status button enabled for active states', () => {
