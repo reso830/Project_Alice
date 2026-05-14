@@ -670,7 +670,7 @@ async function saveDraft() {
           badge.removeAttribute('role');
           badge.removeAttribute('tabindex');
           badge.setAttribute('aria-disabled', 'true');
-          badge.setAttribute('aria-label', 'Status locked - workflow complete');
+          badge.setAttribute('aria-label', 'Status locked — workflow complete');
         }
       }
 
@@ -714,7 +714,7 @@ async function saveDraft() {
         badge.removeAttribute('role');
         badge.removeAttribute('tabindex');
         badge.setAttribute('aria-disabled', 'true');
-        badge.setAttribute('aria-label', 'Status locked - workflow complete');
+        badge.setAttribute('aria-label', 'Status locked — workflow complete');
       }
     }
 
@@ -918,7 +918,7 @@ export function open(application, {
     statusBadge.removeAttribute('role');
     statusBadge.removeAttribute('tabindex');
     statusBadge.setAttribute('aria-disabled', 'true');
-    statusBadge.setAttribute('aria-label', 'Status locked - workflow complete');
+    statusBadge.setAttribute('aria-label', 'Status locked — workflow complete');
   }
 
   favoriteButton.addEventListener('click', async () => {

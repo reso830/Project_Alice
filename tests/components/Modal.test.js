@@ -990,7 +990,7 @@ describe('Modal', () => {
     expect(statusButton.disabled).toBe(true);
     expect(statusButton.title).toBe('Workflow complete');
     expect(statusBadge.getAttribute('aria-disabled')).toBe('true');
-    expect(statusBadge.getAttribute('aria-label')).toBe('Status locked - workflow complete');
+    expect(statusBadge.getAttribute('aria-label')).toBe('Status locked — workflow complete');
     expect(statusBadge.hasAttribute('role')).toBe(false);
     expect(statusBadge.hasAttribute('tabindex')).toBe(false);
 
