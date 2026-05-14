@@ -50,8 +50,8 @@ export async function createRepositories(config) {
 
 /**
  * @param {import('better-sqlite3').Database} db
- * @returns {{ applications: import('./applications.js').ApplicationsRepository,
- *             profile: import('./profile.js').ProfileRepository }}
+ * @returns {Promise<{ applications: import('./applications.js').ApplicationsRepository,
+ *                     profile: import('./profile.js').ProfileRepository }>}
  */
 export async function createTestRepositories(db) {
   const [
