@@ -401,9 +401,10 @@ the response body.
   manually via the quickstart §10 pre-deploy gate.
 - **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY` or
   `SUPABASE_JWT_SECRET` (carried over from 017 and re-verified here).
-- **SC-008b**: A production `npm run build` with missing or empty
-  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` fails with a descriptive error and
-  does not produce a bundle.
+- **SC-008b**: A production `npm run build` with any of `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, or `VITE_AUTH_EMAIL_REDIRECT_URL` missing or empty
+  fails with a descriptive error naming the offending variable(s) and does not
+  produce a bundle.
 - **SC-009**: Server logs include the auth events the server actually observes —
   token-rejection counts + failure categories (`missing` / `malformed` /
   `expired` / `signature`), hosted-route 401 responses, and `/api/health`

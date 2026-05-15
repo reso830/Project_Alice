@@ -196,10 +196,16 @@ Refers to [design/welcome_page.md](../../../design/welcome_page.md).
 ## Tests
 
 - [ ] `tests/server/auth-middleware.test.js` covers valid, missing, malformed,
-  expired, and wrong-key tokens
+  expired, and wrong-key tokens, and asserts a `logger.warn` call per
+  rejection with the expected `category` value, and a token-redaction
+  assertion that the rejected token never appears in any captured log
+  argument
 - [ ] `tests/server/routes-protected.test.js` covers 401 without token and
-  200 with a valid token for each of applications/profile/resume, and
-  `/api/health` returns the runtime field in both modes
+  200 with a valid token for each of applications/profile/resume,
+  `/api/health` returns the runtime field in both modes, the
+  `[runtime] mode=…` boot log emits once per boot, and the end-to-end 401
+  case captures a real `[auth] reject` log entry with the expected
+  category through the real middleware
 - [ ] `tests/build/vite-config.test.js` covers the production-build assertion
   throwing on missing Vite env vars
 - [ ] `tests/data/authStore.test.js` covers subscribe/notify, session

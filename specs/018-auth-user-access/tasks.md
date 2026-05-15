@@ -286,11 +286,17 @@ create trigger before_user_created_allowlist
 
 ## Phase 03 — Auth Middleware
 
-### [ ] Task 03.1 — Create `server/auth/middleware.js`
+### [ ] Task 03.1 — Create `server/auth/middleware.js` with categorized logging
 
 **Target file**: `server/auth/middleware.js` (new)
 
 **What to do**:
+Accept a `logger` dependency (defaults to a thin wrapper around `console.warn`)
+so tests can capture log calls. Categorize every rejection as one of:
+`missing` / `malformed` / `expired` / `signature` / `other`. Log the category
+and the request path — **never the token, prefix of the token, or the request
+body**.
+
 ```js
 import jwt from 'jsonwebtoken';
 
@@ -298,10 +304,23 @@ const UNAUTHORIZED_BODY = {
   error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
 };
 
-export function createRequireAuth({ jwtSecret }) {
+function classify(err) {
+  if (err?.name === 'TokenExpiredError') return 'expired';
+  if (err?.name === 'JsonWebTokenError') {
+    return err.message === 'jwt malformed' ? 'malformed' : 'signature';
+  }
+  return 'other';
+}
+
+export function createRequireAuth({ jwtSecret, logger = console }) {
   return function requireAuth(req, res, next) {
     const header = req.headers.authorization;
-    if (!header?.startsWith('Bearer ')) {
+    if (!header) {
+      logger.warn('[auth] reject', { category: 'missing', path: req.path });
+      return res.status(401).json(UNAUTHORIZED_BODY);
+    }
+    if (!header.startsWith('Bearer ')) {
+      logger.warn('[auth] reject', { category: 'malformed', path: req.path });
       return res.status(401).json(UNAUTHORIZED_BODY);
     }
     const token = header.slice('Bearer '.length).trim();
@@ -309,7 +328,8 @@ export function createRequireAuth({ jwtSecret }) {
       const payload = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
       req.user = { id: payload.sub, email: payload.email };
       return next();
-    } catch {
+    } catch (err) {
+      logger.warn('[auth] reject', { category: classify(err), path: req.path });
       return res.status(401).json(UNAUTHORIZED_BODY);
     }
   };
@@ -317,24 +337,40 @@ export function createRequireAuth({ jwtSecret }) {
 ```
 
 **Expected behavior**:
-- See `contracts/api.md §3`.
+- See `contracts/api.md §3` for the response contract.
+- Every rejection produces exactly one `logger.warn` call with
+  `{ category, path }` — `category` is one of the four documented values
+  (plus a fallback `other` for unexpected JWT errors).
+- Successful verifications produce no log entry.
 
 **Constraints**:
 - Algorithm allowlist: `HS256` only (prevents algorithm-confusion attacks).
-- Log auth failures at debug-level only; never log token contents.
+- **The token MUST NOT appear in any log statement**, not even as a prefix or
+  truncated value. Only the failure `category` and the request `path` are
+  logged. The token variable is referenced only inside `jwt.verify`.
+- Do not log the request body.
 - Do not look up the user in Supabase — verification is local.
 
 **Validation**:
 - `tests/server/auth-middleware.test.js`:
-  - Missing header → 401, body matches `UNAUTHORIZED_BODY`, handler not run
-  - Malformed header → 401
-  - Wrong-key signature → 401
-  - Expired token → 401
+  - Missing header → 401, body matches `UNAUTHORIZED_BODY`, handler not run,
+    `logger.warn` called once with `category: 'missing'`
+  - Malformed header (`Token foo`) → 401, `category: 'malformed'`
+  - Token with valid shape but malformed JWT payload → 401,
+    `category: 'malformed'`
+  - Token signed with the wrong key → 401, `category: 'signature'`
+  - Expired token → 401, `category: 'expired'`
   - Valid HS256 token signed with the test secret → 200, `req.user.id` set
-    to the `sub` claim
+    to the `sub` claim, **`logger.warn` NOT called**
+  - **Token-redaction assertion**: across all rejection cases above, none of
+    the captured log-call arguments contain the rejected token string (assert
+    via substring search against every argument of every `logger.warn` call).
 
 **Out of scope**:
 - Applying the middleware to real routers (handled in Phase 04).
+- Aggregated rejection counts (a metrics layer is out of scope for v1; per-
+  event log lines are sufficient and can be aggregated by an external log
+  pipeline).
 
 ---
 
@@ -373,7 +409,7 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 
 ---
 
-### [ ] Task 04.2 — Update `server/index.js` to wire `requireAuth` conditionally and report runtime mode
+### [ ] Task 04.2 — Update `server/index.js` to wire `requireAuth` conditionally, report runtime mode, and log boot
 
 **Target file**: `server/index.js`
 
@@ -383,6 +419,10 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
   `requireAuth = createRequireAuth({ jwtSecret: config.supabase.jwtSecret })`
   and pass it to each protected router factory. Local mode passes `undefined`.
 - Extend `GET /api/health` to return `{ status: 'ok', runtime: config.runtime }`.
+- Log the boot line once at startup:
+  `console.log('[runtime] mode=' + config.runtime + ' port=' + config.port)`.
+  Local mode emits `mode=local`; hosted emits `mode=hosted`. The existing
+  017-era startup log line is preserved alongside.
 
 **Expected behavior**:
 - Local mode: `/api/health` → `{ status: 'ok', runtime: 'local' }`. All other
@@ -390,6 +430,8 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 - Hosted mode: `/api/health` → `{ status: 'ok', runtime: 'hosted' }`.
   `/api/applications`, `/api/profile`, `/api/resume` return 401 without a
   valid Bearer token.
+- Boot logs include the runtime line so operators can grep for the active
+  mode in production logs without hitting `/api/health` (FR-016).
 
 **Constraints**:
 - Mount order: `/api/health` → protected routers → error handler.
@@ -404,6 +446,15 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
     `res.status(401).end()`; confirm protected routes return 401.
   - Confirm `/api/health` remains 200 with the correct `runtime` field in
     both modes.
+  - Spy on `console.log` during a server boot fixture and confirm the
+    `[runtime] mode=…` line is emitted exactly once per boot.
+  - **End-to-end 401 + log assertion**: build a hosted-mode app with the
+    real `createRequireAuth` (not a stub) and a spy logger. Issue a
+    `GET /api/applications` without a token; assert 401 response AND
+    that the spy logger captured exactly one `[auth] reject` entry with
+    `category: 'missing'` and `path: '/api/applications'`. Repeat with
+    one tampered-token case to confirm `category: 'signature'`. This
+    verifies the wiring end-to-end, not just the middleware in isolation.
 
 **Out of scope**:
 - Frontend consumption of `/api/health` (Task 08.3).
