@@ -5,22 +5,43 @@ question, the option chosen, why, and what we rejected.
 
 ---
 
-## R1 — Where does signup happen: client-side or server-side?
+## R1 — Where does signup happen, and how is the allowlist enforced?
 
-**Decision**: Server-side. Frontend calls `POST /api/auth/signup`; the server
-checks the allowlist and then calls `supabase.auth.admin.createUser` with the
-service role key.
+**Decision (revised)**: Supabase "Before User Created" Auth Hook — a Postgres
+trigger function on `auth.users` insert that consults `allowed_emails` and
+raises on miss. Frontend calls `supabase.auth.signUp` directly with the anon
+key; the trigger gates user creation at the database layer.
 
-**Why**: Allowlist enforcement is a server responsibility. If the client called
-`supabase.auth.signUp` directly, the Supabase user would be created before any
-allowlist check could run; rolling back via a webhook leaves a transient
-unallowlisted account and complicates the user-facing error.
+**Why**:
+- Anon-key bypass is impossible: the trigger fires inside Supabase regardless
+  of which caller initiated the insert.
+- Supabase's built-in verification email is sent automatically by `signUp` —
+  no separate email-delivery wiring needed.
+- Removes the entire Express signup surface from the codebase (`/api/auth/signup`,
+  admin client, signup validation, allowlist repo all unneeded).
+- The trigger function is small (~10 lines of PL/pgSQL) and lives in `data-model.md`
+  + `quickstart.md`; operators install it once.
 
-**Rejected**:
-- *Client-side `supabase.auth.signUp` + post-create webhook to delete*: race
-  conditions, transient account, harder error handling.
-- *Custom database trigger that rejects inserts to `auth.users`*: requires
-  modifying a Supabase-managed schema; brittle across Supabase upgrades.
+**Originally proposed and rejected**:
+- *Express `/api/auth/signup` endpoint that pre-checks the allowlist then
+  calls `supabase.auth.admin.createUser`*: two flaws — (a) anon-key direct
+  `supabase.auth.signUp` from the browser bypasses the Express check, and
+  (b) `admin.createUser` does not send the verification email, leaving
+  allowlisted signups in an unverifiable state.
+- *Express endpoint + `admin.createUser` + `admin.generateLink('signup')` +
+  custom email-send pipeline*: closes the verification gap from option above
+  but still has the anon-key bypass; also adds an email-delivery dependency.
+- *`admin.inviteUserByEmail` as the signup primitive*: magic-link invite UX,
+  not email+password; changes the signup ergonomics. Considered if the team
+  wants invite-flow UX later — not chosen here.
+- *Custom client-side `supabase.auth.signUp` + post-create webhook that
+  deletes non-allowlisted users*: race conditions, transient account exists
+  briefly, complicates user-facing error.
+
+**Tradeoff taken**: signup logic now lives in Supabase (the trigger
+function), not in our repo. Compensating control: the trigger SQL is the
+canonical source in `data-model.md` and `quickstart.md §3`; manual validation
+in Phase 11 explicitly tests the bypass path.
 
 ---
 
@@ -83,8 +104,9 @@ the current threat model.
 
 **Decision**: Single welcome page hosted as a **pre-app gate** outside the
 existing in-app router. Renders only when unauthenticated in hosted mode.
-Hosts both login and signup, and also handles Supabase's email-verification
-callback (`?auth=callback`).
+Hosts an `AuthOverlay` modal launched by the CTAs (Sign In / Create Account).
+The welcome page itself handles Supabase's email-verification callback
+(`?auth=callback`).
 
 **Why**:
 - The spec defines a hard login wall in hosted mode; mounting the existing
@@ -98,19 +120,23 @@ callback (`?auth=callback`).
 - *In-app `navigate('login')` page*: forces a signed-out navbar variant.
 - *Modal overlay on the existing app*: conflicts with the 401 login-wall posture.
 
-**Open visual question (deferred)**: layout, typography, brand treatment.
-`design.md` will fill this in; the plan's structural decision is independent.
+**Companion decision (R5b)**: AuthOverlay uses a **centered modal at every
+breakpoint** (desktop, tablet, mobile). A separate bottom-sheet variant was
+considered for mobile but rejected to keep the implementation single-path
+for a two-field form. Sizing scales with breakpoint per `design/welcome_page.md §11b`.
 
 ---
 
 ## R6 — Allowlist storage: Supabase table vs env var vs static file
 
-**Decision**: Supabase `allowed_emails` table with RLS deny-all from the anon
-role.
+**Decision**: Supabase `allowed_emails` table with RLS deny-all from any
+client role; read only by the Auth Hook trigger function via `SECURITY DEFINER`.
 
 **Why**:
 - Operator can add/remove entries from the Supabase dashboard without a redeploy.
 - Anon key cannot enumerate the table.
+- The trigger reads via `SECURITY DEFINER`, so neither the anon key nor the
+  service role key needs `select` on the table from application code.
 - Fits the existing Supabase footprint added by 017.
 
 **Rejected**:
@@ -159,32 +185,39 @@ Mitigated by the plan-review checklist.
 
 ## R9 — Signup neutrality (FR-006)
 
-**Decision**: One error code (`SIGNUP_NOT_PERMITTED`, 403) and one message for
-all of:
-- Email not in `allowed_emails`
+**Decision (revised)**: SignupForm maps **every** error from
+`supabase.auth.signUp` to a single neutral user-facing message
+("This email cannot sign up right now."). This applies to:
+- Email not in `allowed_emails` (trigger raises)
 - Email already exists in `auth.users`
-- Supabase admin createUser rejection (any reason)
+- Supabase rate limit
+- Network error
+- Any other client-side rejection
 
 **Why**: Distinguishing these is an enumeration channel for allowlist
-membership.
+membership. Since there is no longer an Express signup endpoint to
+standardize the error shape, the neutrality must live in the SignupForm's
+error-mapping logic.
 
-**Tradeoff**: User-facing message is less actionable ("Signup is not available
-for this email"). Operator support is the escape hatch; this is acceptable
-given the closed-allowlist model.
+**Tradeoff**: User-facing message is less actionable. Operator support is the
+escape hatch; this is acceptable given the closed-allowlist model.
 
 ---
 
 ## R10 — Email verification: Supabase default vs custom
 
-**Decision**: Use Supabase's default verification flow and default email
-template. Server sets `email_confirm: false` on admin create; Supabase sends the
-email.
+**Decision (revised)**: Use Supabase's default verification flow and default
+email template. Frontend calls `supabase.auth.signUp({ email, password,
+options: { emailRedirectTo } })`; Supabase sends the verification email
+automatically.
 
-**Why**: Zero implementation cost; matches "Password reset enhancements beyond
-baseline support" being a non-goal per the brief.
+**Why**: Zero implementation cost; matches "Password reset enhancements
+beyond baseline support" being a non-goal per the brief. Resolves an earlier
+plan-revision concern that `admin.createUser` does not auto-send the
+verification email — we no longer use `admin.createUser`.
 
-**Revisit if**: Brand requirements demand a custom template (design.md or a
-later feature).
+**Revisit if**: Brand requirements demand a custom template, or the link
+expiry semantics need to change.
 
 ---
 
@@ -194,3 +227,45 @@ later feature).
 has no strict bundle budget today. If measurement shows unacceptable delta, the
 fallback is a lazy import inside the welcome page module so the auth client is
 not in the initial chunk for already-signed-in users.
+
+---
+
+## R12 — Build-time vs runtime detection of missing Vite Supabase env vars
+
+**Decision**: Both. Build-time Vite plugin is the primary defense; runtime
+`/api/health` handshake + ConfigError page is the secondary defense.
+
+**Why build-time**: failing the deploy with a descriptive error is strictly
+better than shipping a silently-degraded frontend that confuses users. The
+plugin is ~15 lines in `vite.config.js` and only fires on
+`mode === 'production'`, so local dev without these vars (legitimate local
+mode) continues to work.
+
+**Why also runtime**: not every deploy path runs `npm run build` through this
+project's vite config. A deploy that uses a custom build invocation or
+bypasses the plugin (Vercel's `--prebuilt`, a hand-rolled CI step, etc.) would
+miss the assertion. The runtime handshake catches the mismatch on the next
+page load and shows a clear configuration-error page instead of a broken app.
+
+**Rejected**:
+- *Runtime check only*: ships broken bundles; shifts failure to end users.
+- *Build-time check only*: assumes every deploy path runs the plugin.
+
+---
+
+## R13 — 019 backfill: wipe vs assign vs manual
+
+**Decision**: Wipe `applications` and `profile` before adding `user_id` in
+019.
+
+**Why**: 018-only hosted data has no `user_id` attribution and the spec's
+Accepted Limitations section already declares it non-multi-user-safe.
+Wiping is lossless because the data was never trustworthy.
+
+**Rejected**:
+- *Assign all rows to the first allowlisted user*: implies ownership that
+  wasn't true. Could surprise operators.
+- *Manual SQL-script backfill per row*: painful for the common case
+  (test/dev hosted environments). Reserved for operators with irreplaceable
+  production data, who would perform the backfill out-of-band before 019
+  deploys and then remove the wipe statements from 019's migration.

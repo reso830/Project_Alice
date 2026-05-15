@@ -413,6 +413,90 @@ border: 1px solid rgba(255,255,255,.12);
 
 These should remain sparse and understated.
 
+### Illustrative Disclaimer
+
+The pills display fixed sample values and do not reflect any real user data.
+Render a small disclaimer anchored to the bottom-right of the hero slab so
+visitors do not mistake the numbers for live metrics.
+
+```text
+Sample data — illustrative only
+```
+
+### Disclaimer Specs
+
+| Property | Value |
+|---|---|
+| Font | DM Mono |
+| Size | 10px |
+| Color | `rgba(255,255,255,.45)` |
+| Position | absolute, bottom-right of hero slab, 16px from each edge |
+| Letter spacing | 0.04em |
+
+The disclaimer should remain quiet — present enough to disambiguate, never
+prominent enough to compete with the hero visual.
+
+---
+
+# 11b. Auth Overlay (Login & Signup)
+
+## Form Factor
+
+A centered modal at every breakpoint — desktop, tablet, and mobile alike.
+A separate bottom-sheet variant was considered for mobile but rejected for
+implementation complexity; a well-sized centered modal handles the two-field
+login and signup forms comfortably on small screens.
+
+## Sizing
+
+| Breakpoint | Width | Vertical anchor |
+|---|---|---|
+| Desktop (`≥1100px`) | `440px` | Centered |
+| Tablet (`760–1100px`) | `420px` | Centered |
+| Mobile (`<760px`) | `min(92vw, 380px)` | Vertically centered with `16px` floor from viewport edges |
+
+## Shell
+
+```css
+background: var(--surface);
+border-radius: var(--r-lg);
+box-shadow: var(--shadow-lg);
+padding: 28px;
+```
+
+## Backdrop
+
+```css
+background: rgba(26, 26, 46, 0.36);
+backdrop-filter: blur(2px);
+```
+
+## Behavior
+
+- Focus is trapped inside the overlay while open.
+- ESC, backdrop click, and the close button each dismiss the overlay.
+- Switching between Login and Signup tabs preserves the entered email value.
+- Submit button is disabled while the request is in flight.
+- A single inline error region announces failures via `aria-live="polite"`.
+
+## Motion
+
+A subtle fade + 6px translate-up entrance, 200ms ease.
+Disabled when `prefers-reduced-motion: reduce` is active.
+
+## Tabs
+
+A two-state tab strip at the top of the overlay switches between Login and
+Signup. The active tab uses `var(--indigo)` underline; inactive tabs are
+muted `var(--t2)`.
+
+## Verification-Sent State
+
+After a successful signup, the form is replaced inside the same overlay by
+a verification-sent confirmation: a short message inviting the user to check
+their email, plus a "Done" button that closes the overlay. The overlay does
+not unmount during this transition.
+
 ---
 
 # 12. Color Usage

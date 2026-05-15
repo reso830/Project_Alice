@@ -30,8 +30,11 @@ session state.
 
 - Wire Supabase Auth (email/password) into the hosted runtime
 - Provide a public signup form, login form, and sign-out flow in the frontend
-- Enforce an allowed-email check (server-side) at signup, sourced from a Supabase
-  `allowed_emails` table
+- Enforce the allowed-email check via a **Supabase "Before User Created" Auth Hook**
+  (a Postgres trigger function) that consults an `allowed_emails` table and denies
+  the signup at the database layer before any user is created — closing the bypass
+  where a client could otherwise call `supabase.auth.signUp` directly with the
+  anon key
 - Use Supabase's built-in email-verification flow before a new account can log in
 - Use Supabase's built-in password-reset flow (no custom in-app reset UI)
 - Add an authentication middleware to the Express API that validates the Supabase
@@ -42,6 +45,8 @@ session state.
   signed-out call-to-action) and to gate the resume-import entry point on session state
 - Persist the Supabase session across page refreshes via the Supabase JS client's
   default storage mechanism
+- Verify at build time that the frontend has the required Vite-exposed Supabase
+  configuration so a hosted deploy cannot ship with a silently-degraded frontend
 - Document (not implement) the per-user ownership data model: `user_id` columns on
   hosted `applications` and `profile` tables, plus the RLS policy shape that feature
   019 will apply
@@ -113,15 +118,18 @@ error.
 **Acceptance Scenarios**:
 
 1. **Given** an email is not in `allowed_emails`, **When** the signup is submitted,
-   **Then** the server returns an error before calling Supabase Auth's create-user
-   API; no account is created.
+   **Then** the Supabase "Before User Created" Auth Hook raises an exception that
+   prevents the `auth.users` insert; no account is created and no verification email
+   is sent.
 2. **Given** the rejection error is shown, **Then** it does not state whether other
    emails are approved, does not enumerate the allowlist, and does not differentiate
-   between "not on the list" and any other arbitrary server-side rejection in a way
-   that would leak allowlist membership.
-3. **Given** a client attempts to bypass the frontend by calling the signup endpoint
-   directly, **When** the email is not in `allowed_emails`, **Then** the server still
-   rejects the request.
+   between "not on the list" and any other arbitrary signup rejection in a way that
+   would leak allowlist membership.
+3. **Given** a client attempts to bypass the frontend by calling
+   `supabase.auth.signUp` directly with the anon key, **When** the email is not in
+   `allowed_emails`, **Then** Supabase's Auth Hook still rejects the signup — the
+   anon-key path is not a bypass because the hook runs inside Supabase regardless
+   of the caller.
 
 ---
 
@@ -218,21 +226,30 @@ the response body.
   task performed in the Supabase dashboard.
 - **Same email signs up twice**: Supabase's native duplicate-email handling applies;
   the UI surfaces a clear error without revealing whether the email is verified.
-- **Email verification link expires before the user clicks it**: the user must
-  request a new verification email via Supabase's default flow.
+- **Email verification link expires before the user clicks it**: the user submits
+  the signup form again with the same email. Supabase detects the existing
+  unconfirmed user and issues a fresh verification email — no duplicate account is
+  created, and no separate "resend verification" UI is required. Default
+  verification link lifetime is 24 hours (configurable in the Supabase dashboard).
 - **Password reset requested by an allowlisted user**: the Supabase-hosted reset page
   is used; there is no in-app reset UI in this feature.
 - **Password reset requested for an email not on the allowlist or not registered**:
-  the server's response must not differentiate between "not registered" and "not
-  allowlisted" — both produce a generic neutral response.
+  Supabase's default reset flow is used. The response must not differentiate between
+  "not registered" and "not allowlisted" — both produce a generic neutral response
+  (Supabase's default reset endpoint already behaves this way).
 - **Session token expires mid-session**: the next protected API call returns 401;
   the frontend handles this by transitioning to signed-out state, not by surfacing
   a raw error.
 - **Allowlist table is empty or unreachable at signup time**: signup fails with a
   generic error; the system does not fall back to allowing the signup.
-- **Hosted mode is configured but `allowed_emails` table does not exist**: the server
-  must surface a clear configuration error at startup rather than silently allowing
-  or rejecting all signups.
+- **Hosted mode is configured but `allowed_emails` table or Auth Hook trigger does
+  not exist**: signups fail closed because the trigger would not have been installed.
+  The signup form surfaces Supabase's generic rejection. Operator notices via
+  Supabase dashboard or signup-failure logs.
+- **Hosted frontend deployed without `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`**:
+  the production build must fail at build time. A Vite plugin asserts the variables
+  are non-empty when `NODE_ENV=production`; deploys cannot ship a silently-degraded
+  frontend that treats itself as local mode.
 - **A user signs out in one tab while another tab has a stale session**: protected
   calls from the stale tab eventually return 401 once the token is refused; the
   frontend treats this the same as an expired session.
@@ -256,11 +273,17 @@ the response body.
   before a newly registered account can sign in.
 - **FR-004**: System MUST persist the authenticated session across page refreshes
   using the Supabase JS client's default session storage.
-- **FR-005**: System MUST enforce an allowlist check server-side at signup against
-  a Supabase `allowed_emails` table; non-allowlisted signups MUST be rejected before
-  any Supabase user is created.
-- **FR-006**: Allowlist rejection error messages MUST be user-friendly and MUST NOT
-  reveal allowlist membership of other addresses or leak internal details.
+- **FR-005**: System MUST enforce an allowlist check at the Supabase database layer
+  via a "Before User Created" Auth Hook (a Postgres trigger function) that consults
+  the `allowed_emails` table and raises an exception on miss. The hook MUST run
+  regardless of caller (anon key, service role, or admin SDK) so that
+  `supabase.auth.signUp` from the browser cannot bypass it.
+- **FR-006**: Allowlist rejection messages surfaced to the user MUST be
+  user-friendly and MUST NOT reveal allowlist membership of other addresses or leak
+  internal details. The SignupForm MUST map Supabase's raw rejection error to a
+  single neutral user-facing message identical to "this email cannot sign up right
+  now," regardless of whether the underlying cause is allowlist miss, duplicate
+  account, or any other Supabase-side rejection.
 - **FR-007**: API MUST provide an authentication middleware that validates the
   Supabase session token on every protected hosted route and rejects requests with
   missing, malformed, expired, or untrusted tokens with a 401 response.
@@ -293,6 +316,14 @@ the response body.
 - **FR-017**: System MUST surface a clear startup configuration error if hosted
   mode is active but Supabase Auth or the `allowed_emails` table is unreachable or
   misconfigured.
+- **FR-018**: The production frontend build MUST fail with a descriptive error if
+  `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing or empty, so a hosted
+  deploy cannot silently ship a frontend that treats itself as local mode.
+- **FR-019**: The frontend MUST additionally perform a runtime check against
+  `GET /api/health` (which reports the server's runtime mode) and render a
+  "Configuration Error" view when the server reports `hosted` but the frontend's
+  Supabase client is unconfigured — defense in depth against a deploy whose
+  build-time check was somehow bypassed.
 
 ### Key Entities
 
@@ -303,8 +334,14 @@ the response body.
   login and email verification; persisted on the client by the Supabase JS client;
   validated by the API middleware on every protected request.
 - **Allowed Email**: A row in the `allowed_emails` Supabase table containing a single
-  email address (and optional metadata such as added-by, added-at). Checked at signup
-  time. Removal of an allowed-email row does not delete an existing Supabase user.
+  email address (and optional metadata such as added-by, added-at). Checked by the
+  Auth Hook trigger at signup time. Removal of an allowed-email row does not delete
+  an existing Supabase user.
+- **Before-User-Created Auth Hook**: A Supabase Postgres trigger function that fires
+  before each `auth.users` insert, looks up the candidate email in `allowed_emails`,
+  and raises an exception to deny the signup on miss. This is the single source of
+  enforcement for FR-005 and runs regardless of which Supabase API initiated the
+  signup.
 - **Auth Middleware Context**: The per-request user identity (Supabase user id,
   email) resolved by the authentication middleware and attached to the request for
   downstream handlers.
@@ -322,7 +359,9 @@ the response body.
   reach a protected hosted route returning 200 — entirely through the application
   UI and the Supabase default email flow.
 - **SC-002**: A non-allowlisted signup attempt produces no row in `auth.users`, no
-  verification email, and a generic user-facing rejection error.
+  verification email, and a generic user-facing rejection error. This holds for
+  both the application signup form and a direct anon-key call to
+  `supabase.auth.signUp` — the Auth Hook denies both paths identically.
 - **SC-003**: Every protected hosted route returns 401 for requests with missing,
   malformed, expired, or untrusted tokens; route handlers do not execute in those
   cases.
@@ -335,8 +374,11 @@ the response body.
 - **SC-007**: Hosted mode boots with a clear, descriptive startup error if
   Supabase Auth credentials are present but the `allowed_emails` table cannot be
   reached or queried.
-- **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY`
-  (carried over from 017 and re-verified here).
+- **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY` or
+  `SUPABASE_JWT_SECRET` (carried over from 017 and re-verified here).
+- **SC-008b**: A production `npm run build` with missing or empty
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` fails with a descriptive error and
+  does not produce a bundle.
 - **SC-009**: Server logs include auth-relevant events (signup attempted/rejected,
   login succeeded/failed, token rejected) and do NOT include plaintext passwords or
   full session tokens.
@@ -408,6 +450,13 @@ the response body.
   Reviewers and operators must not interpret a successful 018 deployment as
   multi-user-safe.
 
+- **018-only hosted data is treated as throwaway.** Because no `user_id` attribution
+  exists for rows created during the 018-only window, feature 019's backfill MUST
+  wipe the hosted `applications` and `profile` tables before adding the `user_id`
+  column. Any operator running 018 in hosted mode should consider hosted data
+  written during this window as disposable. This is acceptable because the same
+  shared-data limitation above already makes the data not multi-user-safe.
+
 ---
 
 ## Assumptions
@@ -421,6 +470,10 @@ the response body.
 - The frontend uses the Supabase JS client directly for sign-up, sign-in, sign-out,
   and session storage; protected data flows still go through the Express API, not
   through direct Supabase reads.
+- Allowlist enforcement lives entirely in Supabase — there is no Express signup
+  endpoint. The "Before User Created" Auth Hook (Postgres trigger function) is the
+  single source of truth for allowlist enforcement, regardless of which Supabase
+  caller initiated the signup.
 - The Express API validates Supabase JWTs locally using `SUPABASE_JWT_SECRET`
   rather than calling Supabase Auth on every request.
 - The allowlist is small (operator-managed, on the order of tens of entries at most);

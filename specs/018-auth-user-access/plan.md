@@ -13,33 +13,46 @@ All design tokens it references (`--indigo`, `--bg`, `--surface`, `--border`,
 
 Add hosted email/password authentication to Project Alice using Supabase Auth, gate
 all protected hosted API routes behind a JWT-validating middleware, restrict signups
-to an `allowed_emails` table managed in Supabase, and replace the unauthenticated
-hosted shell with a welcome-page login wall. Local SQLite mode is untouched.
+via a **Supabase "Before User Created" Auth Hook** that enforces an `allowed_emails`
+table at the database layer, and replace the unauthenticated hosted shell with a
+welcome-page login wall. Local SQLite mode is untouched.
 
 Concretely this introduces:
 1. A welcome-page pre-app gate in the frontend, laid out per
    [design/welcome_page.md](../../design/welcome_page.md): diagonal split, brand
    block, headline + copy, three CTAs (Sign In / Create Account / **Try Demo —
    disabled with "coming soon" tooltip until feature 020 ships**), hero slideshow
-   of real application screenshots, footer metadata.
-2. A modal-on-desktop / bottom-sheet-on-mobile auth overlay that hosts the login
-   and signup forms, mounted from the welcome page when the user clicks a CTA.
-   The overlay reuses the existing `Modal.js` component pattern.
+   of real application screenshots, footer metadata, illustrative-only disclaimer
+   on the floating metadata pills.
+2. A **centered modal auth overlay at every breakpoint** (no separate bottom-sheet
+   variant) that hosts the login and signup forms, mounted from the welcome page
+   when the user clicks a CTA. The overlay is a standalone component
+   (`AuthOverlay.js`), not an extension of the existing `Modal.js`, to avoid
+   regressing existing modals.
 3. A handler in the welcome page for Supabase's email-verification callback
    (`?auth=callback` URL parameter).
 4. A frontend `services/supabaseClient.js` module wrapping `@supabase/supabase-js`
-   for sign-in/sign-up/sign-out and session restore.
+   for sign-up, sign-in, sign-out, and session restore. The frontend talks to
+   Supabase Auth **directly** for signup — there is no Express signup endpoint.
 5. A frontend `data/authStore.js` module owning session state and subscribers,
    analogous to the existing `data/store.js`.
-6. An Express `server/auth/` directory: `middleware.js` (requireAuth), `supabase.js`
-   (server-side Supabase admin client wrapper), and `routes.js` (signup endpoint
-   that enforces the allowlist before calling Supabase Auth's admin create-user API).
+6. An Express `server/auth/middleware.js` containing only the JWT-validating
+   `requireAuth` middleware. (No `routes.js`, no admin client, no server-side
+   allowlist repo — all signup gating happens in Supabase.)
 7. Wiring `requireAuth` into each protected router (applications, profile, resume)
    per the agreed scoping decision.
-8. A new Supabase table `allowed_emails` with deny-all RLS so the anon key cannot
-   read it from the client.
-9. Documentation of the per-user ownership model (`user_id` columns + RLS on
-   applications/profile) without implementing it — 019 will apply it.
+8. A new Supabase `allowed_emails` table with deny-all RLS, **plus a Postgres
+   trigger function** (the Auth Hook) wired to fire `before insert on auth.users`
+   to enforce the allowlist regardless of which Supabase caller (anon-key client,
+   service-role client, or admin SDK) initiated the signup.
+9. A **build-time Vite assertion** that fails production builds when
+   `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is empty, plus a runtime
+   handshake (`GET /api/health` reports the server's runtime mode) that mounts a
+   "Configuration Error" view when the server reports hosted but the client is
+   unconfigured.
+10. Documentation of the per-user ownership model (`user_id` columns + RLS on
+    applications/profile) without implementing it — 019 will apply it and will
+    **wipe pre-019 hosted data** as part of the backfill.
 
 The feature does **not** introduce per-row user ownership for `applications` or
 `profile`. The login wall is the security boundary in this feature; data
@@ -51,24 +64,30 @@ partitioning arrives in feature 019.
 
 **Language/Version**: Node.js ≥ 20.19.0, JavaScript (ESM)
 **Primary Dependencies**: Express 4, Vite 8, Vitest 4, Zod 4. **New**:
-`@supabase/supabase-js` (frontend + server). **New optional**: `jsonwebtoken` (server
-JWT verification with `SUPABASE_JWT_SECRET`).
+`@supabase/supabase-js` (frontend only). **New**: `jsonwebtoken` (server JWT
+verification with `SUPABASE_JWT_SECRET`).
 **Storage**: SQLite (local mode, unchanged); Supabase Auth (`auth.users` schema,
-managed by Supabase); new Supabase `allowed_emails` table.
+managed by Supabase); new Supabase `allowed_emails` table; new Postgres trigger
+function on `auth.users`.
 **Testing**: Vitest with Supabase fully mocked at the module boundary — no live
 Supabase project required for CI. JWT verification tested with self-signed test
-tokens.
+tokens. The Auth Hook trigger is validated manually via quickstart §6 (it lives
+inside Supabase and cannot be unit-tested from our codebase).
 **Target Platform**: Local Node.js (dev); Vercel serverless (hosted).
 **Project Type**: Web application — Vite frontend + Express API (unchanged shape).
 **Constraints**:
-- Frontend talks to Supabase Auth directly via the JS client for sign-in/up/out
-  and session restore; data flows still go through Express.
+- Frontend talks to Supabase Auth directly via the JS client for sign-up, sign-in,
+  sign-out, and session restore; data flows still go through Express.
+- All allowlist enforcement lives in Supabase (Auth Hook trigger). Express has no
+  signup endpoint and no admin client.
 - Express verifies JWTs locally using `SUPABASE_JWT_SECRET` — no per-request
   Supabase round-trip.
 - `SUPABASE_SERVICE_ROLE_KEY` must never appear in the Vite bundle (carried over
-  from 017's contract; re-verified here).
-- The `allowed_emails` table is read server-side only. The anon key must not be
-  able to enumerate it.
+  from 017's contract; re-verified here). 018 does not consume the service role
+  key in code — but the env contract preserves it for 019.
+- The `allowed_emails` table is read **only by the trigger function** running
+  with `SECURITY DEFINER`. Deny-all RLS means the anon key cannot enumerate it
+  from the client.
 **Scale/Scope**: Single hosted operator + a handful of allowlisted users (tens at
 most). Performance is not a design concern at this scale.
 
@@ -81,79 +100,85 @@ most). Performance is not a design concern at this scale.
 │                                                                  │
 │  ┌────────────────────┐        ┌──────────────────────────────┐  │
 │  │  Welcome page      │  auth  │  data/authStore.js           │  │
-│  │  (login + signup   │◄──────►│  ─ session JWT               │  │
-│  │   sections + email │        │  ─ user identity             │  │
+│  │  (CTAs + auth      │◄──────►│  ─ session JWT               │  │
+│  │   overlay modal +  │        │  ─ user identity             │  │
 │  │   verify callback) │        │  ─ subscribers               │  │
-│  └────────────────────┘        └──────────┬───────────────────┘  │
-│                                            │                     │
-│  ┌────────────────────┐                    │                     │
-│  │  App shell         │◄───────────────────┘ on signed-in        │
+│  └─────────┬──────────┘        └──────────┬───────────────────┘  │
+│            │                              │                      │
+│            │ supabase.auth.signUp /       │                      │
+│            │ signInWithPassword / signOut │                      │
+│            │                              │                      │
+│  ┌─────────▼──────────┐                   │                      │
+│  │  App shell         │◄──────────────────┘ on signed-in         │
 │  │  (Tracker/Profile  │                                          │
 │  │   /Calendar)       │                                          │
 │  └────────┬───────────┘                                          │
 │           │                                                      │
 │           ▼ services/api.js (attaches Authorization header)      │
-└───────────┼──────────────────────────────────────────────────────┘
-            │
-            │ /api/* with Authorization: Bearer <jwt>
-            ▼
-┌──────────────────────── Express API ────────────────────────────┐
-│  /api/health                  (public)                           │
-│  /api/auth/signup             (public; allowlist-checked)        │
-│                                                                  │
-│  /api/applications/*          ┐                                  │
-│  /api/profile/*               │── requireAuth() middleware       │
-│  /api/resume/*                ┘                                  │
-│                                                                  │
-│  requireAuth:  verify JWT (HS256, SUPABASE_JWT_SECRET)           │
-│                attach req.user = { id, email }                   │
-│                401 on missing/invalid/expired                    │
-└────────┬─────────────────────────────────────────────────────────┘
+└───────────┼─────────────────────┬────────────────────────────────┘
+            │                     │
+            │                     │ supabase.auth.*  (sign-up/in/out)
+            ▼                     ▼
+┌──────── Express API ─────┐   ┌──────── Supabase ────────────────┐
+│ /api/health (public)     │   │ Auth (auth.users)                │
+│                          │   │   ├── trigger: before_user_       │
+│ /api/applications/*  ┐   │   │   │       created()              │
+│ /api/profile/*       │── │   │   │       reads allowed_emails    │
+│ /api/resume/*        ┘   │   │   │       raises on miss          │
+│   requireAuth():         │   │   │                               │
+│   verify JWT (HS256,     │   │   ├── sends verification email    │
+│   SUPABASE_JWT_SECRET)   │   │   │       on signUp               │
+│   attach req.user =      │   │   └── issues JWT on signIn        │
+│     { id, email }        │   │                                   │
+│   401 on bad token       │   │ allowed_emails (RLS deny-all)     │
+└────────┬─────────────────┘   └──────────────────────────────────┘
          │
-         ├──► SQLite repositories (local mode) — unchanged
-         │
-         └──► Supabase admin client (hosted mode)
-                ─ reads/writes auth.users (signup admin-create)
-                ─ reads allowed_emails (service-role; RLS deny-all from client)
-
-Direct browser ↔ Supabase Auth channel (no Express in middle):
-   ─ password sign-in
-   ─ password sign-up  (gated upstream by /api/auth/signup pre-check)
-   ─ sign-out
-   ─ session refresh
+         └──► SQLite repositories (local mode) — unchanged
+              (hosted-mode repos arrive in 019)
 ```
 
-### Why the signup-pre-check + admin-create-user pattern
+### Why all signup gating lives in Supabase (not Express)
 
-The frontend cannot be trusted to enforce the allowlist. Two options exist:
-1. Frontend calls `/api/auth/signup` first → server checks allowlist → server uses
-   service role to call Supabase's admin `createUser` → Supabase sends verification
-   email → user signs in via the JS client after verifying. **(Chosen.)**
-2. Frontend calls `supabase.auth.signUp()` directly → server runs an allowlist
-   webhook that deletes the account if not allowlisted. **(Rejected:** a Supabase
-   account exists briefly before deletion, and webhook race conditions complicate
-   the user-facing error.)
+Three approaches were considered:
+1. **Server-side Express signup endpoint** that pre-checks the allowlist before
+   calling `supabase.auth.admin.createUser`. *(Rejected.)* `admin.createUser` does
+   not send the verification email, and the publicly-shipped anon key would let
+   any browser bypass the Express check by calling `supabase.auth.signUp` directly.
+2. **`supabase.auth.admin.inviteUserByEmail`** with an out-of-band allowlist
+   check. *(Rejected.)* Magic-link invite UX, not email+password, and adds a
+   second flow to maintain.
+3. **Supabase "Before User Created" Auth Hook** — a Postgres trigger function on
+   `auth.users` insert that consults `allowed_emails` and raises an exception on
+   miss. **(Chosen.)** Runs at the database layer so anon-key direct signup
+   cannot bypass it; reuses Supabase's built-in verification-email flow; removes
+   the entire Express signup surface from the codebase.
 
-Option 1 keeps allowlist enforcement strictly server-side with no transient
-unallowlisted accounts.
+The chosen approach trades "signup logic visible in our repo" for "signup logic
+unbypassable." The hook function is small (~10 lines of PL/pgSQL) and is
+documented in `data-model.md` and `quickstart.md` so operators can install it
+during setup.
 
 ---
 
 ## Data Flow
 
 ### Signup
-1. User submits email + password on welcome page.
-2. Frontend POSTs to `/api/auth/signup` with `{ email, password }`.
-3. Server lowercases the email, looks it up in `allowed_emails` using the service
-   role client. On miss → 403 with generic `SIGNUP_NOT_PERMITTED`.
-4. On hit → server calls `supabase.auth.admin.createUser({ email, password,
-   email_confirm: false })`. Supabase sends a verification email.
-5. Server returns `{ status: "verification_sent" }`. Frontend shows a
-   "check your email" state.
-6. User clicks the verification link → lands on welcome-page `/?auth=callback`
-   (via `AUTH_EMAIL_REDIRECT_URL`) → Supabase JS client picks up the hash params →
-   account becomes verified → user is invited to sign in (or auto-redirected to
-   sign-in tab).
+1. User opens the auth overlay (Create Account tab) and submits email + password.
+2. Frontend calls `supabase.auth.signUp({ email, password, options: { emailRedirectTo: VITE_AUTH_EMAIL_REDIRECT_URL } })`.
+3. Supabase's "Before User Created" trigger fires:
+   - Lowercases the candidate email.
+   - Looks it up in `allowed_emails`.
+   - On miss → raises an exception. Supabase returns an error to the JS client.
+     SignupForm maps the error to the neutral message "this email cannot sign up
+     right now."
+   - On hit → trigger returns; Supabase inserts the row in `auth.users` and sends
+     a verification email to `emailRedirectTo`.
+4. Frontend transitions the overlay to its verification-sent state.
+5. User clicks the verification link in their inbox → lands on the welcome page
+   with `?auth=callback#access_token=…` → Supabase JS client (with
+   `detectSessionInUrl: true`) consumes the hash, confirms the account, and
+   stashes the session in localStorage. `authStore` flips to authenticated and
+   the app shell mounts.
 
 ### Sign-in
 1. User submits email + password.
@@ -211,10 +236,11 @@ unallowlisted accounts.
 
 | Complexity item | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| Server-side `/api/auth/signup` pre-check + admin createUser | Allowlist enforcement must happen before any Supabase user exists | Client-side `supabase.auth.signUp` + post-hoc webhook delete leaves transient unallowlisted accounts and complicates UX |
+| Supabase Auth Hook (Postgres trigger) for allowlist | Anon key is publicly shipped; an Express pre-check is bypassable. The trigger fires inside Supabase regardless of caller. | Express signup endpoint + `admin.createUser` is both bypassable (anon-key direct call) and silent (admin.createUser does not send verification email). |
 | Welcome-page pre-app gate | Hard login wall; protected app shell never renders for unauthenticated users | In-app `navigate('login')` requires rendering navbar around an unauthenticated user, weakening the wall metaphor |
 | `data/authStore.js` separate from `data/store.js` | Session state has a different lifecycle and persistence model than application data | A combined store would couple Supabase auth subscriptions to application data flows |
 | `jsonwebtoken` dependency | Local JWT verification avoids a Supabase round-trip per request | Calling `supabase.auth.getUser()` per request multiplies hosted latency by 1 RTT and creates a runtime Supabase dependency for every API call |
+| Build-time `VITE_SUPABASE_*` assertion via Vite plugin | Hosted deploys must fail loud at build time when the frontend can't reach Supabase, not silently boot into degraded local-mode behavior | A runtime-only check ships broken bundles and shifts failure to the end user |
 
 ---
 
@@ -223,58 +249,73 @@ unallowlisted accounts.
 ```text
 server/
 ├── auth/                         # NEW
-│   ├── middleware.js             # requireAuth(req, res, next)
-│   ├── supabase.js               # createSupabaseAdminClient(config) — service role
-│   └── routes.js                 # createAuthRouter() — POST /api/auth/signup
-├── config.js                     # MODIFIED — add SUPABASE_JWT_SECRET + AUTH_EMAIL_REDIRECT_URL
-├── index.js                      # MODIFIED — mount /api/auth + per-router requireAuth wiring
+│   └── middleware.js             # requireAuth(req, res, next) — JWT verify only
+├── config.js                     # MODIFIED — add SUPABASE_JWT_SECRET
+├── index.js                      # MODIFIED — per-router requireAuth wiring; /api/health
+│                                 #            reports runtime mode
 ├── routes/
-│   ├── applications.js           # MODIFIED — createApplicationsRouter applies requireAuth
-│   ├── profile.js                # MODIFIED — createProfileRouter applies requireAuth
-│   └── resume.js                 # MODIFIED — createResumeRouter applies requireAuth
-├── validation/
-│   └── auth.js                   # NEW — email format, password min length, signup payload
-├── repositories/
-│   └── allowedEmails.js          # NEW — supabase service-role read; isAllowed(email)
+│   ├── applications.js           # MODIFIED — accepts optional requireAuth
+│   ├── profile.js                # MODIFIED — accepts optional requireAuth
+│   └── resume.js                 # MODIFIED — accepts optional requireAuth
 └── db/                           # unchanged (SQLite)
+
+# REMOVED from earlier plan revision:
+#   server/auth/supabase.js        (no admin client needed — Supabase enforces allowlist via trigger)
+#   server/auth/routes.js          (no /api/auth/signup endpoint)
+#   server/validation/auth.js      (signup validation moves to SignupForm via SDK error mapping)
+#   server/repositories/allowedEmails.js (table read only by Postgres trigger)
+
+vite.config.js                    # MODIFIED — add build-time assertion plugin for VITE_SUPABASE_*
 
 src/
 ├── data/
 │   ├── authStore.js              # NEW — session state, subscribers
 │   └── store.js                  # unchanged
 ├── pages/
-│   ├── welcome/                  # NEW — folder per design "Suggested Structure"
-│   │   ├── WelcomePage.js        # diagonal-split layout, mounts subcomponents
-│   │   ├── BrandBlock.js         # Alice icon + wordmark
-│   │   ├── CTAGroup.js           # Sign In / Create Account / Try Demo (disabled)
-│   │   ├── HeroSlideshow.js      # rotating real screenshots (Tracker, Modal, Profile, Filters, Calendar)
-│   │   ├── HeroCard.js           # individual screenshot card with rotation/shadow
-│   │   ├── FloatingMeta.js       # optional metadata pills
-│   │   ├── AuthOverlay.js        # modal (desktop) / bottom sheet (mobile) shell
-│   │   ├── LoginForm.js          # email + password form (inside overlay)
-│   │   └── SignupForm.js         # email + password form (inside overlay)
+│   ├── welcome/                  # NEW — middle-ground split per I4
+│   │   ├── WelcomePage.js        # mount, layout, brand block, CTA group,
+│   │   │                         # floating meta, callback handler (inlined)
+│   │   ├── HeroSlideshow.js      # rotating screenshots + reduced-motion
+│   │   ├── AuthOverlay.js        # standalone centered modal at every breakpoint;
+│   │   │                         # focus trap, ESC/backdrop close, tab strip
+│   │   ├── LoginForm.js          # email + password; Supabase signInWithPassword
+│   │   └── SignupForm.js         # email + password; Supabase signUp + neutral
+│   │                             # error mapping; verification-sent state
 │   ├── Tracker.js                # unchanged
 │   ├── Profile.js                # unchanged
 │   ├── ProfileEdit.js            # unchanged
 │   └── Calendar.js               # unchanged
+├── pages/ConfigError.js          # NEW — rendered when server reports hosted but
+│                                 #       client has no Supabase config (runtime
+│                                 #       defense-in-depth for FR-019)
 ├── services/
 │   ├── api.js                    # MODIFIED — attach Authorization header from authStore
-│   ├── authApi.js                # NEW — POST /api/auth/signup wrapper
+│   ├── healthApi.js              # NEW — GET /api/health for runtime handshake
 │   ├── resumeApi.js              # MODIFIED — same Authorization header pattern
-│   └── supabaseClient.js         # NEW — wrap @supabase/supabase-js with hosted-only init
+│   └── supabaseClient.js         # NEW — wrap @supabase/supabase-js; reads
+│                                 #       VITE_SUPABASE_URL / _ANON_KEY /
+│                                 #       _AUTH_EMAIL_REDIRECT_URL
 ├── components/
-│   ├── Modal.js                  # unchanged — reused by AuthOverlay on desktop
+│   ├── Modal.js                  # unchanged — NOT used by AuthOverlay
 │   ├── Navbar.js                 # MODIFIED — signed-in identifier + sign-out control
 │   └── ResumeImport.js           # MODIFIED — hide when signed out
 ├── assets/
-│   ├── Alice_White.png           # already present — used in BrandBlock
+│   ├── Alice_White.png           # already present — used in BrandBlock (inlined in WelcomePage)
 │   └── welcome-hero/             # NEW — captured screenshots for HeroSlideshow
 │       ├── tracker.png
 │       ├── application-modal.png
 │       ├── profile.png
 │       ├── filters.png
 │       └── calendar.png
-└── main.js                       # MODIFIED — mount Welcome vs app shell by auth state
+└── main.js                       # MODIFIED — mount Welcome / app shell / ConfigError
+                                  #            by auth state + runtime handshake
+
+# REMOVED from earlier plan revision:
+#   src/pages/welcome/BrandBlock.js  (inlined into WelcomePage — 10-line component)
+#   src/pages/welcome/CTAGroup.js    (inlined into WelcomePage — 30 lines)
+#   src/pages/welcome/FloatingMeta.js (inlined into WelcomePage — 15 lines)
+#   src/pages/welcome/HeroCard.js    (inlined into HeroSlideshow — 15 lines)
+#   src/services/authApi.js          (no Express signup endpoint to wrap)
 
 tests/
 ├── server/
@@ -307,51 +348,53 @@ specs/018-auth-user-access/
 - `server/config.js` — extend env var contract (017 set the pattern)
 - `server/index.js` — see how routers are mounted; pattern from 017
 - `server/routes/applications.js`, `server/routes/profile.js`,
-  `server/routes/resume.js` — locate where to wire `requireAuth`
-- `server/repositories/index.js` — confirm pattern for adding `allowedEmails.js`
+  `server/routes/resume.js` — locate where to wire optional `requireAuth`
 - `src/main.js` — see how pages are mounted; replicate the gating logic
 - `src/services/api.js`, `src/services/resumeApi.js` — confirm fetch wrapper shape
   before injecting the `Authorization` header
 - `src/components/Navbar.js` — confirm rendering surface for sign-in/out indicator
 - `src/components/ResumeImport.js` — confirm where to hide the entry point
+- `src/components/Modal.js` — confirm focus-trap pattern to copy into AuthOverlay
+- `vite.config.js` — confirm plugin pattern before adding build-time assertion
 - `specs/017-hosted-foundation/spec.md` — env contract baseline
 - `package.json` — confirm where to add `@supabase/supabase-js` and `jsonwebtoken`
 
 ### Files/components likely to be **modified**
 
-- `server/config.js` (add `SUPABASE_JWT_SECRET`, `AUTH_EMAIL_REDIRECT_URL`)
-- `server/index.js` (mount `/api/auth`; pass repos+auth into protected routers)
-- `server/routes/applications.js` (apply `requireAuth`)
-- `server/routes/profile.js` (apply `requireAuth`)
-- `server/routes/resume.js` (apply `requireAuth`)
-- `src/main.js` (welcome-vs-app boot gate; subscribe to `authStore`)
+- `server/config.js` (add `SUPABASE_JWT_SECRET` only — `AUTH_EMAIL_REDIRECT_URL`
+  moves to Vite-exposed)
+- `server/index.js` (per-router `requireAuth` wiring; `/api/health` returns
+  runtime mode)
+- `server/routes/applications.js` (accept optional `requireAuth`)
+- `server/routes/profile.js` (accept optional `requireAuth`)
+- `server/routes/resume.js` (accept optional `requireAuth`)
+- `vite.config.js` (build-time assertion plugin)
+- `src/main.js` (welcome / app-shell / ConfigError boot gate; subscribe to
+  `authStore`; runtime handshake)
 - `src/services/api.js` (`Authorization` header from `authStore`)
 - `src/services/resumeApi.js` (same `Authorization` header pattern)
 - `src/components/Navbar.js` (signed-in identifier; sign-out control)
 - `src/components/ResumeImport.js` (hidden when signed out)
-- `package.json` (new deps)
+- `package.json` (new deps: `@supabase/supabase-js`, `jsonwebtoken`)
 
 ### Files/components likely to be **created**
 
-- `server/auth/middleware.js`
-- `server/auth/supabase.js`
-- `server/auth/routes.js`
-- `server/repositories/allowedEmails.js`
-- `server/validation/auth.js`
+- `server/auth/middleware.js` (JWT verification only)
 - `src/data/authStore.js`
-- `src/pages/welcome/WelcomePage.js`
-- `src/pages/welcome/BrandBlock.js`
-- `src/pages/welcome/CTAGroup.js`
-- `src/pages/welcome/HeroSlideshow.js`
-- `src/pages/welcome/HeroCard.js`
-- `src/pages/welcome/FloatingMeta.js`
-- `src/pages/welcome/AuthOverlay.js`
+- `src/pages/welcome/WelcomePage.js` (also inlines BrandBlock, CTAGroup,
+  FloatingMeta per I4 middle ground)
+- `src/pages/welcome/HeroSlideshow.js` (inlines HeroCard)
+- `src/pages/welcome/AuthOverlay.js` (centered modal at every breakpoint)
 - `src/pages/welcome/LoginForm.js`
 - `src/pages/welcome/SignupForm.js`
+- `src/pages/ConfigError.js`
 - `src/services/supabaseClient.js`
-- `src/services/authApi.js`
+- `src/services/healthApi.js`
 - `src/assets/welcome-hero/*.png` — five captured screenshots for the hero
   slideshow
+- Supabase artifacts (created via SQL editor, not in repo): `allowed_emails`
+  table; `public.handle_new_user_email_allowlist()` trigger function; trigger
+  on `auth.users`
 - Test files listed in *Project Structure* above
 - Supporting spec artifacts: `data-model.md`, `contracts/api.md`, `research.md`,
   `quickstart.md`, `checklists/plan-review.md`
@@ -395,7 +438,16 @@ specs/018-auth-user-access/
 
 ### Risks
 
-1. **Hero slideshow needs real application screenshots.**
+1. **Auth Hook trigger lives outside the repo.**
+   The single point of allowlist enforcement is a Postgres function installed in
+   Supabase via SQL editor. It is not version-controlled with the application
+   code. *Mitigation:* the trigger SQL is the canonical source in
+   `data-model.md` and `quickstart.md`; a section in `quickstart.md` documents
+   the install + verify procedure; manual validation in Phase 11 explicitly
+   tests the bypass path (anon-key direct `supabase.auth.signUp` with a
+   non-allowlisted email).
+
+2. **Hero slideshow needs real application screenshots.**
    The design explicitly forbids fabricated dashboard mockups. The five
    screenshots (Tracker, Application Modal, Profile, Filters, Calendar) must
    be captured from a real run of the app with believable seeded data.
@@ -404,22 +456,16 @@ specs/018-auth-user-access/
    wordmark) behind the same `HeroSlideshow` component so the welcome page
    remains buildable. Hold the polish task until the screenshots exist.
 
-2. **`@supabase/supabase-js` adds a meaningful bundle cost.**
+3. **`@supabase/supabase-js` adds a meaningful bundle cost.**
    The Supabase JS client is ~30–50 KB gzipped. Acceptable, but new for this
    project. *Mitigation:* import only the auth subset; lazy-load the client
    module if the bundle delta is unacceptable after measurement.
 
-3. **`SUPABASE_JWT_SECRET` is a long-lived shared secret.**
+4. **`SUPABASE_JWT_SECRET` is a long-lived shared secret.**
    Local JWT verification needs the secret in the server env. Leak risk if env
    handling regresses. *Mitigation:* server-only env var (no `VITE_` prefix);
    verified by 017's existing client-bundle check; rotation procedure documented
    in `quickstart.md`.
-
-4. **`allowed_emails` enumeration via subtle error differences.**
-   FR-006 requires neutral rejection messages. If the implementation returns
-   different shapes for "not allowlisted" vs "Supabase rejected the email," that
-   becomes a side channel. *Mitigation:* single rejection code
-   `SIGNUP_NOT_PERMITTED` with one message; test covers this directly.
 
 5. **Token storage in `localStorage` is XSS-readable.**
    Supabase JS client default. Acceptable for the current threat model
@@ -427,14 +473,26 @@ specs/018-auth-user-access/
    *Mitigation:* note in `research.md`; reassessing this becomes its own future
    feature if requirements change.
 
-6. **Accepted limitation (spec): pre-019 hosted data is shared across users.**
-   Plan does not attempt to mitigate this — it is intentional per the spec.
+6. **Build-time Vite assertion can be circumvented by deploys that skip it.**
+   The plugin only fires on `npm run build`. A deploy pipeline that uses
+   `--mode development` or builds outside the project's npm scripts could bypass
+   it. *Mitigation:* runtime handshake (FR-019, ConfigError page) catches the
+   miss client-side; quickstart documents the required build invocation.
+
+7. **Accepted limitation (spec): pre-019 hosted data is shared across users
+   AND will be wiped by 019.** Plan does not attempt to mitigate either — both
+   are intentional per the spec.
 
 ### Tradeoffs taken
 
-- **Direct Supabase JS client for sign-in vs proxying through Express.** Chose
-  direct: it gets session refresh, persistence, and sign-out for free. Trade-off
-  is that the JWT lives in `localStorage` rather than an HTTP-only cookie.
+- **Auth Hook trigger vs Express signup endpoint.** Chose Auth Hook: closes
+  the anon-key bypass and reuses Supabase's built-in verification email flow.
+  Trade-off is signup logic living in Supabase rather than in our codebase;
+  documentation is the compensating control.
+- **Direct Supabase JS client for sign-up/in vs proxying through Express.**
+  Chose direct: gets session refresh, persistence, sign-out, AND
+  verification-email send for free. Trade-off is that the JWT lives in
+  `localStorage` rather than an HTTP-only cookie.
 - **Local JWT verification vs `supabase.auth.getUser()` per request.** Chose
   local: lower latency, no Supabase dependency on every API call. Trade-off is
   that revoked sessions remain accepted until they expire (Supabase default access
@@ -447,6 +505,18 @@ specs/018-auth-user-access/
 - **Welcome page as a separate pre-app gate vs in-app router page.** Chose
   pre-app: clean login wall, no signed-out variant of the navbar to maintain,
   smaller blast radius if a Tracker/Profile bug renders before auth resolves.
+- **Centered modal at every breakpoint vs bottom-sheet on mobile.** Chose
+  centered modal everywhere: simpler implementation, single DOM/CSS path,
+  adequate for two-field login/signup forms. Trade-off is slightly less-native
+  mobile feel; acceptable for the form complexity at hand.
+- **Standalone `AuthOverlay.js` vs extending `Modal.js`.** Chose standalone:
+  avoids the risk of regressing existing modals when adding tab-strip and
+  verification-sent semantics. Trade-off is small focus-trap-logic duplication
+  (pull into `src/utils/focusTrap.js` if it grows).
+- **Component split (middle ground, I4).** Inlined trivial components
+  (BrandBlock, CTAGroup, FloatingMeta, HeroCard) into their parents to keep the
+  file count aligned with the existing codebase pattern; kept complex ones
+  (HeroSlideshow, AuthOverlay, LoginForm, SignupForm) as separate files.
 
 ---
 
@@ -455,29 +525,48 @@ specs/018-auth-user-access/
 ### Automated (vitest, Supabase mocked at module boundary)
 1. **JWT middleware**: accept valid HS256 token signed with `SUPABASE_JWT_SECRET`;
    reject missing/malformed/expired/wrong-key with 401; populate `req.user`.
-2. **Signup endpoint**: allowlisted email → mock admin client called once with
-   that email; non-allowlisted email → 403 before any mock admin call; rejection
-   error shape is identical to "user already exists" rejection (neutral channel).
-3. **Protected routers**: each protected router returns 401 without a token and
+2. **Protected routers**: each protected router returns 401 without a token and
    200 with a valid token (mock auth middleware passes through).
-4. **Frontend auth store**: subscribes notified on sign-in / sign-out / session
+3. **Frontend auth store**: subscribes notified on sign-in / sign-out / session
    restore; cleared state on signOut.
-5. **Welcome page**: error states render; verification-sent state renders; form
-   resets cleanly between attempts.
-6. **Resume-import gating**: component absent from DOM when `authStore` is
+4. **Welcome page**: error states render; verification-sent state renders; form
+   resets cleanly between attempts; SignupForm maps Supabase rejection errors
+   to the same neutral user-facing message regardless of underlying cause.
+5. **Resume-import gating**: component absent from DOM when `authStore` is
    signed-out; present when signed-in.
-7. **Config validation (server)**: hosted mode missing `SUPABASE_JWT_SECRET` or
-   `AUTH_EMAIL_REDIRECT_URL` → descriptive startup error; local mode unaffected.
-8. **Client bundle**: re-run 017's check confirming `SUPABASE_SERVICE_ROLE_KEY`
+6. **Config validation (server)**: hosted mode missing `SUPABASE_JWT_SECRET` →
+   descriptive startup error; local mode unaffected.
+7. **Vite build-time assertion**: a build with `NODE_ENV=production` and missing
+   `VITE_SUPABASE_URL` (or `VITE_SUPABASE_ANON_KEY`) exits with a descriptive
+   error before producing a bundle.
+8. **Runtime handshake**: when `/api/health` reports `hosted` and the client
+   has no Supabase config, `main.js` mounts `ConfigError.js`.
+9. **Client bundle**: re-run 017's check confirming `SUPABASE_SERVICE_ROLE_KEY`
    and `SUPABASE_JWT_SECRET` do not appear in the Vite bundle.
 
 ### Manual (quickstart-driven, requires a real Supabase project)
-1. Operator seeds `allowed_emails` with their email; signs up via welcome page;
-   confirms email; signs in; reaches `/api/applications` (returns 200).
+1. Operator installs the `allowed_emails` table and the Auth Hook trigger;
+   seeds the table with their email; signs up via welcome page; confirms email;
+   signs in; reaches `/api/applications` (returns 200).
 2. Operator submits signup with a non-allowlisted email; sees generic rejection.
-3. Operator signs out; observes welcome page reappear; observes `/api/applications`
-   returns 401 in the network panel.
-4. Operator refreshes mid-session; remains signed in.
+3. **Bypass test**: from browser dev tools console, calls
+   `await supabase.auth.signUp({ email: 'unallowed@x.com', password: 'longenough' })`
+   directly; observes Supabase returns an error and no row appears in
+   `auth.users`. *(Validates that the Auth Hook is the enforcement point.)*
+4. Operator signs out; observes welcome page reappear; observes
+   `/api/applications` returns 401 in the network panel.
+5. Operator refreshes mid-session; remains signed in.
+6. **Expired-link test**: operator does not click the verification email; waits
+   past the configured expiry (or shortens it temporarily); resubmits the
+   signup form with the same email; receives a fresh verification email; no
+   duplicate auth.users row is created.
+
+### Browser smoke test (per constitution Amendment 1.1.0, one per user story)
+1. **US1** — allowlisted signup → verify → sign in → protected route access.
+2. **US2** — non-allowlisted rejection (via form AND via direct anon-key call).
+3. **US3** — session persists across refresh + sign-out clears.
+4. **US4** — login wall: protected routes 401 for unauthenticated client.
+5. **US5** — tampered token rejected by middleware; response body opaque.
 
 ### Constitution / quality gates (`checklists/plan-review.md`)
 Reviewed before generating `tasks.md` via `/speckit.tasks`.
@@ -492,5 +581,6 @@ Reviewed before generating `tasks.md` via `/speckit.tasks`.
 - Decide whether the welcome page is rendered into `#app` directly or into a
   sibling root. Default: sibling root removed on mount of the app shell, so the
   `#app` invariant from `main.js` stays clean.
-- Confirm error-code naming convention for new auth errors so they line up with
-  the existing `code/message/fields` shape from `services/api.js`.
+- Confirm whether to extract a shared `src/utils/focusTrap.js` helper now or
+  copy focus-trap logic into `AuthOverlay.js` and extract later if a third
+  consumer appears.

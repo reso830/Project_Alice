@@ -11,21 +11,21 @@
 
 | Phase | Theme | Blocks |
 |---|---|---|
-| 01 | Foundation: deps + config | All other phases |
-| 02 | Supabase server wiring | 03, 04 |
-| 03 | Auth middleware + signup endpoint | 04 |
-| 04 | Wire protected routers + server entry | 05+ runtime, but FE work can begin in parallel |
-| 05 | Frontend auth core (client + store) | 06, 07 |
+| 01 | Foundation: deps + server config + Vite build-time assertion | All other phases |
+| 02 | Supabase setup: `allowed_emails` table + Auth Hook trigger | Manual validation in 11 |
+| 03 | Auth middleware + server tests | 04 |
+| 04 | Wire protected routers + `/api/health` runtime mode + tests | 05+ runtime |
+| 05 | Frontend auth core (client + store + header attach) | 06, 07 |
 | 06 | Welcome page structure (no styling) | 07, 09 |
-| 07 | Auth overlay + forms | 09 |
-| 08 | Navbar + resume-import gating | 11 |
-| 09 | Welcome page styling per design | 11 |
+| 07 | Auth overlay + Login/Signup forms | 09 |
+| 08 | Navbar + resume-import gating + ConfigError page | 11 |
+| 09 | Welcome page + overlay styling per design | 11 |
 | 10 | Hero screenshot capture (polish; can ship later) | — |
-| 11 | Verification & checklist walk | — |
+| 11 | Verification, browser smoke tests, checklist walk | — |
 
-Phases 01 → 04 are backend. Phases 05 → 09 are frontend and can begin once
-Phase 03 is merged (the signup contract is then stable). Phase 10 is optional
-polish.
+Phases 01 → 04 are backend + build pipeline. Phases 05 → 09 are frontend and
+can begin once Phase 03 is merged (the JWT contract is then stable). Phase 10
+is optional polish; Phase 11 is the verification gate.
 
 ---
 
@@ -44,8 +44,7 @@ Run `npm install` after editing. Commit both `package.json` and
 `package-lock.json`.
 
 **Expected behavior**:
-- `import { createClient } from '@supabase/supabase-js'` resolves in both
-  server and client modules.
+- `import { createClient } from '@supabase/supabase-js'` resolves in client modules.
 - `import jwt from 'jsonwebtoken'` resolves in server modules.
 
 **Constraints**:
@@ -59,252 +58,231 @@ Run `npm install` after editing. Commit both `package.json` and
 - `npm run build` still completes without unresolved-import errors.
 
 **Out of scope**:
-- Wiring the packages into application code (handled in 02.x and 05.x).
+- Wiring the packages into application code (handled in 03.x and 05.x).
 
 ---
 
-### [ ] Task 01.2 — Extend `server/config.js` with `SUPABASE_JWT_SECRET` and `AUTH_EMAIL_REDIRECT_URL`
+### [ ] Task 01.2 — Extend `server/config.js` with `SUPABASE_JWT_SECRET`
 
 **Target file**: `server/config.js`
 
 **What to do**:
-- Add `SUPABASE_JWT_SECRET` and `AUTH_EMAIL_REDIRECT_URL` to the
-  `HOSTED_REQUIRED` list (or equivalent validation block).
-- Add the resolved values to the frozen `config.supabase` object as
-  `jwtSecret` and to `config.auth` as `emailRedirectUrl`.
+Add `SUPABASE_JWT_SECRET` to the `HOSTED_REQUIRED` list. Add the resolved value
+to the frozen `config.supabase` object as `jwtSecret`.
 
 ```js
-return Object.freeze({
-  runtime,
-  isHosted: runtime === 'hosted',
-  port: Number(process.env.PORT) || 3001,
-  supabase: runtime === 'hosted'
-    ? {
-        url: process.env.SUPABASE_URL,
-        anonKey: process.env.SUPABASE_ANON_KEY,
-        serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-        jwtSecret: process.env.SUPABASE_JWT_SECRET,
-      }
-    : null,
-  auth: runtime === 'hosted'
-    ? { emailRedirectUrl: process.env.AUTH_EMAIL_REDIRECT_URL }
-    : null,
-});
+supabase: runtime === 'hosted'
+  ? {
+      url: process.env.SUPABASE_URL,
+      anonKey: process.env.SUPABASE_ANON_KEY,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      jwtSecret: process.env.SUPABASE_JWT_SECRET,
+    }
+  : null,
 ```
+
+`AUTH_EMAIL_REDIRECT_URL` is **NOT** added here — it now lives on the client
+as `VITE_AUTH_EMAIL_REDIRECT_URL` (consumed by the Supabase JS client).
 
 **Expected behavior**:
 - `APP_RUNTIME=hosted` without `SUPABASE_JWT_SECRET` → throws
   `Missing required environment variable for hosted mode: SUPABASE_JWT_SECRET`
-- `APP_RUNTIME=hosted` without `AUTH_EMAIL_REDIRECT_URL` → throws
-  `Missing required environment variable for hosted mode: AUTH_EMAIL_REDIRECT_URL`
-- `APP_RUNTIME=local` → `config.supabase` is `null`, `config.auth` is `null`,
-  no new env vars required.
+- `APP_RUNTIME=local` → `config.supabase` is `null`; no new env vars required.
 
 **Constraints**:
 - `SUPABASE_JWT_SECRET` must never appear under a `VITE_` prefix anywhere.
 - Returned object must remain frozen.
 
 **Validation**:
-- Extend `tests/server/config.test.js` with two new cases:
-  - hosted mode missing `SUPABASE_JWT_SECRET` throws naming that variable
-  - hosted mode missing `AUTH_EMAIL_REDIRECT_URL` throws naming that variable
+- Extend `tests/server/config.test.js` with one new case: hosted mode missing
+  `SUPABASE_JWT_SECRET` throws naming that variable.
 - `npm run test:run -- tests/server/config.test.js` passes.
 
 **Out of scope**:
-- Loading or using the secret (handled in 03.2).
+- Using the secret (handled in 03.1).
 
 ---
 
-## Phase 02 — Supabase Server Wiring
+### [ ] Task 01.3 — Add Vite build-time assertion for Supabase env vars
 
-### [ ] Task 02.1 — Author the `allowed_emails` SQL and document it in quickstart
-
-**Target file**: `specs/018-auth-user-access/quickstart.md` (already exists)
+**Target file**: `vite.config.js`
 
 **What to do**:
-Confirm the SQL block in `quickstart.md` matches `data-model.md`. No code
-change. If the project later adds a `db/migrations/` directory the SQL should
-be moved there; until then `quickstart.md` is the operator-facing source of
-truth.
+Add a Vite plugin that runs during the `config` hook and asserts the three
+`VITE_SUPABASE_*` / `VITE_AUTH_*` env vars are non-empty when building for
+production. Local-mode dev (which runs without these vars) is unaffected.
 
-**Expected behavior**:
-- Operator can run the SQL in Supabase SQL Editor and produce a table that
-  matches `data-model.md` exactly: `email PRIMARY KEY`, `added_at`, `added_by`,
-  RLS enabled with no anon policies.
-
-**Constraints**:
-- No migration tooling is introduced in this feature (per spec assumption).
-
-**Validation**:
-- Manual: operator runs the SQL once during quickstart; confirms the table
-  appears in Supabase and the anon key returns 0 rows for
-  `select * from allowed_emails`.
-
-**Out of scope**:
-- Automated migrations (deferred to a later infra feature).
-
----
-
-### [ ] Task 02.2 — Create `server/auth/supabase.js` (admin client factory)
-
-**Target file**: `server/auth/supabase.js` (new)
-
-**What to do**:
 ```js
-import { createClient } from '@supabase/supabase-js';
-
-export function createSupabaseAdminClient(config) {
-  if (!config.isHosted) {
-    return null;
-  }
-  return createClient(
-    config.supabase.url,
-    config.supabase.serviceRoleKey,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
-}
-```
-
-**Expected behavior**:
-- Returns a Supabase client configured with the service-role key.
-- Returns `null` in local mode (callers must check).
-
-**Constraints**:
-- This client uses the service-role key — must never be exposed to anything
-  that reaches the frontend.
-- `persistSession: false` and `autoRefreshToken: false` (server-side).
-
-**Validation**:
-- `tests/server/auth-supabase.test.js`:
-  - `createSupabaseAdminClient({ isHosted: false })` returns `null`
-  - `createSupabaseAdminClient({ isHosted: true, supabase: { url: 'https://x.supabase.co', serviceRoleKey: 'svc' } })` returns a non-null object exposing `.auth.admin` and `.from`
-
-**Out of scope**:
-- Using the client (consumed in 02.3 and 03.3).
-
----
-
-### [ ] Task 02.3 — Create `server/repositories/allowedEmails.js`
-
-**Target file**: `server/repositories/allowedEmails.js` (new)
-
-**What to do**:
-```js
-export function createAllowedEmailsRepository(supabaseAdminClient) {
+function assertHostedFrontendEnv() {
   return {
-    async isAllowed(email) {
-      const normalized = email.trim().toLowerCase();
-      const { data, error } = await supabaseAdminClient
-        .from('allowed_emails')
-        .select('email')
-        .eq('email', normalized)
-        .maybeSingle();
-      if (error) throw error;
-      return data !== null;
+    name: 'alice:assert-hosted-frontend-env',
+    config(_config, env) {
+      if (env.mode !== 'production') return;
+      const required = [
+        'VITE_SUPABASE_URL',
+        'VITE_SUPABASE_ANON_KEY',
+        'VITE_AUTH_EMAIL_REDIRECT_URL',
+      ];
+      const missing = required.filter((k) => !process.env[k]);
+      if (missing.length) {
+        throw new Error(
+          `Production build requires ${missing.join(', ')} — set them in your build environment.`
+        );
+      }
     },
   };
 }
-```
 
-**Expected behavior**:
-- Lowercases and trims input before lookup.
-- Returns `true` on hit, `false` on miss.
-- Throws on Supabase error (propagated to the route handler → 500).
-
-**Constraints**:
-- Uses `maybeSingle()` (not `single()`) so a miss is not a Postgres error.
-- No write methods are exposed.
-
-**Validation**:
-- `tests/server/repositories/allowedEmails.test.js`:
-  - Mock supabase client returns `{ data: { email: 'a@b.c' }, error: null }`
-    → `isAllowed('A@B.C')` resolves `true` (case folded)
-  - Mock returns `{ data: null, error: null }` → resolves `false`
-  - Mock returns `{ data: null, error: { message: 'down' } }` → rejects
-
-**Out of scope**:
-- Mutations (allowlist managed in the Supabase dashboard).
-
----
-
-### [ ] Task 02.4 — Wire `allowedEmails` into `server/repositories/index.js`
-
-**Target file**: `server/repositories/index.js`
-
-**What to do**:
-- Import `createSupabaseAdminClient` from `server/auth/supabase.js`.
-- In hosted mode, instantiate the admin client and the
-  `allowedEmails` repository; expose it as `repositories.allowedEmails`.
-- In local mode, leave `repositories.allowedEmails` undefined (or set to a
-  guard that throws "not available in local mode" — pick whichever matches
-  the existing pattern for hosted-only repos established in 017).
-
-**Expected behavior**:
-- `await createRepositories(config)` in local mode returns the same
-  applications + profile repos as before, with no allowedEmails entry.
-- In hosted mode the returned object also has `repositories.allowedEmails`
-  with an `isAllowed(email)` method.
-
-**Constraints**:
-- Do not import `@supabase/supabase-js` at the top level if that breaks
-  local-mode cold start (017 had a similar cold-start bug — see commit
-  52a0847). Lazy-load if needed.
-
-**Validation**:
-- Existing tests pass unchanged.
-- New `tests/server/repositories/index.test.js` case (extend if file exists):
-  - `createRepositories({ isHosted: false })` does not throw and has no
-    `allowedEmails` key.
-  - `createRepositories({ isHosted: true, supabase: {…} })` exposes
-    `repositories.allowedEmails.isAllowed`.
-
-**Out of scope**:
-- Switching the applications/profile repos to Supabase (that is 019's job).
-
----
-
-## Phase 03 — Auth Middleware + Signup Endpoint
-
-### [ ] Task 03.1 — Create `server/validation/auth.js`
-
-**Target file**: `server/validation/auth.js` (new)
-
-**What to do**:
-Define a Zod schema (project already uses Zod 4) for the signup payload:
-
-```js
-import { z } from 'zod';
-
-export const signupSchema = z.object({
-  email: z.string().trim().toLowerCase().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+export default defineConfig({
+  plugins: [assertHostedFrontendEnv()],
+  // existing config
 });
 ```
 
-Export a `parseSignup(input)` helper that returns
-`{ ok: true, data }` or `{ ok: false, fields }` mirroring the shape used by
-the existing validation modules in `server/validation/`.
-
 **Expected behavior**:
-- `parseSignup({ email: 'a@b.c', password: 'longenough' })` → `{ ok: true, data: { email: 'a@b.c', password: 'longenough' } }`
-- `parseSignup({ email: 'nope', password: 'x' })` → `{ ok: false, fields: { email: '...', password: '...' } }`
-- Email is lowercased + trimmed in the resolved data.
+- `npm run build` with all three vars set → bundle produced.
+- `npm run build` with any missing → throws naming the missing vars; no
+  `dist/` produced.
+- `npm run dev` works regardless of these vars (local mode).
 
 **Constraints**:
-- Match the existing `server/validation/` return-shape conventions (read one
-  existing file to confirm before writing).
+- Plugin must read from `process.env`, not `import.meta.env`, at config time.
+- Do not assert these vars in test runs (vitest does not set
+  `mode === 'production'`).
 
 **Validation**:
-- `tests/server/validation.test.js` (extend existing file with a new
-  describe block) covers valid input, both fields missing, invalid email,
-  short password.
+- `tests/build/vite-config.test.js` (new): import the plugin's factory,
+  call it, invoke its `config` hook with `{ mode: 'production' }` and missing
+  vars in `process.env`, assert it throws with the expected message.
+- Manual: run `npm run build` with vars unset and confirm the error message.
 
 **Out of scope**:
-- Email-verification semantics (Supabase handles them).
+- Runtime handshake (Task 04.2 / 08.3).
 
 ---
 
-### [ ] Task 03.2 — Create `server/auth/middleware.js` (`requireAuth`)
+## Phase 02 — Supabase Setup
+
+### [ ] Task 02.1 — Create `allowed_emails` table in Supabase
+
+**Target**: Supabase SQL Editor (not a code file)
+
+**What to do**:
+Run the SQL from `data-model.md §1`:
+
+```sql
+create table allowed_emails (
+  email      text primary key check (length(email) <= 254),
+  added_at   timestamptz not null default now(),
+  added_by   text
+);
+
+alter table allowed_emails enable row level security;
+-- no policies — deny by default for anon; trigger function reads via SECURITY DEFINER
+```
+
+**Expected behavior**:
+- Table exists in Supabase.
+- Anon-key `select * from allowed_emails` returns 0 rows even when entries
+  exist.
+
+**Constraints**:
+- All inserts must be lowercased.
+
+**Validation**:
+- Manual: in the Supabase dashboard's API explorer, confirm anon-key reads
+  return 0 rows.
+- Operator inserts their own email in lowercase for the Phase 11 manual
+  validation.
+
+**Out of scope**:
+- Migration tooling (none in this feature).
+
+---
+
+### [ ] Task 02.2 — Install the "Before User Created" Auth Hook trigger
+
+**Target**: Supabase SQL Editor
+
+**What to do**:
+Run the SQL from `data-model.md §2-3`:
+
+```sql
+create or replace function public.handle_new_user_email_allowlist()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from allowed_emails where email = lower(new.email)
+  ) then
+    raise exception 'Signup is not available for this email.'
+      using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists before_user_created_allowlist on auth.users;
+create trigger before_user_created_allowlist
+  before insert on auth.users
+  for each row execute function public.handle_new_user_email_allowlist();
+```
+
+**Expected behavior**:
+- Calling `supabase.auth.signUp({ email: <not-allowlisted>, … })` returns an
+  error and no row is created in `auth.users`.
+- Calling `supabase.auth.signUp({ email: <allowlisted>, … })` succeeds and a
+  verification email is sent.
+
+**Constraints**:
+- The function must use `SECURITY DEFINER` to bypass RLS on `allowed_emails`.
+- Owner of the function must have `select` privilege on `allowed_emails`.
+
+**Validation**:
+- Manual (Phase 11.4 covers this): from the Supabase dashboard's SQL editor,
+  attempt `insert into auth.users (email) values ('unallowed@x.com')` and
+  observe the trigger raises.
+- Manual: from the application welcome page, signup with a non-allowlisted
+  email and observe rejection.
+
+**Out of scope**:
+- Allowlist-management UI.
+
+---
+
+### [ ] Task 02.3 — Configure Supabase Auth redirect URLs
+
+**Target**: Supabase Dashboard (Authentication → URL Configuration)
+
+**What to do**:
+- Set **Site URL** to the production hosted frontend origin (or
+  `http://localhost:5173` for local dev).
+- Add the matching `?auth=callback` URL(s) to **Redirect URLs**, e.g.:
+  - `http://localhost:5173/?auth=callback` (local dev)
+  - Production Vercel URL `/?auth=callback`
+  - Any preview URLs needed
+
+**Expected behavior**:
+- Verification emails land users on the welcome page with `?auth=callback` in
+  the query string and the access token in the URL hash.
+
+**Constraints**:
+- Match the URL **exactly** (Supabase rejects mismatched redirects).
+
+**Validation**:
+- Manual in Phase 11.4.
+
+**Out of scope**:
+- Customizing email templates.
+
+---
+
+## Phase 03 — Auth Middleware
+
+### [ ] Task 03.1 — Create `server/auth/middleware.js`
 
 **Target file**: `server/auth/middleware.js` (new)
 
@@ -335,15 +313,10 @@ export function createRequireAuth({ jwtSecret }) {
 ```
 
 **Expected behavior**:
-- No `Authorization` header → 401, route handler not invoked
-- Header not in `Bearer …` shape → 401
-- Token signature invalid / malformed / expired / wrong key → 401
-- Valid token → `req.user = { id, email }`, `next()` invoked
-- All failure response bodies are byte-identical (no leaking which step failed)
+- See `contracts/api.md §3`.
 
 **Constraints**:
-- Algorithm allowlist: `HS256` only. Do not accept `none` or `RS*` (Supabase
-  default is HS256; this prevents algorithm-confusion attacks).
+- Algorithm allowlist: `HS256` only (prevents algorithm-confusion attacks).
 - Log auth failures at debug-level only; never log token contents.
 - Do not look up the user in Supabase — verification is local.
 
@@ -355,88 +328,15 @@ export function createRequireAuth({ jwtSecret }) {
   - Expired token → 401
   - Valid HS256 token signed with the test secret → 200, `req.user.id` set
     to the `sub` claim
-  - Mounted on an Express stub via `supertest` (already used in
-    `tests/server/applications.test.js`)
 
 **Out of scope**:
 - Applying the middleware to real routers (handled in Phase 04).
 
 ---
 
-### [ ] Task 03.3 — Create `server/auth/routes.js` (POST `/api/auth/signup`)
+## Phase 04 — Protected Routers + Runtime Handshake
 
-**Target file**: `server/auth/routes.js` (new)
-
-**What to do**:
-```js
-import { Router } from 'express';
-import { parseSignup } from '../validation/auth.js';
-
-const NEUTRAL_REJECT = {
-  error: { code: 'SIGNUP_NOT_PERMITTED', message: 'Signup is not available for this email.' },
-};
-
-export function createAuthRouter({ repositories, supabaseAdmin, config }) {
-  const router = Router();
-  router.post('/signup', async (req, res, next) => {
-    const parsed = parseSignup(req.body);
-    if (!parsed.ok) {
-      return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Validation failed', fields: parsed.fields },
-      });
-    }
-    try {
-      const allowed = await repositories.allowedEmails.isAllowed(parsed.data.email);
-      if (!allowed) return res.status(403).json(NEUTRAL_REJECT);
-      const { error } = await supabaseAdmin.auth.admin.createUser({
-        email: parsed.data.email,
-        password: parsed.data.password,
-        email_confirm: false,
-      });
-      if (error) return res.status(403).json(NEUTRAL_REJECT);
-      return res.status(200).json({
-        data: { status: 'verification_sent', email: parsed.data.email },
-      });
-    } catch (err) {
-      return next(err);
-    }
-  });
-  return router;
-}
-```
-
-**Expected behavior**:
-- Validation failure → 400 with field-level diagnostics
-- Allowlist miss → 403 `SIGNUP_NOT_PERMITTED`, **`createUser` never called**
-- Allowlist hit + Supabase rejection → 403 `SIGNUP_NOT_PERMITTED` (same shape)
-- Allowlist hit + Supabase success → 200 `verification_sent`
-- Supabase unreachable / repo throws → propagates to the global error handler
-  (500 `INTERNAL_ERROR` per 017's handler in `server/index.js`)
-
-**Constraints**:
-- Allowlist-miss and Supabase-rejection responses must be byte-identical.
-- The handler must not log the password.
-- `email_confirm: false` so Supabase sends the verification email.
-
-**Validation**:
-- `tests/server/auth-signup.test.js`:
-  - Validation error case (missing email)
-  - Allowlist-miss case: `repositories.allowedEmails.isAllowed` returns
-    `false` → 403, `supabaseAdmin.auth.admin.createUser` is not called
-  - Allowlist-hit + `createUser` returns `{ error: { message: 'already' } }`
-    → 403 with identical body to the miss case
-  - Happy path → 200 with `verification_sent`
-  - Use mock objects for `repositories.allowedEmails` and `supabaseAdmin`
-
-**Out of scope**:
-- Login (frontend talks to Supabase directly).
-- Verification callback (handled on the frontend in 06.x).
-
----
-
-## Phase 04 — Wire Protected Routers + Server Entry
-
-### [ ] Task 04.1 — Update protected router factories to accept an optional `requireAuth` middleware
+### [ ] Task 04.1 — Update protected router factories to accept an optional `requireAuth`
 
 **Target files**:
 - `server/routes/applications.js`
@@ -455,8 +355,7 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
   before each route.
 
 **Constraints**:
-- No business-logic changes inside the route handlers in this task — only the
-  factory signature and middleware wiring.
+- No business-logic changes inside the route handlers in this task.
 
 **Validation**:
 - Existing `tests/server/applications.test.js`, `profile.test.js`,
@@ -466,54 +365,48 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
   never invoked.
 
 **Out of scope**:
-- Reading `req.user` inside handlers (that work belongs to 019).
+- Reading `req.user` inside handlers (019).
 
 ---
 
-### [ ] Task 04.2 — Update `server/index.js` to mount `/api/auth` and conditionally pass `requireAuth`
+### [ ] Task 04.2 — Update `server/index.js` to wire `requireAuth` conditionally and report runtime mode
 
 **Target file**: `server/index.js`
 
 **What to do**:
-- Import `createRequireAuth` from `server/auth/middleware.js`,
-  `createSupabaseAdminClient` from `server/auth/supabase.js`, and
-  `createAuthRouter` from `server/auth/routes.js`.
-- In `createApp`, if `config.isHosted`:
-  - Instantiate `supabaseAdmin = createSupabaseAdminClient(config)`.
-  - Instantiate `requireAuth = createRequireAuth({ jwtSecret: config.supabase.jwtSecret })`.
-  - Mount `app.use('/api/auth', createAuthRouter({ repositories, supabaseAdmin, config }))` **before** the protected routers.
-- Pass `requireAuth` to each protected router factory only in hosted mode.
-- Local mode: routers continue to be instantiated without `requireAuth` —
-  identical to today.
+- Import `createRequireAuth` from `server/auth/middleware.js`.
+- In `createApp`, if `config.isHosted`, instantiate
+  `requireAuth = createRequireAuth({ jwtSecret: config.supabase.jwtSecret })`
+  and pass it to each protected router factory. Local mode passes `undefined`.
+- Extend `GET /api/health` to return `{ status: 'ok', runtime: config.runtime }`.
 
 **Expected behavior**:
-- Local mode: `/api/health`, `/api/applications`, `/api/profile`,
-  `/api/resume` all behave exactly as before. `/api/auth/signup` is **not
-  mounted** in local mode (404).
-- Hosted mode: `/api/health` is public; `/api/auth/signup` is public;
+- Local mode: `/api/health` → `{ status: 'ok', runtime: 'local' }`. All other
+  routes behave as before.
+- Hosted mode: `/api/health` → `{ status: 'ok', runtime: 'hosted' }`.
   `/api/applications`, `/api/profile`, `/api/resume` return 401 without a
   valid Bearer token.
 
 **Constraints**:
-- Mount order: `/api/health` → `/api/auth` → protected routers → error
-  handler.
-- Do not put `requireAuth` on `/api/health` or `/api/auth/*`.
+- Mount order: `/api/health` → protected routers → error handler.
+- Do not put `requireAuth` on `/api/health`.
+- No `/api/auth` router is mounted (signup is handled by Supabase directly).
 
 **Validation**:
 - New `tests/server/routes-protected.test.js`:
-  - Build a hosted-mode app via `createApp({ config: hostedConfig, repositories, requireAuth: stubPass })`
-    pattern; confirm 200 with valid stub.
-  - Build a hosted-mode app with `requireAuth: stubReject` and confirm 401
-    for each of `/api/applications`, `/api/profile`, `/api/resume`.
-  - Confirm `/api/health` and `/api/auth/signup` remain 200/400 respectively
-    (i.e. middleware is not applied to them).
+  - Build a hosted-mode app with a stub `requireAuth` that calls `next()`;
+    confirm protected routes return 200.
+  - Build a hosted-mode app with a stub `requireAuth` that calls
+    `res.status(401).end()`; confirm protected routes return 401.
+  - Confirm `/api/health` remains 200 with the correct `runtime` field in
+    both modes.
 
 **Out of scope**:
-- Calling the real Supabase admin client in tests (always mocked).
+- Frontend consumption of `/api/health` (Task 08.3).
 
 ---
 
-### [ ] Task 04.3 — Update existing route tests to accommodate the new factory signature
+### [ ] Task 04.3 — Update existing route tests for the new factory signature
 
 **Target files**:
 - `tests/server/applications.test.js`
@@ -521,17 +414,11 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 - `tests/server/resume.test.js`
 
 **What to do**:
-- If a test was using `createApp({ repositories })`, change to
-  `createApp({ repositories })` unchanged (local mode default).
-- No `requireAuth` is passed; tests run in the same local-mode path.
-- Confirm zero behavioral regression.
+- Confirm all tests still use the no-`requireAuth` path (local mode default).
+- No `requireAuth` is passed; tests run unchanged from a behavioral standpoint.
 
 **Expected behavior**:
 - All previously passing tests still pass.
-
-**Constraints**:
-- Do not migrate tests to a hosted-mode mock unless they specifically test
-  hosted behavior.
 
 **Validation**:
 - `npm run test:run` — full suite green.
@@ -550,6 +437,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const emailRedirectUrl = import.meta.env.VITE_AUTH_EMAIL_REDIRECT_URL;
 
 export const supabase = url && anonKey
   ? createClient(url, anonKey, {
@@ -566,15 +454,16 @@ export const isHostedAuthAvailable = supabase !== null;
   `isHostedAuthAvailable` before using.
 
 **Constraints**:
-- Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are read.
-- The service-role key and JWT secret must never appear in this file or in
-  any other `src/` file.
-- `detectSessionInUrl: true` is required so the email-verification callback
+- Only `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and
+  `VITE_AUTH_EMAIL_REDIRECT_URL` are read.
+- The service-role key and JWT secret must never appear in this file or
+  anywhere else in `src/`.
+- `detectSessionInUrl: true` ensures the email-verification callback
   (`?auth=callback#access_token=…`) is processed by the client on page load.
 
 **Validation**:
 - `tests/services/supabaseClient.test.js`:
-  - When env stubs are absent, the module exports `supabase === null` and
+  - When env stubs are absent, `supabase === null` and
     `isHostedAuthAvailable === false`.
   - When env stubs are present, `supabase` is non-null.
   - Confirm `import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY` is never
@@ -634,12 +523,10 @@ export async function signOut() { if (supabase) await supabase.auth.signOut(); }
 
 **Expected behavior**:
 - `init()` is called once at app boot.
-- Local mode: `state.status === 'local-mode'`; consumers treat that like
+- Local mode: `state.status === 'local-mode'`; main.js treats this like
   authenticated for routing purposes (no welcome page).
 - Hosted mode: starts `initializing` → flips to `authenticated` or
   `unauthenticated` once the session is loaded.
-- `onAuthStateChange` keeps the store in sync with Supabase JS client events
-  (sign-in, sign-out, token refresh).
 
 **Constraints**:
 - Module-level state — single instance per app.
@@ -675,8 +562,7 @@ export async function signOut() { if (supabase) await supabase.auth.signOut(); }
 - Local mode: `getAccessToken()` returns `null`, no header attached, behavior
   identical to today.
 - Hosted authenticated: header attached automatically.
-- 401 response: surfaces as the existing error shape with `code: 'UNAUTHORIZED'`
-  (already supported by the response parsing).
+- 401 response: surfaces as the existing error shape with `code: 'UNAUTHORIZED'`.
 
 **Constraints**:
 - Do not log token contents.
@@ -690,57 +576,37 @@ export async function signOut() { if (supabase) await supabase.auth.signOut(); }
   - 401 JSON response surfaces as a thrown
     `{ code: 'UNAUTHORIZED', message }`.
 
-**Out of scope**:
-- Refreshing tokens manually (Supabase JS client handles refresh).
-
 ---
 
 ### [ ] Task 05.4 — Update `src/services/resumeApi.js` to attach the `Authorization` header
 
 **Target file**: `src/services/resumeApi.js`
 
-**What to do**:
-Same pattern as 05.3, applied to whatever fetch wrapper this file uses for
-the resume endpoint.
+**What to do**: same pattern as 05.3 for the resume endpoint.
 
-**Expected behavior**: identical to 05.3 but for resume requests.
-
-**Constraints**: same.
-
-**Validation**:
-- `tests/services/resumeApi.test.js` (new or extended): confirms header
-  attachment behavior.
-
-**Out of scope**: none.
+**Validation**: `tests/services/resumeApi.test.js` (new or extended) confirms
+header attachment.
 
 ---
 
-### [ ] Task 05.5 — Create `src/services/authApi.js`
+### [ ] Task 05.5 — Create `src/services/healthApi.js`
 
-**Target file**: `src/services/authApi.js` (new)
+**Target file**: `src/services/healthApi.js` (new)
 
 **What to do**:
 ```js
 import { request } from './api.js';
-
-export function signup(email, password) {
-  return request('POST', '/api/auth/signup', { email, password });
-}
+export function getHealth() { return request('GET', '/api/health'); }
 ```
 
 **Expected behavior**:
-- Thin wrapper around `request()`. Reuses the same network-error and
-  validation-error surface as the rest of the API.
+- Thin wrapper; reuses `request()` so it inherits network-error handling.
 
 **Constraints**:
-- No additional logic — keep this file under 10 lines.
+- Must not require an `Authorization` header.
 
 **Validation**:
-- Covered indirectly by `tests/components/welcome.test.js` (Phase 07) which
-  mocks `authApi`.
-
-**Out of scope**:
-- Login / sign-out (those go through `supabaseClient` directly).
+- Covered indirectly by Task 08.3's tests.
 
 ---
 
@@ -751,142 +617,74 @@ export function signup(email, password) {
 **Target file**: `src/pages/welcome/WelcomePage.js` (new)
 
 **What to do**:
-Export a `WelcomePage` object with `mount(root, deps)` and `unmount()`
-matching the existing page convention. Inside `mount`:
-- Render the diagonal-split layout container (left column + right hero slab).
-- Mount `BrandBlock`, headline, supporting copy, `CTAGroup`,
-  `FloatingMeta`, and `HeroSlideshow` into the appropriate columns.
-- Read the URL for `?auth=callback`. If present, show the
-  verification-confirmed inline state (a brief toast or banner inviting the
-  user to sign in) and clean the query string (`history.replaceState`).
+Implement `WelcomePage` with `mount(root, deps)` and `unmount()`. The single
+file contains, inlined per the I4 middle ground:
+
+- Diagonal-split container (`<div class="welcome">`).
+- Left content column with:
+  - **Brand block** (inlined): `<img src={aliceWhite} class="welcome__brand-mark">`
+    + `<span class="welcome__brand-text">Project Alice</span>`.
+  - Headline (`Your job search,` `<br>` `organized.`).
+  - Supporting copy.
+  - **CTA group** (inlined): three buttons.
+    - Sign In (primary) → opens `AuthOverlay` in `'login'` view.
+    - Create Account (secondary) → opens `AuthOverlay` in `'signup'` view.
+    - Try Demo (ghost) → rendered with `disabled` attribute and
+      `title="Coming soon — available with the next release."` Does nothing
+      when clicked.
+  - Footer metadata text (`Built with Vite · Supabase · Vercel`).
+- Right hero slab containing a mounted `HeroSlideshow`.
+- **Floating metadata pills** (inlined): three absolute-positioned pills
+  (`24 Active`, `+12 This Month`, `78% Match`) plus the small
+  `Sample data — illustrative only` disclaimer per design §11.
+- Email-verification callback handler: on mount, read the URL; if
+  `?auth=callback` is present, render the verification-confirmed banner
+  inside the welcome page and clean the query string via
+  `history.replaceState`.
+
+Mount the `AuthOverlay` as a sibling overlay element (rendered conditionally
+based on internal state for view: `null | 'login' | 'signup' | 'verification_sent'`).
 
 **Expected behavior**:
-- Mounts a structurally complete welcome page (semantic HTML, correct
-  containers). Styling lands in Phase 09.
-- `unmount()` removes event listeners and DOM nodes.
+- Structurally complete welcome page (semantic HTML, correct containers).
+  Styling lands in Phase 09.
+- `unmount()` removes event listeners, intervals, and DOM nodes.
 
 **Constraints**:
 - Do not render a navbar or footer — the welcome page is pre-app.
-- Layout containers use class names matching the design tokens (e.g.
-  `.welcome`, `.welcome__content`, `.welcome__hero`).
-- The headline uses the exact copy from the design (`Your job search,` /
-  `organized.`) with a fixed line break.
+- Headline uses the exact copy with fixed line break.
 
 **Validation**:
-- `tests/components/welcome.test.js` (covered fully in 07.5):
-  - Mount renders the brand block, headline, CTA group, and hero slot.
-  - `?auth=callback` query renders the verification-confirmed banner and the
-    URL is cleaned afterward.
+- `tests/components/welcome.test.js` covers mount, three-CTA presence,
+  Try Demo disabled, `?auth=callback` handling, and the overlay-open
+  side effect.
 
 **Out of scope**:
-- Visual styling beyond structural class names (Phase 09).
-- Auth overlay (Phase 07).
+- Visual styling (Phase 09).
+- AuthOverlay internals (Phase 07).
 
 ---
 
-### [ ] Task 06.2 — Create `src/pages/welcome/BrandBlock.js`
-
-**Target file**: `src/pages/welcome/BrandBlock.js` (new)
-
-**What to do**:
-Render an `<img src={Alice_White}>` (44×44) next to a "Project Alice"
-wordmark in a flex container. Class names match the design's specs.
-
-**Expected behavior**:
-- Returns a DOM element (project pattern — vanilla JS, not JSX).
-
-**Constraints**:
-- Import `Alice_White.png` (already used by `Navbar` and `Footer`).
-- No alt-text on the icon (it's decorative; the wordmark carries the label).
-
-**Validation**:
-- Smoke test inside `tests/components/welcome.test.js`.
-
-**Out of scope**: none.
-
----
-
-### [ ] Task 06.3 — Create `src/pages/welcome/CTAGroup.js`
-
-**Target file**: `src/pages/welcome/CTAGroup.js` (new)
-
-**What to do**:
-Render three buttons:
-- Sign In (primary indigo) — emits a `signin` event when clicked
-- Create Account (secondary outlined) — emits a `signup` event
-- Try Demo (ghost) — **rendered with `disabled` attribute and a `title`
-  attribute reading "Coming soon — available with the next release."** Does
-  not emit any event.
-
-Accept an `onAction(actionId)` callback or use a `CustomEvent`-on-element
-pattern — match whichever pattern the existing components use (read
-`StatusDropdown.js` first to confirm).
-
-**Expected behavior**:
-- Clicking Sign In → fires the signin handler.
-- Clicking Create Account → fires the signup handler.
-- Try Demo cannot be clicked (disabled); hover/focus shows the tooltip.
-
-**Constraints**:
-- The `disabled` state must be announced by assistive tech (use native
-  `<button disabled>`, not `aria-disabled` alone, so keyboard focus skips it
-  by default).
-- Tooltip uses the native `title` attribute for now; richer tooltip widget
-  is out of scope.
-
-**Validation**:
-- `tests/components/welcome.test.js` clicks each button and asserts the
-  handler fires (or doesn't, for Try Demo).
-
-**Out of scope**:
-- Wiring the handlers to actual auth flows (Phase 07).
-
----
-
-### [ ] Task 06.4 — Create `src/pages/welcome/HeroCard.js`
-
-**Target file**: `src/pages/welcome/HeroCard.js` (new)
-
-**What to do**:
-Render an `<img>` wrapped in a card container. Props: `src`, `alt`,
-`rotation` (e.g. `-2deg`), `primary` (boolean for which shadow/size variant
-to use).
-
-**Expected behavior**:
-- Pure presentational component with the design's border, radius, shadow,
-  and transform.
-
-**Constraints**:
-- If `src` is missing, render a neutral placeholder (a `--surface` box with
-  the brand mark centered). This lets the welcome page build before
-  Phase 10 captures the real screenshots.
-
-**Validation**:
-- Smoke test in welcome.test.js.
-
-**Out of scope**: none.
-
----
-
-### [ ] Task 06.5 — Create `src/pages/welcome/HeroSlideshow.js`
+### [ ] Task 06.2 — Create `src/pages/welcome/HeroSlideshow.js`
 
 **Target file**: `src/pages/welcome/HeroSlideshow.js` (new)
 
 **What to do**:
-- Accept a `slides` array (`[{ src, alt }, …]`) and a `placeholder` flag.
-- Render the slides as overlapping `HeroCard`s; auto-rotate which one is
-  primary on a 5-second interval.
+- Accept a `slides` array (`[{ src, alt }, …]`).
+- Render the slides as overlapping `<img>` cards (HeroCard inlined as a small
+  helper function inside this file).
+- Auto-rotate which slide is primary on a 5-second interval.
 - Respect `prefers-reduced-motion: reduce` — when set, render only the first
   slide statically and disable interval rotation.
-- If `slides.length === 0` (assets not yet captured), render a single
-  placeholder `HeroCard`.
+- If `slides.length === 0` (assets not yet captured in Phase 10), render a
+  single placeholder card.
 
 **Expected behavior**:
-- Rotation transitions use the design's `opacity 500ms ease, transform 500ms ease`.
+- Rotation transitions use `opacity 500ms ease, transform 500ms ease`.
 - Component cleans up its interval on `unmount`.
 
 **Constraints**:
-- No external animation library — use CSS transitions only.
+- No external animation library — CSS transitions only.
 
 **Validation**:
 - `tests/components/heroSlideshow.test.js`:
@@ -896,71 +694,41 @@ to use).
     fake timers).
 
 **Out of scope**:
-- Slide content itself (Phase 10 supplies it).
+- Slide content itself (Phase 10).
 
 ---
 
-### [ ] Task 06.6 — Create `src/pages/welcome/FloatingMeta.js`
-
-**Target file**: `src/pages/welcome/FloatingMeta.js` (new)
-
-**What to do**:
-Render the three example pills from the design (`24 Active`, `+12 This Month`,
-`78% Match`) absolutely-positioned over the hero slab. Decorative only.
-
-**Expected behavior**:
-- Renders three pills. No interactivity. Hidden when
-  `prefers-reduced-motion: reduce` is on (keeps the page calmer when
-  reduced-motion is requested — optional, document if implemented).
-
-**Constraints**:
-- Plain text values are hardcoded — these are not real metrics in this
-  feature.
-
-**Validation**:
-- Smoke test that the three pills render with the expected text.
-
-**Out of scope**:
-- Real-data binding (the floating pills become live in a future polish
-  feature, not 018).
-
----
-
-### [ ] Task 06.7 — Update `src/main.js` to gate the app shell on auth state
+### [ ] Task 06.3 — Wire welcome page into `src/main.js`
 
 **Target file**: `src/main.js`
 
 **What to do**:
-- Call `authStore.init()` early in the bootstrap.
-- Subscribe to the auth store:
-  - `status === 'local-mode'` → mount the existing app shell exactly as
-    today (navbar + main + footer).
-  - `status === 'authenticated'` → mount the existing app shell.
-  - `status === 'unauthenticated'` or `'initializing'` → mount the
-    `WelcomePage` into a sibling root (replace any existing app shell with
-    just the welcome page; no navbar).
-- On state transition (e.g. sign-in completes, sign-out fires), unmount the
-  active root and mount the other.
+- Call `authStore.init()` early in bootstrap.
+- Subscribe to the auth store. Render based on state:
+  - `'initializing'` → render nothing (no flash; per N4).
+  - `'local-mode'` or `'authenticated'` → mount the existing app shell.
+  - `'unauthenticated'` → mount `WelcomePage` (with no navbar/footer).
+- On state transition, unmount the active root and mount the other.
 
 **Expected behavior**:
-- Local mode is byte-identical to today after this change — unchanged paint
-  and behavior.
-- Hosted unauthenticated → welcome page only (no navbar/footer).
+- Local mode is byte-identical to today — unchanged paint and behavior.
+- Hosted unauthenticated → welcome page only.
 - Hosted authenticated → existing app shell with navbar/footer.
+- Brief `initializing` window shows nothing (white viewport for ~50ms while
+  Supabase resolves the session).
 
 **Constraints**:
-- Don't double-mount. Use an `_authUnsubscribe` and a `_currentRoot` variable
-  similar to the existing `_currentPage` / `_currentUnmount` pattern.
+- Don't double-mount.
+- Single subscription; unsubscribe on hot-reload paths.
 
 **Validation**:
-- Manual smoke: run `npm run dev` in local mode; confirm the tracker still
-  loads.
-- `tests/main.test.js` (new, optional): script a hosted-mode state machine
-  through `local-mode` / `unauthenticated` / `authenticated` and assert
-  which top-level element exists in the DOM.
+- Manual smoke: `npm run dev` in local mode; tracker still loads.
+- `tests/main.test.js` (new, optional): script a state machine through
+  `initializing` / `unauthenticated` / `authenticated` and assert which
+  top-level element exists in the DOM.
 
 **Out of scope**:
-- The welcome page's contents (Phase 06.1–06.6 cover those).
+- `ConfigError` mounting (Task 08.3).
 
 ---
 
@@ -971,18 +739,16 @@ Render the three example pills from the design (`24 Active`, `+12 This Month`,
 **Target file**: `src/pages/welcome/AuthOverlay.js` (new)
 
 **What to do**:
-- Render a shell that becomes a centered modal on desktop (`≥760px`) and a
-  bottom sheet on mobile (`<760px`). Use a CSS media-query to switch styles
-  (Phase 09 supplies the styling; this task supplies the structural
-  containers and class names).
-- Accept a `view` prop (`'login' | 'signup' | 'verification_sent'`) and
-  mount `LoginForm`, `SignupForm`, or a verification-sent confirmation panel
+- Render a centered modal at every breakpoint per design §11b.
+- Accept a `view` prop (`'login' | 'signup' | 'verification_sent'`) and mount
+  `LoginForm`, `SignupForm`, or a verification-sent confirmation panel
   accordingly. Switching between login and signup must not remount the
-  overlay or lose the email value.
+  overlay or lose the email value (state for that lives in the overlay).
+- Tab strip at the top switches between Login and Signup.
 - Focus trap + ESC-to-close + backdrop-click-to-close. Restore focus to the
   CTA that opened the overlay on close.
-- Reuse `components/Modal.js` where it fits; otherwise duplicate the
-  focus-trap pattern.
+- Copy focus-trap logic inline (see plan tradeoff: extract to shared util
+  later if a third consumer appears).
 
 **Expected behavior**:
 - ESC closes; backdrop click closes; close button closes.
@@ -990,6 +756,7 @@ Render the three example pills from the design (`24 Active`, `+12 This Month`,
 - Switching `view` does not unmount.
 
 **Constraints**:
+- Do **not** extend `components/Modal.js` (plan tradeoff).
 - The shared email value between login and signup is held in the overlay's
   state, not in the form components.
 
@@ -998,9 +765,10 @@ Render the three example pills from the design (`24 Active`, `+12 This Month`,
   - Opening from CTA, switching tabs, and pressing ESC each behave as
     specified.
   - Focus returns to the original CTA on close.
+  - Email field value persists across tab switch.
 
 **Out of scope**:
-- Actual form submission logic (07.2, 07.3).
+- Form submission logic (07.2, 07.3).
 
 ---
 
@@ -1020,12 +788,10 @@ Render email + password inputs and a Sign In submit button. On submit:
 
 **Expected behavior**:
 - Form prevents double-submit while in flight.
-- Inline error renders accessibly (`aria-live="polite"`, associated with
-  the inputs).
+- Inline error renders accessibly (`aria-live="polite"`).
 
 **Constraints**:
-- Do not differentiate "user not found" vs "wrong password" in error copy
-  (neutrality, consistent with FR-006 spirit).
+- Do not differentiate "user not found" vs "wrong password" in error copy.
 
 **Validation**:
 - `tests/components/welcome.test.js`:
@@ -1034,8 +800,7 @@ Render email + password inputs and a Sign In submit button. On submit:
   - Submit while in flight is blocked.
 
 **Out of scope**:
-- "Forgot password" link UI (Supabase's default flow is used out of the
-  app; no in-app entry point in this feature).
+- "Forgot password" link UI (Supabase default flow only; no in-app entry).
 
 ---
 
@@ -1044,85 +809,58 @@ Render email + password inputs and a Sign In submit button. On submit:
 **Target file**: `src/pages/welcome/SignupForm.js` (new)
 
 **What to do**:
-Render email + password inputs and a Create Account submit button. On
-submit:
-- Call `authApi.signup(email, password)`.
+Render email + password inputs and a Create Account submit button. On submit:
+- Field-level validation: email regex, password min 8 chars. Render inline
+  field errors when present.
+- Call `supabase.auth.signUp({ email, password, options: { emailRedirectTo: emailRedirectUrl } })`.
 - On success: switch the overlay `view` to `verification_sent`.
-- On 400 validation error: render inline field-level errors.
-- On 403 / any other error: render the same neutral message: "Signup is
-  not available for this email."
+- On any error: render a single inline neutral error
+  ("This email cannot sign up right now.") regardless of the underlying
+  Supabase cause (allowlist miss, duplicate user, rate-limit, network error).
 
 **Expected behavior**:
-- Validation errors render at field level when the server returns them.
-- Non-validation errors render as a single inline notice.
+- Field-level errors render at the field; neutral signup-rejection error
+  renders at the form footer.
 - Successful submit transitions the overlay to verification-sent.
 
 **Constraints**:
-- Do not reveal whether the email exists or is allowlisted (already
-  enforced server-side; the form must not invent a more specific error).
+- Do not reveal whether the email exists or is allowlisted.
+- Map every Supabase error to the same neutral message string.
 
 **Validation**:
 - `tests/components/welcome.test.js`:
   - Happy path → overlay shows verification-sent.
-  - 400 with `fields.email` → email field shows error.
-  - 403 → neutral inline error.
+  - Field-level validation errors render inline.
+  - Mocked `signUp` rejection → neutral inline error.
+  - Two consecutive errors with different Supabase causes produce the
+    same DOM (byte-identical error region).
 
 **Out of scope**:
-- Resending the verification email (Supabase's default flow handles it).
+- Resend-verification UI — handled by the user submitting again with the same
+  email (Supabase resends automatically).
 
 ---
 
-### [ ] Task 07.4 — Wire CTA → overlay handlers in `WelcomePage`
-
-**Target file**: `src/pages/welcome/WelcomePage.js`
-
-**What to do**:
-Connect `CTAGroup` actions to the `AuthOverlay`:
-- Sign In → open overlay in `'login'` view.
-- Create Account → open overlay in `'signup'` view.
-- Try Demo → no-op (button is disabled).
-
-**Expected behavior**:
-- Clicking the CTAs opens the overlay with the right view.
-- Closing the overlay returns focus to the CTA.
-
-**Constraints**: none.
-
-**Validation**:
-- Welcome page integration test in `tests/components/welcome.test.js`.
-
-**Out of scope**: none.
-
----
-
-### [ ] Task 07.5 — Write the welcome-page test suite
+### [ ] Task 07.4 — Write the welcome-page test suite
 
 **Target file**: `tests/components/welcome.test.js` (new)
 
 **What to do**:
-Cover the behavioral surface introduced by Phases 06 and 07:
-- Welcome page mounts with brand, headline, CTAs, hero slot.
-- Try Demo is disabled.
-- CTA click opens overlay in correct view.
-- Login flow happy path / error path (Supabase mocked).
-- Signup flow happy path → verification-sent state; 400 → field error; 403
-  → neutral error.
-- ESC / backdrop / close button each close the overlay; focus restores.
+Cover the behavioral surface introduced by Phases 06 and 07 (already enumerated
+across earlier tasks). Plus:
 - `?auth=callback` query renders the verification banner and cleans the URL.
+- Try Demo is disabled.
 
 **Constraints**:
-- Supabase JS client is **fully mocked at the module boundary**. No live
-  Supabase project required.
-- Use `jsdom` (already a project devDependency).
+- Supabase JS client is **fully mocked at the module boundary**.
+- Use `jsdom`.
 
 **Validation**:
 - `npm run test:run -- tests/components/welcome.test.js` passes.
 
-**Out of scope**: none.
-
 ---
 
-## Phase 08 — Navbar + Resume-Import Gating
+## Phase 08 — Navbar + Resume-Import + ConfigError
 
 ### [ ] Task 08.1 — Update `src/components/Navbar.js`
 
@@ -1133,27 +871,13 @@ Cover the behavioral surface introduced by Phases 06 and 07:
   segment containing the user's email (truncated if long) and a Sign Out
   button.
 - The Sign Out button calls `authStore.signOut()`.
-- In `local-mode` state, the segment is not rendered — navbar looks exactly
-  as today.
-
-**Expected behavior**:
-- Local mode: navbar visually unchanged.
-- Hosted authenticated: navbar shows the email + sign-out control.
-
-**Constraints**:
-- Unsubscribe on `Navbar` teardown to avoid memory leaks (project pattern:
-  return an unsubscribe function from `render`, called by the page on
-  unmount, or attach to the navbar element via a `_cleanup` property —
-  read the existing Navbar code first).
+- In `'local-mode'`, the segment is not rendered.
 
 **Validation**:
-- `tests/components/navbar.test.js` (extend existing or new):
+- `tests/components/navbar.test.js`:
   - Local-mode mount renders no user segment.
   - Hosted-authenticated mount renders the email and sign-out.
   - Clicking sign-out calls `authStore.signOut`.
-
-**Out of scope**:
-- User avatar / dropdown menu (out of scope; v1 is text + button only).
 
 ---
 
@@ -1164,307 +888,250 @@ Cover the behavioral surface introduced by Phases 06 and 07:
 **What to do**:
 - Subscribe to `authStore`. The resume-import entry point renders only when
   `status === 'local-mode'` or `status === 'authenticated'`. In
-  `unauthenticated` / `initializing`, the component returns nothing (or
-  renders nothing into its container).
-
-**Expected behavior**:
-- Local mode: unchanged.
-- Hosted authenticated: visible.
-- Hosted unauthenticated: absent.
-
-**Constraints**:
-- This is a defense-in-depth measure — the API already rejects
-  unauthenticated resume requests via `requireAuth`.
+  `'unauthenticated'` / `'initializing'`, the component returns nothing.
 
 **Validation**:
-- `tests/components/resumeImport.test.js` (new or extended):
+- `tests/components/resumeImport.test.js`:
   - Renders in local-mode and authenticated states.
   - Does not render in unauthenticated state.
 
-**Out of scope**:
-- Resume upload size or rate limiting (021).
+---
+
+### [ ] Task 08.3 — Create `ConfigError.js` and wire the runtime handshake
+
+**Target files**:
+- `src/pages/ConfigError.js` (new)
+- `src/main.js`
+
+**What to do**:
+- `ConfigError.js` renders a simple, branded "Configuration Error" view with
+  copy along the lines of "This deployment is misconfigured. Contact the
+  operator." Plain text, uses existing design tokens.
+- In `main.js`, after `authStore.init()` resolves, also call `getHealth()`
+  from `services/healthApi.js`. If the response is `{ runtime: 'hosted' }` and
+  `isHostedAuthAvailable === false`, mount `ConfigError` and skip everything
+  else (welcome page or app shell). This is defense-in-depth for the build-
+  time assertion in 01.3.
+
+**Expected behavior**:
+- Build-time check is the primary line of defense (a hosted build cannot ship
+  without the Vite env vars).
+- If somehow that fails, the runtime check catches the mismatch and renders a
+  clear page instead of a silently-broken app.
+
+**Validation**:
+- `tests/main.test.js`:
+  - Mock `getHealth` to return `{ runtime: 'hosted' }` and
+    `isHostedAuthAvailable === false`; assert `ConfigError` renders.
+  - Mock `getHealth` to return `{ runtime: 'local' }`; assert the app shell
+    renders (no welcome, no ConfigError).
 
 ---
 
-## Phase 09 — Welcome Page Styling
+## Phase 09 — Welcome + Overlay Styling
 
 ### [ ] Task 09.1 — Add welcome-page CSS to `src/styles/main.css`
 
 **Target file**: `src/styles/main.css`
 
 **What to do**:
-Append a new section under a `/* Welcome page */` comment that implements the
-design's specs:
-- `.welcome` container with the diagonal split (left content column ~55%,
-  right hero slab ~62%, polygon clip-path
-  `polygon(22% 0, 100% 0, 100% 100%, 6% 100%)`).
-- Hero slab background: documented radial-gradient stack over `var(--navy)`.
+Append a `/* Welcome page */` section implementing the design spec:
+- `.welcome` diagonal split (left ~55%, right hero slab ~62%, polygon
+  clip-path `polygon(22% 0, 100% 0, 100% 100%, 6% 100%)`).
+- Hero slab background: radial-gradient stack over `var(--navy)`.
 - Headline: Sora 700 / 54px / line-height 1.05 / tracking -1.6px /
   `var(--t1)`.
 - Supporting copy: Sora 400 / 14px / `var(--t2)` / max-width 420px /
   line-height 1.7.
-- Brand block: `Alice_White.png` 44×44; "Project Alice" wordmark Sora 16 /
-  600 / tracking -0.3px.
-- CTA buttons: primary (`var(--indigo)` bg, `#fff` text), secondary
-  (transparent + 1.5px `var(--border)`), ghost (text-only).
-- Hover states per design: primary brightens to `var(--indigo-hover)` and
-  `translateY(-1px)`; secondary borders to `var(--indigo)` and bg to
-  `var(--indigo-soft)`; ghost increases opacity only.
+- Brand block: 44×44 image; "Project Alice" wordmark Sora 16 / 600 / tracking -0.3px.
+- CTA buttons: primary, secondary outlined, ghost — per design §7.
+- Hover/focus states per design.
 - Screenshot card: `#fff` bg, 16px radius, layered shadows.
 - Footer metadata: DM Mono 11px / `var(--t3)` / margin-top 28px.
-
-**Expected behavior**:
-- Pixel-correct match to the design at desktop, tablet, and mobile
-  breakpoints.
+- Floating pills + illustrative disclaimer per design §11.
+- Breakpoint behavior per design §4 (tablet, mobile hero ribbon, narrow mobile
+  CTA stack).
 
 **Constraints**:
-- **No new CSS custom properties**. Reuse the existing tokens in `:root` at
-  `src/styles/main.css:1-46`.
-- Keep all rules inside one labeled section to keep the file scannable.
+- **No new CSS custom properties** — reuse `src/styles/main.css:1-46`.
 
 **Validation**:
-- Manual: run `npm run dev`, open the welcome page in hosted mode, compare
-  side-by-side to the design at three breakpoints (≥1100px, 760–1100px,
-  <760px, <420px).
-
-**Out of scope**:
-- The auth overlay styles (09.2).
+- Manual: `npm run dev`, open the welcome page in hosted mode, compare to
+  design at four breakpoints (≥1100px, 760–1100px, <760px, <420px).
 
 ---
 
-### [ ] Task 09.2 — Style the auth overlay (modal + bottom sheet)
+### [ ] Task 09.2 — Style the auth overlay (centered modal at all breakpoints)
 
 **Target file**: `src/styles/main.css`
 
 **What to do**:
-- Desktop (`≥760px`): centered modal at ~440px width using shadow `var(--shadow-lg)`
-  and radius `var(--r-lg)`.
-- Mobile (`<760px`): bottom sheet, slides up from below, full width with a
-  drag-affordance handle at the top, max-height 92vh, internal scroll.
-- Backdrop: `rgba(26, 26, 46, 0.36)` to match `var(--navy)` tonality.
-- Form inputs use the existing project input styles (read one existing form
-  to copy class names).
-- Field-error text uses `var(--color-danger)`.
-
-**Expected behavior**:
-- Overlay is centered on desktop, bottom-anchored on mobile.
-- Reduced-motion users get instant appearance (no slide animation) when
-  `prefers-reduced-motion: reduce`.
+Per design §11b:
+- Desktop ≥1100px: 440px centered modal.
+- Tablet 760–1100px: 420px centered modal.
+- Mobile <760px: `min(92vw, 380px)` centered modal with 16px viewport floors.
+- Backdrop: `rgba(26, 26, 46, 0.36)` + 2px blur.
+- Shell uses `var(--surface)`, `var(--r-lg)`, `var(--shadow-lg)`, 28px padding.
+- Tab strip uses `var(--indigo)` for the active underline, `var(--t2)` for
+  inactive labels.
+- Form inputs reuse existing project input styles.
+- Verification-sent state styling.
+- Entrance: 200ms fade + 6px translate-up.
 
 **Constraints**:
-- Reuse `var(--shadow-lg)`, `var(--r-lg)`, color tokens — no new vars.
-- Animation duration ≤ 250ms.
+- No new CSS variables.
+- Animation respects `prefers-reduced-motion: reduce`.
 
 **Validation**:
 - Manual at each breakpoint.
 
-**Out of scope**: none.
-
 ---
 
-### [ ] Task 09.3 — Reduced-motion + accessibility pass on the welcome page
+### [ ] Task 09.3 — Reduced-motion + accessibility pass
 
 **Target files**:
 - `src/styles/main.css`
 - `src/pages/welcome/HeroSlideshow.js`
 
 **What to do**:
-- Confirm the `prefers-reduced-motion: reduce` media query disables
-  slideshow rotation, hero card transforms, and overlay slide-in animations.
-- Confirm headline and supporting copy meet WCAG AA contrast against
-  `var(--bg)` (already true given the existing tokens; verify with a
-  contrast checker once styled).
-- Confirm CTA buttons are reachable in tab order and have visible focus
-  rings.
-- Confirm floating metadata pills meet AA contrast against the hero slab
-  background.
-
-**Expected behavior**:
-- Reduced-motion: no animations.
-- All interactive elements keyboard-reachable with visible focus.
-
-**Constraints**:
-- Do not remove transitions for non-reduced-motion users.
+- `prefers-reduced-motion: reduce` disables slideshow rotation, hero card
+  transforms, and overlay slide-in animations.
+- Headline + copy meet WCAG AA contrast against `var(--bg)`.
+- CTA buttons keyboard-reachable with visible focus rings.
+- Floating pills + disclaimer meet AA contrast against the hero slab.
 
 **Validation**:
-- Manual: enable "Reduce motion" in OS settings; refresh; verify no
-  rotations.
+- Manual reduced-motion test.
 - axe-core (browser extension) pass on the welcome page returns no AA
   failures.
 
-**Out of scope**:
-- Color-contrast token redesign (not needed; existing tokens already meet AA).
-
 ---
 
-## Phase 10 — Hero Screenshot Capture (polish; can ship later)
+## Phase 10 — Hero Screenshot Capture (optional polish)
 
-This phase is optional for the initial 018 merge — the placeholder fallback
-from Task 06.5 keeps the welcome page presentable. Run this phase as a
-follow-up PR when ready.
+Run as a follow-up PR if not needed before initial merge.
 
 ### [ ] Task 10.1 — Capture five real-application screenshots
 
 **Target files**: `src/assets/welcome-hero/*.png` (five new files)
 
 **What to do**:
-- Run `npm run dev` with seeded data.
-- Capture, at consistent zoom and aspect ratio:
-  1. `tracker.png` — main tracker view with several applications visible
-  2. `application-modal.png` — the edit application modal open
-  3. `profile.png` — the profile view
-  4. `filters.png` — the quick filters / filter panel area
-  5. `calendar.png` — the calendar view
-- Crop tightly, optimize for file size (TinyPNG / `pngquant`), target ≤
-  300KB each.
-
-**Expected behavior**:
-- Each screenshot is a believable capture of the actual application, per the
-  design's "no fake dashboards" requirement.
+- `npm run dev` with seeded data.
+- Capture: `tracker.png`, `application-modal.png`, `profile.png`,
+  `filters.png`, `calendar.png`.
+- Crop tightly; optimize with TinyPNG / `pngquant`; target ≤300KB each.
 
 **Constraints**:
-- Use the warm off-white background (`var(--bg)`) — never the dark navy
-  shell — as the page bg for these captures, per design intent.
-- Do not include any personally identifying information from the
-  developer's local data; reseed with `npm run db:seed` if necessary.
+- Use the warm off-white bg (`var(--bg)`) as the page bg.
+- No personal data in captures; reseed with `npm run db:seed` if necessary.
 
 **Validation**:
 - Manual review against design intent.
 
-**Out of scope**: none.
-
 ---
 
-### [ ] Task 10.2 — Wire the captured slides into `HeroSlideshow`
+### [ ] Task 10.2 — Wire captured slides into `HeroSlideshow`
 
 **Target file**: `src/pages/welcome/WelcomePage.js`
 
 **What to do**:
-Pass the captured slides into the `HeroSlideshow`:
-
-```js
-const slides = [
-  { src: trackerPng, alt: 'Tracker view' },
-  { src: applicationModalPng, alt: 'Application edit modal' },
-  { src: profilePng, alt: 'Profile' },
-  { src: filtersPng, alt: 'Filters and sorting' },
-  { src: calendarPng, alt: 'Calendar' },
-];
-```
-
-**Expected behavior**:
-- Slideshow shows the real screenshots, rotating per design.
-- Placeholder fallback path remains intact for tests.
-
-**Constraints**:
-- Alt text describes the screenshot subject (these are not decorative).
+Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 **Validation**:
-- Manual: rotation visible at the documented cadence.
-
-**Out of scope**: none.
+- Manual: rotation visible.
 
 ---
 
-## Phase 11 — Verification & Checklist
+## Phase 11 — Verification
 
-### [ ] Task 11.1 — Run the full test suite
+### [ ] Task 11.1 — Run the full automated test suite
 
 **Command**: `npm run test:run`
 
-**Expected behavior**: All tests pass with zero new failures. Coverage of new
-modules is verifiable from the test names listed in this file.
+**Expected behavior**: All tests pass, zero new failures.
 
 ---
 
 ### [ ] Task 11.2 — Verify secrets are not in the Vite bundle
 
-**Target output**: `dist/` (post-`npm run build`)
+**Target output**: `dist/`
 
 **What to do**:
-- Run `npm run build`.
-- Grep the `dist/` directory for `SUPABASE_SERVICE_ROLE_KEY`,
-  `SUPABASE_JWT_SECRET`, and the actual values from local hosted env vars
-  (if any are set in the shell).
-
-**Expected behavior**:
-- Zero hits.
-
-**Constraints**:
-- Run with hosted env vars present in the shell — that's the realistic check.
+- Run `npm run build` with hosted env vars set.
+- Grep `dist/` for `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, and the
+  actual values from local hosted env vars.
 
 **Validation**:
-- `grep -r SUPABASE_SERVICE_ROLE_KEY dist/` returns no matches.
-- `grep -r SUPABASE_JWT_SECRET dist/` returns no matches.
+- Zero hits for any of the above.
 
 ---
 
-### [ ] Task 11.3 — Walk `checklists/plan-review.md`
+### [ ] Task 11.3 — Verify build-time assertion fails closed
+
+**What to do**:
+- Run `npm run build` with `VITE_SUPABASE_URL` unset.
+- Confirm the build exits with a non-zero status and a descriptive error
+  message.
+- Repeat for the other two `VITE_*` vars.
+
+**Validation**:
+- Three runs, three failures with the expected error.
+
+---
+
+### [ ] Task 11.4 — Walk `checklists/plan-review.md`
 
 **Target file**: `specs/018-auth-user-access/checklists/plan-review.md`
 
-**What to do**:
-- Check off each item that the implementation now satisfies.
-- For any unchecked item, note the reason in the Open Items table at the
-  bottom and the residual risk.
-- Re-run `axe-core` (browser extension) on the welcome page; capture
-  results.
-
-**Expected behavior**:
-- Either every item is checked, or every unchecked item has a stated
-  reason and residual risk.
-
-**Validation**:
-- The checklist file is updated in this PR.
+**What to do**: check off each item; note residual risk for any unchecked.
 
 ---
 
-### [ ] Task 11.4 — Manually validate via `quickstart.md`
+### [ ] Task 11.5 — Manual validation via `quickstart.md`
 
-**Target file**: `specs/018-auth-user-access/quickstart.md`
-
-**What to do**:
-- Follow the quickstart end-to-end on a real Supabase project.
-- Confirm each step in §6 (Manual validation flow) succeeds.
-
-**Expected behavior**:
-- Allowlisted signup → verification → sign-in → protected route 200.
-- Non-allowlisted signup → neutral rejection.
-- Refresh preserves session.
-- Sign-out clears session; protected route 401.
-- Demo button is disabled and shows the tooltip.
-
-**Constraints**:
-- This task requires a real Supabase project — schedule accordingly.
+**What to do**: follow quickstart §6 end-to-end on a real Supabase project.
 
 **Validation**:
-- All quickstart §6 steps documented as passing in the PR description.
+- All steps documented as passing in the PR description.
 
 ---
 
-### [ ] Task 11.5 — Update memory and CLAUDE.md if patterns emerged
+### [ ] Task 11.6 — Browser smoke tests (constitution Amendment 1.1.0)
 
-**Target files**:
-- `CLAUDE.md` (project)
-- User auto-memory (`MEMORY.md` index + per-topic files)
+**What to do**: in a live browser session against the hosted deploy (or a
+local hosted-mode dev), execute each user-story Independent Test from spec.md:
 
-**What to do**:
-- If any new conventions emerged that aren't obvious from the code (e.g.
-  the "neutral error channel" pattern, the conditional-middleware pattern,
-  the welcome-page-as-pre-app-gate pattern), capture them.
-- Don't write memories about things derivable from the code itself.
+- [ ] **US1** — allowlisted signup → verify email → sign in → protected route
+  (`GET /api/applications`) returns 200.
+- [ ] **US2** — non-allowlisted rejection:
+  - [ ] Via the SignupForm: neutral inline error; no row in `auth.users`.
+  - [ ] Via dev-tools console (`await supabase.auth.signUp({ email: 'unallowed@x.com', password: 'longenough' })`):
+    Supabase returns an error; no row in `auth.users`. This validates the
+    Auth Hook is the enforcement point.
+- [ ] **US3** — refresh mid-session preserves auth state; sign-out clears
+  state and returns navbar to signed-out.
+- [ ] **US4** — unauthenticated client receives 401 on every protected route;
+  resume-import entry point is absent from DOM; welcome page renders.
+- [ ] **US5** — JWT tampered in dev-tools (alter a character mid-token) →
+  `/api/applications` returns 401; response body contains no token
+  diagnostics.
 
-**Expected behavior**:
-- Memory index up to date.
+Mark each US complete in the PR description. Capture any deviations as
+follow-up issues.
 
-**Validation**:
-- Memory files committed (user repo only — not the project repo).
+---
+
+### [ ] Task 11.7 — Update memory and `CLAUDE.md` if patterns emerged
+
+**Target files**: `CLAUDE.md` (project), user auto-memory.
+
+**What to do**: capture new conventions not obvious from the code (e.g.
+"allowlist enforcement lives in Supabase trigger; document the install in
+quickstart"; "build-time + runtime defense-in-depth for Vite env vars").
 
 ---
 
 ## Out of Scope (entire feature)
-
-These belong to other features and MUST NOT be done here:
 
 - Adding `user_id` columns to `applications` or `profile` (019)
 - Applying RLS policies to `applications` or `profile` (019)

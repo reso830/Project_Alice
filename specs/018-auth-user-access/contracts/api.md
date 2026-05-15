@@ -4,11 +4,13 @@ This document defines:
 1. The **environment configuration additions** introduced by this feature
 2. The **`Authorization` header contract** between frontend and API
 3. The **`requireAuth` middleware contract** for protected routes
-4. The **`/api/auth/signup`** endpoint contract
-5. The **error response shape** for auth failures
+4. The **`/api/health` runtime-handshake contract**
+5. The **Supabase Auth Hook contract** (allowlist trigger)
+6. The **Vite build-time assertion contract**
+7. The **error response inventory** for auth failures
 
-The environment variable contract from 017 still applies; only the additions are
-listed here.
+The environment variable contract from 017 still applies; only the additions
+and changes are listed here.
 
 ---
 
@@ -16,29 +18,40 @@ listed here.
 
 Extends the table in `specs/017-hosted-foundation/contracts/api.md`.
 
-| Variable | Scope | Local required | Hosted required | Notes |
-|---|---|---|---|---|
-| `SUPABASE_JWT_SECRET` | server-only | no | yes | HS256 secret used to verify Supabase-issued access tokens. **Never expose to the frontend.** |
-| `AUTH_EMAIL_REDIRECT_URL` | server | no | yes | URL Supabase uses as the redirect target after email verification (e.g. `https://example.com/?auth=callback`). Must point at the welcome-page callback handler. |
+### Server-only (added)
 
-### Validation rules (enforced in `server/config.js`)
+| Variable | Local required | Hosted required | Notes |
+|---|---|---|---|
+| `SUPABASE_JWT_SECRET` | no | yes | HS256 secret used to verify Supabase-issued access tokens in `requireAuth`. **Never expose to the frontend.** |
 
-Adds two rules to 017's validation:
+### Client-safe (added — read at Vite build time, inlined into the bundle)
+
+| Variable | Local required | Hosted build required | Notes |
+|---|---|---|---|
+| `VITE_SUPABASE_URL` | no | yes | Supabase project URL. Read by `src/services/supabaseClient.js`. |
+| `VITE_SUPABASE_ANON_KEY` | no | yes | Supabase anon/public key. Read by `src/services/supabaseClient.js`. |
+| `VITE_AUTH_EMAIL_REDIRECT_URL` | no | yes | URL Supabase uses as the redirect target after email verification (e.g. `https://example.com/?auth=callback`). Passed to `supabase.auth.signUp({ options: { emailRedirectTo } })`. Must point at the welcome-page callback handler. |
+
+### Removed from earlier plan revision
+
+`AUTH_EMAIL_REDIRECT_URL` is **no longer a server-side env var**. It moved to
+the client (`VITE_AUTH_EMAIL_REDIRECT_URL`) because the redirect URL is now
+passed from the browser's `supabase.auth.signUp` call rather than from an
+Express endpoint.
+
+### Validation rules (added to `server/config.js`)
+
+Adds one rule to 017's validation:
 
 6. If `APP_RUNTIME=hosted` and `SUPABASE_JWT_SECRET` is absent or empty-string →
    throw:
    ```
    Missing required environment variable for hosted mode: SUPABASE_JWT_SECRET
    ```
-7. If `APP_RUNTIME=hosted` and `AUTH_EMAIL_REDIRECT_URL` is absent or empty-string
-   → throw:
-   ```
-   Missing required environment variable for hosted mode: AUTH_EMAIL_REDIRECT_URL
-   ```
 
 ### Client-bundle guarantees
 
-Re-asserted from 017:
+Re-asserted from 017 (with one addition):
 - `SUPABASE_SERVICE_ROLE_KEY` MUST NOT appear in the Vite bundle.
 - `SUPABASE_JWT_SECRET` MUST NOT appear in the Vite bundle.
 
@@ -64,7 +77,8 @@ Authorization: Bearer <supabase access token>
 ## 3. `requireAuth` Middleware Contract
 
 Located at `server/auth/middleware.js`. Applied per-router by the protected
-routers (`applications`, `profile`, `resume`).
+routers (`applications`, `profile`, `resume`) only when the application boots
+in hosted mode. Local mode never instantiates the middleware.
 
 ### Behavior
 
@@ -108,132 +122,137 @@ body. Operational logging may include the reason; the response may not.
 
 ---
 
-## 4. `POST /api/auth/signup`
+## 4. `/api/health` Runtime-Handshake Contract
 
-Public endpoint (no `requireAuth`) that gates signup on the `allowed_emails`
-list before calling Supabase's admin create-user API. Active only in hosted
-mode; mounted from `server/auth/routes.js`.
+`/api/health` is extended so the frontend can detect a hosted-server /
+local-frontend configuration mismatch at runtime (defense in depth for the
+build-time assertion in §6).
 
 ### Request
 
 ```http
-POST /api/auth/signup
-Content-Type: application/json
+GET /api/health
+```
 
+### Response (success)
+
+```json
 {
-  "email": "user@example.com",
-  "password": "<password>"
+  "status": "ok",
+  "runtime": "local"
 }
 ```
 
-### Validation (server-side, before any Supabase call)
+or
 
-- `email` MUST match a permissive email regex. On failure → 400
-  `VALIDATION_ERROR` with field-level error.
-- `password` MUST be a string of at least 8 characters. On failure → 400
-  `VALIDATION_ERROR` with field-level error.
-- Validation errors are explicit and may include field-level diagnostics
-  (this is not allowlist-sensitive information).
-
-### Allowlist check
-
-After validation, the server:
-1. Lowercases `email`.
-2. Queries `allowed_emails` using the service role client.
-3. If no row → returns 403 (see below). MUST NOT call Supabase Auth.
-4. If row exists → proceeds to admin create-user.
-
-### Responses
-
-#### Success — verification email sent
-
-```http
-200 OK
-Content-Type: application/json
-
+```json
 {
-  "data": {
-    "status": "verification_sent",
-    "email": "user@example.com"
-  }
+  "status": "ok",
+  "runtime": "hosted"
 }
 ```
 
-#### Validation error
+### Behavior
 
-```http
-400 Bad Request
-
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "fields": {
-      "email": "Invalid email address",
-      "password": "Password must be at least 8 characters"
-    }
-  }
-}
-```
-
-#### Signup not permitted (allowlist miss OR Supabase rejection)
-
-```http
-403 Forbidden
-
-{
-  "error": {
-    "code": "SIGNUP_NOT_PERMITTED",
-    "message": "Signup is not available for this email."
-  }
-}
-```
-
-> **Neutral channel requirement (FR-006):** the response MUST be identical for
-> (a) email not on the allowlist, (b) email already exists in Supabase Auth, and
-> (c) any other Supabase-side signup rejection. Differentiating these would leak
-> allowlist membership.
-
-#### Server / configuration error
-
-```http
-500 Internal Server Error
-
-{
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "<safe message>"
-  }
-}
-```
-
-Examples that map to 500: `allowed_emails` table unreachable, Supabase admin API
-unavailable.
+- `runtime` reflects `config.runtime` exactly (`"local"` or `"hosted"`).
+- The endpoint remains **public** (no `requireAuth`). It is safe to share the
+  runtime mode with unauthenticated callers; it is already implicit in the
+  presence of the welcome page.
+- Frontend `main.js` calls this once at boot. If `runtime === "hosted"` and
+  the frontend's `isHostedAuthAvailable === false`, mount `ConfigError.js`
+  instead of the welcome page or app shell.
 
 ---
 
-## 5. Frontend ↔ Supabase Auth (out-of-band, for reference)
+## 5. Supabase Auth Hook Contract
+
+The single source of allowlist enforcement is a Postgres trigger function on
+`auth.users`. Defined in `data-model.md §2-3`.
+
+### Caller-agnostic enforcement
+
+The trigger fires on **every** insert into `auth.users`, regardless of which
+Supabase API initiated the signup:
+
+| Caller | Trigger fires? |
+|---|---|
+| `supabase.auth.signUp` from browser (anon key) | yes |
+| `supabase.auth.admin.createUser` from server (service-role) | yes |
+| Direct SQL `insert into auth.users` (service-role) | yes |
+| Supabase dashboard "Add user" | yes |
+
+### Allow / deny semantics
+
+- Email lookup is case-insensitive (`lower(new.email)` against
+  `allowed_emails.email` which is lowercased on insert).
+- On hit, the trigger returns and the insert proceeds normally. Supabase then
+  emails the verification link to `options.emailRedirectTo` (set by the caller)
+  or to the project's default site URL.
+- On miss, the trigger raises an exception with errcode `P0001` and message
+  `"Signup is not available for this email."` Supabase Auth surfaces this to
+  the caller as an error.
+
+### Frontend error mapping
+
+SignupForm catches every error from `supabase.auth.signUp` and maps it to the
+single neutral user-facing message:
+
+```
+"This email cannot sign up right now."
+```
+
+This applies regardless of the underlying cause (allowlist miss, duplicate
+email, Supabase rate-limit, network error) to satisfy FR-006's enumeration-
+channel requirement.
+
+---
+
+## 6. Vite Build-Time Assertion Contract
+
+`vite.config.js` includes a plugin that runs during the `config` hook of every
+Vite build. Behavior:
+
+- If `process.env.NODE_ENV === 'production'` (or Vite's `mode === 'production'`):
+  - If `process.env.VITE_SUPABASE_URL` is missing or empty → throw with message
+    `"Production build requires VITE_SUPABASE_URL — set it in your build environment."`
+  - If `process.env.VITE_SUPABASE_ANON_KEY` is missing or empty → throw with
+    similarly descriptive message.
+  - If `process.env.VITE_AUTH_EMAIL_REDIRECT_URL` is missing or empty → throw
+    with similarly descriptive message.
+- In development (`mode !== 'production'`), the plugin emits no error so local
+  dev without Supabase env vars continues to work (this is local mode).
+
+The throw prevents `dist/` from being produced. CI / Vercel build fails loudly.
+
+---
+
+## 7. Error Code Inventory (this feature)
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `UNAUTHORIZED` | 401 | Missing/invalid/expired token on a protected route |
+| `INTERNAL_ERROR` | 500 | Server error reaching the request — uses 017's existing handler |
+
+### Removed from earlier plan revision
+
+- `SIGNUP_NOT_PERMITTED` — removed because there is no longer an Express signup
+  endpoint. Signup rejections come directly from Supabase Auth as errors on the
+  client; the frontend maps them to a neutral user-facing message in
+  SignupForm without surfacing a stable error code.
+- `VALIDATION_ERROR` for signup payloads — removed for the same reason. Field-
+  level validation now lives in SignupForm (Zod or hand-rolled, TBD in tasks).
+
+---
+
+## 8. Frontend ↔ Supabase Auth (out-of-band, for reference)
 
 These calls go **directly** from the browser to Supabase Auth via the JS client.
 They are not Express endpoints, but the plan references them.
 
 | Action | JS client call | Notes |
 |---|---|---|
-| Sign in | `supabase.auth.signInWithPassword({ email, password })` | After success, JS client persists the JWT to `localStorage` |
-| Sign out | `supabase.auth.signOut()` | Clears localStorage; `authStore` notifies subscribers |
-| Restore session | `supabase.auth.getSession()` | Called once at boot; populates `authStore` |
-| Subscribe to changes | `supabase.auth.onAuthStateChange(...)` | `authStore` re-broadcasts to UI subscribers |
-
-The signup `supabase.auth.signUp()` call is **not** used by this feature. Signup
-is server-mediated via `POST /api/auth/signup`.
-
----
-
-## 6. Error Code Inventory (this feature)
-
-| Code | HTTP | Meaning |
-|---|---|---|
-| `UNAUTHORIZED` | 401 | Missing/invalid/expired token on a protected route |
-| `VALIDATION_ERROR` | 400 | Signup payload failed local validation (already used by 017's error handler; reused here) |
-| `SIGNUP_NOT_PERMITTED` | 403 | Allowlist miss or Supabase-side signup rejection (neutral) |
-| `INTERNAL_ERROR` | 500 | Supabase unreachable, allowlist read failed, etc. (already in 017's handler) |
+| Sign up | `supabase.auth.signUp({ email, password, options: { emailRedirectTo: VITE_AUTH_EMAIL_REDIRECT_URL } })` | Auth Hook trigger runs server-side. Supabase sends verification email on success. |
+| Sign in | `supabase.auth.signInWithPassword({ email, password })` | After success, JS client persists the JWT to `localStorage`. |
+| Sign out | `supabase.auth.signOut()` | Clears localStorage; `authStore` notifies subscribers. |
+| Restore session | `supabase.auth.getSession()` | Called once at boot; populates `authStore`. |
+| Subscribe to changes | `supabase.auth.onAuthStateChange(...)` | `authStore` re-broadcasts to UI subscribers. |
