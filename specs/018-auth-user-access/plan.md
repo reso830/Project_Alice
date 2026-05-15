@@ -230,8 +230,12 @@ and verify it during setup.
 
 - [x] Required application fields preserved; no schema changes to `applications`
   or `profile` in this feature
-- [x] Validation rules remain centralized; new auth validation (email format,
-  password length) is added under `server/validation/auth.js` rather than scattered
+- [x] Validation rules remain centralized within their domain: existing
+  application-record validation stays in `server/validation/`. Signup field
+  validation (email format, password minimum length) lives co-located in
+  `src/pages/welcome/SignupForm.js` because there is no Express signup
+  endpoint — the form is the only point where signup input exists before it
+  goes directly to Supabase Auth.
 - [x] No external analytics, tracking, or data sharing introduced; Supabase Auth
   emails are operational, not analytic
 - [x] Business logic stays server-side: allowlist enforcement and JWT validation

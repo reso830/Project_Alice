@@ -318,15 +318,16 @@ the response body.
 - **FR-015**: System MUST preserve required application fields, validation rules,
   and the constitution-mandated UX behaviors from prior features without regression.
 - **FR-016**: The Express server MUST log the authentication events it actually
-  observes — token rejection (with the rejected token's first 8 chars only),
-  hosted-route 401 responses, and runtime-mode reporting via `/api/health` —
-  at a level appropriate for operational visibility. Passwords MUST NOT be
-  logged. Full session tokens MUST NOT be logged. Signup attempts, login
-  successes/failures, and verification-email events go **directly between the
-  browser and Supabase Auth**; they do not pass through Express and therefore
-  cannot be logged server-side. Operators wanting that visibility MUST consult
-  **Supabase Dashboard → Logs → Auth Logs**, which is the source of truth for
-  signup/login events in this architecture.
+  observes — token rejection (count + failure category, e.g. `missing` /
+  `malformed` / `expired` / `signature`), hosted-route 401 responses, and
+  runtime-mode reporting via `/api/health` — at a level appropriate for
+  operational visibility. **Tokens MUST NOT be logged in any form**, neither
+  full nor prefixed. Passwords MUST NOT be logged (the server never sees them).
+  Signup attempts, login successes/failures, and verification-email events go
+  **directly between the browser and Supabase Auth**; they do not pass through
+  Express and therefore cannot be logged server-side. Operators wanting that
+  visibility MUST consult **Supabase Dashboard → Logs → Auth Logs**, which is
+  the source of truth for signup/login events in this architecture.
 - **FR-017**: The Express server MUST surface a clear startup configuration
   error if hosted mode is active but `SUPABASE_JWT_SECRET` (or any other
   hosted-required server env var from 017's contract) is missing. The server
@@ -392,17 +393,24 @@ the response body.
   next protected API call returns 401.
 - **SC-006**: Local SQLite mode boots and operates with no authentication enabled,
   no Supabase calls, and no regression in existing automated tests.
-- **SC-007**: Hosted mode boots with a clear, descriptive startup error if
-  Supabase Auth credentials are present but the `allowed_emails` table cannot be
-  reached or queried.
+- **SC-007**: Hosted mode boots with a clear, descriptive startup error if any
+  required server env var (`SUPABASE_JWT_SECRET`, plus the vars inherited from
+  017's contract) is missing. The Express server has no Supabase client and
+  therefore CANNOT verify the `allowed_emails` table or the allowlist trigger
+  at startup — those concerns are operator responsibilities and are validated
+  manually via the quickstart §10 pre-deploy gate.
 - **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY` or
   `SUPABASE_JWT_SECRET` (carried over from 017 and re-verified here).
 - **SC-008b**: A production `npm run build` with missing or empty
   `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` fails with a descriptive error and
   does not produce a bundle.
-- **SC-009**: Server logs include auth-relevant events (signup attempted/rejected,
-  login succeeded/failed, token rejected) and do NOT include plaintext passwords or
-  full session tokens.
+- **SC-009**: Server logs include the auth events the server actually observes —
+  token-rejection counts + failure categories (`missing` / `malformed` /
+  `expired` / `signature`), hosted-route 401 responses, and `/api/health`
+  runtime reporting. Server logs do NOT include tokens (in any form),
+  passwords (server never sees them), signup attempts, or login outcomes —
+  the latter two flow directly browser ↔ Supabase and are visible only in
+  Supabase Dashboard → Logs → Auth Logs.
 - **SC-010**: The spec's ownership-and-RLS plan section is concrete enough that
   feature 019's `data-model.md` can adopt it without re-deciding column types,
   nullability, or policy expressions.

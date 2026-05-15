@@ -263,15 +263,16 @@ session (Phase 11.6):
 
 ## Logging & Observability
 
-- [ ] Server logs cover what the server actually sees: token-rejection events
-  (with at most the first 8 chars of the rejected token), hosted-route 401
-  counts, `/api/health` calls. The server does **not** observe signup or
-  login attempts (those are direct browser ↔ Supabase calls).
+- [ ] Server logs cover what the server actually sees: token-rejection counts
+  + failure categories (`missing` / `malformed` / `expired` / `signature`),
+  hosted-route 401 responses, `/api/health` calls. The server does **not**
+  observe signup or login attempts (those are direct browser ↔ Supabase
+  calls).
 - [ ] Documentation points operators to **Supabase Dashboard → Logs → Auth
   Logs** for signup/login visibility (FR-016).
 - [ ] Logs do **not** contain plaintext passwords (server never sees them).
-- [ ] Logs do **not** contain full session tokens (presence may be logged;
-  contents may not).
+- [ ] Logs do **not** contain tokens in any form — neither full tokens nor
+  prefixed/truncated tokens.
 
 ---
 
