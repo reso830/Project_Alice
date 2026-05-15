@@ -17,6 +17,10 @@ Requirements:
   - constraints
   - validation/test location
   - out-of-scope files/components when applicable
+- The final two phases of every feature MUST be, in this order:
+  1. **Release Prep** — version bump (`package.json` + any in-app version display), `CHANGELOG.md` entry, `README.md` updates for new user-facing surface, `docs/deployment.md` updates when env vars / runtime modes change, `docs/REPO_MAP.md` updates for new directories or files, docs sanity check.
+  2. **Browser Smoke Test** (UI features only) — walk each user story's Independent Test in a real browser against the to-be-merged state.
+- Release Prep is mandatory for every feature; Browser Smoke Test is mandatory for any feature with user-facing UI. Required by `.specify/memory/constitution.md` Amendment 1.3.0.
 
 Guidelines:
 - Prefer specific file paths over generic descriptions.
