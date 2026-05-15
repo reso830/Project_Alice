@@ -376,7 +376,7 @@ export function createRequireAuth({ jwtSecret, logger = console }) {
 
 ## Phase 04 — Protected Routers + Runtime Handshake
 
-### [ ] Task 04.1 — Update protected router factories to accept an optional `requireAuth`
+### [X] Task 04.1 — Update protected router factories to accept an optional `requireAuth`
 
 **Target files**:
 - `server/routes/applications.js`
@@ -409,7 +409,7 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 
 ---
 
-### [ ] Task 04.2 — Update `server/index.js` to wire `requireAuth` conditionally, report runtime mode, and log boot
+### [X] Task 04.2 — Update `server/index.js` to wire `requireAuth` conditionally, report runtime mode, and log boot
 
 **Target file**: `server/index.js`
 
@@ -461,7 +461,7 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 
 ---
 
-### [ ] Task 04.3 — Update existing route tests for the new factory signature
+### [X] Task 04.3 — Update existing route tests for the new factory signature
 
 **Target files**:
 - `tests/server/applications.test.js`

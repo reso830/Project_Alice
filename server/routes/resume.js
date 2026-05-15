@@ -26,12 +26,16 @@ function isUnsupportedFileType(error) {
   return error instanceof UnsupportedFileTypeError;
 }
 
-export function createResumeRouter() {
+export function createResumeRouter({ requireAuth } = {}) {
   const router = Router();
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 5_242_880 },
   });
+
+  if (requireAuth) {
+    router.use(requireAuth);
+  }
 
   router.post('/parse', (req, res, next) => {
     upload.single('resume')(req, res, async (uploadError) => {

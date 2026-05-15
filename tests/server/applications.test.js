@@ -45,12 +45,12 @@ function validApplicationPayload(overrides = {}) {
 }
 
 describe('applications API', () => {
-  it('returns health status', async () => {
+  it('returns health status with runtime field', async () => {
     await withServer(async (baseUrl) => {
       const response = await request(baseUrl, '/api/health');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'ok' });
+      expect(response.body).toEqual({ status: 'ok', runtime: 'local' });
     });
   });
 

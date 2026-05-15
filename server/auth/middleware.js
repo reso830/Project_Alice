@@ -12,6 +12,13 @@ function classifyJwtError(err) {
   return 'other';
 }
 
+function resolveLoggedPath(req) {
+  if (typeof req.originalUrl === 'string') {
+    return req.originalUrl.split('?')[0];
+  }
+  return req.path;
+}
+
 export function createRequireAuth({ jwtSecret, logger = console } = {}) {
   if (!jwtSecret) {
     throw new Error('createRequireAuth requires a jwtSecret');
@@ -19,14 +26,15 @@ export function createRequireAuth({ jwtSecret, logger = console } = {}) {
 
   return function requireAuth(req, res, next) {
     const header = req.headers?.authorization;
+    const path = resolveLoggedPath(req);
 
     if (!header) {
-      logger.warn('[auth] reject', { category: 'missing', path: req.path });
+      logger.warn('[auth] reject', { category: 'missing', path });
       return res.status(401).json(UNAUTHORIZED_BODY);
     }
 
     if (!header.startsWith('Bearer ')) {
-      logger.warn('[auth] reject', { category: 'malformed', path: req.path });
+      logger.warn('[auth] reject', { category: 'malformed', path });
       return res.status(401).json(UNAUTHORIZED_BODY);
     }
 
@@ -39,7 +47,7 @@ export function createRequireAuth({ jwtSecret, logger = console } = {}) {
     } catch (err) {
       logger.warn('[auth] reject', {
         category: classifyJwtError(err),
-        path: req.path,
+        path,
       });
       return res.status(401).json(UNAUTHORIZED_BODY);
     }
