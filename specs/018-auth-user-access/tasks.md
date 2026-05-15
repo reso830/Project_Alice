@@ -286,7 +286,7 @@ create trigger before_user_created_allowlist
 
 ## Phase 03 — Auth Middleware
 
-### [ ] Task 03.1 — Create `server/auth/middleware.js` with categorized logging
+### [X] Task 03.1 — Create `server/auth/middleware.js` with categorized logging
 
 **Target file**: `server/auth/middleware.js` (new)
 
