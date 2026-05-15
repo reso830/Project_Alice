@@ -44,6 +44,7 @@ describe('hosted repository stubs', () => {
         SUPABASE_URL: 'https://example.supabase.co',
         SUPABASE_ANON_KEY: 'anon-key',
         SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+        SUPABASE_JWT_SECRET: 'jwt-secret',
       },
       encoding: 'utf8',
       timeout: 30_000,
