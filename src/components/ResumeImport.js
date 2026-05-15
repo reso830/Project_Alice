@@ -1,4 +1,11 @@
+import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
 import { parseResume } from '../services/resumeApi.js';
+
+const VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
+
+function isAuthVisible(state) {
+  return VISIBLE_STATUSES.has(state?.status);
+}
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -86,6 +93,18 @@ function stopEvent(event) {
 export const ResumeImport = {
   create({ onSuccess = () => {}, onDismiss = () => {} } = {}) {
     const root = createElement('section', 'resume-import');
+    let authVisible = isAuthVisible(getAuthState());
+    let completed = false;
+
+    function applyVisibility() {
+      root.hidden = !authVisible || completed;
+    }
+
+    applyVisibility();
+    const unsubscribe = subscribeAuth((state) => {
+      authVisible = isAuthVisible(state);
+      applyVisibility();
+    });
     const input = document.createElement('input');
     const error = createElement('p', 'resume-import__error');
     let selectedFile = null;
@@ -128,7 +147,7 @@ export const ResumeImport = {
     function renderShell(stateClass) {
       clearProcessingTimer();
       root.className = `resume-import ${stateClass}`;
-      root.hidden = false;
+      applyVisibility();
       root.setAttribute('aria-busy', 'false');
       root.replaceChildren(input);
     }
@@ -209,7 +228,8 @@ export const ResumeImport = {
           }
 
           onSuccess(parsedData);
-          root.hidden = true;
+          completed = true;
+          applyVisibility();
         })
         .catch(() => {
           clearProcessingTimer();
@@ -225,7 +245,8 @@ export const ResumeImport = {
       const retry = createButton('Retry', 'profile-btn profile-btn--primary', renderSelected);
       const dismiss = createButton('Continue Manually', 'profile-btn profile-btn--outline', () => {
         onDismiss();
-        root.hidden = true;
+        completed = true;
+        applyVisibility();
       });
 
       actions.append(retry, dismiss);
@@ -234,7 +255,12 @@ export const ResumeImport = {
 
     input.addEventListener('change', () => selectFile(input.files?.[0]));
     renderIdle();
-    root.destroy = clearProcessingTimer;
+    root.destroy = () => {
+      clearProcessingTimer();
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
 
     return root;
   },

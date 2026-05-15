@@ -13,7 +13,12 @@ export function createApp({ repositories, config: appConfig, requireAuth: explic
   const runtime = appConfig?.runtime ?? 'local';
 
   let requireAuth = explicitRequireAuth;
-  if (!requireAuth && appConfig?.isHosted && appConfig.supabase?.jwtSecret) {
+  if (!requireAuth && appConfig?.isHosted) {
+    if (!appConfig.supabase?.jwtSecret) {
+      throw new Error(
+        'createApp: hosted config requires supabase.jwtSecret to build requireAuth (or pass an explicit requireAuth)',
+      );
+    }
     requireAuth = createRequireAuth({ jwtSecret: appConfig.supabase.jwtSecret });
   }
 

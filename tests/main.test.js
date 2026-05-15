@@ -1,0 +1,169 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Side-effect imports that main.js performs at module load.
+vi.mock('../src/styles/main.css', () => ({}));
+vi.mock('../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
+
+const authMocks = vi.hoisted(() => ({
+  state: { status: 'local-mode', user: null, accessToken: null },
+  subscribers: new Set(),
+  init: vi.fn().mockResolvedValue(undefined),
+  signOut: vi.fn(),
+}));
+
+vi.mock('../src/data/authStore.js', () => ({
+  getAuthState: () => authMocks.state,
+  subscribe: (fn) => {
+    authMocks.subscribers.add(fn);
+    fn(authMocks.state);
+    return () => authMocks.subscribers.delete(fn);
+  },
+  init: authMocks.init,
+  signOut: authMocks.signOut,
+  getAccessToken: () => null,
+}));
+
+const supabaseClientState = vi.hoisted(() => ({
+  isHostedAuthAvailable: true,
+}));
+
+vi.mock('../src/services/supabaseClient.js', () => ({
+  get supabase() { return null; },
+  get isHostedAuthAvailable() { return supabaseClientState.isHostedAuthAvailable; },
+  get emailRedirectUrl() { return ''; },
+}));
+
+const healthMocks = vi.hoisted(() => ({
+  getHealth: vi.fn(),
+}));
+
+vi.mock('../src/services/healthApi.js', () => ({
+  getHealth: healthMocks.getHealth,
+}));
+
+// Heavy page modules — replace with no-op mount/unmount so we can observe
+// what main.js mounts at the top level without the pages themselves trying
+// to talk to repositories/services.
+vi.mock('../src/pages/Tracker.js', () => ({
+  Tracker: { mount: vi.fn(), unmount: vi.fn() },
+}));
+vi.mock('../src/pages/Calendar.js', () => ({
+  Calendar: { mount: vi.fn(), unmount: vi.fn() },
+}));
+vi.mock('../src/pages/Profile.js', () => ({
+  Profile: { mount: vi.fn(), unmount: vi.fn() },
+}));
+vi.mock('../src/pages/ProfileEdit.js', () => ({
+  ProfileEdit: { mount: vi.fn(), unmount: vi.fn(), confirmNavigation: () => true },
+}));
+vi.mock('../src/data/store.js', () => ({
+  store: {
+    hasStoredApplications: () => true,
+    load: vi.fn(),
+    save: vi.fn(),
+    getAll: () => [],
+  },
+}));
+vi.mock('../src/components/Footer.js', () => ({
+  Footer: { render: () => { const f = document.createElement('footer'); f.className = 'site-footer'; return f; } },
+}));
+
+import { _resetForTesting, bootstrap, runtimeHandshake } from '../src/main.js';
+
+beforeEach(() => {
+  authMocks.state = { status: 'local-mode', user: null, accessToken: null };
+  authMocks.subscribers.clear();
+  authMocks.init.mockClear();
+  authMocks.init.mockResolvedValue(undefined);
+  authMocks.signOut.mockClear();
+  supabaseClientState.isHostedAuthAvailable = true;
+  healthMocks.getHealth.mockReset();
+  while (document.body.firstChild) {
+    document.body.firstChild.remove();
+  }
+  _resetForTesting();
+});
+
+afterEach(() => {
+  // module-level state inside main.js persists across tests; bootstrap is
+  // designed to be re-runnable, but we explicitly clear the DOM each beforeEach.
+});
+
+describe('runtimeHandshake', () => {
+  it('returns { configError: true } when hosted runtime + isHostedAuthAvailable=false', async () => {
+    const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+    const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
+    expect(result).toEqual({ configError: true });
+  });
+
+  it('returns { configError: false } when hosted runtime + isHostedAuthAvailable=true', async () => {
+    const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+    const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: true });
+    expect(result).toEqual({ configError: false });
+  });
+
+  it('returns { configError: false } when local runtime', async () => {
+    const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'local' });
+    const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
+    expect(result).toEqual({ configError: false });
+  });
+
+  it('swallows network failures and returns { configError: false }', async () => {
+    const healthFn = vi.fn().mockRejectedValue({ code: 'NETWORK_ERROR', message: 'down' });
+    const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
+    expect(result).toEqual({ configError: false });
+  });
+});
+
+describe('bootstrap — ConfigError handshake wiring', () => {
+  it('mounts ConfigError when getHealth says hosted and isHostedAuthAvailable is false', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = false;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    expect(document.querySelector('.config-error')).not.toBeNull();
+    expect(document.querySelector('.navbar')).toBeNull();
+    expect(document.querySelector('#welcome-root')).toBeNull();
+  });
+
+  it('mounts the app shell (navbar) when getHealth says local and state is local-mode', async () => {
+    authMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'local' });
+
+    await bootstrap();
+
+    expect(document.querySelector('.config-error')).toBeNull();
+    expect(document.querySelector('.navbar')).not.toBeNull();
+  });
+
+  it('runs the runtime handshake BEFORE subscribing to authStore and never initialises auth on the config-error path', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = false;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    // No subscriber registered, auth never initialised → no possibility of a
+    // brief welcome/app-shell flash before ConfigError takes over.
+    expect(authMocks.subscribers.size).toBe(0);
+    expect(authMocks.init).not.toHaveBeenCalled();
+    expect(document.querySelector('.config-error')).not.toBeNull();
+  });
+
+  it('subscribes to authStore only after the handshake passes', async () => {
+    authMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'local' });
+
+    await bootstrap();
+
+    // At minimum the main render() callback is subscribed. The real Navbar
+    // also subscribes when mounted, so we allow >= 1.
+    expect(authMocks.subscribers.size).toBeGreaterThanOrEqual(1);
+    expect(authMocks.init).toHaveBeenCalledTimes(1);
+  });
+});

@@ -111,6 +111,32 @@ describe('protected routers — hosted-mode wiring', () => {
   });
 });
 
+describe('createApp hosted-config safety', () => {
+  it('throws when hosted config is passed without supabase.jwtSecret and no explicit requireAuth', async () => {
+    const db = makeMemoryDb();
+    try {
+      const repositories = await createTestRepositories(db);
+      const badConfig = {
+        runtime: 'hosted',
+        isHosted: true,
+        port: 3001,
+        supabase: {
+          url: 'https://example.supabase.co',
+          anonKey: 'anon-key',
+          serviceRoleKey: 'service-role-key',
+          // jwtSecret intentionally missing
+        },
+      };
+
+      expect(() => createApp({ repositories, config: badConfig })).toThrow(
+        /jwtSecret/,
+      );
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe('/api/health runtime mode', () => {
   it('reports runtime=local when no config is provided', async () => {
     await withApp({}, async (baseUrl) => {

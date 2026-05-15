@@ -12,6 +12,13 @@ vi.mock('../../src/components/Toast.js', () => ({
   },
 }));
 
+vi.mock('../../src/data/authStore.js', () => ({
+  getAuthState: () => ({ status: 'local-mode', user: null, accessToken: null }),
+  subscribe: () => () => {},
+  signOut: vi.fn(),
+  getAccessToken: () => null,
+}));
+
 import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
 import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
