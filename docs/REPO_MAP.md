@@ -18,6 +18,12 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/pages/Calendar.js` | Calendar view (follow-up dates) |
 | `src/pages/Profile.js` | User profile screen |
 | `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays |
+| `src/pages/ConfigError.js` | Operator-facing fallback when hosted runtime detects missing Vite env vars |
+| `src/pages/welcome/WelcomePage.js` | Diagonal-split landing page — CTAs, hero slideshow, floating pills, `?auth=callback` handler |
+| `src/pages/welcome/HeroSlideshow.js` | 5-second auto-rotating screenshot slideshow; reduced-motion → single static slide |
+| `src/pages/welcome/AuthOverlay.js` | Centered-modal overlay — tabs, focus trap, ESC/backdrop/close dismissal, `verification_sent` state |
+| `src/pages/welcome/LoginForm.js` | Email/password login — neutral error, accessible inline loading |
+| `src/pages/welcome/SignupForm.js` | Email/password signup — inline validation, neutral rejection, → `verification_sent` |
 | `index.html` | Vite entry HTML |
 
 ---
@@ -36,8 +42,9 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/StatusDropdown.js` | Inline status change control |
 | `src/components/RangeSlider.js` | Dual-handle range slider (salary, compat) |
 | `src/components/Toast.js` | User feedback notifications |
-| `src/components/Navbar.js` | Top navigation bar |
-| `src/components/Footer.js` | Page footer |
+| `src/components/Navbar.js` | Top navigation bar — subscribes to `authStore`; renders email (truncated) + Sign Out when authenticated; `destroy()` unsubscribes |
+| `src/components/Footer.js` | Page footer; `APP_VERSION` kept in sync with `package.json` |
+| `src/components/ResumeImport.js` | Drag-and-drop resume parser; subscribes to `authStore` and hides outside `local-mode` / `authenticated` |
 | `src/components/CompatBar.js` | Compatibility score visual bar |
 | `src/components/DonutChart.js` | SVG donut chart with per-segment hover tooltips (Profile page) |
 | `src/components/StackedBar.js` | Horizontal proportional bar for mobile stats (Profile page) |
@@ -64,8 +71,11 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `server/index.js` | Express app factory, health endpoint (`GET /health`) |
-| `server/routes/applications.js` | CRUD route handlers (`GET/POST/PATCH/DELETE /api/applications`) |
+| `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()` |
+| `server/routes/applications.js` | CRUD route handlers — accepts `{ repo, requireAuth }`, mounts `requireAuth` when present |
+| `server/routes/profile.js` | Profile route handlers — same `{ repo, requireAuth }` shape |
+| `server/routes/resume.js` | Resume parse handler — `{ requireAuth }` |
+| `server/auth/middleware.js` | `createRequireAuth({ jwtSecret, logger })` — HS256 JWT verification with categorized rejection logging (token contents never logged) |
 | `server/db/applications.js` | SQL query layer (repository pattern) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
@@ -80,7 +90,11 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/services/api.js` | Fetch wrapper for all `/api/*` calls |
+| `src/services/api.js` | Fetch wrapper for all `/api/*` calls; auto-attaches `Authorization: Bearer <token>` when `authStore.getAccessToken()` returns one |
+| `src/services/resumeApi.js` | Resume upload client — same auth-header behavior as `api.js` |
+| `src/services/supabaseClient.js` | Supabase JS client wrapper; reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`; exports `isHostedAuthAvailable` |
+| `src/services/healthApi.js` | `getHealth()` — standalone fetcher returning raw `{ status, runtime }` (does not unwrap `data`) |
+| `src/data/authStore.js` | Module-state subscribable auth store — `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`; states `initializing | local-mode | unauthenticated | authenticated` |
 | `src/utils/filterSort.js` | Client-side filter + sort logic (all 8 filter dimensions) |
 | `src/utils/currency.js` | `parseSalaryInput`, `formatSalaryDisplay` — peso salary formatting |
 | `src/utils/pagination.js` | Pagination state model |
@@ -100,12 +114,40 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 |------|---------|
 | `tests/models/` | Application field validation, status transitions |
 | `tests/utils/` | filterSort, pagination, date utilities |
-| `tests/components/` | Component render / DOM behavior |
-| `tests/server/` | Route handlers, Zod validation, DB queries |
-| `tests/services/` | API client |
-| `tests/pages/` | Page-level integration |
+| `tests/components/` | Component render / DOM behavior (jsdom) |
+| `tests/server/` | Route handlers, Zod validation, DB queries, `requireAuth` middleware, protected-routes wiring |
+| `tests/services/` | API client, supabase client, resume API, health API |
+| `tests/data/` | Auth store, legacy localStorage store |
+| `tests/pages/` | Page-level integration (Tracker, Profile, ProfileEdit, ConfigError) |
+| `tests/build/` | Vite build-time env-var assertion |
+| `tests/main.test.js` | `bootstrap()` + runtime handshake → ConfigError wiring |
 
 Run: `npm test` (watch) · `npm run test:run` (CI)
+
+---
+
+## Spec Packages
+
+| Path | Purpose |
+|------|---------|
+| `specs/018-auth-user-access/spec.md` | Hosted authenticated user access — feature spec (US1–US5, FR-001..019, SC-001..010) |
+| `specs/018-auth-user-access/plan.md` | Architecture, file structure, risks, validation approach |
+| `specs/018-auth-user-access/tasks.md` | Phased implementation tasks ledger |
+| `specs/018-auth-user-access/data-model.md` | `allowed_emails` schema + Postgres trigger contract |
+| `specs/018-auth-user-access/contracts/api.md` | Env vars, Authorization header, `requireAuth` behavior, `/api/health`, trigger contract |
+| `specs/018-auth-user-access/quickstart.md` | Operator install steps + pre-deploy verification gate (§10) |
+| `specs/018-auth-user-access/research.md` | 13 design decisions with rejected alternatives |
+| `specs/018-auth-user-access/checklists/plan-review.md` | Pre-implementation review gate |
+| `design/welcome_page.md` | Visual specification for the welcome experience |
+
+---
+
+## Static Assets
+
+| Path | Purpose |
+|------|---------|
+| `src/assets/Alice_White.png` · `Alice_Colored.png` | Brand marks (used by Navbar, Footer, WelcomePage, ConfigError) |
+| `src/assets/welcome-hero/` | Six hero screenshots (tracker, application-modal, profile, filters, calendar, mobile-tracker) wired into `HeroSlideshow` |
 
 ---
 
@@ -117,6 +159,8 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 - Backend/API issue → `server/routes/applications.js` → `server/db/applications.js`
 - Filter/sort behavior → `src/utils/filterSort.js` → `src/pages/Tracker.js` wiring
 - Pagination behavior → `src/utils/pagination.js` → `src/components/Pagination.js` → `src/pages/Tracker.js`
+- Auth / welcome / overlay → `src/main.js` (bootstrap) → `src/data/authStore.js` → `src/pages/welcome/WelcomePage.js` → `AuthOverlay.js` → `LoginForm.js` / `SignupForm.js`
+- Auth middleware / JWT → `server/auth/middleware.js` → `server/index.js` (`createApp` wiring)
 
 ---
 

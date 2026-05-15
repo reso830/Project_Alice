@@ -20,12 +20,14 @@
 | 07 | Auth overlay + Login/Signup forms | 09 |
 | 08 | Navbar + resume-import gating + ConfigError page | 11 |
 | 09 | Welcome page + overlay styling per design | 11 |
-| 10 | Hero screenshot capture (polish; can ship later) | — |
-| 11 | Verification, browser smoke tests, checklist walk | — |
+| 10 | Hero screenshot capture (polish; can ship later) | 11 |
+| 11 | Release prep: README, CHANGELOG, footer/version bump, deployment + repo-map docs | 12 |
+| 12 | Verification, browser smoke tests, checklist walk | Merge |
 
 Phases 01 → 04 are backend + build pipeline. Phases 05 → 09 are frontend and
 can begin once Phase 03 is merged (the JWT contract is then stable). Phase 10
-is optional polish; Phase 11 is the verification gate.
+is optional polish; Phase 11 is the docs + version bump; Phase 12 is the final
+verification gate before merging to `main`.
 
 ---
 
@@ -482,7 +484,7 @@ at the top of the router (`router.use(requireAuth)`); if absent, skip it.
 
 ## Phase 05 — Frontend Auth Core
 
-### [ ] Task 05.1 — Create `src/services/supabaseClient.js`
+### [X] Task 05.1 — Create `src/services/supabaseClient.js`
 
 **Target file**: `src/services/supabaseClient.js` (new)
 
@@ -529,7 +531,7 @@ export const isHostedAuthAvailable = supabase !== null;
 
 ---
 
-### [ ] Task 05.2 — Create `src/data/authStore.js`
+### [X] Task 05.2 — Create `src/data/authStore.js`
 
 **Target file**: `src/data/authStore.js` (new)
 
@@ -603,7 +605,7 @@ export async function signOut() { if (supabase) await supabase.auth.signOut(); }
 
 ---
 
-### [ ] Task 05.3 — Update `src/services/api.js` to attach the `Authorization` header
+### [X] Task 05.3 — Update `src/services/api.js` to attach the `Authorization` header
 
 **Target file**: `src/services/api.js`
 
@@ -633,7 +635,7 @@ export async function signOut() { if (supabase) await supabase.auth.signOut(); }
 
 ---
 
-### [ ] Task 05.4 — Update `src/services/resumeApi.js` to attach the `Authorization` header
+### [X] Task 05.4 — Update `src/services/resumeApi.js` to attach the `Authorization` header
 
 **Target file**: `src/services/resumeApi.js`
 
@@ -644,7 +646,7 @@ header attachment.
 
 ---
 
-### [ ] Task 05.5 — Create `src/services/healthApi.js`
+### [X] Task 05.5 — Create `src/services/healthApi.js`
 
 **Target file**: `src/services/healthApi.js` (new)
 
@@ -667,7 +669,7 @@ export function getHealth() { return request('GET', '/api/health'); }
 
 ## Phase 06 — Welcome Page Structure
 
-### [ ] Task 06.1 — Create `src/pages/welcome/WelcomePage.js`
+### [X] Task 06.1 — Create `src/pages/welcome/WelcomePage.js`
 
 **Target file**: `src/pages/welcome/WelcomePage.js` (new)
 
@@ -720,7 +722,7 @@ based on internal state for view: `null | 'login' | 'signup' | 'verification_sen
 
 ---
 
-### [ ] Task 06.2 — Create `src/pages/welcome/HeroSlideshow.js`
+### [X] Task 06.2 — Create `src/pages/welcome/HeroSlideshow.js`
 
 **Target file**: `src/pages/welcome/HeroSlideshow.js` (new)
 
@@ -753,7 +755,7 @@ based on internal state for view: `null | 'login' | 'signup' | 'verification_sen
 
 ---
 
-### [ ] Task 06.3 — Wire welcome page into `src/main.js`
+### [X] Task 06.3 — Wire welcome page into `src/main.js`
 
 **Target file**: `src/main.js`
 
@@ -789,7 +791,7 @@ based on internal state for view: `null | 'login' | 'signup' | 'verification_sen
 
 ## Phase 07 — Auth Overlay + Forms
 
-### [ ] Task 07.1 — Create `src/pages/welcome/AuthOverlay.js`
+### [X] Task 07.1 — Create `src/pages/welcome/AuthOverlay.js`
 
 **Target file**: `src/pages/welcome/AuthOverlay.js` (new)
 
@@ -827,7 +829,7 @@ based on internal state for view: `null | 'login' | 'signup' | 'verification_sen
 
 ---
 
-### [ ] Task 07.2 — Create `src/pages/welcome/LoginForm.js`
+### [X] Task 07.2 — Create `src/pages/welcome/LoginForm.js`
 
 **Target file**: `src/pages/welcome/LoginForm.js` (new)
 
@@ -859,7 +861,7 @@ Render email + password inputs and a Sign In submit button. On submit:
 
 ---
 
-### [ ] Task 07.3 — Create `src/pages/welcome/SignupForm.js`
+### [X] Task 07.3 — Create `src/pages/welcome/SignupForm.js`
 
 **Target file**: `src/pages/welcome/SignupForm.js` (new)
 
@@ -896,7 +898,7 @@ Render email + password inputs and a Create Account submit button. On submit:
 
 ---
 
-### [ ] Task 07.4 — Write the welcome-page test suite
+### [X] Task 07.4 — Write the welcome-page test suite
 
 **Target file**: `tests/components/welcome.test.js` (new)
 
@@ -917,7 +919,7 @@ across earlier tasks). Plus:
 
 ## Phase 08 — Navbar + Resume-Import + ConfigError
 
-### [ ] Task 08.1 — Update `src/components/Navbar.js`
+### [X] Task 08.1 — Update `src/components/Navbar.js`
 
 **Target file**: `src/components/Navbar.js`
 
@@ -936,7 +938,7 @@ across earlier tasks). Plus:
 
 ---
 
-### [ ] Task 08.2 — Update `src/components/ResumeImport.js` to hide when signed out
+### [X] Task 08.2 — Update `src/components/ResumeImport.js` to hide when signed out
 
 **Target file**: `src/components/ResumeImport.js`
 
@@ -952,7 +954,7 @@ across earlier tasks). Plus:
 
 ---
 
-### [ ] Task 08.3 — Create `ConfigError.js` and wire the runtime handshake
+### [X] Task 08.3 — Create `ConfigError.js` and wire the runtime handshake
 
 **Target files**:
 - `src/pages/ConfigError.js` (new)
@@ -985,7 +987,7 @@ across earlier tasks). Plus:
 
 ## Phase 09 — Welcome + Overlay Styling
 
-### [ ] Task 09.1 — Add welcome-page CSS to `src/styles/main.css`
+### [X] Task 09.1 — Add welcome-page CSS to `src/styles/main.css`
 
 **Target file**: `src/styles/main.css`
 
@@ -1016,7 +1018,7 @@ Append a `/* Welcome page */` section implementing the design spec:
 
 ---
 
-### [ ] Task 09.2 — Style the auth overlay (centered modal at all breakpoints)
+### [X] Task 09.2 — Style the auth overlay (centered modal at all breakpoints)
 
 **Target file**: `src/styles/main.css`
 
@@ -1042,7 +1044,7 @@ Per design §11b:
 
 ---
 
-### [ ] Task 09.3 — Reduced-motion + accessibility pass
+### [X] Task 09.3 — Reduced-motion + accessibility pass
 
 **Target files**:
 - `src/styles/main.css`
@@ -1066,7 +1068,7 @@ Per design §11b:
 
 Run as a follow-up PR if not needed before initial merge.
 
-### [ ] Task 10.1 — Capture five real-application screenshots
+### [X] Task 10.1 — Capture five real-application screenshots
 
 **Target files**: `src/assets/welcome-hero/*.png` (five new files)
 
@@ -1085,7 +1087,7 @@ Run as a follow-up PR if not needed before initial merge.
 
 ---
 
-### [ ] Task 10.2 — Wire captured slides into `HeroSlideshow`
+### [X] Task 10.2 — Wire captured slides into `HeroSlideshow`
 
 **Target file**: `src/pages/welcome/WelcomePage.js`
 
@@ -1097,9 +1099,208 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-## Phase 11 — Verification
+## Phase 11 — Release Prep
 
-### [ ] Task 11.1 — Run the full automated test suite
+Docs + version bump pass before the verification gate. Phase 12 reruns the
+test suite and build assertion after this phase lands, so anything broken by
+the version/docs edits is caught before PR.
+
+### [X] Task 11.1 — Bump version to `0.8.0`
+
+**Target files**:
+- `package.json`
+- `src/components/Footer.js` (`APP_VERSION` constant)
+
+**What to do**:
+- Update `"version"` in `package.json` from `0.7.0` to `0.8.0` (SemVer minor:
+  additive hosted-auth feature, no breaking change to local-mode users).
+- Update `APP_VERSION` in `src/components/Footer.js` to `'v0.8.0'`.
+- If the "Built May 2026" string in the footer is stale relative to the merge
+  date, refresh it to match. Keep the format identical.
+
+**Validation**:
+- `grep -n "0.7.0" package.json src/` returns no matches.
+- `npm run test:run` still green (footer tests assert the string structure,
+  not the exact version — verify they still pass).
+
+**Out of scope**:
+- Bumping any dependency versions.
+- Touching `package-lock.json` beyond what `npm install` regenerates.
+
+---
+
+### [X] Task 11.2 — `CHANGELOG.md` entry for 0.8.0
+
+**Target file**: `CHANGELOG.md`
+
+**What to do**:
+Add a `## [0.8.0] — <merge-date>` section above `[0.7.0]`, following the
+Keep-a-Changelog format already in use. Group entries under:
+
+- **Added**:
+  - Hosted authenticated user access via Supabase email/password
+  - `allowed_emails` table + Postgres `BEFORE INSERT` trigger on `auth.users`
+  - JWT-based `requireAuth` middleware with categorized rejection logging
+    (`missing | malformed | expired | signature | other`); token contents
+    never logged
+  - `/api/health` now reports `{ status, runtime: 'local' | 'hosted' }`
+  - Welcome page (`src/pages/welcome/*`) — diagonal-split landing with hero
+    slideshow, brand block, three-CTA group, floating metadata pills, and
+    `?auth=callback` verification banner handler
+  - Auth overlay with centered-modal design at all breakpoints, login + signup
+    forms, shared email value across tabs, verification-sent confirmation,
+    focus trap, ESC + backdrop + close-button dismissal, and previous-focus
+    restoration
+  - `Navbar` user segment showing email (truncated if long) + Sign Out
+  - `ConfigError` page + runtime handshake — defense-in-depth for missing
+    Vite env vars (build-time assertion is the primary line)
+  - Frontend `authStore` (Supabase-backed), `supabaseClient.js`,
+    `healthApi.js`; `Authorization: Bearer <token>` automatically attached by
+    `api.js` and `resumeApi.js` when authenticated
+  - Resume-import gating: hidden when `unauthenticated` / `initializing`
+  - Six hero screenshots in `src/assets/welcome-hero/`
+  - Vite build-time assertion for `VITE_SUPABASE_URL`,
+    `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`
+- **Changed**:
+  - `createApp({ repositories, config, requireAuth? })` factory signature —
+    accepts optional `requireAuth` (route factories likewise)
+  - `unmountAppShell` now calls `Navbar.destroy()` to clean up the authStore
+    subscription
+- **Security**:
+  - Allowlist enforcement moved into a Postgres `SECURITY DEFINER` trigger
+    (server endpoint approach considered and rejected for bypass risk)
+  - Service-role key and JWT secret are server-only; never imported in `src/`
+
+Mirror the prose density of the existing `[0.7.0]` entry — concise, file/path
+references where they aid future debugging, no marketing language.
+
+**Validation**:
+- `CHANGELOG.md` parses by eye; section ordering matches Keep-a-Changelog.
+
+**Out of scope**:
+- Rewriting earlier release entries.
+- A separate "release notes" file.
+
+---
+
+### [X] Task 11.3 — `README.md` hosted-mode + auth section
+
+**Target file**: `README.md`
+
+**What to do**:
+- In the **Features** bullets, add a single line for hosted authenticated
+  multi-user access pointing to the spec for details.
+- Add a new top-level section `## Hosted Mode (Supabase Authentication)`
+  after the existing **Getting Started**. Cover, in this order:
+  1. Local vs hosted mode at a glance (one sentence each).
+  2. Required env vars (server: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+     `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`; client/build:
+     `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+     `VITE_AUTH_EMAIL_REDIRECT_URL`). Note which are secret-only.
+  3. One-paragraph allowlist model with a pointer to
+     `specs/018-auth-user-access/quickstart.md` for the operator install
+     steps.
+  4. Defense-in-depth note: build-time assertion + runtime `/api/health`
+     handshake → `ConfigError`.
+- Cross-link the spec package
+  (`specs/018-auth-user-access/{spec,plan,quickstart,data-model}.md`) under
+  a `## Further Reading` subsection.
+
+**Constraints**:
+- Do not duplicate the operator-install steps inline; link the quickstart.
+- Keep the existing local-first framing intact — hosted is the second
+  paragraph, not the first.
+
+**Validation**:
+- Markdown renders cleanly on GitHub (manual check).
+- Every linked path exists at the time of writing.
+
+---
+
+### [X] Task 11.4 — Update `docs/deployment.md` with hosted-mode notes
+
+**Target file**: `docs/deployment.md`
+
+**What to do**:
+Add a `## Hosted Mode Deployment` section covering:
+- Setting Supabase project env vars in Vercel (Production + Preview).
+- Where to set the redirect URLs in the Supabase dashboard (Authentication →
+  URL Configuration). Reference the gamma project naming convention used
+  during 018 dev.
+- The pre-deploy verification gate from `quickstart.md §10` — a short
+  bulleted recap with a link rather than copying the steps.
+- Note that local-mode deployment is unchanged; hosted-mode is a separate
+  Vercel project, not a flag.
+
+**Constraints**:
+- Don't restate Supabase quickstart steps; link them.
+
+**Validation**:
+- Cross-references resolve.
+- No drift between this file and `quickstart.md` (the quickstart is
+  authoritative).
+
+---
+
+### [X] Task 11.5 — Update `docs/REPO_MAP.md` with the new directories and files
+
+**Target file**: `docs/REPO_MAP.md`
+
+**What to do**:
+Add entries for:
+- `server/auth/middleware.js` — JWT verification + categorized logging
+- `server/auth/` directory
+- `src/data/authStore.js` — module-state auth store
+- `src/services/supabaseClient.js`, `src/services/healthApi.js`
+- `src/pages/welcome/` (WelcomePage, HeroSlideshow, AuthOverlay,
+  LoginForm, SignupForm)
+- `src/pages/ConfigError.js`
+- `src/assets/welcome-hero/` — six hero screenshots
+- `specs/018-auth-user-access/` (spec, plan, tasks, data-model, contracts,
+  research, quickstart, checklists)
+
+Update any entry whose description changed (e.g. `server/index.js`'s
+`createApp` signature, `Navbar.js` adding auth segment + destroy).
+
+**Constraints**:
+- Match the existing REPO_MAP entry format exactly (one-line description,
+  same column conventions).
+
+**Validation**:
+- Every new path exists in the repo at write time.
+
+---
+
+### [X] Task 11.6 — Docs sanity check
+
+**Target files**: none (read-only sweep over the edited docs).
+
+**What to do**:
+1. `grep -rn "0\.7\.0" package.json package-lock.json src/ README.md CHANGELOG.md docs/ .env.example` —
+   acceptable hits are limited to `CHANGELOG.md` only: the historical
+   `## [0.7.0]` heading and the two diff-link footnote lines
+   (`[0.8.0]: …v0.7.0...v0.8.0` and `[0.7.0]: …v0.6.0...v0.7.0`). Any
+   hit outside `CHANGELOG.md` is a stale reference and must be fixed.
+2. `grep -n "\"version\"" package.json package-lock.json` returns `0.8.0`
+   in both files (root-level entries).
+3. Open `README.md`, `CHANGELOG.md`, `docs/deployment.md`,
+   `docs/REPO_MAP.md`, and `.env.example` and verify the new entries
+   render correctly and internal links resolve.
+4. Run the app and confirm the footer renders `v0.8.0`.
+
+**Validation**:
+- All three steps pass before moving to Phase 12.
+- The heavier test/lint/build verification is owned by Phase 12; do not
+  duplicate it here.
+
+**Out of scope**:
+- Cutting the release tag — operator step after Phase 12.
+
+---
+
+## Phase 12 — Verification
+
+### [ ] Task 12.1 — Run the full automated test suite
 
 **Command**: `npm run test:run`
 
@@ -1107,7 +1308,7 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-### [ ] Task 11.2 — Verify secrets are not in the Vite bundle
+### [ ] Task 12.2 — Verify secrets are not in the Vite bundle
 
 **Target output**: `dist/`
 
@@ -1121,7 +1322,7 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-### [ ] Task 11.3 — Verify build-time assertion fails closed
+### [ ] Task 12.3 — Verify build-time assertion fails closed
 
 **What to do**:
 - Run `npm run build` with `VITE_SUPABASE_URL` unset.
@@ -1134,7 +1335,7 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-### [ ] Task 11.4 — Walk `checklists/plan-review.md`
+### [ ] Task 12.4 — Walk `checklists/plan-review.md`
 
 **Target file**: `specs/018-auth-user-access/checklists/plan-review.md`
 
@@ -1142,7 +1343,7 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-### [ ] Task 11.5 — Manual validation via `quickstart.md §6-7`
+### [ ] Task 12.5 — Manual validation via `quickstart.md §6-7`
 
 **What to do**: follow quickstart §6 (run) and §7 (manual validation flow,
 including negative paths) end-to-end on a real Supabase project.
@@ -1152,7 +1353,7 @@ including negative paths) end-to-end on a real Supabase project.
 
 ---
 
-### [ ] Task 11.5b — Pre-deploy verification gate (`quickstart.md §10`)
+### [ ] Task 12.5b — Pre-deploy verification gate (`quickstart.md §10`)
 
 **What to do**: before promoting any hosted deploy to production, run the
 six checks in `quickstart.md §10` against the **production** Supabase
@@ -1170,7 +1371,7 @@ only mechanism that catches that misconfiguration before users hit it.
 
 ---
 
-### [ ] Task 11.6 — Browser smoke tests (constitution Amendment 1.1.0)
+### [ ] Task 12.6 — Browser smoke tests (constitution Amendment 1.1.0)
 
 **What to do**: in a live browser session against the hosted deploy (or a
 local hosted-mode dev), execute each user-story Independent Test from spec.md:
@@ -1195,7 +1396,7 @@ follow-up issues.
 
 ---
 
-### [ ] Task 11.7 — Update memory and `CLAUDE.md` if patterns emerged
+### [ ] Task 12.7 — Update memory and `CLAUDE.md` if patterns emerged
 
 **Target files**: `CLAUDE.md` (project), user auto-memory.
 

@@ -7,6 +7,48 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-16
+
+### Added
+- Hosted authenticated user access via Supabase email/password — feature 018-auth-user-access; local mode is unchanged and remains the default
+- `allowed_emails` table + `auth.users` `BEFORE INSERT` trigger — operator-managed allowlist enforced inside Postgres so unauthorized signups never reach `auth.users`
+- `server/auth/middleware.js` — `createRequireAuth({ jwtSecret, logger })` factory; verifies `Authorization: Bearer <jwt>` against `SUPABASE_JWT_SECRET` using HS256; logs categorized rejections (`missing | malformed | expired | signature | other`) with redacted-path context, never the token
+- `/api/health` now returns `{ status, runtime: 'local' | 'hosted' }` so the frontend can detect a runtime/config mismatch
+- `createApp({ repositories, config, requireAuth? })` — `server/index.js` factory now accepts an optional `requireAuth`; hosted mode throws if `supabase.jwtSecret` is missing and no explicit `requireAuth` is passed
+- `logBoot(config)` — single-line `[runtime] mode=<runtime> port=<port>` entry so operators can grep the active mode in production logs
+- `src/services/supabaseClient.js` — Supabase JS client wrapper; reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`; exports `isHostedAuthAvailable`
+- `src/data/authStore.js` — module-state subscribable auth store with `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`; states: `initializing | local-mode | unauthenticated | authenticated`
+- `src/services/healthApi.js` — `getHealth()` standalone fetcher returning the raw `{ status, runtime }` envelope (does not go through `request()`'s `data` unwrap)
+- `Authorization: Bearer <token>` automatically attached by `src/services/api.js` and `src/services/resumeApi.js` whenever `authStore.getAccessToken()` returns a value
+- `src/pages/welcome/WelcomePage.js` — diagonal-split landing page with brand block, headline, three CTAs (Sign In, Create Account, Try Demo), floating metadata pills with illustrative disclaimer, footer metadata, and a `?auth=callback` verification banner handler that cleans the URL while preserving other query params
+- `src/pages/welcome/HeroSlideshow.js` — 5-second auto-rotating screenshot slideshow, single static slide under `prefers-reduced-motion: reduce`
+- `src/pages/welcome/AuthOverlay.js` — centered-modal overlay with `role="dialog"` + `aria-modal`, tab strip with login/signup switching, focus trap, ESC + backdrop + close-button dismissal, previous-focus restoration, `verification_sent` state, `dispose()` cleanup path used by parent unmount
+- `src/pages/welcome/LoginForm.js` — email/password login form with neutral error copy and accessible inline loading state (`aria-busy`, mirrored `aria-live` status)
+- `src/pages/welcome/SignupForm.js` — email/password signup with inline field validation (email regex, password min 8), neutral signup-rejection error (never leaks the cause), and `onSuccess` → overlay transitions to `verification_sent`
+- `src/pages/ConfigError.js` — operator-facing fallback page; mounted when the hosted runtime handshake (`getHealth()` returns `runtime: 'hosted'` but `isHostedAuthAvailable` is false) detects missing Vite env vars
+- `bootstrap()` + `runtimeHandshake()` exports in `src/main.js` — runtime handshake now runs BEFORE `authStore.subscribe` / `init`, so a misconfigured hosted deploy never flashes the welcome page or app shell before ConfigError replaces it
+- `Navbar` user segment — email (truncated past 24 chars with full value in `title`) + Sign Out button; hidden in `local-mode` and `unauthenticated`; `Navbar.destroy()` unsubscribes from `authStore`
+- `ResumeImport.create()` subscribes to `authStore` and toggles `root.hidden` based on auth state — gated to `local-mode` / `authenticated` only
+- Welcome + auth overlay + ConfigError CSS in `src/styles/main.css` — diagonal-split layout (55% content / 62% hero anchored right with the design's clip-path), responsive breakpoints (≥1100px / 760–1100px / <760px / <420px), reduced-motion media query disabling card transforms and overlay entrance
+- Six hero screenshots in `src/assets/welcome-hero/` (`tracker`, `application-modal`, `profile`, `filters`, `calendar`, `mobile-tracker`)
+- Vite build-time assertion (`assertHostedFrontendEnv`) — production builds fail closed when any of `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL` is missing
+- `SUPABASE_JWT_SECRET` added to the hosted-required env-var list in `server/config.js`
+- `@supabase/supabase-js` (^2.45.0) and `jsonwebtoken` (^9.0.2) dependencies
+- Spec package at `specs/018-auth-user-access/` — `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/api.md`, `research.md`, `quickstart.md`, `checklists/plan-review.md`
+- `design/welcome_page.md` — visual specification for the welcome experience
+- Test suites: `tests/server/auth-middleware.test.js`, `tests/server/routes-protected.test.js`, `tests/data/authStore.test.js`, `tests/services/{supabaseClient,healthApi,resumeApi}.test.js`, `tests/components/{welcome,heroSlideshow,navbar,resumeImport}.test.js`, `tests/pages/configError.test.js`, `tests/main.test.js`, `tests/build/vite-config.test.js`
+
+### Changed
+- `createApp()` signature now `({ repositories, config, requireAuth? })`; route factories (`createApplicationsRouter`, `createProfileRouter`, `createResumeRouter`) likewise accept `{ repo, requireAuth }`
+- `unmountAppShell` in `src/main.js` calls `Navbar.destroy()` to clean up the auth-store subscription on transitions back to the welcome page
+- `ResumeImport.create()` always returns an element; visibility now driven by `root.hidden` from a subscription, with completion state tracked separately so post-import hiding survives auth-state transitions
+
+### Security
+- Allowlist enforcement lives in a Postgres `SECURITY DEFINER` trigger on `auth.users` — an Express endpoint approach was considered and rejected because it could be bypassed by direct Supabase calls from the browser
+- `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_JWT_SECRET` are server-only — neither appears in `src/` or in the Vite production bundle (verified in Phase 12)
+- JWT verification pins HS256 algorithm explicitly to defeat `alg: none` attacks
+- Token contents are never logged; categorized rejection logs include `category` and request path only
+
 ## [0.7.0] — 2026-05-13
 
 ### Added
@@ -198,7 +240,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/reso830/Project_Alice/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/reso830/Project_Alice/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/reso830/Project_Alice/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/reso830/Project_Alice/compare/v0.5.0...v0.5.1

@@ -2,7 +2,7 @@ import aliceWhite from '../assets/Alice_White.png';
 
 const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 // Keep this static release string in sync with package.json for each release.
-const APP_VERSION = 'v0.7.0';
+const APP_VERSION = 'v0.8.0';
 
 function createText(className, text) {
   const element = document.createElement('p');
