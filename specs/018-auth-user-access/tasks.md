@@ -31,7 +31,7 @@ is optional polish; Phase 11 is the verification gate.
 
 ## Phase 01 — Foundation
 
-### [ ] Task 01.1 — Add `@supabase/supabase-js` and `jsonwebtoken` to dependencies
+### [X] Task 01.1 — Add `@supabase/supabase-js` and `jsonwebtoken` to dependencies
 
 **Target file**: `package.json`
 
@@ -62,7 +62,7 @@ Run `npm install` after editing. Commit both `package.json` and
 
 ---
 
-### [ ] Task 01.2 — Extend `server/config.js` with `SUPABASE_JWT_SECRET`
+### [X] Task 01.2 — Extend `server/config.js` with `SUPABASE_JWT_SECRET`
 
 **Target file**: `server/config.js`
 
@@ -103,7 +103,7 @@ as `VITE_AUTH_EMAIL_REDIRECT_URL` (consumed by the Supabase JS client).
 
 ---
 
-### [ ] Task 01.3 — Add Vite build-time assertion for Supabase env vars
+### [X] Task 01.3 — Add Vite build-time assertion for Supabase env vars
 
 **Target file**: `vite.config.js`
 
@@ -163,7 +163,7 @@ export default defineConfig({
 
 ## Phase 02 — Supabase Setup
 
-### [ ] Task 02.1 — Create `allowed_emails` table in Supabase
+### [X] Task 02.1 — Create `allowed_emails` table in Supabase
 
 **Target**: Supabase SQL Editor (not a code file)
 
@@ -200,7 +200,7 @@ alter table allowed_emails enable row level security;
 
 ---
 
-### [ ] Task 02.2 — Install the Postgres allowlist trigger
+### [X] Task 02.2 — Install the Postgres allowlist trigger
 
 **Target**: Supabase SQL Editor
 
@@ -257,7 +257,7 @@ create trigger before_user_created_allowlist
 
 ---
 
-### [ ] Task 02.3 — Configure Supabase Auth redirect URLs
+### [X] Task 02.3 — Configure Supabase Auth redirect URLs
 
 **Target**: Supabase Dashboard (Authentication → URL Configuration)
 
