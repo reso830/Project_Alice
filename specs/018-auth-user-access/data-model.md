@@ -2,13 +2,23 @@
 
 This feature introduces:
 1. One new Supabase table — `allowed_emails`
-2. One new Supabase Postgres trigger function — the "Before User Created" Auth
-   Hook that enforces the allowlist
-3. One new Supabase trigger that wires (2) onto `auth.users`
+2. One new Postgres trigger function (`SECURITY DEFINER`) that consults the
+   table and raises on miss — referred to throughout the spec package as the
+   **allowlist trigger**
+3. One new Postgres BEFORE INSERT trigger on `auth.users` that fires the
+   function above
 
 It consumes Supabase's built-in `auth.users` table. It documents — without
 implementing — the per-user ownership additions that feature 019 will apply to
 `applications` and `profile`.
+
+> **Terminology note.** This feature uses a plain Postgres trigger on
+> `auth.users`. It does **not** use Supabase's "Auth Hooks" mechanism
+> (a separate feature with a JSONB function signature, dashboard
+> configuration, and `supabase_auth_admin` grants). A raw trigger is simpler
+> for our scale and fires regardless of any Auth-Hooks dashboard setting.
+> If a future feature needs the JSONB hook flow, it can replace the trigger
+> at that point.
 
 Local SQLite mode is unaffected. No SQLite schema changes.
 
@@ -20,7 +30,7 @@ Stores the operator-managed list of email addresses permitted to sign up.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| `email` | `TEXT` | `PRIMARY KEY`, lowercased on insert, `CHECK (length(email) <= 254)` | RFC 5321 caps the practical email length at 254 chars (local part ≤ 64 + `@` + domain ≤ 253). Operator MUST insert in lowercase; the Auth Hook lowercases incoming candidates before lookup. |
+| `email` | `TEXT` | `PRIMARY KEY`, lowercased on insert, `CHECK (length(email) <= 254)` | RFC 5321 caps the practical email length at 254 chars (local part ≤ 64 + `@` + domain ≤ 253). Operator MUST insert in lowercase; the trigger function lowercases incoming candidates before lookup. |
 | `added_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT now()` | When the entry was added |
 | `added_by` | `TEXT` | nullable | Free-text label for whoever added the entry; for operator audit only |
 
@@ -34,14 +44,14 @@ create table allowed_emails (
 
 ### RLS
 
-Row Level Security is **enabled** on this table with **no policies granting access
-to any role except the trigger function** (which runs `SECURITY DEFINER` and
-bypasses RLS). Effectively: the anon key cannot read or list this table; no
-client-side code touches it.
+Row Level Security is **enabled** on this table with **no policies**. Every
+client role (anon, authenticated) is denied. The allowlist trigger function
+reads the table via `SECURITY DEFINER`, executing with the owner role's
+privileges so it can bypass RLS.
 
 ```sql
 alter table allowed_emails enable row level security;
--- (no policies — deny by default; trigger function reads via SECURITY DEFINER)
+-- (no policies — deny by default; the allowlist trigger reads via SECURITY DEFINER)
 ```
 
 ### Operator workflow
@@ -53,15 +63,17 @@ alter table allowed_emails enable row level security;
 
 ### Access pattern
 
-- Read at signup time by the trigger function only: `select 1 from allowed_emails where email = lower(new.email)`.
+- Read at signup time by the allowlist trigger function only:
+  `select 1 from allowed_emails where email = lower(new.email)`.
 - No write paths exposed through the API.
 
 ---
 
-## 2. `public.handle_new_user_email_allowlist()` — Auth Hook trigger function
+## 2. `public.handle_new_user_email_allowlist()` — allowlist trigger function
 
-Postgres trigger function that fires before each `auth.users` insert. Consults
-`allowed_emails` and raises an exception on miss.
+A Postgres trigger function (not a Supabase "Auth Hook") that fires before
+each `auth.users` insert. Consults `allowed_emails` and raises an exception
+on miss.
 
 ```sql
 create or replace function public.handle_new_user_email_allowlist()
@@ -80,6 +92,11 @@ begin
   return new;
 end;
 $$;
+
+-- The function owner must have SELECT on allowed_emails. The function is
+-- created by whichever role runs the SQL editor, which by default is the
+-- postgres superuser in Supabase and already has access.
+revoke all on function public.handle_new_user_email_allowlist() from public;
 ```
 
 ### Why `SECURITY DEFINER`
@@ -87,8 +104,10 @@ $$;
 The trigger fires in the context of whatever role is performing the
 `auth.users` insert (typically Supabase's internal auth role). `SECURITY
 DEFINER` makes the function execute with the **owner's** privileges, allowing
-it to read `allowed_emails` even though that table has RLS deny-all. The owner
-should be a role with `select` on `allowed_emails` and nothing more.
+it to read `allowed_emails` even though that table has RLS deny-all. The
+function owner must have `select` on `allowed_emails`; in Supabase the
+postgres superuser already has this and is the default owner when the
+function is created via the SQL editor.
 
 ### Why `lower(new.email)`
 
@@ -118,7 +137,8 @@ This trigger is the **single enforcement point** for the allowlist. It runs
 regardless of which Supabase API initiated the signup:
 
 - `supabase.auth.signUp` from the browser via anon key — trigger fires
-- `supabase.auth.admin.createUser` from a server via service role — trigger fires
+- `supabase.auth.admin.createUser` via service role (not used by 018, listed
+  for completeness) — trigger fires
 - Direct SQL `insert into auth.users …` via service role — trigger fires
 - Supabase dashboard "Add user" — trigger fires
 
@@ -129,8 +149,9 @@ No bypass exists short of disabling the trigger inside Supabase.
 ## 4. `auth.users` — consumed, not modeled
 
 Supabase's built-in user table. This feature does not add columns and does not
-expose it through the API. Users are created via `supabase.auth.admin.createUser`
-called from the server with the service role key.
+expose it through the API. Users are created via `supabase.auth.signUp` called
+**from the browser** with the anon key; the allowlist trigger fires on insert
+and either permits or denies the user.
 
 Relevant fields the server reads:
 - `id` (`uuid`) — used as the user identity throughout the API

@@ -16,7 +16,7 @@ any skip with reason and residual risk.
   → neutral SignupForm message; JWT failures are 401; missing config produces
   a startup error
 - [ ] Business logic stays server-side: allowlist enforcement is in the
-  Supabase Auth Hook (database layer); JWT validation is in Express
+  Postgres allowlist trigger (database layer); JWT validation is in Express
   middleware
 - [ ] No external analytics, tracking, or data sharing introduced
 - [ ] Local-first preserved: SQLite local mode boots and operates with no
@@ -66,7 +66,7 @@ any skip with reason and residual risk.
 
 ---
 
-## Signup & Allowlist (Supabase Auth Hook)
+## Signup & Allowlist (Postgres trigger)
 
 - [ ] `allowed_emails` Supabase table exists with the documented columns
   including the `length(email) <= 254` check
@@ -224,6 +224,27 @@ Refers to [design/welcome_page.md](../../../design/welcome_page.md).
 
 ---
 
+## Pre-Deploy Verification Gate (P0, runs against production Supabase)
+
+Documented in `quickstart.md §10`. None of these checks can be automated from
+the application repo because the server has no Supabase client. They MUST be
+performed manually before any production promotion.
+
+- [ ] `allowed_emails` table exists with `email`, `added_at`, `added_by` columns
+- [ ] `public.handle_new_user_email_allowlist()` function exists
+- [ ] `before_user_created_allowlist` trigger is wired to `auth.users`
+- [ ] **Bypass test**: `supabase.auth.signUp` from dev tools with a
+  non-allowlisted email returns an error and creates no `auth.users` row
+- [ ] Happy path: allowlisted signup → verification → sign in → protected
+  route 200
+- [ ] `npm run build` against production env vars either succeeds with all
+  three `VITE_*` set, or fails loudly with the Vite plugin error when any
+  are missing
+- [ ] All six check outputs captured in the deploy PR description as
+  evidence
+
+---
+
 ## Browser Smoke Tests (constitution Amendment 1.1.0)
 
 Each user story's Independent Test from spec.md must pass in a live browser
@@ -242,26 +263,30 @@ session (Phase 11.6):
 
 ## Logging & Observability
 
-- [ ] Server logs: token rejected, login outcomes (where logged client-side
-  events surface server-side, e.g. via 401 patterns)
-- [ ] Logs do **not** contain plaintext passwords
+- [ ] Server logs cover what the server actually sees: token-rejection events
+  (with at most the first 8 chars of the rejected token), hosted-route 401
+  counts, `/api/health` calls. The server does **not** observe signup or
+  login attempts (those are direct browser ↔ Supabase calls).
+- [ ] Documentation points operators to **Supabase Dashboard → Logs → Auth
+  Logs** for signup/login visibility (FR-016).
+- [ ] Logs do **not** contain plaintext passwords (server never sees them).
 - [ ] Logs do **not** contain full session tokens (presence may be logged;
-  contents may not)
+  contents may not).
 
 ---
 
 ## Documentation
 
 - [ ] `quickstart.md` covers Supabase project setup, `allowed_emails`
-  creation, Auth Hook trigger install + verify, redirect URLs, env vars
-  (server + Vite-exposed), and the manual validation flow including the
-  bypass test
+  creation, allowlist trigger install + verify, redirect URLs, env vars
+  (server + Vite-exposed), the manual validation flow including the bypass
+  test, and the §10 pre-deploy verification gate
 - [ ] `contracts/api.md` covers env vars, `Authorization` header, middleware
-  behavior, `/api/health` runtime contract, Auth Hook contract, build-time
-  assertion contract, and the error-code inventory
+  behavior, `/api/health` runtime contract, allowlist trigger contract,
+  build-time assertion contract, and the error-code inventory
 - [ ] `research.md` records every plan-level decision with rejected
-  alternatives (R1 reflects the Auth Hook revision; R12 covers build/runtime
-  detection; R13 covers the 019 wipe)
+  alternatives (R1 reflects the Postgres-trigger revision; R12 covers
+  build/runtime detection; R13 covers the 019 wipe)
 - [ ] `design/welcome_page.md` covers the centered-modal auth overlay
   decision and the illustrative-disclaimer on the floating pills
 

@@ -3,9 +3,10 @@
 **Branch**: `018-auth-user-access` | **Date**: 2026-05-14 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `specs/018-auth-user-access/spec.md`
 **Visual design**: [design/welcome_page.md](../../design/welcome_page.md) — diagonal
-split layout, hero slideshow, three-CTA welcome page, modal/bottom-sheet auth forms.
-All design tokens it references (`--indigo`, `--bg`, `--surface`, `--border`,
-`--t1/t2/t3`, Sora, DM Mono) already exist in [src/styles/main.css:1-28](../../src/styles/main.css#L1-L28).
+split layout, hero slideshow, three-CTA welcome page, centered-modal auth overlay
+at every breakpoint. All design tokens it references (`--indigo`, `--bg`,
+`--surface`, `--border`, `--t1/t2/t3`, Sora, DM Mono) already exist in
+[src/styles/main.css:1-28](../../src/styles/main.css#L1-L28).
 
 ---
 
@@ -13,9 +14,16 @@ All design tokens it references (`--indigo`, `--bg`, `--surface`, `--border`,
 
 Add hosted email/password authentication to Project Alice using Supabase Auth, gate
 all protected hosted API routes behind a JWT-validating middleware, restrict signups
-via a **Supabase "Before User Created" Auth Hook** that enforces an `allowed_emails`
-table at the database layer, and replace the unauthenticated hosted shell with a
-welcome-page login wall. Local SQLite mode is untouched.
+via a **Postgres allowlist trigger** (`BEFORE INSERT ON auth.users`) that
+enforces an `allowed_emails` table at the database layer, and replace the
+unauthenticated hosted shell with a welcome-page login wall. Local SQLite
+mode is untouched.
+
+> **Naming note.** Throughout this spec package, "allowlist trigger" refers
+> to a plain Postgres trigger and trigger function — not a Supabase "Auth
+> Hook" (which is a separate JSONB-based mechanism with dashboard configuration
+> and `supabase_auth_admin` grants). The trigger approach is simpler at our
+> scale and fires regardless of any Supabase Auth-Hooks dashboard setting.
 
 Concretely this introduces:
 1. A welcome-page pre-app gate in the frontend, laid out per
@@ -42,9 +50,10 @@ Concretely this introduces:
 7. Wiring `requireAuth` into each protected router (applications, profile, resume)
    per the agreed scoping decision.
 8. A new Supabase `allowed_emails` table with deny-all RLS, **plus a Postgres
-   trigger function** (the Auth Hook) wired to fire `before insert on auth.users`
-   to enforce the allowlist regardless of which Supabase caller (anon-key client,
-   service-role client, or admin SDK) initiated the signup.
+   trigger function** (the allowlist trigger) wired to fire
+   `BEFORE INSERT ON auth.users` to enforce the allowlist regardless of which
+   Supabase caller (anon-key client, service-role client, or admin SDK)
+   initiated the signup.
 9. A **build-time Vite assertion** that fails production builds when
    `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is empty, plus a runtime
    handshake (`GET /api/health` reports the server's runtime mode) that mounts a
@@ -71,15 +80,15 @@ managed by Supabase); new Supabase `allowed_emails` table; new Postgres trigger
 function on `auth.users`.
 **Testing**: Vitest with Supabase fully mocked at the module boundary — no live
 Supabase project required for CI. JWT verification tested with self-signed test
-tokens. The Auth Hook trigger is validated manually via quickstart §6 (it lives
-inside Supabase and cannot be unit-tested from our codebase).
+tokens. The allowlist trigger is validated manually via quickstart §6 and
+§10 (it lives inside Supabase and cannot be unit-tested from our codebase).
 **Target Platform**: Local Node.js (dev); Vercel serverless (hosted).
 **Project Type**: Web application — Vite frontend + Express API (unchanged shape).
 **Constraints**:
 - Frontend talks to Supabase Auth directly via the JS client for sign-up, sign-in,
   sign-out, and session restore; data flows still go through Express.
-- All allowlist enforcement lives in Supabase (Auth Hook trigger). Express has no
-  signup endpoint and no admin client.
+- All allowlist enforcement lives in Supabase (the Postgres allowlist trigger
+  on `auth.users`). Express has no signup endpoint and no admin client.
 - Express verifies JWTs locally using `SUPABASE_JWT_SECRET` — no per-request
   Supabase round-trip.
 - `SUPABASE_SERVICE_ROLE_KEY` must never appear in the Vite bundle (carried over
@@ -147,16 +156,23 @@ Three approaches were considered:
 2. **`supabase.auth.admin.inviteUserByEmail`** with an out-of-band allowlist
    check. *(Rejected.)* Magic-link invite UX, not email+password, and adds a
    second flow to maintain.
-3. **Supabase "Before User Created" Auth Hook** — a Postgres trigger function on
-   `auth.users` insert that consults `allowed_emails` and raises an exception on
+3. **Postgres allowlist trigger** — a `BEFORE INSERT` trigger function on
+   `auth.users` that consults `allowed_emails` and raises an exception on
    miss. **(Chosen.)** Runs at the database layer so anon-key direct signup
    cannot bypass it; reuses Supabase's built-in verification-email flow; removes
    the entire Express signup surface from the codebase.
 
 The chosen approach trades "signup logic visible in our repo" for "signup logic
-unbypassable." The hook function is small (~10 lines of PL/pgSQL) and is
-documented in `data-model.md` and `quickstart.md` so operators can install it
-during setup.
+unbypassable." The trigger function is small (~10 lines of PL/pgSQL) and is
+documented in `data-model.md` and `quickstart.md` so operators can install
+and verify it during setup.
+
+> **Distinction from Supabase Auth Hooks.** Supabase also offers a separate
+> "Auth Hooks" feature with JSONB-based functions, dashboard configuration,
+> and grants to `supabase_auth_admin`. That mechanism would also work but adds
+> setup steps that operators can forget. The plain Postgres trigger fires
+> regardless of any Supabase dashboard hook setting and is sufficient for our
+> single-allowlisted-user-set scale.
 
 ---
 
@@ -236,7 +252,7 @@ during setup.
 
 | Complexity item | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| Supabase Auth Hook (Postgres trigger) for allowlist | Anon key is publicly shipped; an Express pre-check is bypassable. The trigger fires inside Supabase regardless of caller. | Express signup endpoint + `admin.createUser` is both bypassable (anon-key direct call) and silent (admin.createUser does not send verification email). |
+| Postgres allowlist trigger on `auth.users` | Anon key is publicly shipped; an Express pre-check is bypassable. The trigger fires inside Supabase regardless of caller. | Express signup endpoint + `admin.createUser` is both bypassable (anon-key direct call) and silent (admin.createUser does not send verification email). |
 | Welcome-page pre-app gate | Hard login wall; protected app shell never renders for unauthenticated users | In-app `navigate('login')` requires rendering navbar around an unauthenticated user, weakening the wall metaphor |
 | `data/authStore.js` separate from `data/store.js` | Session state has a different lifecycle and persistence model than application data | A combined store would couple Supabase auth subscriptions to application data flows |
 | `jsonwebtoken` dependency | Local JWT verification avoids a Supabase round-trip per request | Calling `supabase.auth.getUser()` per request multiplies hosted latency by 1 RTT and creates a runtime Supabase dependency for every API call |
@@ -320,21 +336,30 @@ src/
 tests/
 ├── server/
 │   ├── auth-middleware.test.js   # NEW — JWT verification
-│   ├── auth-signup.test.js       # NEW — allowlist enforcement + admin createUser mock
 │   └── routes-protected.test.js  # NEW — 401 on protected routes without token
+├── build/
+│   └── vite-config.test.js       # NEW — build-time assertion plugin
 ├── components/
 │   └── welcome.test.js           # NEW — login/signup form behavior, error states
-└── data/
-    └── authStore.test.js         # NEW — subscribe/notify, restore on boot
+├── data/
+│   └── authStore.test.js         # NEW — subscribe/notify, restore on boot
+└── services/
+    ├── api.test.js               # NEW — Authorization header attach
+    └── supabaseClient.test.js    # NEW — env stub presence/absence
+
+# REMOVED from earlier plan revision:
+#   tests/server/auth-signup.test.js  (no Express signup endpoint; signup
+#                                      enforcement is the trigger in Supabase
+#                                      and validated manually in Phase 11.6)
 
 specs/018-auth-user-access/
 ├── spec.md                       # already written
 ├── plan.md                       # this file
-├── data-model.md                 # NEW — allowed_emails table + 019-handoff schema
+├── data-model.md                 # NEW — allowed_emails table + trigger SQL + 019 handoff
 ├── contracts/
-│   └── api.md                    # NEW — /api/auth + Authorization header contract
+│   └── api.md                    # NEW — env, Authorization header, trigger, build-time check
 ├── research.md                   # NEW — decisions and rejected alternatives
-├── quickstart.md                 # NEW — operator setup for hosted auth testing
+├── quickstart.md                 # NEW — operator setup including trigger install + verify
 └── checklists/
     └── plan-review.md            # NEW — review gate before /speckit.tasks
 ```
@@ -404,20 +429,33 @@ specs/018-auth-user-access/
 - **New**:
   - `tests/server/auth-middleware.test.js` — accepts valid HS256 JWT signed with
     test secret; rejects missing/malformed/expired/wrong-key; populates `req.user`
-  - `tests/server/auth-signup.test.js` — allowlisted email reaches mocked admin
-    createUser; non-allowlisted email returns 403 before any Supabase call; error
-    response does not leak allowlist membership
   - `tests/server/routes-protected.test.js` — each protected router returns 401
-    for missing token and reaches the handler with a valid one
+    for missing token and reaches the handler with a valid one; `/api/health`
+    returns `runtime` field
+  - `tests/build/vite-config.test.js` — production-build assertion throws on
+    missing `VITE_SUPABASE_*` env vars
   - `tests/data/authStore.test.js` — subscribe/notify; restore from
     `supabase.auth.getSession()` mock; clears state on signOut
-  - `tests/components/welcome.test.js` — form submission states (idle, loading,
-    error, verification-sent), error message neutrality for rejected signup
+  - `tests/services/api.test.js` — Authorization header attach behavior
+  - `tests/services/supabaseClient.test.js` — env-stub presence/absence paths
+  - `tests/components/welcome.test.js` — welcome page mount, Try Demo disabled,
+    CTA → overlay flow, form submission states, signup error neutrality,
+    `?auth=callback` banner, focus restore
+  - `tests/components/heroSlideshow.test.js` — reduced-motion, placeholder
+    fallback, rotation progression
+  - `tests/main.test.js` — ConfigError mounting when server reports hosted but
+    client has no Supabase config
 - **Updated**:
-  - Existing `tests/server/*` route tests adjusted to either bypass `requireAuth`
-    (via mock middleware in local mode) or to attach a stub token in setup
+  - Existing `tests/server/*` route tests confirmed to use the no-`requireAuth`
+    path (local mode); no behavioral changes needed beyond a factory-signature
+    update
   - `tests/components/*` tests that mount the app shell may need to seed an
     authenticated `authStore` first
+- **Manual (not unit-tested)**:
+  - The Postgres trigger on `auth.users` lives inside Supabase and cannot be
+    unit-tested from the application repo. Validated manually in Phase 11.6 via
+    the bypass test (`supabase.auth.signUp` from dev tools with a
+    non-allowlisted email; confirms no `auth.users` row is created).
 
 ### Explicitly **out of scope**
 
@@ -438,14 +476,15 @@ specs/018-auth-user-access/
 
 ### Risks
 
-1. **Auth Hook trigger lives outside the repo.**
-   The single point of allowlist enforcement is a Postgres function installed in
-   Supabase via SQL editor. It is not version-controlled with the application
-   code. *Mitigation:* the trigger SQL is the canonical source in
-   `data-model.md` and `quickstart.md`; a section in `quickstart.md` documents
-   the install + verify procedure; manual validation in Phase 11 explicitly
-   tests the bypass path (anon-key direct `supabase.auth.signUp` with a
-   non-allowlisted email).
+1. **Allowlist trigger lives outside the repo.**
+   The single point of allowlist enforcement is a Postgres trigger function
+   installed in Supabase via SQL editor. It is not version-controlled with the
+   application code. If the trigger is **missing**, signups fail OPEN —
+   Supabase has no other gate. *Mitigation:* the trigger SQL is the canonical
+   source in `data-model.md §2-3` and `quickstart.md §3`; quickstart §10 is a
+   P0 pre-deploy verification gate (operator runs a bypass test with a
+   non-allowlisted email and confirms rejection); plan-review.md elevates
+   trigger verification to a checklist gate.
 
 2. **Hero slideshow needs real application screenshots.**
    The design explicitly forbids fabricated dashboard mockups. The five
@@ -485,10 +524,11 @@ specs/018-auth-user-access/
 
 ### Tradeoffs taken
 
-- **Auth Hook trigger vs Express signup endpoint.** Chose Auth Hook: closes
-  the anon-key bypass and reuses Supabase's built-in verification email flow.
-  Trade-off is signup logic living in Supabase rather than in our codebase;
-  documentation is the compensating control.
+- **Postgres allowlist trigger vs Express signup endpoint.** Chose trigger:
+  closes the anon-key bypass and reuses Supabase's built-in verification
+  email flow. Trade-off is signup logic living in Supabase rather than in our
+  codebase; documentation + pre-deploy verification gate are the compensating
+  controls.
 - **Direct Supabase JS client for sign-up/in vs proxying through Express.**
   Chose direct: gets session refresh, persistence, sign-out, AND
   verification-email send for free. Trade-off is that the JWT lives in
@@ -545,14 +585,14 @@ specs/018-auth-user-access/
    and `SUPABASE_JWT_SECRET` do not appear in the Vite bundle.
 
 ### Manual (quickstart-driven, requires a real Supabase project)
-1. Operator installs the `allowed_emails` table and the Auth Hook trigger;
+1. Operator installs the `allowed_emails` table and the allowlist trigger;
    seeds the table with their email; signs up via welcome page; confirms email;
    signs in; reaches `/api/applications` (returns 200).
 2. Operator submits signup with a non-allowlisted email; sees generic rejection.
 3. **Bypass test**: from browser dev tools console, calls
    `await supabase.auth.signUp({ email: 'unallowed@x.com', password: 'longenough' })`
    directly; observes Supabase returns an error and no row appears in
-   `auth.users`. *(Validates that the Auth Hook is the enforcement point.)*
+   `auth.users`. *(Validates that the allowlist trigger is the enforcement point.)*
 4. Operator signs out; observes welcome page reappear; observes
    `/api/applications` returns 401 in the network panel.
 5. Operator refreshes mid-session; remains signed in.

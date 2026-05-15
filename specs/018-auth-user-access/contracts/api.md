@@ -5,7 +5,7 @@ This document defines:
 2. The **`Authorization` header contract** between frontend and API
 3. The **`requireAuth` middleware contract** for protected routes
 4. The **`/api/health` runtime-handshake contract**
-5. The **Supabase Auth Hook contract** (allowlist trigger)
+5. The **Postgres allowlist trigger contract** (single allowlist enforcement point)
 6. The **Vite build-time assertion contract**
 7. The **error response inventory** for auth failures
 
@@ -164,10 +164,12 @@ or
 
 ---
 
-## 5. Supabase Auth Hook Contract
+## 5. Postgres Allowlist Trigger Contract
 
-The single source of allowlist enforcement is a Postgres trigger function on
-`auth.users`. Defined in `data-model.md §2-3`.
+The single source of allowlist enforcement is a Postgres `BEFORE INSERT`
+trigger on `auth.users`. Defined in `data-model.md §2-3`. **Not** a Supabase
+"Auth Hook" — that's a separate mechanism (JSONB-based, dashboard-configured)
+this feature does not use.
 
 ### Caller-agnostic enforcement
 
@@ -251,7 +253,7 @@ They are not Express endpoints, but the plan references them.
 
 | Action | JS client call | Notes |
 |---|---|---|
-| Sign up | `supabase.auth.signUp({ email, password, options: { emailRedirectTo: VITE_AUTH_EMAIL_REDIRECT_URL } })` | Auth Hook trigger runs server-side. Supabase sends verification email on success. |
+| Sign up | `supabase.auth.signUp({ email, password, options: { emailRedirectTo: VITE_AUTH_EMAIL_REDIRECT_URL } })` | The allowlist trigger fires inside Supabase on `auth.users` insert. Supabase sends the verification email on success. |
 | Sign in | `supabase.auth.signInWithPassword({ email, password })` | After success, JS client persists the JWT to `localStorage`. |
 | Sign out | `supabase.auth.signOut()` | Clears localStorage; `authStore` notifies subscribers. |
 | Restore session | `supabase.auth.getSession()` | Called once at boot; populates `authStore`. |

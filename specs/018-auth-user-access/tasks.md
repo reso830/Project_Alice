@@ -12,7 +12,7 @@
 | Phase | Theme | Blocks |
 |---|---|---|
 | 01 | Foundation: deps + server config + Vite build-time assertion | All other phases |
-| 02 | Supabase setup: `allowed_emails` table + Auth Hook trigger | Manual validation in 11 |
+| 02 | Supabase setup: `allowed_emails` table + allowlist trigger | Manual validation in 11 |
 | 03 | Auth middleware + server tests | 04 |
 | 04 | Wire protected routers + `/api/health` runtime mode + tests | 05+ runtime |
 | 05 | Frontend auth core (client + store + header attach) | 06, 07 |
@@ -200,12 +200,14 @@ alter table allowed_emails enable row level security;
 
 ---
 
-### [ ] Task 02.2 — Install the "Before User Created" Auth Hook trigger
+### [ ] Task 02.2 — Install the Postgres allowlist trigger
 
 **Target**: Supabase SQL Editor
 
 **What to do**:
-Run the SQL from `data-model.md §2-3`:
+Run the SQL from `data-model.md §2-3`. This is a plain Postgres trigger — not
+a Supabase "Auth Hook" — so no dashboard configuration is needed beyond
+running this SQL.
 
 ```sql
 create or replace function public.handle_new_user_email_allowlist()
@@ -224,6 +226,8 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.handle_new_user_email_allowlist() from public;
 
 drop trigger if exists before_user_created_allowlist on auth.users;
 create trigger before_user_created_allowlist
@@ -1087,12 +1091,31 @@ Pass the captured slides into the `HeroSlideshow` (replacing the empty array).
 
 ---
 
-### [ ] Task 11.5 — Manual validation via `quickstart.md`
+### [ ] Task 11.5 — Manual validation via `quickstart.md §6-7`
 
-**What to do**: follow quickstart §6 end-to-end on a real Supabase project.
+**What to do**: follow quickstart §6 (run) and §7 (manual validation flow,
+including negative paths) end-to-end on a real Supabase project.
 
 **Validation**:
 - All steps documented as passing in the PR description.
+
+---
+
+### [ ] Task 11.5b — Pre-deploy verification gate (`quickstart.md §10`)
+
+**What to do**: before promoting any hosted deploy to production, run the
+six checks in `quickstart.md §10` against the **production** Supabase
+project. Capture the SQL outputs and the bypass-test result in the deploy PR.
+
+**Why this is its own task**: the application server has no Supabase client
+and cannot verify the trigger or table at runtime. If the trigger is
+missing, signups fail OPEN with no runtime indication. This gate is the
+only mechanism that catches that misconfiguration before users hit it.
+
+**Validation**:
+- All six checks documented as passing in the deploy PR description.
+- If any check fails, the deploy is NOT promoted; the missing piece is
+  installed and the gate is re-run from scratch.
 
 ---
 
@@ -1107,7 +1130,7 @@ local hosted-mode dev), execute each user-story Independent Test from spec.md:
   - [ ] Via the SignupForm: neutral inline error; no row in `auth.users`.
   - [ ] Via dev-tools console (`await supabase.auth.signUp({ email: 'unallowed@x.com', password: 'longenough' })`):
     Supabase returns an error; no row in `auth.users`. This validates the
-    Auth Hook is the enforcement point.
+    allowlist trigger is the enforcement point.
 - [ ] **US3** — refresh mid-session preserves auth state; sign-out clears
   state and returns navbar to signed-out.
 - [ ] **US4** — unauthenticated client receives 401 on every protected route;

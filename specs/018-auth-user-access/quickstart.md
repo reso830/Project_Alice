@@ -53,7 +53,13 @@ insert into allowed_emails (email, added_by) values
 
 ---
 
-## 3. Install the "Before User Created" Auth Hook trigger
+## 3. Install the Postgres allowlist trigger
+
+> This is a plain Postgres trigger, **not** a Supabase "Auth Hook." Supabase
+> Auth Hooks are a separate feature (JSONB function signature, dashboard
+> configuration, `supabase_auth_admin` grants). We don't use them here —
+> a regular `BEFORE INSERT` trigger is simpler, doesn't depend on a dashboard
+> toggle, and fires regardless of any Auth-Hooks setting.
 
 Still in the SQL Editor, run:
 
@@ -75,16 +81,29 @@ begin
 end;
 $$;
 
+-- Don't let arbitrary roles call this function directly.
+revoke all on function public.handle_new_user_email_allowlist() from public;
+
 drop trigger if exists before_user_created_allowlist on auth.users;
 create trigger before_user_created_allowlist
   before insert on auth.users
   for each row execute function public.handle_new_user_email_allowlist();
 ```
 
+The function uses `SECURITY DEFINER` so it executes with the **function
+owner's** privileges (in Supabase, the SQL editor session typically runs as
+`postgres`, which already has `select` on `allowed_emails`). This is what
+lets the function read `allowed_emails` even though the table has RLS
+deny-all.
+
 This trigger is the single enforcement point for the allowlist. It runs on
 every `auth.users` insert regardless of which Supabase API initiated the
 signup — so a browser bypass via direct `supabase.auth.signUp` is blocked at
 the same point as a legitimate signup.
+
+> ⚠️ **If you skip this step, signups fail OPEN.** Supabase has no other
+> allowlist mechanism in this architecture. The trigger MUST be installed
+> AND verified (see §10) before any production deploy.
 
 ### Verify
 
@@ -223,3 +242,110 @@ fires on `npm run build`.
 - **Trigger function altered or dropped**: rerun the SQL in §3 to restore.
   If the trigger is missing, allowlist enforcement is gone — every email can
   sign up.
+
+---
+
+## 10. Pre-deploy verification gate (REQUIRED before any production deploy)
+
+The application server has no Supabase client and cannot verify that the
+`allowed_emails` table or the allowlist trigger exists. If either is missing
+in production, signups fail OPEN with no runtime indication. This means the
+operator MUST manually verify the following before promoting any hosted
+deploy. Treat this as a P0 gate.
+
+Run these checks against the **production** Supabase project (not local):
+
+### 10.1 Table exists with the expected shape
+
+In Supabase SQL Editor, run:
+
+```sql
+select
+  count(*) filter (where column_name = 'email')      as has_email,
+  count(*) filter (where column_name = 'added_at')   as has_added_at,
+  count(*) filter (where column_name = 'added_by')   as has_added_by
+from information_schema.columns
+where table_schema = 'public' and table_name = 'allowed_emails';
+```
+
+Expected: each count returns `1`. If `has_email = 0`, the table is missing or
+mis-named — stop and re-run §2.
+
+### 10.2 Trigger function exists
+
+```sql
+select count(*) as has_function
+from pg_proc
+where proname = 'handle_new_user_email_allowlist'
+  and pronamespace = 'public'::regnamespace;
+```
+
+Expected: `has_function = 1`. If `0`, re-run §3.
+
+### 10.3 Trigger is wired to `auth.users`
+
+```sql
+select count(*) as has_trigger
+from pg_trigger
+where tgname = 'before_user_created_allowlist'
+  and tgrelid = 'auth.users'::regclass
+  and not tgisinternal;
+```
+
+Expected: `has_trigger = 1`. If `0`, re-run §3.
+
+### 10.4 Bypass test — proves the trigger is the enforcement point
+
+This is the critical check: it verifies that the trigger actually denies
+non-allowlisted signups via the public anon-key path.
+
+From a browser dev-tools console **on the production frontend**:
+
+```js
+const r = await window.supabase?.auth?.signUp({
+  email: 'not-allowlisted-test-' + Date.now() + '@example.com',
+  password: 'a-long-enough-test-password',
+});
+console.log(r?.error?.message);
+```
+
+(If `window.supabase` is not exposed, the same test can be run from any page
+that loads `services/supabaseClient.js` — temporarily attach the client to
+`window` for the test and remove after.)
+
+Expected: `r.error` is present with a message indicating signup was rejected.
+`r.data.user` is `null` (or contains no committed identity).
+
+Then confirm no row was created:
+
+```sql
+select email from auth.users where email ilike 'not-allowlisted-test-%@example.com';
+```
+
+Expected: zero rows.
+
+If a row IS created, the trigger is not enforcing — STOP, do not proceed
+with the deploy, and re-run §3.
+
+### 10.5 Happy path
+
+With an allowlisted email (insert one in `allowed_emails` if you haven't),
+complete a signup → verification → sign in → protected route check against
+the production environment.
+
+### 10.6 Build assertion
+
+Run `npm run build` against the production environment's `.env`. Confirm the
+build either:
+- Succeeds (all three `VITE_*` vars present), or
+- Fails with the descriptive error from the Vite plugin (one or more vars
+  missing — fix the env config and retry).
+
+A silent build success with `VITE_SUPABASE_URL=''` would mean the plugin is
+not wired correctly. STOP and revisit Task 01.3.
+
+---
+
+**Sign-off**: only after all six checks pass should the deploy be promoted
+to production. Capture the SQL outputs and the bypass-test result in the
+deploy PR description as evidence.

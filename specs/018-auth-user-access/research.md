@@ -7,10 +7,14 @@ question, the option chosen, why, and what we rejected.
 
 ## R1 — Where does signup happen, and how is the allowlist enforced?
 
-**Decision (revised)**: Supabase "Before User Created" Auth Hook — a Postgres
-trigger function on `auth.users` insert that consults `allowed_emails` and
-raises on miss. Frontend calls `supabase.auth.signUp` directly with the anon
-key; the trigger gates user creation at the database layer.
+**Decision (revised)**: Postgres allowlist trigger — a `BEFORE INSERT`
+trigger on `auth.users` whose function consults `allowed_emails` and raises
+on miss. Frontend calls `supabase.auth.signUp` directly with the anon key;
+the trigger gates user creation at the database layer.
+
+> **Not** a Supabase "Auth Hook" — that's a distinct JSONB-based mechanism
+> with dashboard configuration and `supabase_auth_admin` grants. A plain
+> trigger is simpler and fires regardless of any Auth-Hooks dashboard setting.
 
 **Why**:
 - Anon-key bypass is impossible: the trigger fires inside Supabase regardless
@@ -130,7 +134,7 @@ for a two-field form. Sizing scales with breakpoint per `design/welcome_page.md 
 ## R6 — Allowlist storage: Supabase table vs env var vs static file
 
 **Decision**: Supabase `allowed_emails` table with RLS deny-all from any
-client role; read only by the Auth Hook trigger function via `SECURITY DEFINER`.
+client role; read only by the allowlist trigger function via `SECURITY DEFINER`.
 
 **Why**:
 - Operator can add/remove entries from the Supabase dashboard without a redeploy.

@@ -30,11 +30,12 @@ session state.
 
 - Wire Supabase Auth (email/password) into the hosted runtime
 - Provide a public signup form, login form, and sign-out flow in the frontend
-- Enforce the allowed-email check via a **Supabase "Before User Created" Auth Hook**
-  (a Postgres trigger function) that consults an `allowed_emails` table and denies
-  the signup at the database layer before any user is created — closing the bypass
-  where a client could otherwise call `supabase.auth.signUp` directly with the
-  anon key
+- Enforce the allowed-email check via a **Postgres allowlist trigger** —
+  a `BEFORE INSERT ON auth.users` trigger function that consults an
+  `allowed_emails` table and denies the signup at the database layer before any
+  user is created — closing the bypass where a client could otherwise call
+  `supabase.auth.signUp` directly with the anon key. (This is a plain Postgres
+  trigger, not a Supabase "Auth Hook" — see data-model.md for terminology.)
 - Use Supabase's built-in email-verification flow before a new account can log in
 - Use Supabase's built-in password-reset flow (no custom in-app reset UI)
 - Add an authentication middleware to the Express API that validates the Supabase
@@ -118,8 +119,8 @@ error.
 **Acceptance Scenarios**:
 
 1. **Given** an email is not in `allowed_emails`, **When** the signup is submitted,
-   **Then** the Supabase "Before User Created" Auth Hook raises an exception that
-   prevents the `auth.users` insert; no account is created and no verification email
+   **Then** the Postgres allowlist trigger on `auth.users` raises an exception
+   that prevents the insert; no account is created and no verification email
    is sent.
 2. **Given** the rejection error is shown, **Then** it does not state whether other
    emails are approved, does not enumerate the allowlist, and does not differentiate
@@ -127,9 +128,9 @@ error.
    would leak allowlist membership.
 3. **Given** a client attempts to bypass the frontend by calling
    `supabase.auth.signUp` directly with the anon key, **When** the email is not in
-   `allowed_emails`, **Then** Supabase's Auth Hook still rejects the signup — the
-   anon-key path is not a bypass because the hook runs inside Supabase regardless
-   of the caller.
+   `allowed_emails`, **Then** the allowlist trigger still rejects the signup —
+   the anon-key path is not a bypass because the trigger runs inside Supabase
+   on every `auth.users` insert regardless of the caller.
 
 ---
 
@@ -242,10 +243,17 @@ the response body.
   a raw error.
 - **Allowlist table is empty or unreachable at signup time**: signup fails with a
   generic error; the system does not fall back to allowing the signup.
-- **Hosted mode is configured but `allowed_emails` table or Auth Hook trigger does
-  not exist**: signups fail closed because the trigger would not have been installed.
-  The signup form surfaces Supabase's generic rejection. Operator notices via
-  Supabase dashboard or signup-failure logs.
+- **Hosted mode is configured but the `allowed_emails` table is missing**:
+  signups fail loudly because the trigger function's `select` raises (or, if
+  the trigger itself is also missing, signups fail OPEN — see next bullet).
+- **Hosted mode is configured but the allowlist trigger is missing**: signups
+  fail **OPEN**. Without the trigger, Supabase's default behavior is to allow
+  any signup. This is an access-control failure mode and the system has **no
+  runtime mitigation** for it — the trigger must be installed and verified by
+  the operator before any production deploy. This is why quickstart §10
+  documents an explicit pre-deploy bypass test (signup with a non-allowlisted
+  email from dev tools; confirm rejection). The plan-review checklist makes
+  the verification an explicit P0 gate.
 - **Hosted frontend deployed without `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`**:
   the production build must fail at build time. A Vite plugin asserts the variables
   are non-empty when `NODE_ENV=production`; deploys cannot ship a silently-degraded
@@ -274,9 +282,9 @@ the response body.
 - **FR-004**: System MUST persist the authenticated session across page refreshes
   using the Supabase JS client's default session storage.
 - **FR-005**: System MUST enforce an allowlist check at the Supabase database layer
-  via a "Before User Created" Auth Hook (a Postgres trigger function) that consults
-  the `allowed_emails` table and raises an exception on miss. The hook MUST run
-  regardless of caller (anon key, service role, or admin SDK) so that
+  via a Postgres `BEFORE INSERT` trigger on `auth.users` that consults the
+  `allowed_emails` table and raises an exception on miss. The trigger MUST
+  run regardless of caller (anon key, service role, or admin SDK) so that
   `supabase.auth.signUp` from the browser cannot bypass it.
 - **FR-006**: Allowlist rejection messages surfaced to the user MUST be
   user-friendly and MUST NOT reveal allowlist membership of other addresses or leak
@@ -309,13 +317,24 @@ the response body.
   applying RLS policies, and (d) updating repositories to filter by user.
 - **FR-015**: System MUST preserve required application fields, validation rules,
   and the constitution-mandated UX behaviors from prior features without regression.
-- **FR-016**: System MUST log authentication-relevant server events (signup
-  attempted, signup rejected by allowlist, login succeeded, login failed, token
-  rejected) at a level appropriate for operational visibility, without logging
-  passwords or full tokens.
-- **FR-017**: System MUST surface a clear startup configuration error if hosted
-  mode is active but Supabase Auth or the `allowed_emails` table is unreachable or
-  misconfigured.
+- **FR-016**: The Express server MUST log the authentication events it actually
+  observes — token rejection (with the rejected token's first 8 chars only),
+  hosted-route 401 responses, and runtime-mode reporting via `/api/health` —
+  at a level appropriate for operational visibility. Passwords MUST NOT be
+  logged. Full session tokens MUST NOT be logged. Signup attempts, login
+  successes/failures, and verification-email events go **directly between the
+  browser and Supabase Auth**; they do not pass through Express and therefore
+  cannot be logged server-side. Operators wanting that visibility MUST consult
+  **Supabase Dashboard → Logs → Auth Logs**, which is the source of truth for
+  signup/login events in this architecture.
+- **FR-017**: The Express server MUST surface a clear startup configuration
+  error if hosted mode is active but `SUPABASE_JWT_SECRET` (or any other
+  hosted-required server env var from 017's contract) is missing. The server
+  has no Supabase client in this feature and therefore CANNOT verify
+  `allowed_emails` reachability or trigger installation at startup. Those
+  Supabase-side concerns are operator responsibilities and are verified
+  manually as a P0 step in quickstart §10 before any production deploy
+  (table exists, trigger installed, bypass test passes).
 - **FR-018**: The production frontend build MUST fail with a descriptive error if
   `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing or empty, so a hosted
   deploy cannot silently ship a frontend that treats itself as local mode.
@@ -334,14 +353,16 @@ the response body.
   login and email verification; persisted on the client by the Supabase JS client;
   validated by the API middleware on every protected request.
 - **Allowed Email**: A row in the `allowed_emails` Supabase table containing a single
-  email address (and optional metadata such as added-by, added-at). Checked by the
-  Auth Hook trigger at signup time. Removal of an allowed-email row does not delete
-  an existing Supabase user.
-- **Before-User-Created Auth Hook**: A Supabase Postgres trigger function that fires
-  before each `auth.users` insert, looks up the candidate email in `allowed_emails`,
-  and raises an exception to deny the signup on miss. This is the single source of
-  enforcement for FR-005 and runs regardless of which Supabase API initiated the
-  signup.
+  email address (and optional metadata such as added-by, added-at). Checked by
+  the allowlist trigger at signup time. Removal of an allowed-email row does not
+  delete an existing Supabase user.
+- **Allowlist Trigger**: A Postgres `BEFORE INSERT` trigger on `auth.users` that
+  invokes a `SECURITY DEFINER` function. The function looks up the candidate
+  email in `allowed_emails` and raises an exception to deny the signup on miss.
+  This is the single source of enforcement for FR-005 and runs regardless of
+  which Supabase API initiated the signup. **Not** a Supabase "Auth Hook"
+  (which is a separate, JSONB-based mechanism); a plain Postgres trigger is
+  sufficient for our scale and avoids dashboard configuration drift.
 - **Auth Middleware Context**: The per-request user identity (Supabase user id,
   email) resolved by the authentication middleware and attached to the request for
   downstream handlers.
@@ -361,7 +382,7 @@ the response body.
 - **SC-002**: A non-allowlisted signup attempt produces no row in `auth.users`, no
   verification email, and a generic user-facing rejection error. This holds for
   both the application signup form and a direct anon-key call to
-  `supabase.auth.signUp` — the Auth Hook denies both paths identically.
+  `supabase.auth.signUp` — the allowlist trigger denies both paths identically.
 - **SC-003**: Every protected hosted route returns 401 for requests with missing,
   malformed, expired, or untrusted tokens; route handlers do not execute in those
   cases.
@@ -393,13 +414,17 @@ the response body.
 ### Owned by this feature
 
 - **`allowed_emails` table (Supabase, created in this feature)**
-  - `email`: `TEXT`, primary key, lowercased on insert
+  - `email`: `TEXT`, primary key, lowercased on insert, `CHECK (length(email) <= 254)`
   - `added_at`: `TIMESTAMPTZ`, default `now()`
   - `added_by`: `TEXT`, optional — free-text label for the operator who added the row
   - Access: managed directly in the Supabase dashboard; not exposed via the API.
-  - RLS: this feature applies a deny-all RLS policy on `allowed_emails` so that the
-    anon key cannot read or enumerate the list from the client. Server reads use the
-    service role key.
+  - RLS: deny-all (no policies). Read only by the allowlist trigger function
+    via `SECURITY DEFINER`. The application server has no Supabase client and
+    does not touch this table.
+
+- **Allowlist trigger (Postgres `BEFORE INSERT ON auth.users`)**: the single
+  enforcement point for FR-005. Documented in data-model.md §2-3. Installed
+  manually via SQL editor in quickstart §3.
 
 - **Supabase Auth (consumed, not modeled)**: this feature wires the project to
   Supabase's built-in `auth.users` table and built-in email-verification and
@@ -410,9 +435,13 @@ the response body.
   | Variable | Scope | Required in local | Required in hosted |
   |---|---|---|---|
   | `SUPABASE_JWT_SECRET` | server-only | no | yes |
-  | `AUTH_EMAIL_REDIRECT_URL` | server | no | yes (used for verification/reset email callbacks) |
+  | `VITE_SUPABASE_URL` | client (Vite, build-time) | no | yes (hosted build) |
+  | `VITE_SUPABASE_ANON_KEY` | client (Vite, build-time) | no | yes (hosted build) |
+  | `VITE_AUTH_EMAIL_REDIRECT_URL` | client (Vite, build-time) | no | yes (hosted build) — used for verification email callbacks; passed to `supabase.auth.signUp({ options: { emailRedirectTo } })` |
 
-  All other Supabase env vars are inherited from 017.
+  All other Supabase env vars are inherited from 017. Vite-prefixed vars are
+  read at build time and inlined into the bundle; the production build fails
+  (via Vite plugin) when any of them is empty.
 
 ### Documented for feature 019 (not implemented here)
 
@@ -471,9 +500,10 @@ the response body.
   and session storage; protected data flows still go through the Express API, not
   through direct Supabase reads.
 - Allowlist enforcement lives entirely in Supabase — there is no Express signup
-  endpoint. The "Before User Created" Auth Hook (Postgres trigger function) is the
-  single source of truth for allowlist enforcement, regardless of which Supabase
-  caller initiated the signup.
+  endpoint. The Postgres allowlist trigger (BEFORE INSERT on `auth.users`) is
+  the single source of truth for allowlist enforcement, regardless of which
+  Supabase caller initiated the signup. Operators MUST install and verify the
+  trigger before any production deploy (see quickstart §10).
 - The Express API validates Supabase JWTs locally using `SUPABASE_JWT_SECRET`
   rather than calling Supabase Auth on every request.
 - The allowlist is small (operator-managed, on the order of tens of entries at most);
