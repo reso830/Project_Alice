@@ -1,11 +1,37 @@
-import jwt from 'jsonwebtoken';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateKeyPair, SignJWT } from 'jose';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequireAuth } from '../../server/auth/middleware.js';
 import { createApp, logBoot } from '../../server/index.js';
 import { createTestRepositories } from '../../server/repositories/index.js';
 import { makeMemoryDb } from './helpers.js';
 
-const SECRET = 'test-jwt-secret';
+let trustedKeyPair;
+let untrustedKeyPair;
+
+beforeAll(async () => {
+  trustedKeyPair = await generateKeyPair('ES256');
+  untrustedKeyPair = await generateKeyPair('ES256');
+});
+
+async function signValidToken(claims = {}) {
+  return new SignJWT({
+    sub: 'user-123',
+    email: 'jane@example.com',
+    ...claims,
+  })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(trustedKeyPair.privateKey);
+}
+
+async function signWithUntrustedKey() {
+  return new SignJWT({ sub: 'x' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(untrustedKeyPair.privateKey);
+}
 
 function hostedConfig() {
   return {
@@ -16,7 +42,6 @@ function hostedConfig() {
       url: 'https://example.supabase.co',
       anonKey: 'anon-key',
       serviceRoleKey: 'service-role-key',
-      jwtSecret: SECRET,
     },
   };
 }
@@ -112,7 +137,7 @@ describe('protected routers — hosted-mode wiring', () => {
 });
 
 describe('createApp hosted-config safety', () => {
-  it('throws when hosted config is passed without supabase.jwtSecret and no explicit requireAuth', async () => {
+  it('throws when hosted config is passed without supabase.url and no explicit requireAuth', async () => {
     const db = makeMemoryDb();
     try {
       const repositories = await createTestRepositories(db);
@@ -121,15 +146,14 @@ describe('createApp hosted-config safety', () => {
         isHosted: true,
         port: 3001,
         supabase: {
-          url: 'https://example.supabase.co',
+          // url intentionally missing — needed to build the JWKS endpoint
           anonKey: 'anon-key',
           serviceRoleKey: 'service-role-key',
-          // jwtSecret intentionally missing
         },
       };
 
       expect(() => createApp({ repositories, config: badConfig })).toThrow(
-        /jwtSecret/,
+        /supabase\.url/,
       );
     } finally {
       db.close();
@@ -202,7 +226,10 @@ describe('end-to-end 401 + log assertion through real middleware', () => {
   });
 
   async function withRealMiddlewareApp(test) {
-    const requireAuth = createRequireAuth({ jwtSecret: SECRET, logger });
+    const requireAuth = createRequireAuth({
+      jwks: async () => trustedKeyPair.publicKey,
+      logger,
+    });
     await withApp({ config: hostedConfig(), requireAuth }, test);
   }
 
@@ -219,11 +246,9 @@ describe('end-to-end 401 + log assertion through real middleware', () => {
     });
   });
 
-  it('logs category=signature when a tampered token is sent', async () => {
+  it('logs category=signature when a token signed with the wrong key is sent', async () => {
     await withRealMiddlewareApp(async (baseUrl) => {
-      const token = jwt.sign({ sub: 'x' }, 'different-secret', {
-        algorithm: 'HS256',
-      });
+      const token = await signWithUntrustedKey();
       const response = await request(baseUrl, '/api/applications', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -234,13 +259,9 @@ describe('end-to-end 401 + log assertion through real middleware', () => {
     });
   });
 
-  it('does not log when a valid token is sent', async () => {
+  it('does not log when a valid ES256 token is sent', async () => {
     await withRealMiddlewareApp(async (baseUrl) => {
-      const token = jwt.sign(
-        { sub: 'user-123', email: 'jane@example.com' },
-        SECRET,
-        { algorithm: 'HS256' },
-      );
+      const token = await signValidToken();
       const response = await request(baseUrl, '/api/applications', {
         headers: { Authorization: `Bearer ${token}` },
       });

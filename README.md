@@ -64,15 +64,16 @@ Project Alice is local-first by default. A second, optional **hosted** mode adds
 
 | Variable | Scope | Secret? | Purpose |
 |---|---|---|---|
-| `SUPABASE_URL` | server | no | Supabase project REST endpoint |
+| `SUPABASE_URL` | server | no | Supabase project REST endpoint; the middleware derives the JWKS endpoint (`<URL>/auth/v1/.well-known/jwks.json`) from this |
 | `SUPABASE_ANON_KEY` | server | no | Supabase public anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | **yes** | Admin key; never expose to the frontend |
-| `SUPABASE_JWT_SECRET` | **server only** | **yes** | Signing secret used by `requireAuth` to verify access tokens (HS256) |
 | `VITE_SUPABASE_URL` | client/build | no | Same value as `SUPABASE_URL`, re-exported for the browser bundle |
 | `VITE_SUPABASE_ANON_KEY` | client/build | no | Same value as `SUPABASE_ANON_KEY` |
 | `VITE_AUTH_EMAIL_REDIRECT_URL` | client/build | no | Verification-callback URL Supabase sends in confirmation emails |
 
-The two `*_SERVICE_ROLE_KEY` / `*_JWT_SECRET` variables must never be prefixed with `VITE_` — Vite would inline them into the public bundle. The build fails closed if any of the three `VITE_*` variables is missing in production.
+The `*_SERVICE_ROLE_KEY` variable must never be prefixed with `VITE_` — Vite would inline it into the public bundle. The build fails closed if any of the three `VITE_*` variables is missing in production.
+
+Access tokens are verified server-side via Supabase's JWKS endpoint using `jose`, accepting `ES256` and `RS256` (Supabase's modern asymmetric signing modes). There is no shared HS256 secret to manage — the middleware fetches the public key by `kid` from the JWKS endpoint on demand and caches it.
 
 ### Allowlist Model
 

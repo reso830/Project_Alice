@@ -5,7 +5,6 @@ const HOSTED_REQUIRED = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_JWT_SECRET',
 ];
 
 export function loadConfig() {
@@ -37,7 +36,6 @@ export function loadConfig() {
             url: process.env.SUPABASE_URL,
             anonKey: process.env.SUPABASE_ANON_KEY,
             serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-            jwtSecret: process.env.SUPABASE_JWT_SECRET,
           }
         : null,
   });

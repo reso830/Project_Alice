@@ -1,14 +1,18 @@
-import jwt from 'jsonwebtoken';
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify } from 'jose';
 
 const UNAUTHORIZED_BODY = {
   error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
 };
 
-function classifyJwtError(err) {
-  if (err?.name === 'TokenExpiredError') return 'expired';
-  if (err?.name === 'JsonWebTokenError') {
-    return err.message === 'jwt malformed' ? 'malformed' : 'signature';
-  }
+const ALLOWED_ALGORITHMS = ['ES256', 'RS256'];
+
+function classifyJoseError(err) {
+  if (err instanceof joseErrors.JWTExpired) return 'expired';
+  if (err instanceof joseErrors.JWSSignatureVerificationFailed) return 'signature';
+  if (err instanceof joseErrors.JWKSNoMatchingKey) return 'signature';
+  if (err instanceof joseErrors.JOSEAlgNotAllowed) return 'signature';
+  if (err instanceof joseErrors.JWSInvalid) return 'malformed';
+  if (err instanceof joseErrors.JWTInvalid) return 'malformed';
   return 'other';
 }
 
@@ -19,12 +23,15 @@ function resolveLoggedPath(req) {
   return req.path;
 }
 
-export function createRequireAuth({ jwtSecret, logger = console } = {}) {
-  if (!jwtSecret) {
-    throw new Error('createRequireAuth requires a jwtSecret');
+export function createRequireAuth({ jwksUri, jwks, logger = console } = {}) {
+  if (!jwksUri && !jwks) {
+    throw new Error(
+      'createRequireAuth requires a jwksUri (or an explicit jwks getKey function for tests)',
+    );
   }
+  const getKey = jwks ?? createRemoteJWKSet(new URL(jwksUri));
 
-  return function requireAuth(req, res, next) {
+  return async function requireAuth(req, res, next) {
     const header = req.headers?.authorization;
     const path = resolveLoggedPath(req);
 
@@ -41,12 +48,14 @@ export function createRequireAuth({ jwtSecret, logger = console } = {}) {
     const token = header.slice('Bearer '.length).trim();
 
     try {
-      const payload = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+      const { payload } = await jwtVerify(token, getKey, {
+        algorithms: ALLOWED_ALGORITHMS,
+      });
       req.user = { id: payload.sub, email: payload.email };
       return next();
     } catch (err) {
       logger.warn('[auth] reject', {
-        category: classifyJwtError(err),
+        category: classifyJoseError(err),
         path,
       });
       return res.status(401).json(UNAUTHORIZED_BODY);

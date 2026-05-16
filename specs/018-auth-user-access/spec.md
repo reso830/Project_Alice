@@ -5,6 +5,13 @@
 **Status**: Draft
 **Input**: `features/018-auth-user-access.md`
 
+> **Amendment 2026-05-16 (Phase 12 finding fix)**: JWT verification is performed
+> via Supabase's JWKS endpoint (ES256/RS256 asymmetric signing), not via a
+> shared HS256 secret. `SUPABASE_JWT_SECRET` is no longer a required env var.
+> See `plan.md` amendment header and `contracts/api.md` §3 for the current
+> contract. Earlier references in this spec to HS256/`SUPABASE_JWT_SECRET`
+> reflect the original design.
+
 ---
 
 ## Problem Statement

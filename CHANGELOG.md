@@ -12,7 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - Hosted authenticated user access via Supabase email/password — feature 018-auth-user-access; local mode is unchanged and remains the default
 - `allowed_emails` table + `auth.users` `BEFORE INSERT` trigger — operator-managed allowlist enforced inside Postgres so unauthorized signups never reach `auth.users`
-- `server/auth/middleware.js` — `createRequireAuth({ jwtSecret, logger })` factory; verifies `Authorization: Bearer <jwt>` against `SUPABASE_JWT_SECRET` using HS256; logs categorized rejections (`missing | malformed | expired | signature | other`) with redacted-path context, never the token
+- `server/auth/middleware.js` — `createRequireAuth({ jwksUri, logger })` factory; verifies `Authorization: Bearer <jwt>` against Supabase's JWKS endpoint (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) via `jose.jwtVerify`, accepting `ES256` and `RS256` (Supabase's modern asymmetric signing modes); logs categorized rejections (`missing | malformed | expired | signature | other`) with redacted-path context, never the token
 - `/api/health` now returns `{ status, runtime: 'local' | 'hosted' }` so the frontend can detect a runtime/config mismatch
 - `createApp({ repositories, config, requireAuth? })` — `server/index.js` factory now accepts an optional `requireAuth`; hosted mode throws if `supabase.jwtSecret` is missing and no explicit `requireAuth` is passed
 - `logBoot(config)` — single-line `[runtime] mode=<runtime> port=<port>` entry so operators can grep the active mode in production logs
@@ -32,8 +32,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Welcome + auth overlay + ConfigError CSS in `src/styles/main.css` — diagonal-split layout (55% content / 62% hero anchored right with the design's clip-path), responsive breakpoints (≥1100px / 760–1100px / <760px / <420px), reduced-motion media query disabling card transforms and overlay entrance
 - Six hero screenshots in `src/assets/welcome-hero/` (`tracker`, `application-modal`, `profile`, `filters`, `calendar`, `mobile-tracker`)
 - Vite build-time assertion (`assertHostedFrontendEnv`) — production builds fail closed when any of `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL` is missing
-- `SUPABASE_JWT_SECRET` added to the hosted-required env-var list in `server/config.js`
-- `@supabase/supabase-js` (^2.45.0) and `jsonwebtoken` (^9.0.2) dependencies
+- `@supabase/supabase-js` (^2.45.0) and `jose` (^6.x) dependencies
 - Spec package at `specs/018-auth-user-access/` — `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/api.md`, `research.md`, `quickstart.md`, `checklists/plan-review.md`
 - `design/welcome_page.md` — visual specification for the welcome experience
 - Test suites: `tests/server/auth-middleware.test.js`, `tests/server/routes-protected.test.js`, `tests/data/authStore.test.js`, `tests/services/{supabaseClient,healthApi,resumeApi}.test.js`, `tests/components/{welcome,heroSlideshow,navbar,resumeImport}.test.js`, `tests/pages/configError.test.js`, `tests/main.test.js`, `tests/build/vite-config.test.js`
@@ -45,8 +44,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 - Allowlist enforcement lives in a Postgres `SECURITY DEFINER` trigger on `auth.users` — an Express endpoint approach was considered and rejected because it could be bypassed by direct Supabase calls from the browser
-- `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_JWT_SECRET` are server-only — neither appears in `src/` or in the Vite production bundle (verified in Phase 12)
-- JWT verification pins HS256 algorithm explicitly to defeat `alg: none` attacks
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only — never appears in `src/` or in the Vite production bundle (verified in Phase 12)
+- JWT verification pins `['ES256', 'RS256']` algorithm allowlist explicitly to defeat `alg: none` and downgrade attacks
+- No long-lived shared HS256 secret is configured anywhere; signing key material is fetched at runtime from the Supabase-managed JWKS endpoint
 - Token contents are never logged; categorized rejection logs include `category` and request path only
 
 ## [0.7.0] — 2026-05-13

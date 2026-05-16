@@ -19,8 +19,12 @@ If you haven't already:
      `VITE_SUPABASE_ANON_KEY` (client)
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` *(server-only, never on
      the client)*
-3. From **Project Settings → API → JWT Settings**, copy:
-   - `JWT Secret` → `SUPABASE_JWT_SECRET` *(server-only)*
+
+> JWT verification is handled via Supabase's JWKS endpoint
+> (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`), automatically derived
+> from `SUPABASE_URL`. No `JWT Secret` is needed — modern Supabase projects
+> sign tokens with an asymmetric ECDSA/RSA key and expose the public half
+> at the JWKS URL. The middleware fetches it on demand and caches.
 
 ---
 
@@ -139,14 +143,11 @@ In the dashboard:
 Add to your local `.env` (or `.env.local`):
 
 ```bash
-# Server (from 017)
+# Server (from 017; unchanged)
 APP_RUNTIME=hosted
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-
-# Server (new in 018)
-SUPABASE_JWT_SECRET=<jwt-secret-from-dashboard>
 
 # Vite-exposed (client-safe — read at build time, inlined into the bundle)
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -154,27 +155,45 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 VITE_AUTH_EMAIL_REDIRECT_URL=http://localhost:5173/?auth=callback
 ```
 
-> **Do not** prefix `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_JWT_SECRET` with
-> `VITE_`. The build-time assertion will not catch this — the existing
-> bundle-scan check (carried over from 017) will, but treat it as a discipline
-> issue.
+> **Do not** prefix `SUPABASE_SERVICE_ROLE_KEY` with `VITE_`. The build-time
+> assertion will not catch this — the existing bundle-scan check (carried
+> over from 017) will, but treat it as a discipline issue.
+>
+> JWT verification material is fetched from Supabase's JWKS endpoint at
+> runtime; no shared secret needs to live in this file.
 
 ---
 
 ## 6. Run
 
 ```bash
-npm run server:dev   # Express API in hosted mode
-npm run dev          # Vite frontend
+npm run server:dev:hosted   # Express API in hosted mode (--env-file=.env.local)
+npm run dev                 # Vite frontend (auto-reads .env.local)
 ```
 
+The `:hosted` variant passes `--env-file=.env.local` to Node so the server
+reads the Supabase env vars from your local file. The base
+`npm run server:dev` does not load `.env.local` and runs in local mode
+regardless of what your file contains — that's intentional so local-mode
+users without an `.env.local` aren't blocked at startup.
+
 Expected boot logs:
-- Server: `[config] Runtime mode: hosted`
+- Server: `[config] Runtime mode: hosted` (and `[runtime] mode=hosted port=3001`)
 - Frontend: Vite ready at `http://localhost:5173`
+
+> If the server log says `mode=local` instead, double-check that
+> `.env.local` exists at the project root and that `APP_RUNTIME=hosted`
+> is set there. Vite reads `.env.local` automatically; Node only does
+> when invoked with the `--env-file` flag the `:hosted` scripts add.
 
 ---
 
 ## 7. Manual validation flow
+
+> **Before you start**: open `localhost:5173` in a fresh browser context
+> (incognito window, or sign out first). Supabase JS persists sessions in
+> localStorage, so a leftover session from an earlier walkthrough will
+> short-circuit the welcome-page check in step 1.
 
 1. Open the frontend at `http://localhost:5173`. You should see the welcome
    page (diagonal split, three CTAs). The tracker, profile, and calendar
@@ -186,10 +205,18 @@ Expected boot logs:
    welcome page; Supabase auto-confirms the account; the auth state flips to
    authenticated; the app shell mounts.
 4. Navbar shows your email and a Sign Out control. Open browser dev tools →
-   Network. Refresh. Confirm a protected request like `GET /api/applications`
-   carries an `Authorization: Bearer …` header and returns 200.
+   Network. Refresh. Confirm a protected request like `GET /api/applications`:
+   - Request headers include `Authorization: Bearer eyJ…` (the access token)
+   - The server console emits **no** `[auth] reject` line
+   - Response status is **either**:
+     - `200` once feature 019 implements the Supabase repositories, **or**
+     - `500` with body `{"error":{"code":"INTERNAL_ERROR","message":"Hosted persistence is not yet implemented for: applications. See feature 019-supabase-persistence."}}`
+       while 019 is pending — this still means auth **passed**; the 500
+       comes from the repository stub downstream of the middleware.
 5. Click Sign Out. The welcome page should reappear and the next
-   `GET /api/applications` (e.g. via dev tools) should return 401.
+   `GET /api/applications` (e.g. via dev tools) should return **401**
+   (not 500) — confirming the middleware blocked the unauthenticated
+   request before it reached the repository.
 
 ### Negative paths
 
@@ -231,9 +258,11 @@ fires on `npm run build`.
 
 ## 9. Rotation
 
-- **JWT secret rotated in Supabase dashboard**: update `SUPABASE_JWT_SECRET`
-  in your `.env` and restart the server. Existing sessions fail verification;
-  users must sign in again.
+- **JWT signing key rotated in Supabase dashboard**: nothing in `.env`
+  changes. The middleware re-fetches the JWKS endpoint on the next request
+  whose `kid` doesn't match cached keys. Existing sessions signed with the
+  old key fail verification once the cache turns over; users must sign in
+  again. Force a fresh fetch by restarting the server.
 - **Service role key rotated**: update `SUPABASE_SERVICE_ROLE_KEY` and
   restart. No user impact (018 doesn't use this key in code, but 019 will).
 - **Allowlist entry removed**: the corresponding Supabase user is **not**

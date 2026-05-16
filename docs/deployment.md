@@ -103,18 +103,22 @@ Production and Preview (so preview URLs can authenticate too):
 | Name | Sensitive | Purpose |
 |---|:---:|---|
 | `APP_RUNTIME` | no | Set to `hosted` |
-| `SUPABASE_URL` | no | Server-side Supabase REST endpoint |
+| `SUPABASE_URL` | no | Server-side Supabase REST endpoint; the middleware derives the JWKS endpoint from this |
 | `SUPABASE_ANON_KEY` | no | Server-side public anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **yes** | Server-only admin key |
-| `SUPABASE_JWT_SECRET` | **yes** | Server-only HS256 secret used by `requireAuth` |
 | `VITE_SUPABASE_URL` | no | Browser bundle — same value as `SUPABASE_URL` |
 | `VITE_SUPABASE_ANON_KEY` | no | Browser bundle — same value as `SUPABASE_ANON_KEY` |
 | `VITE_AUTH_EMAIL_REDIRECT_URL` | no | Verification callback URL Supabase puts in confirmation emails |
 
-The `VITE_*` variables are inlined into the production bundle. The two
-service-role/JWT secrets are server-only and **must never** be prefixed with
+The `VITE_*` variables are inlined into the production bundle. The
+service-role key is server-only and **must never** be prefixed with
 `VITE_`. The `vite.config.js` plugin `assertHostedFrontendEnv` fails the
 build closed if any of the three `VITE_*` vars is missing in production.
+
+Access tokens are verified server-side via Supabase's JWKS endpoint
+(`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) using `jose`, accepting
+`ES256` and `RS256` — Supabase's modern asymmetric signing modes for
+projects created from 2024 onwards. No shared HS256 secret is required.
 
 ### Supabase Auth redirect URL configuration
 
@@ -144,7 +148,7 @@ against the **production** Supabase project. Quick recap:
 4. A signup with a non-allowlisted email fails — direct Supabase API call from
    the dashboard / SQL editor, not via the in-app form.
 5. A signup with an allowlisted email succeeds.
-6. `SUPABASE_JWT_SECRET` matches what Vercel has configured.
+6. JWKS endpoint at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` returns a valid JWKS document (curl it; expect `{ "keys": [ { ... } ] }`).
 
 Capture each check's output in the deploy PR description. **If any check
 fails, do not promote** — install the missing piece and rerun the gate from
@@ -182,11 +186,10 @@ vars — feature 018 added no new local-mode requirements.
    from `dist/`, and exposes `api/index.js` as a serverless function. The
    `vercel.json` rewrite forwards all `/api/*` requests to that function.
 
-If `APP_RUNTIME=hosted` is set but any of the four required Supabase variables
-(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-`SUPABASE_JWT_SECRET`) are missing or empty, the function throws at cold
-start. Vercel surfaces this as a deployment-time error naming the missing
-variable.
+If `APP_RUNTIME=hosted` is set but any of the three required Supabase variables
+(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are missing
+or empty, the function throws at cold start. Vercel surfaces this as a
+deployment-time error naming the missing variable.
 
 Authentication (feature **018**) is implemented; Supabase persistence
 (feature **019**) is still pending. Hosted deployments today gate all
@@ -202,10 +205,9 @@ session but return HTTP 500 from the repository layer until 019 lands.
 | `APP_RUNTIME` | server | no | yes | `"local"` or `"hosted"`. Defaults to `"local"` if absent. |
 | `PORT` | server | no | no | API listen port. Defaults to `3001`. |
 | `ALICE_DB_PATH` | server | no | no | Override path for the local SQLite file (default `data/alice.db`). |
-| `SUPABASE_URL` | server | no | yes | Supabase project URL. |
+| `SUPABASE_URL` | server | no | yes | Supabase project URL; middleware derives JWKS endpoint from this. |
 | `SUPABASE_ANON_KEY` | server | no | yes | Supabase anon/public key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | server-only | no | yes | Supabase service role key. **Never expose to the frontend.** |
-| `SUPABASE_JWT_SECRET` | server-only | no | yes | HS256 signing secret used by `server/auth/middleware.js`. **Never expose to the frontend.** |
 | `VITE_SUPABASE_URL` | client/build | no | yes | Same value as `SUPABASE_URL`; inlined into the Vite bundle. |
 | `VITE_SUPABASE_ANON_KEY` | client/build | no | yes | Same value as `SUPABASE_ANON_KEY`; inlined into the Vite bundle. |
 | `VITE_AUTH_EMAIL_REDIRECT_URL` | client/build | no | yes | Verification callback URL Supabase puts in confirmation emails (e.g. `https://<host>/?auth=callback`). |
@@ -225,7 +227,7 @@ purpose of hosted-mode required checks. The Vite plugin
 | Persistence | SQLite file (`data/alice.db`) | Supabase Postgres (feature 019) |
 | Server entry | `node server/index.js` → `app.listen(config.port)` | `api/index.js` exported as a Vercel Function |
 | Repository layer | `createSqliteApplicationsRepository` / `createSqliteProfileRepository` | Stub repositories that throw `HostedRepositoryNotImplementedError` |
-| Required env vars | None | Four server (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`) + three client (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`) |
+| Required env vars | None | Three server (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) + three client (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`) |
 | API behavior | Fully functional CRUD on applications and profile | `GET /api/health` returns `{ status, runtime }`; protected routes require `Authorization: Bearer <jwt>` and currently return HTTP 500 from the repository layer pending feature 019 |
 | Auth | None (single local user) | Supabase email/password with operator allowlist (feature 018) |
 | Frontend | Same Vite bundle, same `/api/*` calls | Same Vite bundle, same `/api/*` calls |
@@ -245,7 +247,7 @@ Browser ──► Vite static bundle (Vercel CDN, dist/)
 Vercel rewrite (vercel.json) ──► api/index.js (Vercel Function)
                                        │
                                        ├─ server/config.js          (validates env)
-                                       ├─ server/auth/middleware.js (requireAuth: JWT HS256)
+                                       ├─ server/auth/middleware.js (requireAuth: JWKS-verified ES256/RS256 via jose)
                                        ├─ server/repositories/index.js
                                        │     └─ hosted stubs
                                        │        Supabase adapters (feature 019)

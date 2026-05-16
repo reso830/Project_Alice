@@ -1,13 +1,18 @@
-import jwt from 'jsonwebtoken';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateKeyPair, SignJWT } from 'jose';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequireAuth } from '../../server/auth/middleware.js';
-
-const SECRET = 'test-jwt-secret-do-not-use-in-production';
-const OTHER_SECRET = 'a-different-secret';
 
 const UNAUTHORIZED_BODY = {
   error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
 };
+
+let trustedKeyPair;
+let untrustedKeyPair;
+
+beforeAll(async () => {
+  trustedKeyPair = await generateKeyPair('ES256');
+  untrustedKeyPair = await generateKeyPair('ES256');
+});
 
 function makeReq({ authorization, path = '/api/applications' } = {}) {
   return {
@@ -36,12 +41,21 @@ function makeLogger() {
   return { warn: vi.fn(), error: vi.fn(), info: vi.fn() };
 }
 
-function signToken(claims = {}, options = {}) {
-  return jwt.sign(
-    { sub: 'user-uuid', email: 'user@example.com', ...claims },
-    SECRET,
-    { algorithm: 'HS256', expiresIn: '1h', ...options },
-  );
+async function signToken({
+  privateKey = trustedKeyPair.privateKey,
+  alg = 'ES256',
+  claims = {},
+  expiresIn = '1h',
+} = {}) {
+  return new SignJWT({
+    sub: 'user-uuid',
+    email: 'user@example.com',
+    ...claims,
+  })
+    .setProtectedHeader({ alg, kid: 'test-kid' })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(privateKey);
 }
 
 describe('createRequireAuth', () => {
@@ -52,19 +66,22 @@ describe('createRequireAuth', () => {
   beforeEach(() => {
     logger = makeLogger();
     next = vi.fn();
-    middleware = createRequireAuth({ jwtSecret: SECRET, logger });
+    middleware = createRequireAuth({
+      jwks: async () => trustedKeyPair.publicKey,
+      logger,
+    });
   });
 
-  it('throws when constructed without a jwtSecret', () => {
-    expect(() => createRequireAuth({})).toThrow(/jwtSecret/);
-    expect(() => createRequireAuth()).toThrow(/jwtSecret/);
+  it('throws when constructed without jwksUri or jwks', () => {
+    expect(() => createRequireAuth({})).toThrow(/jwksUri/);
+    expect(() => createRequireAuth()).toThrow(/jwksUri/);
   });
 
-  it('rejects requests with no Authorization header (category: missing)', () => {
+  it('rejects requests with no Authorization header (category: missing)', async () => {
     const req = makeReq();
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(res.body).toEqual(UNAUTHORIZED_BODY);
@@ -77,11 +94,11 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('rejects header that does not start with "Bearer " (category: malformed)', () => {
+  it('rejects header that does not start with "Bearer " (category: malformed)', async () => {
     const req = makeReq({ authorization: 'Token abc.def.ghi' });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(res.body).toEqual(UNAUTHORIZED_BODY);
@@ -92,11 +109,11 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('rejects Bearer token with malformed JWT body (category: malformed)', () => {
+  it('rejects Bearer token with malformed JWT body (category: malformed)', async () => {
     const req = makeReq({ authorization: 'Bearer not-a-real-jwt' });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(next).not.toHaveBeenCalled();
@@ -106,12 +123,12 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('rejects token signed with the wrong secret (category: signature)', () => {
-    const token = jwt.sign({ sub: 'x' }, OTHER_SECRET, { algorithm: 'HS256' });
+  it('rejects token signed with a different keypair (category: signature)', async () => {
+    const token = await signToken({ privateKey: untrustedKeyPair.privateKey });
     const req = makeReq({ authorization: `Bearer ${token}` });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(next).not.toHaveBeenCalled();
@@ -121,15 +138,16 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('rejects an expired token (category: expired)', () => {
-    const token = jwt.sign({ sub: 'x' }, SECRET, {
-      algorithm: 'HS256',
-      expiresIn: '-1s',
-    });
+  it('rejects an expired token (category: expired)', async () => {
+    const token = await new SignJWT({ sub: 'x' })
+      .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+      .sign(trustedKeyPair.privateKey);
     const req = makeReq({ authorization: `Bearer ${token}` });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(next).not.toHaveBeenCalled();
@@ -139,24 +157,31 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('rejects a token signed with HS512 even if the key matches (algorithm allowlist)', () => {
-    const token = jwt.sign({ sub: 'x' }, SECRET, { algorithm: 'HS512' });
+  it('rejects a token signed with a non-allowlisted algorithm (HS256, category: signature)', async () => {
+    const secret = new TextEncoder().encode('shared-secret-not-allowed');
+    const token = await new SignJWT({ sub: 'x' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(secret);
     const req = makeReq({ authorization: `Bearer ${token}` });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(res.statusCode).toBe(401);
     expect(next).not.toHaveBeenCalled();
     expect(logger.warn.mock.calls[0][1].category).toBe('signature');
   });
 
-  it('accepts a valid HS256 token and populates req.user', () => {
-    const token = signToken({ sub: 'user-123', email: 'jane@example.com' });
+  it('accepts a valid ES256 token and populates req.user', async () => {
+    const token = await signToken({
+      claims: { sub: 'user-123', email: 'jane@example.com' },
+    });
     const req = makeReq({ authorization: `Bearer ${token}` });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user).toEqual({ id: 'user-123', email: 'jane@example.com' });
@@ -164,11 +189,11 @@ describe('createRequireAuth', () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
-  it('uses the request path in the log entry, not a hardcoded value', () => {
+  it('uses the request path in the log entry, not a hardcoded value', async () => {
     const req = makeReq({ path: '/api/profile' });
     const res = makeRes();
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(logger.warn).toHaveBeenCalledWith('[auth] reject', {
       category: 'missing',
@@ -176,20 +201,21 @@ describe('createRequireAuth', () => {
     });
   });
 
-  it('never includes the rejected token in any log argument across all rejection categories', () => {
+  it('never includes the rejected token in any log argument across all rejection categories', async () => {
     const tokens = {
       malformedBody: 'eyJhbGciOiJI.malformed-token.zzz',
-      wrongSig: jwt.sign({ sub: 'x' }, OTHER_SECRET, { algorithm: 'HS256' }),
-      expired: jwt.sign({ sub: 'x' }, SECRET, {
-        algorithm: 'HS256',
-        expiresIn: '-1s',
-      }),
+      wrongSig: await signToken({ privateKey: untrustedKeyPair.privateKey }),
+      expired: await new SignJWT({ sub: 'x' })
+        .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
+        .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+        .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+        .sign(trustedKeyPair.privateKey),
     };
 
     for (const [label, token] of Object.entries(tokens)) {
       const req = makeReq({ authorization: `Bearer ${token}` });
       const res = makeRes();
-      middleware(req, res, next);
+      await middleware(req, res, next);
 
       const tokenAppearedSomewhere = logger.warn.mock.calls.some((call) =>
         call.some((arg) => {

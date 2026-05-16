@@ -10,7 +10,6 @@ function resetEnv() {
   delete process.env.SUPABASE_URL;
   delete process.env.SUPABASE_ANON_KEY;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-  delete process.env.SUPABASE_JWT_SECRET;
   delete process.env.PORT;
 }
 
@@ -19,7 +18,6 @@ function setHostedEnv(overrides = {}) {
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_ANON_KEY = 'anon-key';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
-  process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
 
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) {
@@ -69,7 +67,6 @@ describe('loadConfig', () => {
         url: 'https://example.supabase.co',
         anonKey: 'anon-key',
         serviceRoleKey: 'service-role-key',
-        jwtSecret: 'jwt-secret',
       },
     });
   });
@@ -90,18 +87,6 @@ describe('loadConfig', () => {
     setHostedEnv({ SUPABASE_SERVICE_ROLE_KEY: undefined });
 
     expect(() => loadConfig()).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
-  });
-
-  it('rejects hosted mode when SUPABASE_JWT_SECRET is missing', () => {
-    setHostedEnv({ SUPABASE_JWT_SECRET: undefined });
-
-    expect(() => loadConfig()).toThrow(/SUPABASE_JWT_SECRET/);
-  });
-
-  it('treats an empty SUPABASE_JWT_SECRET as missing in hosted mode', () => {
-    setHostedEnv({ SUPABASE_JWT_SECRET: '' });
-
-    expect(() => loadConfig()).toThrow(/SUPABASE_JWT_SECRET/);
   });
 
   it('rejects an invalid runtime value', () => {

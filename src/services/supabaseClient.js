@@ -15,3 +15,12 @@ export const supabase = url && anonKey
   : null;
 
 export const isHostedAuthAvailable = supabase !== null;
+
+// Expose the client on `window` so operators can run the bypass test from
+// DevTools (`await window.supabase.auth.signUp({ email, password })`) per
+// quickstart.md §7 negative paths. This adds no attack surface: the anon key
+// and URL are already inlined into the Vite bundle and constructable from
+// the source by anyone with browser dev tools.
+if (typeof globalThis !== 'undefined' && supabase) {
+  globalThis.supabase = supabase;
+}

@@ -14,12 +14,13 @@ export function createApp({ repositories, config: appConfig, requireAuth: explic
 
   let requireAuth = explicitRequireAuth;
   if (!requireAuth && appConfig?.isHosted) {
-    if (!appConfig.supabase?.jwtSecret) {
+    if (!appConfig.supabase?.url) {
       throw new Error(
-        'createApp: hosted config requires supabase.jwtSecret to build requireAuth (or pass an explicit requireAuth)',
+        'createApp: hosted config requires supabase.url to build requireAuth (or pass an explicit requireAuth)',
       );
     }
-    requireAuth = createRequireAuth({ jwtSecret: appConfig.supabase.jwtSecret });
+    const jwksUri = `${appConfig.supabase.url.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`;
+    requireAuth = createRequireAuth({ jwksUri });
   }
 
   app.use(express.json());

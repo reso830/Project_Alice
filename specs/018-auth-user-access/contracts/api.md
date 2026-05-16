@@ -20,9 +20,15 @@ Extends the table in `specs/017-hosted-foundation/contracts/api.md`.
 
 ### Server-only (added)
 
-| Variable | Local required | Hosted required | Notes |
-|---|---|---|---|
-| `SUPABASE_JWT_SECRET` | no | yes | HS256 secret used to verify Supabase-issued access tokens in `requireAuth`. **Never expose to the frontend.** |
+None new for feature 018. Token verification uses Supabase's JWKS endpoint
+(`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`), so the only required
+server env vars are the three already in 017 (`SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). `SUPABASE_URL` is
+re-used to derive the JWKS URI.
+
+> **Algorithm note**: Tokens are accepted only when signed with `ES256` or
+> `RS256` (Supabase's modern asymmetric signing modes). The middleware
+> explicitly disallows `alg: none`, `HS256`, and any other algorithm.
 
 ### Client-safe (added — read at Vite build time, inlined into the bundle)
 
@@ -41,19 +47,16 @@ Express endpoint.
 
 ### Validation rules (added to `server/config.js`)
 
-Adds one rule to 017's validation:
-
-6. If `APP_RUNTIME=hosted` and `SUPABASE_JWT_SECRET` is absent or empty-string →
-   throw:
-   ```
-   Missing required environment variable for hosted mode: SUPABASE_JWT_SECRET
-   ```
+No new server-side env validation rules added by feature 018 (verification
+key material is fetched from the JWKS endpoint at runtime, not configured
+via env vars).
 
 ### Client-bundle guarantees
 
-Re-asserted from 017 (with one addition):
+Re-asserted from 017:
 - `SUPABASE_SERVICE_ROLE_KEY` MUST NOT appear in the Vite bundle.
-- `SUPABASE_JWT_SECRET` MUST NOT appear in the Vite bundle.
+- The middleware's signing key material is fetched at runtime from
+  Supabase's JWKS endpoint and never enters the bundle in any form.
 
 ---
 
@@ -86,10 +89,16 @@ in hosted mode. Local mode never instantiates the middleware.
 |---|---|---|---|
 | Header missing | 401 `UNAUTHORIZED` | unchanged | no |
 | Header present but not `Bearer <…>` shape | 401 `UNAUTHORIZED` | unchanged | no |
-| JWT signature invalid (wrong secret) | 401 `UNAUTHORIZED` | unchanged | no |
+| JWT signature invalid (no matching JWKS key, wrong key, or `kid` mismatch) | 401 `UNAUTHORIZED` | unchanged | no |
+| JWT signed with a non-allowlisted algorithm (anything other than `ES256` / `RS256`) | 401 `UNAUTHORIZED` | unchanged | no |
 | JWT malformed | 401 `UNAUTHORIZED` | unchanged | no |
 | JWT expired | 401 `UNAUTHORIZED` | unchanged | no |
 | JWT valid | passthrough | `{ id, email }` set | yes |
+
+Verification uses `jose.jwtVerify` against a remote JWKS fetched from
+`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`. The JWKS is cached
+internally by `jose.createRemoteJWKSet`; matching public key is selected
+by the JWT's `kid` header.
 
 ### Resolved request augmentation
 

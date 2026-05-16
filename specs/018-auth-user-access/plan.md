@@ -1,5 +1,17 @@
 # Implementation Plan: Hosted Authenticated User Access (018)
 
+> **Amendment 2026-05-16 (Phase 12 finding fix)**: The JWT verification design
+> in this plan was originally specified as HS256 with a shared `SUPABASE_JWT_SECRET`.
+> Manual validation in Phase 12 surfaced that modern Supabase projects (created
+> from 2024+) sign access tokens with asymmetric keys (ES256 by default) and
+> the Legacy JWT Secret is no longer the source of truth. The middleware was
+> rewritten to verify via Supabase's JWKS endpoint
+> (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) using `jose`, accepting
+> `['ES256', 'RS256']`. `SUPABASE_JWT_SECRET` is no longer required; the JWKS
+> URI is derived from `SUPABASE_URL`. References in this plan to HS256, `jwtSecret`,
+> and `jsonwebtoken` reflect the original design and have been superseded — see
+> `contracts/api.md` §3 for the current contract.
+
 **Branch**: `018-auth-user-access` | **Date**: 2026-05-14 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `specs/018-auth-user-access/spec.md`
 **Visual design**: [design/welcome_page.md](../../design/welcome_page.md) — diagonal

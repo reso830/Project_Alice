@@ -1,5 +1,15 @@
 # Research: Hosted Authenticated User Access (018)
 
+> **Amendment 2026-05-16**: Decisions R2/R3 below chose HS256 +
+> `SUPABASE_JWT_SECRET` + `jsonwebtoken` for JWT verification. That choice was
+> wrong for modern Supabase projects (created from 2024+), which sign access
+> tokens with asymmetric ECDSA keys (ES256 by default) and expose the public
+> key via a JWKS endpoint. The implementation was rewritten in Phase 12 to use
+> `jose.jwtVerify` against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`,
+> accepting `['ES256', 'RS256']`. See `plan.md` amendment header. The original
+> R2/R3 entries below are preserved as a record of the design path; they do
+> not reflect the merged implementation.
+
 Decisions and rejected alternatives that informed the plan. Each entry: the
 question, the option chosen, why, and what we rejected.
 

@@ -1,5 +1,11 @@
 # Data Model: Hosted Authenticated User Access (018)
 
+> **Amendment 2026-05-16**: §JWT Claims below describes the access token as
+> HS256-signed; the implementation actually verifies tokens via Supabase's
+> JWKS endpoint (ES256/RS256). The claim shape (`sub`, `email`, `exp`, etc.)
+> is unchanged — only the signing algorithm and verification mechanism differ.
+> See `plan.md` amendment header for the rationale.
+
 This feature introduces:
 1. One new Supabase table — `allowed_emails`
 2. One new Postgres trigger function (`SECURITY DEFINER`) that consults the
