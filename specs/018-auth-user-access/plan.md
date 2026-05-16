@@ -12,6 +12,83 @@
 > and `jsonwebtoken` reflect the original design and have been superseded — see
 > `contracts/api.md` §3 for the current contract.
 
+> **Amendment 2026-05-16 (Phase 13 — tracker chrome refresh)**: After Phase 12
+> closed out v0.8.0, design review surfaced that the Tracker top bar and toolbar
+> were not yet aligned with the authentication chrome introduced by this
+> feature. `design/tracker.md` was rewritten to unify the top bar + toolbar
+> into a single navy band, formalize the identity cluster (`.topbar-email` +
+> `.signout-btn` with door-arrow SVG, mobile icon-only collapse), and
+> introduce two new mobile-only components (Bottom Tab Bar + FAB) plus a
+> fold-narrow `< 380px` breakpoint. Phase 13 implements those changes inside
+> 018 because they directly visualize the auth session state introduced by
+> FR-010 (now extended by FR-010a/b/c). Behavior remains as previously
+> specified except that the signed-out form of the cluster is now
+> "not rendered" (the Welcome page is the only sign-in surface). Phase 14 will
+> cover the corresponding welcome-page refresh (`design/welcome_page.md`,
+> currently in flight). A single Release Prep (Phase 15, bumping to 0.8.1) +
+> Browser Smoke Test (Phase 16, UI-only) will follow once both UI phases land.
+> Source of visual truth for Phase 13: `design/tracker.md`.
+
+> **Amendment 2026-05-16 (Phases 14–18 — welcome page refresh)**:
+> `design/welcome_page.md` was rewritten between Phase 12 closeout and
+> Phase 13 to replace the original 6-product-screenshot slideshow design
+> with a Tweaks-panel-driven page that exposes four layout modes, three
+> theme variants, four abstract hero scenes, a restyled Auth Modal, and a
+> `<760px` portrait-stack mobile branch. Because the scope is large, it is
+> implemented across **five sequential phases**:
+>
+> - **Phase 14 (Foundation)**: appMeta module + design tokens + headline
+>   accent + brand mark swap + remove legacy pills/disclaimer + mini footer
+>   sourced from `appMeta.js` + demo CTA placeholder via shared
+>   `showDemoComingSoon()` stub.
+> - **Phase 15 (Hero scenes)**: four animated scene modules
+>   (`SceneStack` / `ScenePipeline` / `SceneProfile` / `SceneLogo`) +
+>   `HeroSlideshow` rebuilt around them.
+> - **Phase 16 (Tweaks + layouts + themes)**: `tweaksStore` + `TweaksPanel`
+>   + four layout modes + three theme variants.
+> - **Phase 17 (Auth Modal restyle)**: drop tab strip, 440px shell, new
+>   overlay rgba + blur, "or" divider + in-modal demo button (wired to the
+>   Phase 14 stub), swap-mode link, legal copy on signup.
+> - **Phase 18 (Mobile + cleanup)**: `<760px` portrait-stack branch in the
+>   single `WelcomePage.js` module, deletion of the six `welcome-hero/*.png`
+>   files, full rewrite of `tests/components/welcome.test.js`, final
+>   spec/design cross-check.
+>
+> The redesign lives inside 018 (vs. a separate feature) because it shares
+> the Welcome page surface with the auth flow already built in Phases 06–09;
+> a separate feature would fork the same module. Architecture decisions are
+> appended in the **Architecture (Phase 14 additions)** section below. The
+> "Phase 14 additions" naming is preserved as the section title because the
+> architecture was originally drafted for the unified Phase 14; the content
+> applies to all five sub-phases (14–18). Source of visual truth:
+> `design/welcome_page.md`.
+>
+> Key tech-stack adaptations: the design doc references React/JSX prototype
+> files (`welcome-app.jsx`, `Welcome.html`, `Welcome Mobile.html`,
+> `tweaks-panel.jsx`, `ios-frame.jsx`); the production implementation lives
+> in the existing Vanilla JS modules under `src/pages/welcome/*.js`. A single
+> responsive `WelcomePage.js` handles desktop / tablet / mobile via viewport
+> classes — there is no separate mobile module. The `EDITMODE-BEGIN/END`
+> JSON block from the prototype is implemented as a plain defaults object
+> in the Vanilla JS Tweaks store; the URL-param overlay logic
+> (`?layout=centered&theme=warm`) carries over directly.
+>
+> Conflicts with the original 018 design resolved in Phase 14:
+> - The previous design's **Try Demo (disabled + "Coming soon" tooltip)** is
+>   replaced by the new design's enabled CTA — but the CTA's behavior in
+>   this feature is a placeholder toast (FR-023). Real demo wiring remains
+>   feature 020.
+> - The previous design's **floating metadata pills** + "Sample data —
+>   illustrative only" disclaimer are removed entirely (FR-020).
+> - The previous design's **6 hero screenshots** (`src/assets/welcome-hero/`,
+>   captured in Phase 10) are replaced by the abstract scenes (FR-021). The
+>   captured PNGs may be deleted from the repo as part of Phase 14.
+> - The new design's **MIT** license + **v 0.4.0** version in the mini footer
+>   are stale prototype placeholders — production renders PolyForm
+>   Noncommercial 1.0.0 + the live `APP_VERSION` (FR-026).
+> - The new design's **name field on signup** is omitted (FR-024 / 018
+>   FR-002 unchanged); Supabase signup stays email + password.
+
 **Branch**: `018-auth-user-access` | **Date**: 2026-05-14 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `specs/018-auth-user-access/spec.md`
 **Visual design**: [design/welcome_page.md](../../design/welcome_page.md) — diagonal
@@ -640,3 +717,114 @@ Reviewed before generating `tasks.md` via `/speckit.tasks`.
 - Confirm whether to extract a shared `src/utils/focusTrap.js` helper now or
   copy focus-trap logic into `AuthOverlay.js` and extract later if a third
   consumer appears.
+
+---
+
+## Architecture (Phase 14 additions)
+
+### 14.A — Module layout
+
+The existing `src/pages/welcome/*.js` module set stays in place; Phase 14
+extends rather than replaces it.
+
+```
+src/pages/welcome/
+├── WelcomePage.js          — orchestrator, layout + theme application, viewport branch (existing, will be heavily edited)
+├── HeroSlideshow.js        — scene cycler (existing — scene set changes from 6 screenshots → 4 abstract scenes)
+├── AuthOverlay.js          — renamed in spirit to "Auth Modal"; behavior + layout updated (existing)
+├── LoginForm.js            — adds "Forgot?" link; submit path unchanged (existing)
+├── SignupForm.js           — name field NOT added; submit path unchanged (existing)
+├── scenes/                 — NEW
+│   ├── SceneStack.js       — 4-card tilted stack (diagonal/split/hero) / 2-card flat row (centered)
+│   ├── ScenePipeline.js    — single preview card with cycling status badge
+│   ├── SceneProfile.js     — donut + 4 stat chips + 2-column legend
+│   └── SceneLogo.js        — Alice mark with sparkle stars
+├── tweaks/                 — NEW
+│   ├── tweaksStore.js      — module-state defaults + URL-param overlay + subscribers
+│   └── TweaksPanel.js      — floating control panel UI
+└── shared/                 — NEW
+    └── appMeta.js          — single source of truth for APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL (also imported by src/components/Footer.js)
+```
+
+The new `scenes/` directory keeps the four scene implementations isolated
+from `HeroSlideshow.js`. The slideshow orchestrates timing + dots + scene
+transitions; each scene module owns its own internal animation and DOM.
+
+`shared/appMeta.js` is the dedup target for the Phase 14 footer work — both
+`src/components/Footer.js` and the Welcome mini footer import from it, so
+the version bump in Phase 15 only touches one place. `APP_VERSION`,
+`ISSUE_URL`, `LICENSE_NAME` (`"PolyForm Noncommercial 1.0.0"`), and
+`LICENSE_URL` (PolyForm reference URL) live here.
+
+### 14.B — Tweaks system
+
+The Tweaks system is a small in-memory store with three concerns:
+
+1. **Defaults** (`TWEAK_DEFAULTS`) — frozen object matching design §5
+   (`layout: 'diagonal'`, `theme: 'warm'`, `copyIntensity: 'none'`,
+   `authState: 'signin'`, `heroScene: 'auto'`).
+2. **URL-param overlay** at load: `new URLSearchParams(location.search)`
+   filters down to the five known keys, validated against their allowed
+   values, then overlays onto defaults.
+3. **Subscribers**: same pub/sub pattern as `authStore` / `data/store.js`.
+
+The Tweaks panel UI is a floating widget anchored to the top-right of the
+viewport, behind a small toggle button (`◆` glyph). On mobile (`<760px`) the
+panel is hidden by default — its layout/theme switches are meaningless at
+that viewport (the mobile branch is its own layout). The panel ships to
+production at the user's request even though it's primarily a designer-
+review tool; it's lightweight (<10kB) and gated behind a toggle so it
+doesn't affect first-paint.
+
+State changes from the Tweaks panel apply via CSS class swaps on the
+welcome root:
+
+- `.welcome--layout-diagonal | --layout-split | --layout-centered | --layout-hero`
+- `.welcome--theme-warm | --theme-white | --theme-navy`
+- `.welcome--copy-none | --copy-minimal | --copy-pitch`
+
+…and via prop updates on `HeroSlideshow` (for `heroScene`) and `AuthOverlay`
+(for `authState`).
+
+### 14.C — Responsive strategy
+
+Single `WelcomePage.js` with three viewport branches handled via CSS media
+queries:
+
+| Range | Strategy |
+|---|---|
+| `≥ 1100px` | Diagonal split per design §3.1; Tweaks panel visible |
+| `760–1099px` | Force `layout: centered` regardless of Tweaks panel selection (panel still toggles theme + scene); preview band styling per design §3.2 |
+| `< 760px` | Portrait stack per design §3.3 — no slideshow, no diagonal, no Tweaks panel; brand block left-aligned with `Alice_Colored.png`; full-width CTAs with pulsing demo dot |
+
+No separate page module. The viewport branch is detected via CSS classes
+(`.welcome--mobile`) applied on a `matchMedia` listener attached at mount.
+
+### 14.D — Demo CTA placeholder
+
+The "Try the demo" CTA (welcome page + auth modal) calls
+`showDemoComingSoonToast()` — a small inline helper that reuses the existing
+Toast component (`src/components/Toast.js`). No routing, no flag flipping,
+no fallback to `alert()`. The handler is exported from a new
+`src/pages/welcome/demoStub.js` so feature 020 can later replace its single
+call site with the real demo-route handler.
+
+### 14.E — Asset cleanup
+
+`src/assets/welcome-hero/*.png` (six PNGs captured in Phase 10) become
+unused after the slideshow swap. Phase 14's asset task removes them and
+the corresponding imports from `WelcomePage.js`. `Alice_Colored.png` is
+added under `src/assets/` (single file — paint a colored variant of the
+existing white mark; if the project already has a colored brand asset
+elsewhere, reuse it instead of importing a duplicate).
+
+### 14.F — Scope guardrails
+
+Phase 14 touches the welcome surface only. It must NOT:
+- Change `authStore`, `supabaseClient`, route handlers, or middleware.
+- Modify the JWT contract or `contracts/api.md`.
+- Add fields to Supabase signup (`name` is explicitly omitted — FR-002 unchanged).
+- Implement the real demo route (feature 020).
+
+If an apparent design change would require any of those, stop and surface
+it — Phase 14 keeps the auth contract immutable.

@@ -1,16 +1,29 @@
+// Auth modal — design/welcome_page.md §4.6
+//
+// Phase 17 restyle: drops the tab strip; adds a header row (40px Alice
+// mark + title + close), a footer block (submit lives in the form, then
+// "or" divider, demo button wired to `showDemoComingSoon`, swap-mode link,
+// and signup-only legal copy). Mode swap is in-place — overlay does not
+// remount, focus stays inside the modal, entered email persists. No
+// Forgot-password affordance (spec FR "no custom in-app reset UI";
+// password reset stays operator-driven).
+
+import aliceColored from '../../assets/Alice_Colored.png';
 import { mountLoginForm } from './LoginForm.js';
 import { mountSignupForm } from './SignupForm.js';
+import { showDemoComingSoon } from './demoStub.js';
 
 const VALID_VIEWS = new Set(['login', 'signup', 'verification_sent']);
 
+const SWAP_LABEL = {
+  login: { prompt: "Don't have an account?", action: 'Create one', target: 'signup' },
+  signup: { prompt: 'Already have one?', action: 'Sign in', target: 'login' },
+};
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
-  if (className) {
-    node.className = className;
-  }
-  if (text !== undefined) {
-    node.textContent = text;
-  }
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
   return node;
 }
 
@@ -39,6 +52,78 @@ function trapFocus(panel, event) {
   }
 }
 
+function buildHeader() {
+  const header = el('div', 'auth-overlay__header');
+
+  const logo = document.createElement('img');
+  logo.className = 'auth-overlay__header-logo';
+  logo.src = aliceColored;
+  logo.alt = '';
+  logo.width = 40;
+  logo.height = 40;
+
+  const title = el('h2', 'auth-overlay__title');
+  title.id = 'auth-overlay-title';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'auth-overlay__close';
+  closeBtn.textContent = 'Close';
+  closeBtn.setAttribute('aria-label', 'Close authentication overlay');
+
+  header.append(logo, title, closeBtn);
+  return { header, title, closeBtn };
+}
+
+function buildFooter({ onDemo, onSwap }) {
+  const footer = el('div', 'auth-overlay__footer');
+
+  const divider = el('div', 'auth-overlay__divider');
+  divider.setAttribute('aria-hidden', 'true');
+  const dividerText = el('span', 'auth-overlay__divider-text', 'or');
+  divider.append(dividerText);
+
+  const demo = document.createElement('button');
+  demo.type = 'button';
+  demo.className = 'auth-overlay__demo';
+  const demoDot = el('span', 'auth-overlay__demo-dot');
+  demoDot.setAttribute('aria-hidden', 'true');
+  const demoText = el('span', 'auth-overlay__demo-text', 'Try the demo');
+  demo.append(demoDot, demoText);
+  demo.addEventListener('click', () => onDemo?.());
+
+  const swap = document.createElement('button');
+  swap.type = 'button';
+  swap.className = 'auth-overlay__swap';
+  const swapPrompt = el('span', 'auth-overlay__swap-prompt');
+  const swapAction = el('span', 'auth-overlay__swap-action');
+  swap.append(swapPrompt, document.createTextNode(' '), swapAction);
+  swap.addEventListener('click', () => {
+    const target = swap.dataset.authSwapTarget;
+    if (target) onSwap?.(target);
+  });
+
+  const legal = el('p', 'auth-overlay__legal');
+  legal.hidden = true;
+  legal.textContent = 'By creating an account, you agree to the terms of use and privacy policy.';
+
+  footer.append(divider, demo, swap, legal);
+  return { footer, swap, swapPrompt, swapAction, legal };
+}
+
+function applySwap({ swap, swapPrompt, swapAction }, view) {
+  const labels = SWAP_LABEL[view];
+  if (!labels) {
+    swap.hidden = true;
+    return;
+  }
+  swap.hidden = false;
+  swap.dataset.authSwapTarget = labels.target;
+  swap.setAttribute('aria-label', `${labels.prompt} ${labels.action}`);
+  swapPrompt.textContent = labels.prompt;
+  swapAction.textContent = labels.action;
+}
+
 export function render({ view = 'login', onClose, onSwitch } = {}) {
   const initialView = VALID_VIEWS.has(view) ? view : 'login';
   const state = { view: initialView, email: '' };
@@ -56,41 +141,21 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-labelledby', 'auth-overlay-title');
 
-  const closeBtn = document.createElement('button');
-  closeBtn.type = 'button';
-  closeBtn.className = 'auth-overlay__close';
-  closeBtn.textContent = 'Close';
-  closeBtn.setAttribute('aria-label', 'Close authentication overlay');
-
-  const tabs = el('div', 'auth-overlay__tabs');
-  tabs.setAttribute('role', 'tablist');
-
-  const loginTab = document.createElement('button');
-  loginTab.type = 'button';
-  loginTab.className = 'auth-overlay__tab';
-  loginTab.textContent = 'Sign In';
-  loginTab.dataset.tab = 'login';
-  loginTab.setAttribute('role', 'tab');
-
-  const signupTab = document.createElement('button');
-  signupTab.type = 'button';
-  signupTab.className = 'auth-overlay__tab';
-  signupTab.textContent = 'Create Account';
-  signupTab.dataset.tab = 'signup';
-  signupTab.setAttribute('role', 'tab');
-
-  tabs.append(loginTab, signupTab);
-
-  const title = el('h2', 'auth-overlay__title');
-  title.id = 'auth-overlay-title';
-
+  const { header, title, closeBtn } = buildHeader();
   const formSlot = el('div', 'auth-overlay__form-slot');
-
-  panel.append(closeBtn, tabs, title, formSlot);
-  root.append(backdrop, panel);
+  const body = el('div', 'auth-overlay__body');
+  body.append(formSlot);
 
   let formUnmount = null;
   let closed = false;
+
+  const footerBuilt = buildFooter({
+    onDemo: () => showDemoComingSoon(),
+    onSwap: (target) => setView(target),
+  });
+
+  panel.append(header, body, footerBuilt.footer);
+  root.append(backdrop, panel);
 
   function unmountActiveForm() {
     if (typeof formUnmount === 'function') {
@@ -105,14 +170,15 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
 
   function paint() {
     root.dataset.view = state.view;
-    loginTab.classList.toggle('auth-overlay__tab--active', state.view === 'login');
-    signupTab.classList.toggle('auth-overlay__tab--active', state.view === 'signup');
-    loginTab.setAttribute('aria-selected', state.view === 'login' ? 'true' : 'false');
-    signupTab.setAttribute('aria-selected', state.view === 'signup' ? 'true' : 'false');
-    tabs.hidden = state.view === 'verification_sent';
+    const isVerification = state.view === 'verification_sent';
 
     unmountActiveForm();
     formSlot.replaceChildren();
+
+    // Header + footer chrome is hidden in the verification_sent view; the
+    // body shows the inline check-your-email panel instead.
+    footerBuilt.footer.hidden = isVerification;
+    footerBuilt.legal.hidden = state.view !== 'signup';
 
     if (state.view === 'login') {
       title.textContent = 'Sign in to Project Alice';
@@ -122,6 +188,7 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
           state.email = value;
         },
       });
+      applySwap(footerBuilt, 'login');
     } else if (state.view === 'signup') {
       title.textContent = 'Create your Project Alice account';
       formUnmount = mountSignupForm(formSlot, {
@@ -131,7 +198,8 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
         },
         onSuccess: () => setView('verification_sent'),
       });
-    } else if (state.view === 'verification_sent') {
+      applySwap(footerBuilt, 'signup');
+    } else if (isVerification) {
       title.textContent = 'Check your email';
       const message = el(
         'p',
@@ -201,8 +269,6 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
     }
   }
 
-  loginTab.addEventListener('click', () => setView('login'));
-  signupTab.addEventListener('click', () => setView('signup'));
   closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) {

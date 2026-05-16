@@ -1,23 +1,44 @@
 import aliceWhite from '../assets/Alice_White.png';
 import * as authStore from '../data/authStore.js';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 const pages = [
   { id: 'tracker', label: 'Tracker' },
   { id: 'calendar', label: 'Calendar' },
   { id: 'profile', label: 'Profile' },
 ];
 
-const EMAIL_DISPLAY_LIMIT = 24;
-
 let _root = null;
-let _authSegment = null;
+let _identityCluster = null;
 let _unsubscribe = null;
 
-function truncateEmail(email) {
-  if (typeof email !== 'string' || email.length <= EMAIL_DISPLAY_LIMIT) {
-    return email ?? '';
+function createDoorArrowIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'signout-btn__icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '13');
+  svg.setAttribute('height', '13');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const doorFrame = document.createElementNS(SVG_NS, 'path');
+  doorFrame.setAttribute('d', 'M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8');
+  const arrowShaft = document.createElementNS(SVG_NS, 'path');
+  arrowShaft.setAttribute('d', 'M11 12h10');
+  const arrowHead = document.createElementNS(SVG_NS, 'path');
+  arrowHead.setAttribute('d', 'M17 8l4 4-4 4');
+
+  for (const element of [doorFrame, arrowShaft, arrowHead]) {
+    element.setAttribute('fill', 'none');
+    element.setAttribute('stroke', 'currentColor');
+    element.setAttribute('stroke-width', '2');
+    element.setAttribute('stroke-linecap', 'round');
+    element.setAttribute('stroke-linejoin', 'round');
   }
-  return `${email.slice(0, EMAIL_DISPLAY_LIMIT - 1)}…`;
+
+  svg.append(doorFrame, arrowShaft, arrowHead);
+  return svg;
 }
 
 export function setActive(page) {
@@ -30,53 +51,64 @@ export function setActive(page) {
   }
 }
 
-function renderAuthSegment(state) {
-  if (!_authSegment) {
+function renderIdentityCluster(state) {
+  if (!_identityCluster) {
     return;
   }
-  _authSegment.replaceChildren();
+  _identityCluster.replaceChildren();
 
   if (!state || state.status !== 'authenticated' || !state.user?.email) {
-    _authSegment.hidden = true;
+    _identityCluster.hidden = true;
     return;
   }
 
-  _authSegment.hidden = false;
+  _identityCluster.hidden = false;
 
   const email = document.createElement('span');
-  email.className = 'navbar__user-email';
-  email.textContent = truncateEmail(state.user.email);
+  email.className = 'topbar-email';
+  email.textContent = state.user.email;
   email.title = state.user.email;
 
   const signOut = document.createElement('button');
   signOut.type = 'button';
-  signOut.className = 'navbar__sign-out';
-  signOut.textContent = 'Sign Out';
+  signOut.className = 'signout-btn';
+  signOut.setAttribute('aria-label', 'Sign out');
+
+  const label = document.createElement('span');
+  label.className = 'signout-btn__label';
+  label.textContent = 'Sign out';
+
+  signOut.append(createDoorArrowIcon(), label);
   signOut.addEventListener('click', () => {
     authStore.signOut();
   });
 
-  _authSegment.append(email, signOut);
+  _identityCluster.append(email, signOut);
 }
 
 export function render(activePage) {
   destroy();
 
-  const navbar = document.createElement('header');
-  const logo = document.createElement('div');
-  const logoMark = document.createElement('img');
-  const logoText = document.createElement('span');
-  const navActions = document.createElement('nav');
+  const topbar = document.createElement('header');
+  topbar.className = 'topbar';
 
-  navbar.className = 'navbar';
-  logo.className = 'navbar__logo';
-  logoMark.className = 'navbar__logo-mark';
-  logoMark.src = aliceWhite;
-  logoMark.alt = '';
-  logoText.className = 'navbar__logo-text';
-  logoText.textContent = 'Project Alice';
-  navActions.className = 'navbar__actions';
-  navActions.setAttribute('aria-label', 'Primary navigation');
+  const brand = document.createElement('div');
+  brand.className = 'topbar-brand';
+
+  const brandMark = document.createElement('img');
+  brandMark.className = 'topbar-brand-mark';
+  brandMark.src = aliceWhite;
+  brandMark.alt = '';
+
+  const brandText = document.createElement('span');
+  brandText.className = 'topbar-brand-text';
+  brandText.textContent = 'Project Alice';
+
+  brand.append(brandMark, brandText);
+
+  const pageNav = document.createElement('nav');
+  pageNav.className = 'topbar-nav';
+  pageNav.setAttribute('aria-label', 'Primary navigation');
 
   for (const page of pages) {
     const button = document.createElement('button');
@@ -84,22 +116,21 @@ export function render(activePage) {
     button.type = 'button';
     button.dataset.page = page.id;
     button.textContent = page.label;
-    navActions.append(button);
+    pageNav.append(button);
   }
 
-  _authSegment = document.createElement('div');
-  _authSegment.className = 'navbar__user';
-  _authSegment.hidden = true;
+  _identityCluster = document.createElement('div');
+  _identityCluster.className = 'topbar-identity';
+  _identityCluster.hidden = true;
 
-  logo.append(logoMark, logoText);
-  navbar.append(logo, navActions, _authSegment);
-  _root = navbar;
+  topbar.append(brand, pageNav, _identityCluster);
+  _root = topbar;
 
-  renderAuthSegment(authStore.getAuthState());
-  _unsubscribe = authStore.subscribe(renderAuthSegment);
+  renderIdentityCluster(authStore.getAuthState());
+  _unsubscribe = authStore.subscribe(renderIdentityCluster);
 
   setActive(activePage);
-  return navbar;
+  return topbar;
 }
 
 export function destroy() {
@@ -108,7 +139,7 @@ export function destroy() {
   }
   _unsubscribe = null;
   _root = null;
-  _authSegment = null;
+  _identityCluster = null;
 }
 
 export const Navbar = { render, setActive, destroy };

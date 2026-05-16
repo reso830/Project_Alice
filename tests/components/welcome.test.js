@@ -2,12 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
-vi.mock('../../src/assets/welcome-hero/tracker.png', () => ({ default: '/tracker.png' }));
-vi.mock('../../src/assets/welcome-hero/application-modal.png', () => ({ default: '/application-modal.png' }));
-vi.mock('../../src/assets/welcome-hero/profile.png', () => ({ default: '/profile.png' }));
-vi.mock('../../src/assets/welcome-hero/filters.png', () => ({ default: '/filters.png' }));
-vi.mock('../../src/assets/welcome-hero/calendar.png', () => ({ default: '/calendar.png' }));
-vi.mock('../../src/assets/welcome-hero/mobile-tracker.png', () => ({ default: '/mobile-tracker.png' }));
+vi.mock('../../src/assets/Alice_Colored.png', () => ({ default: '/Alice_Colored.png' }));
 
 const supabaseMocks = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
@@ -88,44 +83,73 @@ describe('WelcomePage — structure', () => {
     expect(headline.querySelector('br')).not.toBeNull();
   });
 
-  it('renders the three CTAs in order (Sign In, Create Account, Try Demo)', () => {
+  it('renders the three CTAs in order (Sign In, Create Account, Try the demo)', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const ctas = container.querySelectorAll('.welcome__cta');
     expect(ctas.length).toBe(3);
     expect(ctas[0].textContent).toBe('Sign In');
     expect(ctas[1].textContent).toBe('Create Account');
-    expect(ctas[2].textContent).toBe('Try Demo');
+    // Phase 14 (FR-023): "Try the demo" renders enabled; clicking surfaces
+    // the shared `showDemoComingSoon` toast (covered in its own test below).
+    expect(ctas[2].textContent).toBe('Try the demo');
+    expect(ctas[2].disabled).toBe(false);
   });
 
-  it('renders Try Demo as disabled with the coming-soon tooltip', () => {
+  it('headline accents "organized." with an indigo em element', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
-    const tryDemo = container.querySelectorAll('.welcome__cta')[2];
-    expect(tryDemo.disabled).toBe(true);
-    expect(tryDemo.title).toBe('Coming soon — available with the next release.');
+    const accent = container.querySelector('.welcome__headline em.welcome__headline-accent');
+    expect(accent).not.toBeNull();
+    expect(accent.textContent).toBe('organized.');
   });
 
-  it('renders the three floating metadata pills plus the sample-data disclaimer', () => {
+  it('renders the mini footer with version, license link, and two issue links sourced from appMeta', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
-    const pills = container.querySelectorAll('.welcome__pill');
-    expect(pills.length).toBe(3);
-    expect(Array.from(pills, (p) => p.textContent)).toEqual([
-      '24 Active',
-      '+12 This Month',
-      '78% Match',
-    ]);
-    const disclaimer = container.querySelector('.welcome__sample-disclaimer');
-    expect(disclaimer?.textContent).toBe('Sample data — illustrative only');
-  });
+    const meta = container.querySelector('.welcome__footer-meta');
+    expect(meta).not.toBeNull();
 
-  it('renders the footer metadata line', () => {
-    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    const version = meta.querySelector('.welcome__footer-version');
+    expect(version?.textContent).toBe('v0.8.0');
 
-    expect(container.querySelector('.welcome__footer-meta')?.textContent).toBe(
-      'Built with Vite · Supabase · Vercel',
+    const links = meta.querySelectorAll('a.welcome__footer-link');
+    expect(links.length).toBe(3);
+
+    // [0] license link
+    expect(links[0].textContent).toBe('PolyForm Noncommercial 1.0.0');
+    expect(links[0].getAttribute('href')).toBe(
+      'https://polyformproject.org/licenses/noncommercial/1.0.0',
     );
+    expect(links[0].getAttribute('target')).toBe('_blank');
+    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer');
+
+    // [1] report-issue link → ISSUE_URL
+    expect(links[1].textContent).toBe('⊙ Report an issue');
+    expect(links[1].getAttribute('href')).toBe(
+      'https://github.com/reso830/Project_Alice/issues/new',
+    );
+    expect(links[1].getAttribute('rel')).toBe('noopener noreferrer');
+
+    // [2] request-feature link → ISSUE_URL
+    expect(links[2].textContent).toBe('✦ Request a feature');
+    expect(links[2].getAttribute('href')).toBe(
+      'https://github.com/reso830/Project_Alice/issues/new',
+    );
+    expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('clicking "Try the demo" fires showDemoComingSoon via the shared toast', async () => {
+    const toastModule = await import('../../src/components/Toast.js');
+    const spy = vi.spyOn(toastModule.Toast, 'show').mockImplementation(() => {});
+
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    const tryDemo = container.querySelectorAll('.welcome__cta')[2];
+    tryDemo.click();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [message] = spy.mock.calls[0];
+    expect(message).toContain('Demo coming soon');
   });
 });
 
@@ -227,10 +251,12 @@ describe('WelcomePage — auth overlay state machine', () => {
     expect(container.querySelector('.welcome__auth-panel')).toBeNull();
   });
 
-  it('Try Demo click does not flip authView (disabled button)', () => {
+  it('Try Demo click fires the toast but does not flip authView', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     container.querySelectorAll('.welcome__cta')[2].click();
 
+    // Phase 14: Try Demo is enabled and surfaces the "Demo coming soon" toast;
+    // it never opens the auth overlay. Toast spy is covered by an earlier test.
     expect(WelcomePage.getAuthView()).toBeNull();
   });
 });
@@ -336,22 +362,27 @@ describe('AuthOverlay — open from CTA + initial view', () => {
     expect(container.querySelector('.auth-form--signup')).not.toBeNull();
   });
 
-  it('marks the corresponding tab active and exposes role=tablist', () => {
+  it('renders the swap-mode link pointing at the opposite mode (Phase 17)', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="signup"]').click();
 
-    expect(container.querySelector('[role="tablist"]')).not.toBeNull();
-    const signupTab = container.querySelector('[data-tab="signup"]');
-    const loginTab = container.querySelector('[data-tab="login"]');
-    expect(signupTab.classList.contains('auth-overlay__tab--active')).toBe(true);
-    expect(loginTab.classList.contains('auth-overlay__tab--active')).toBe(false);
-    expect(signupTab.getAttribute('aria-selected')).toBe('true');
-    expect(loginTab.getAttribute('aria-selected')).toBe('false');
+    // Phase 17 drops the tab strip in favour of a single swap-mode link in
+    // the footer. In signup view the link offers "Sign in".
+    const swap = container.querySelector('.auth-overlay__swap');
+    expect(swap).not.toBeNull();
+    expect(swap.dataset.authSwapTarget).toBe('login');
+    expect(swap.textContent).toContain('Sign in');
+
+    // Flipping back to login flips the link target.
+    swap.click();
+    const swapAfter = container.querySelector('.auth-overlay__swap');
+    expect(swapAfter.dataset.authSwapTarget).toBe('signup');
+    expect(swapAfter.textContent).toContain('Create one');
   });
 });
 
-describe('AuthOverlay — tab switching preserves email', () => {
-  it('switching from login to signup keeps the typed email', () => {
+describe('AuthOverlay — swap-mode link preserves email (Phase 17)', () => {
+  it('switching from login to signup via the swap link keeps the typed email', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="login"]').click();
 
@@ -359,14 +390,14 @@ describe('AuthOverlay — tab switching preserves email', () => {
     loginEmail.value = 'jane@example.com';
     loginEmail.dispatchEvent(new Event('input', { bubbles: true }));
 
-    container.querySelector('[data-tab="signup"]').click();
+    container.querySelector('.auth-overlay__swap').click();
 
     const signupEmail = container.querySelector('.auth-form--signup input[name="email"]');
     expect(signupEmail).not.toBeNull();
     expect(signupEmail.value).toBe('jane@example.com');
   });
 
-  it('switching back to login keeps the typed email', () => {
+  it('switching back to login via the swap link keeps the typed email', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="login"]').click();
 
@@ -374,18 +405,18 @@ describe('AuthOverlay — tab switching preserves email', () => {
     loginEmail.value = 'jane@example.com';
     loginEmail.dispatchEvent(new Event('input', { bubbles: true }));
 
-    container.querySelector('[data-tab="signup"]').click();
-    container.querySelector('[data-tab="login"]').click();
+    container.querySelector('.auth-overlay__swap').click();
+    container.querySelector('.auth-overlay__swap').click();
 
     expect(container.querySelector('.auth-form--login input[name="email"]').value).toBe('jane@example.com');
   });
 
-  it('internal tab switch updates the slot data-auth-view (but does not remount the overlay)', () => {
+  it('internal swap updates the slot data-auth-view but does not remount the overlay', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="login"]').click();
     const overlayBefore = container.querySelector('.auth-overlay');
 
-    container.querySelector('[data-tab="signup"]').click();
+    container.querySelector('.auth-overlay__swap').click();
     const overlayAfter = container.querySelector('.auth-overlay');
 
     expect(overlayAfter).toBe(overlayBefore);
@@ -712,5 +743,200 @@ describe('SignupForm — field validation + submit behavior', () => {
 
     expect(container.querySelector('.auth-overlay')).toBeNull();
     expect(WelcomePage.getAuthView()).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 17 — Auth modal restyle (design §4.6)
+// ---------------------------------------------------------------------------
+
+describe('Phase 17 — Auth modal chrome', () => {
+  it('renders a header row with a 40px Alice logo, title, and close button', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+
+    const header = container.querySelector('.auth-overlay__header');
+    expect(header).not.toBeNull();
+    const logo = header.querySelector('.auth-overlay__header-logo');
+    expect(logo).not.toBeNull();
+    expect(logo.tagName).toBe('IMG');
+    expect(logo.getAttribute('width')).toBe('40');
+    expect(logo.getAttribute('height')).toBe('40');
+    expect(header.querySelector('.auth-overlay__title')).not.toBeNull();
+    expect(header.querySelector('.auth-overlay__close')).not.toBeNull();
+  });
+
+  it('renders the panel with role=dialog and aria-modal=true (440px shell governed by CSS)', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+
+    const panel = container.querySelector('.auth-overlay__panel');
+    expect(panel).not.toBeNull();
+    expect(panel.getAttribute('role')).toBe('dialog');
+    expect(panel.getAttribute('aria-modal')).toBe('true');
+    expect(panel.getAttribute('aria-labelledby')).toBe('auth-overlay-title');
+  });
+
+  it('does not render a Forgot-password link in signin mode (spec: no custom in-app reset UI)', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.textContent.toLowerCase()).not.toContain('forgot');
+  });
+
+  it('does not render a Forgot-password link in signup mode', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="signup"]').click();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.textContent.toLowerCase()).not.toContain('forgot');
+  });
+
+  it('signup form has no name field', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="signup"]').click();
+
+    const signupForm = container.querySelector('.auth-form--signup');
+    expect(signupForm.querySelector('input[name="name"]')).toBeNull();
+  });
+});
+
+describe('Phase 17 — Auth modal footer', () => {
+  it('renders the "or" divider, demo button, and swap link in both login and signup', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    expect(container.querySelector('.auth-overlay__divider')).not.toBeNull();
+    expect(container.querySelector('.auth-overlay__demo')).not.toBeNull();
+    expect(container.querySelector('.auth-overlay__swap')).not.toBeNull();
+
+    container.querySelector('.auth-overlay__swap').click();
+    expect(container.querySelector('.auth-overlay__divider')).not.toBeNull();
+    expect(container.querySelector('.auth-overlay__demo')).not.toBeNull();
+    expect(container.querySelector('.auth-overlay__swap')).not.toBeNull();
+  });
+
+  it('shows legal copy only in signup mode', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    expect(container.querySelector('.auth-overlay__legal').hidden).toBe(true);
+
+    container.querySelector('.auth-overlay__swap').click();
+    expect(container.querySelector('.auth-overlay__legal').hidden).toBe(false);
+    expect(container.querySelector('.auth-overlay__legal').textContent.toLowerCase()).toContain('terms');
+  });
+
+  it('clicking the in-modal demo button fires showDemoComingSoon via the toast helper', async () => {
+    const toastModule = await import('../../src/components/Toast.js');
+    const spy = vi.spyOn(toastModule.Toast, 'show').mockImplementation(() => {});
+
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    container.querySelector('.auth-overlay__demo').click();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toContain('Demo coming soon');
+  });
+
+  it('Tweaks panel can open the auth modal directly via authState (Phase 17)', async () => {
+    const tweaksStore = await import('../../src/pages/welcome/tweaks/tweaksStore.js');
+    tweaksStore._resetForTests();
+
+    mountWelcomeWithOverlay();
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+    expect(WelcomePage.getAuthView()).toBeNull();
+
+    // Closed modal: setting authState='signup' opens it in signup view.
+    tweaksStore.setTweak('authState', 'signup');
+    expect(container.querySelector('.auth-overlay')).not.toBeNull();
+    expect(WelcomePage.getAuthView()).toBe('signup');
+
+    // Type something into the signup email so we can verify the in-place swap
+    // preserves form state when authState flips.
+    const signupEmail = container.querySelector('.auth-form--signup input[name="email"]');
+    signupEmail.value = 'persist@example.com';
+    signupEmail.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Already open in signup: setting authState='signin' swaps view in place
+    // (same overlay node, email preserved).
+    const overlayBefore = container.querySelector('.auth-overlay');
+    tweaksStore.setTweak('authState', 'signin');
+    const overlayAfter = container.querySelector('.auth-overlay');
+    expect(overlayAfter).toBe(overlayBefore);
+    expect(WelcomePage.getAuthView()).toBe('login');
+    expect(container.querySelector('.auth-form--login input[name="email"]').value).toBe(
+      'persist@example.com',
+    );
+
+    tweaksStore._resetForTests();
+  });
+
+  it('hides the footer chrome on verification_sent', async () => {
+    supabaseMocks.signUp.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="signup"]').click();
+
+    const form = container.querySelector('.auth-form--signup');
+    form.querySelector('input[name="email"]').value = 'jane@example.com';
+    form.querySelector('input[name="password"]').value = 'longenough';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(container.querySelector('.auth-overlay__footer').hidden).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 18 — Mobile branch (`<760px`) per design §3.3 + FR-025
+// ---------------------------------------------------------------------------
+
+function stubMobile(isMobile) {
+  globalThis.matchMedia = vi.fn().mockImplementation((q) => ({
+    matches: typeof q === 'string' && q.includes('max-width: 759px') ? isMobile : false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+}
+
+describe('Phase 18 — Mobile branch (<760px)', () => {
+  it('applies the .welcome--mobile class when the mobile media query matches at mount', () => {
+    stubMobile(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(container.querySelector('.welcome--mobile')).not.toBeNull();
+  });
+
+  it('does not mount the hero slideshow on mobile (DOM-free)', () => {
+    stubMobile(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(heroSlideshowStub.mount).not.toHaveBeenCalled();
+    expect(container.querySelector('.welcome__hero')).toBeNull();
+  });
+
+  it('does not render the Tweaks panel on mobile', () => {
+    stubMobile(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(container.querySelector('.tweaks-panel')).toBeNull();
+    expect(container.querySelector('.tweaks-panel__toggle')).toBeNull();
+  });
+
+  it('keeps the three CTAs available on mobile (auth flow remains)', () => {
+    stubMobile(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    const ctas = container.querySelectorAll('.welcome__cta');
+    expect(ctas.length).toBe(3);
+    // Sign In / Create Account still flip the auth view on mobile.
+    ctas[0].click();
+    expect(WelcomePage.getAuthView()).toBe('login');
+  });
+
+  it('desktop mount (default stub) still renders the slideshow + Tweaks panel', () => {
+    // Sanity baseline: the default stub (matches: false everywhere) is desktop.
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(container.querySelector('.welcome--mobile')).toBeNull();
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.tweaks-panel__toggle')).not.toBeNull();
   });
 });

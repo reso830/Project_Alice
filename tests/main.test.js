@@ -137,7 +137,7 @@ describe('bootstrap — ConfigError handshake wiring', () => {
     await bootstrap();
 
     expect(document.querySelector('.config-error')).toBeNull();
-    expect(document.querySelector('.navbar')).not.toBeNull();
+    expect(document.querySelector('.topbar')).not.toBeNull();
   });
 
   it('runs the runtime handshake BEFORE subscribing to authStore and never initialises auth on the config-error path', async () => {

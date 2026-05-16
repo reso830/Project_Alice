@@ -1,4 +1,5 @@
 import './styles/main.css';
+import { BottomTabBar } from './components/BottomTabBar.js';
 import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
 import * as authStore from './data/authStore.js';
@@ -95,7 +96,9 @@ function mountAppShell() {
   main.id = 'app';
   const navbar = Navbar.render('tracker');
   const footer = Footer.render();
-  document.body.append(navbar, main, footer);
+  const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
+  BottomTabBar.setActive('tracker');
+  document.body.append(navbar, main, footer, bottomTabBar);
 
   for (const button of navbar.querySelectorAll('.nav-btn')) {
     button.addEventListener('click', () => navigate(button.dataset.page));
@@ -115,6 +118,7 @@ function unmountAppShell() {
   _currentUnmount = null;
   _currentPage = null;
   Navbar.destroy();
+  BottomTabBar.destroy();
   clearBody();
   _shellMounted = false;
 }
@@ -262,4 +266,5 @@ function navigate(page, options = {}) {
 
   _currentPage = page;
   Navbar.setActive(activePage);
+  BottomTabBar.setActive(activePage);
 }

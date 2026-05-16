@@ -23,11 +23,26 @@
 | 10 | Hero screenshot capture (polish; can ship later) | 11 |
 | 11 | Release prep: README, CHANGELOG, footer/version bump, deployment + repo-map docs | 12 |
 | 12 | Verification, browser smoke tests, checklist walk | Merge |
+| 13 | Tracker chrome refresh — unified navy band, identity cluster polish, bottom tab bar, FAB, fold-narrow breakpoint | 14–18 |
+| 14 | Welcome refresh — Foundation: appMeta module, design tokens, headline accent, brand mark swap, remove pills/disclaimer, mini footer, demo CTA placeholder | 15–18 |
+| 15 | Welcome refresh — Hero scenes + slideshow rebuild (SceneStack / ScenePipeline / SceneProfile / SceneLogo, replace 6-screenshot rotation) | 16–18 |
+| 16 | Welcome refresh — Tweaks system + layout modes + theme variants (tweaksStore, TweaksPanel, four layouts, three themes) | 17, 18 |
+| 17 | Welcome refresh — Auth Modal restyle (440px shell, new overlay, drop tab strip, "or" divider + demo button, swap-mode link, legal copy) | 18 |
+| 18 | Welcome refresh — Mobile portrait-stack branch (`<760px`) + asset cleanup + test rewrite + spec/design cross-check | 19 |
+| 19 | Release prep redo: bump to 0.8.1, CHANGELOG entry, docs sweep | 20 |
+| 20 | UI-only browser smoke test — re-verify US3 + US4 chrome paths and all welcome surfaces against the to-be-merged state | Merge |
 
 Phases 01 → 04 are backend + build pipeline. Phases 05 → 09 are frontend and
 can begin once Phase 03 is merged (the JWT contract is then stable). Phase 10
-is optional polish; Phase 11 is the docs + version bump; Phase 12 is the final
-verification gate before merging to `main`.
+is optional polish; Phase 11 is the docs + version bump for v0.8.0; Phase 12
+was the verification gate that closed out v0.8.0. Phase 13 is the post-v0.8.0
+tracker chrome refresh (`design/tracker.md`). Phases 14–18 are the welcome-
+page refresh (`design/welcome_page.md`), split by risk and dependency:
+Phase 14 lays the shared foundation; Phase 15 swaps the hero slideshow over to
+the new abstract scene system; Phase 16 introduces the Tweaks + layout + theme
+matrix; Phase 17 restyles the auth modal; Phase 18 closes out with the mobile
+branch, asset cleanup, and the full welcome test rewrite. Phases 13–18 share
+a single Release Prep + Smoke Test cycle (Phases 19–20) that bumps to v0.8.1.
 
 ---
 
@@ -1403,6 +1418,1166 @@ follow-up issues.
 **What to do**: capture new conventions not obvious from the code (e.g.
 "allowlist enforcement lives in Supabase trigger; document the install in
 quickstart"; "build-time + runtime defense-in-depth for Vite env vars").
+
+---
+
+## Phase 13 — Tracker Chrome Refresh
+
+> Source of visual truth: [`design/tracker.md`](../../design/tracker.md).
+> Behavior contract: spec.md FR-010 / FR-010a / FR-010b / FR-010c.
+>
+> Scope guardrails: visual + responsive-layout work only. Do NOT change auth
+> behavior, JWT verification, route protection, store APIs, or the welcome
+> page (Phase 14 owns the welcome refresh). If an apparent visual change
+> would require touching `authStore`, `supabaseClient`, route handlers, or
+> middleware, stop and raise it — it is out of Phase 13's scope.
+
+### [X] Task 13.1 — Add on-navy tint tokens + FAB shadow + fold-narrow breakpoint variables
+
+**Target file**: `src/styles/main.css`
+
+**What to do**:
+Append a new section that captures the values in `design/tracker.md` §
+*Toolbar-on-navy tints* and §*Shadows*. Add (as CSS custom properties or as
+hard-coded values inside the relevant component selectors — pick whichever is
+consistent with the existing pattern in `main.css`):
+
+- Subheader label foreground `rgba(255,255,255,0.8)`
+- Count badge bg `rgba(129,140,248,0.18)` / fg `#C7CCFE`
+- Filter chip idle / hover / active / open backgrounds, borders, foregrounds
+  (six rgba tuples — see design §Toolbar-on-navy tints table)
+- Erase-all on-navy bg `rgba(239,68,68,0.18)` / border `rgba(252,165,165,0.45)` / fg `#FCA5A5`
+- FAB shadow `0 6px 16px rgba(79,70,229,0.42), 0 2px 6px rgba(0,0,0,0.12)`
+- New media-query stop `@media (max-width: 379px)` for the **fold-narrow**
+  breakpoint (the existing `@media (max-width: 639px)` mobile stop stays).
+
+**Expected behavior**: No visual change yet — this task just lands the tokens
+so subsequent tasks can reference them.
+
+**Constraints**:
+- **No renames** of existing tokens. Legacy `--color-accent-tint`,
+  `--color-accent-light`, `--color-border` keep their light-context meaning
+  per the updated tracker.md.
+- Keep all new custom properties scoped to `:root` if they generalize, or
+  inline at the call site if they're one-off rgba tuples.
+
+**Validation**:
+- `npm run build` still succeeds.
+- `npm run test:run` still green (no CSS-token tests yet, but the build
+  pipeline catches malformed CSS).
+
+**Out of scope**:
+- Applying the tokens (handled in 13.2–13.6).
+
+---
+
+### [X] Task 13.2 — Restyle the top bar into the unified navy band
+
+**Target files**:
+- `src/components/Navbar.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per `design/tracker.md` §Top Bar:
+
+- Height `52px`, `position: sticky`, `z-index: 100`, background `var(--navy)`,
+  horizontal flex, `padding: 0 24px`, `gap: 28px`.
+- Brand cluster (left): 38×38 logo image `src/assets/Alice_White.png` + the
+  `.topbar-brand-text` span "Project Alice" (Sora 15 / 600, letter-spacing
+  -0.3px). Wrap the mark+text together so the wordmark can be hidden in the
+  fold-narrow breakpoint (Task 13.7) without affecting the mark.
+- Page nav (inline, right after the brand): nav buttons `padding: 7px 11px`,
+  `border-radius: var(--r-sm)`, default `rgba(255,255,255,0.65)` text and
+  transparent bg, hover `rgba(255,255,255,0.08)` bg + white text, active
+  state fills `var(--indigo)` + white text.
+- Identity cluster (right, `margin-left: auto`): wraps email span +
+  sign-out button — both styled in Tasks 13.3 and 13.4.
+
+Add the structural class names the design references (`.topbar`,
+`.topbar-brand`, `.topbar-brand-text`, `.topbar-nav`, `.topbar-identity`) and
+update Navbar.js's element classes accordingly. Keep the existing
+`data-page` attribute on each nav button so `setActive(page)` continues to
+work without change.
+
+**Expected behavior**:
+- Visually matches the design ASCII diagram at desktop (`> 1024px`).
+- `setActive('tracker' | 'calendar' | 'profile')` still toggles the active
+  state.
+- Local-mode still renders identically (no identity cluster — see 13.4).
+
+**Constraints**:
+- No changes to `authStore` subscription or `destroy()` lifecycle.
+- Hide page nav at `≤ 639px` via CSS (it will be re-mounted as the Bottom
+  Tab Bar in Task 13.5).
+
+**Validation**:
+- `tests/components/navbar.test.js` extended: assert the rendered DOM
+  contains `.topbar-brand` (with mark + text), `.topbar-nav` with three
+  buttons, and the identity cluster slot.
+- Manual at desktop and `> 1024px` breakpoint: layout matches design.
+
+---
+
+### [X] Task 13.3 — Switch email truncation from char-count to CSS max-width
+
+**Target files**:
+- `src/components/Navbar.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per FR-010c:
+
+- Remove `EMAIL_DISPLAY_LIMIT` and `truncateEmail()` from `Navbar.js`.
+- Render the full email as `textContent` of a `<span class="topbar-email">`.
+- Always set the `title` attribute to the full email (currently set only
+  when truncated).
+- In `main.css`, style `.topbar-email` per design §Top Bar / §Typography:
+  DM Mono 11 / 400, color `rgba(255,255,255,0.7)`, `max-width: 220px`,
+  `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis`.
+
+**Expected behavior**:
+- Long emails truncate at 220px with a CSS ellipsis; hovering shows the full
+  address via the native `title` tooltip.
+- Short emails render unchanged.
+
+**Constraints**:
+- Do not introduce a JS truncation fallback.
+
+**Validation**:
+- `tests/components/navbar.test.js` updated: assert the rendered span's
+  `textContent` is the full email and `title` attribute matches it, even
+  for long emails (the previous char-count assertion is removed).
+
+---
+
+### [X] Task 13.4 — Restyle the sign-out button (`.signout-btn`) with door-arrow icon
+
+**Target files**:
+- `src/components/Navbar.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per `design/tracker.md` §Top Bar / Identity cluster:
+
+- Replace the current plain-text Sign Out button with an inline-flex element
+  containing a 13×13 door-arrow SVG icon followed by a "Sign out" label
+  (Sora 12 / 500, gap 6px, padding `6px 12px`).
+- Class `.signout-btn`; background `rgba(255,255,255,0.08)`, border
+  `1px solid rgba(255,255,255,0.14)`, radius `var(--r-sm)`.
+- Hover: bg `rgba(255,255,255,0.14)`, border `rgba(255,255,255,0.24)`,
+  label `#fff`.
+- The click handler keeps its current behavior: `authStore.signOut()`.
+- Inline the SVG (no new asset file) so the icon can inherit `currentColor`
+  for hover state.
+
+Render rule (per FR-010a): the identity cluster (email + sign-out) renders
+**only** when `state.status === 'authenticated' && state.user?.email`. In
+`'unauthenticated'`, `'initializing'`, and `'local-mode'`, the cluster slot
+is empty (kept in the DOM as a flex placeholder via `hidden` is fine, or
+removed — pick the option that keeps the right-edge layout stable).
+
+**Expected behavior**:
+- Visually matches design at desktop. Hover state animates cleanly.
+- Local mode: no identity cluster (no behavior regression).
+- Unauthenticated hosted users never see this on the Tracker (they're on
+  the Welcome page).
+
+**Constraints**:
+- No new asset files for the icon — inline the SVG path.
+- Do not change `authStore.signOut()` semantics or its toast trigger.
+
+**Validation**:
+- `tests/components/navbar.test.js`:
+  - Authenticated mount renders `.signout-btn` containing both an `<svg>`
+    child and the "Sign out" label.
+  - Clicking it still calls `authStore.signOut` (existing assertion
+    preserved).
+  - Local-mode + unauthenticated + initializing mounts render no
+    `.signout-btn` in the DOM.
+
+---
+
+### [X] Task 13.5 — Add the mobile Bottom Tab Bar
+
+**Target files**:
+- `src/components/BottomTabBar.js` (new)
+- `src/styles/main.css`
+- `src/main.js` (mount point — only when the app shell is mounted, never on
+  the welcome page)
+
+**What to do**:
+Per `design/tracker.md` §Bottom Tab Bar:
+
+- `position: fixed; left: 0; right: 0; bottom: 0`, background `var(--navy)`,
+  top border `1px solid rgba(255,255,255,0.08)`, padding
+  `6px 8px calc(6px + env(safe-area-inset-bottom))`, z-index `var(--z-nav)`.
+- Three tabs (Tracker / Calendar / Profile) — flex column (18×18 inline SVG
+  icon over Sora 10 / 500 label), radius `var(--r-sm)`, padding `6px 4px`.
+- Default `rgba(255,255,255,0.55)`; hover `#fff`; active `rgba(79,70,229,0.32)`
+  bg + white text.
+- Visible only at `@media (max-width: 639px)`; hidden otherwise.
+- Selecting a tab calls the same page-change function the desktop top-bar
+  nav uses (extract or expose a `setPage(id)` callback from Navbar / main.js
+  rather than duplicating the routing logic).
+- Cards-list (`.cards-list` or equivalent on Tracker) adds
+  `padding-bottom: 86px` on mobile so the bottom tab + FAB clearance keeps
+  the last card visible.
+
+**Expected behavior**:
+- At ≤ 639px the desktop top-bar nav is hidden and the Bottom Tab Bar
+  replaces it.
+- Active-tab state stays in sync with `setActive(page)`.
+- Welcome page does not mount this component (it's pre-app).
+
+**Constraints**:
+- Inline SVG icons; no new asset files.
+- Single source of truth for active page — do not introduce a parallel
+  state machine.
+
+**Validation**:
+- `tests/components/bottomTabBar.test.js` (new):
+  - Renders three tabs at width 639; not rendered or
+    `display: none`-equivalent at width 1024 (use jsdom + window.matchMedia
+    stub or a class-based check).
+  - Clicking a tab fires the page-change callback with the right id.
+- Manual at 360px viewport: bottom tab bar visible, top-bar nav hidden.
+
+---
+
+### [X] Task 13.6 — Add the mobile FAB
+
+**Target files**:
+- `src/components/Fab.js` (new)
+- `src/styles/main.css`
+- Tracker page (wherever the toolbar "+ New application" button is mounted)
+
+**What to do**:
+Per `design/tracker.md` §FAB:
+
+- 56×56, `border-radius: 50%`, bg `var(--indigo)` (hover `var(--indigo-hover)`),
+  white `+` glyph (24×24 inline SVG, stroke 2.4).
+- `position: fixed; right: 16px; bottom: calc(72px + env(safe-area-inset-bottom))`.
+- Shadow per Task 13.1 FAB tuple; active press `transform: scale(0.96)`.
+- z-index `calc(var(--z-nav) + 1)` so it floats above the tab bar.
+- `aria-label="New application"`.
+- Visible only at `@media (max-width: 639px)`; hidden otherwise.
+- Click handler opens the Detail Modal in Create mode — reuse the existing
+  "+ New application" handler from the toolbar so semantics are identical.
+
+Also hide the toolbar "+ New application" button at ≤ 639px per design
+§Toolbar.
+
+**Expected behavior**:
+- Mobile: FAB visible, toolbar button hidden, FAB opens Create modal.
+- Desktop: FAB hidden, toolbar button visible (no regression).
+
+**Constraints**:
+- Inline SVG; no new asset files.
+- Reuse the existing modal-open path; do not create a parallel one.
+
+**Validation**:
+- `tests/components/fab.test.js` (new):
+  - Renders at mobile width; not at desktop width.
+  - Click fires the create-application callback.
+- Manual at 360px viewport: FAB visible above the bottom tab bar; tap opens
+  the modal.
+
+---
+
+### [X] Task 13.7 — Fold-narrow breakpoint: hide wordmark below 380px
+
+**Target file**: `src/styles/main.css`
+
+**What to do**:
+Inside the new `@media (max-width: 379px)` block added in Task 13.1, hide
+`.topbar-brand-text` (`display: none`). The 38×38 logo mark remains; the
+sign-out icon remains. Verify the layout still fits without overflow at
+320px (smallest realistic phone width).
+
+**Expected behavior**:
+- < 380px viewport: only the logo mark + bottom tab bar + sign-out icon
+  visible in the top bar.
+- ≥ 380px viewport: wordmark visible (no regression).
+
+**Constraints**:
+- Pure CSS — no JS viewport queries.
+
+**Validation**:
+- Manual at 320px and 380px viewports: confirm the wordmark toggle.
+
+---
+
+### [X] Task 13.8 — Flip the toolbar to the navy band and restyle filter chips / badge / erase
+
+**Target files**:
+- `src/components/Toolbar.js`
+- `src/components/QuickFiltersToolbar.js` (and any sub-components: count
+  badge, filter chip, sort, erase-all)
+- `src/components/FilterPanel.js` (only if it inherits toolbar-context
+  styles)
+- `src/styles/main.css`
+
+**What to do**:
+Per `design/tracker.md` §Toolbar and §Toolbar-on-navy tints:
+
+- Toolbar background flips from `var(--surface)` → `var(--navy)`.
+- Bottom border: `1px solid rgba(255,255,255,0.06)` (hairline separator
+  only; the previous `1px solid var(--border)` is removed).
+- Subheader label: 13 / 500, `rgba(255,255,255,0.8)`.
+- Count badge: pill, `rgba(129,140,248,0.18)` bg, `#C7CCFE` text, 12 / 500,
+  padding `3px 10px`.
+- Filter chips, sort trigger, erase-all: dark-toolbar tints from the table
+  in design's §Toolbar-on-navy tints (idle / hover / active / open states).
+- Primary action `.btn-primary.new-app-btn`: unchanged indigo button,
+  pushed right via `margin-left: auto`. Hidden at ≤ 639px (FAB replaces
+  it — see 13.6).
+- Filter dropdown panels themselves stay on a light surface
+  (`var(--surface)`) — only the toolbar trigger row changes context.
+
+**Expected behavior**:
+- Toolbar is visually continuous with the top bar.
+- Filter dropdown panels still readable (they open onto a light surface).
+- No behavior change to filter / sort / erase logic.
+
+**Constraints**:
+- Do not touch filter / sort state machinery.
+- Erase-all confirmation flow unchanged.
+
+**Validation**:
+- Existing toolbar / filter / sort tests stay green (`npm run test:run`).
+- Manual at desktop: toolbar matches the design's unified-band intent;
+  filter dropdowns open onto a light surface with no contrast regression.
+
+---
+
+### [X] Task 13.9 — Update z-index registry: FAB + confirm-dialog values
+
+**Target file**: `src/styles/main.css`
+
+**What to do**:
+Add the two new layers from `design/tracker.md` §Z-Index Stack:
+
+- FAB: `calc(var(--z-nav) + 1)` (101)
+- Confirm dialog: `calc(var(--z-modal) + 10)` (310)
+
+If `--z-nav` and `--z-modal` are not yet custom properties (they are
+referenced in the design as if they were), either promote the existing
+numeric literals to those custom properties **only in `main.css`**, or
+hard-code the `101` / `310` values inside the FAB / ConfirmDialog selectors.
+Pick the option that's closer to the existing convention in `main.css`.
+
+**Constraints**:
+- Do not introduce z-index drift across other components.
+
+**Validation**:
+- Manual: open the archive confirm dialog while a modal is open — confirm
+  it sits above the modal as designed.
+- Manual: FAB sits above the bottom tab bar.
+
+---
+
+### [X] Task 13.10 — Spec/design cross-check
+
+**Target files** (read-only sweep):
+- `design/tracker.md`
+- `specs/018-auth-user-access/spec.md` (FR-010a/b/c)
+
+**What to do**:
+After 13.1–13.9 land:
+
+1. Walk every requirement in FR-010a, FR-010b, FR-010c and confirm there's
+   a corresponding code change.
+2. Walk every component-and-token row in tracker.md's tables and confirm
+   the styling exists in the implementation.
+3. Note any deviation in the PR description for the welcome refresh
+   (Phases 14–18) to roll into the Phase 19 CHANGELOG.
+
+**Out of scope**:
+- Re-running the full test suite or build assertion — that's owned by
+  Phase 19 (Release Prep) and Phase 20 (Smoke Test) once Phases 14–18
+  also land.
+
+---
+
+## Phase 14 — Welcome refresh: Foundation
+
+> Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md).
+> Behavior contract: spec.md FR-020 (partial) / FR-023 / FR-026.
+>
+> Architecture: see plan.md §14.A–§14.F (module layout, demo stub, asset
+> cleanup boundaries, scope guardrails). Phase 14 implements the shared
+> foundation — centralized app metadata, design tokens, headline accent,
+> brand mark swap, removal of legacy pills/disclaimer, mini-footer rewrite,
+> and the demo CTA placeholder. The hero scene system (Phase 15), Tweaks
+> + layouts + themes (Phase 16), Auth Modal restyle (Phase 17), and mobile
+> branch + asset cleanup (Phase 18) follow.
+>
+> Scope guardrails: Welcome surface only. Do NOT change `authStore`,
+> `supabaseClient`, route handlers, middleware, the JWT contract, or
+> Supabase signup fields (no `name` field on signup). If an apparent visual
+> change would require any of those, stop and raise it.
+
+### [X] Task 14.1 — Centralize app metadata in a shared module
+
+**Target files**:
+- `src/pages/welcome/shared/appMeta.js` (new)
+- `src/components/Footer.js` (refactor to import from the new module)
+
+**What to do**:
+Create `appMeta.js` exporting:
+
+```js
+export const APP_VERSION = 'v0.8.0';                // stays in lock-step with package.json
+export const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
+export const LICENSE_NAME = 'PolyForm Noncommercial 1.0.0';
+export const LICENSE_URL = 'https://polyformproject.org/licenses/noncommercial/1.0.0';
+```
+
+Then update `src/components/Footer.js` to import these instead of its own
+local constants. Behavior of Footer.js is unchanged.
+
+**Expected behavior**:
+- `Footer.js` renders identically to before.
+- New module is ready for consumption by the Welcome mini footer (Task 14.7).
+
+**Constraints**:
+- Phase 19 (version bump) will touch only `appMeta.js` + `package.json`.
+- No new dependencies.
+
+**Validation**:
+- Existing footer tests still pass unmodified.
+- `grep -n "v0.8.0" src/` finds only `appMeta.js` (and any test fixtures
+  asserting the value).
+
+---
+
+### [X] Task 14.2 — Wire the existing `Alice_Colored.png` asset
+
+**Target file**: `src/assets/Alice_Colored.png` (already in repo)
+
+**What to do**:
+The colored variant is already present at `src/assets/Alice_Colored.png`
+alongside `Alice_White.png`. This task is a no-op for the asset itself —
+the actual import lands in Task 14.5 (`renderBrand` theme-driven mark
+swap). Kept as a discrete task only so the Phase Map references match
+the design's asset list (§7).
+
+**Validation**:
+- `npm run build` resolves the import added in Task 14.5.
+
+---
+
+### [X] Task 14.3 — Add Phase 14 design tokens to `main.css`
+
+**Target file**: `src/styles/main.css`
+
+**What to do**:
+Add the new tokens from `design/welcome_page.md` §2 (where missing) to
+`:root`:
+
+- `--navy-deep: #0E0E20`
+- `--gold: #F2B544`
+
+Verify the rest of the design's named tokens (`--navy`, `--navy-2`,
+`--indigo`, `--indigo-hover`, `--indigo-dim`, `--indigo-soft`, `--indigo-mid`,
+`--warm`, `--surface`, `--border`, `--border-2`, `--t1`…`--t4`) already
+exist from earlier features — only add what's missing.
+
+**Constraints**:
+- Do not rename existing tokens.
+- The design's `--warm: #F4F1ED` is what the existing `--bg` token holds
+  already; keep `--bg` as the canonical name and alias `--warm` to it via
+  `--warm: var(--bg)` if any Phase-14 selectors need to reference the
+  design-spec spelling.
+
+**Validation**:
+- `npm run build` succeeds.
+- `npm run test:run` green.
+
+---
+
+### [X] Task 14.4 — Headline accent: `<em>organized.</em>` with underline-glow
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js` (`renderHeadline()`)
+- `src/styles/main.css`
+
+**What to do**:
+Per design §4.2:
+
+- Update `renderHeadline()` to render `Your job search,` + `<br>` + `<em>organized.</em>`.
+- CSS for `.welcome__headline em`:
+  - `color: var(--indigo)`
+  - `font-style: normal`
+  - `position: relative`
+  - `white-space: nowrap`
+  - `::after` element: 12% of em height, 22% opacity, indigo, `border-radius: 999px`,
+    positioned beneath the text to give the underline-glow effect.
+
+**Expected behavior**:
+- "organized." renders in indigo with a soft underline glow.
+- No layout shift introduced by the `::after`.
+
+**Constraints**:
+- `prefers-reduced-motion` doesn't affect this — it's static.
+
+**Validation**:
+- Manual at desktop: headline matches design.
+- `tests/components/welcome.test.js`: assert the `em` element exists with
+  textContent `'organized.'`.
+
+---
+
+### [X] Task 14.5 — Brand block: theme-driven mark swap (`Alice_Colored` / `Alice_White`)
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js` (`renderBrand()`)
+- `src/styles/main.css`
+
+**What to do**:
+Per design §4.1:
+
+- Import both `Alice_Colored.png` (warm + white themes) and
+  `Alice_White.png` (navy theme; also used by Scene 4 in 14.7).
+- `renderBrand()` accepts the current theme and picks the right `src`.
+- Sizes: `clamp(56px, 6vw, 84px)` on desktop, 68px on mobile (via CSS at
+  `<760px`). Wordmark Sora 700, `clamp(28px, 3vw, 40px)` desktop, 32px
+  mobile, `-.6px` tracking. Gap 14px desktop / 18px mobile.
+- The brand element re-renders on theme change (the Tweaks store from
+  Task 16.2 notifies subscribers; Phase 14 ships with the default theme).
+
+**Constraints**:
+- No inline `<style>` — all sizing via CSS.
+
+**Validation**:
+- Manual at each theme: mark swaps correctly.
+- `tests/components/welcome.test.js`: assert the `<img>` `src` swaps when
+  the theme tweak changes.
+
+---
+
+### [X] Task 14.6 — Remove floating metadata pills + "Sample data" disclaimer
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js`
+- `src/styles/main.css`
+- `tests/components/welcome.test.js`
+
+**What to do**:
+Per FR-020 and design (which no longer mentions these elements):
+
+- Delete the floating metadata pills render code (24 Active / +12 This Month
+  / 78% Match) and the "Sample data — illustrative only" disclaimer.
+- Remove the corresponding CSS rules.
+- Update `tests/components/welcome.test.js` to drop any assertions about
+  these elements.
+
+**Constraints**:
+- Do not leave dead CSS classes behind.
+
+**Validation**:
+- The rendered welcome page no longer contains either element.
+- `grep -n "Sample data" src/` returns no hits.
+
+---
+
+### [X] Task 14.7 — Mini footer (sourced from `appMeta.js`)
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js` (replace `renderFooterMeta()` or add)
+- `src/styles/main.css`
+
+**What to do**:
+Per design §4.5 and FR-026:
+
+- Import `APP_VERSION`, `ISSUE_URL`, `LICENSE_NAME`, `LICENSE_URL` from
+  `src/pages/welcome/shared/appMeta.js`.
+- Render four items separated by 3px round separators (35% opacity):
+  - `APP_VERSION` (plain text)
+  - `LICENSE_NAME` (anchor → `LICENSE_URL`, `target="_blank"`,
+    `rel="noopener noreferrer"`)
+  - `⊙ Report an issue` (anchor → `ISSUE_URL`)
+  - `✦ Request a feature` (anchor → `ISSUE_URL`)
+- Style: DM Mono 10px; hover on link items shifts color to `--indigo`.
+- Position per layout (handled in Phase 16 Task 16.1): absolute bottom-left
+  on diagonal / split / hero; centred bottom on centered. For Phase 14, ship
+  the default (diagonal) positioning; the layout-aware variants land with
+  the layout system in 16.1.
+
+**Constraints**:
+- No hard-coded `'v0.8.0'`, `'MIT'`, `'PolyForm…'`, or issue URL anywhere
+  in `WelcomePage.js`.
+- Links open in a new tab with `rel="noopener noreferrer"`.
+
+**Validation**:
+- `tests/components/welcome.test.js`: assert the mini-footer items match
+  the values exported from `appMeta.js` and the two feedback links carry
+  the correct `href` + `rel`.
+
+---
+
+### [X] Task 14.8 — Demo CTA placeholder (welcome page + auth modal)
+
+**Target files**:
+- `src/pages/welcome/demoStub.js` (new)
+- `src/pages/welcome/WelcomePage.js` (rewire the CTA)
+- `src/pages/welcome/AuthOverlay.js` (Phase 17 will wire the modal demo
+  button to this same handler — leave a TODO marker until then; Phase 14
+  only updates the welcome-page CTA).
+
+**What to do**:
+Per FR-023:
+
+- `demoStub.js` exports `showDemoComingSoon()` which calls the existing
+  toast (`src/components/Toast.js`) with copy like "Demo coming soon — the
+  public preview lands in a later release."
+- The welcome page "Try the demo" CTA renders enabled (drop the
+  `disabled` attribute and the "Coming soon" tooltip from the existing
+  implementation) and calls `showDemoComingSoon()` on click.
+- Comment in `demoStub.js`: this file is the single call site feature 020
+  will replace with the real demo-route handler. Phase 17 wires the auth
+  modal demo button to the same handler.
+
+**Constraints**:
+- Use the existing Toast component; do not import a new toast library.
+- No `window.alert()` fallback.
+
+**Validation**:
+- `tests/components/welcome.test.js`: clicking the welcome demo CTA calls
+  `showDemoComingSoon` (mocked). Auth modal coverage lands with Phase 17.
+
+---
+
+## Phase 15 — Welcome refresh: Hero scenes + slideshow rebuild
+
+> Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md) §4.4.
+> Behavior contract: spec.md FR-021.
+>
+> Replaces the 6-screenshot rotation from Phase 10 with four animated
+> abstract scenes. The 6 PNGs stay on disk until Phase 18 Task 18.2 deletes
+> them — Phase 15 just stops importing them. Scope guardrails inherit from
+> Phase 14 (welcome surface only; no auth-API changes).
+
+### [X] Task 15.1 — Implement the four hero scenes
+
+**Target files** (all new):
+- `src/pages/welcome/scenes/SceneStack.js`
+- `src/pages/welcome/scenes/ScenePipeline.js`
+- `src/pages/welcome/scenes/SceneProfile.js`
+- `src/pages/welcome/scenes/SceneLogo.js`
+- `src/styles/main.css` (scene-specific keyframes + class styles)
+
+**What to do**:
+Implement each scene per design §4.4. Each module exports
+`{ mount(container, opts), unmount() }` matching the existing
+`HeroSlideshow` mount contract.
+
+- **SceneStack** — diagonal/split/hero variants render 4 tilted preview
+  cards (-4° → +4°, ghost opacities 42% / 100% / 100% / 55%, 90ms stagger,
+  cubic-bezier(.2,.7,.3,1.05) enter from `scale(.55) opacity(0)`). The
+  `centered` variant (tablet) renders 2 flat cards in a row (`flex: 1`,
+  14px gap, no rotation).
+- **ScenePipeline** — single straight preview card ("J024 · UX Engineer ·
+  Vertex AI", compat 94). Status badge cycles `applied → phone_screen →
+  interview → assessment → offer` every 1100ms with a 0.55s pop-in
+  keyframe (`pipeline-badge`). No progress pips, no `Stage N/5` caption.
+- **SceneProfile** — flex column with 44px gap (parent must be
+  `display: flex` for `gap` to apply). Top row: 4 stat chips
+  (Total / Active / Pending / Offer, `rgba(255,255,255,.06)` bg with 1px
+  hairline borders). Bottom row: 168×168 SVG donut (22px ring thickness)
+  + 2-column legend. Donut animates from 0 → target `strokeDasharray`
+  over 0.7s, 120ms stagger per segment. At 2700ms,
+  `DONUT_INITIAL → DONUT_AFTER` swap re-allocates segments; numbers tick
+  via an `AnimatedNumber` helper (700ms cubic ease-out).
+- **SceneLogo** — `Alice_White.png` floating with a 6s `scene-logo-float`
+  ease-in-out loop. Four `--gold` sparkle stars (corners of the logo
+  box, 2.4s `scene-sparkle` scale/fade loop, 0.6s stagger). Size
+  `min(360px, 70%)` aspect-ratio 1 for diagonal/split/hero;
+  **fixed 200×200 for `centered`** (tablet).
+
+All scene animations are gated behind `prefers-reduced-motion: reduce` —
+when set, scenes render their final/static state.
+
+**Constraints**:
+- Each scene module owns its own DOM and animation; the slideshow
+  orchestrates timing only.
+- All SVG inline; no new image assets except those already imported.
+- Status icon/badge styling reuses tokens from `design/tracker.md` Status
+  System where possible.
+
+**Validation**:
+- `tests/pages/welcome/scenes/*.test.js` (one per scene):
+  - Each scene mounts and unmounts cleanly.
+  - Reduced-motion: no `setInterval` / `setTimeout` left running after
+    mount.
+  - Scene 2: cycles through five statuses over time (fake timers).
+  - Scene 3: donut redraws when DONUT_AFTER swap fires.
+
+---
+
+### [X] Task 15.2 — Rebuild `HeroSlideshow.js` around the new scenes
+
+**Target files**:
+- `src/pages/welcome/HeroSlideshow.js`
+- `src/styles/main.css`
+- `src/pages/welcome/WelcomePage.js` (update slide-source props)
+
+**What to do**:
+- Replace the 6-screenshot rotation with a scene cycler.
+- Auto-cycle 5500ms per scene, 700ms cross-fade.
+- 4 bottom dots; clicking a dot jumps to that scene. The active dot
+  shows a 0→1 progress bar matching scene duration.
+- Accept a `heroScene` prop (`'auto' | 'stack' | 'pipeline' | 'profile'
+  | 'logo'`); when non-`auto`, pin to that single scene and disable
+  rotation.
+- `prefers-reduced-motion: reduce` → render scene 1 (`stack`) only,
+  static, with no progress bar and no dot controls.
+- Reduced-motion path bypasses scene-internal animations too (delegated
+  to each scene module).
+
+**Constraints**:
+- The four scene modules from Task 15.1 are the only allowed slide
+  content.
+- Do not import `welcome-hero/*.png` anywhere — those imports are removed
+  in Task 18.2.
+
+**Validation**:
+- `tests/pages/welcome/heroSlideshow.test.js` (rewrite):
+  - Auto-cycles through 4 scenes over time (fake timers).
+  - `heroScene='pipeline'` pins to scene 2.
+  - Clicking a dot jumps to that scene and resets the progress bar.
+  - Reduced-motion: scene 1 only, no timers.
+
+---
+
+---
+
+## Phase 16 — Welcome refresh: Tweaks system + layout modes + theme variants
+
+> Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md) §3 (layouts), §5 (tweaks).
+> Behavior contract: spec.md FR-022.
+>
+> Three concerns landed in one phase because they're tightly coupled: the
+> Tweaks store drives layout + theme class application, and the panel UI
+> exposes those switches. Phase 16 must NOT regress Phase 14 / Phase 15
+> defaults (`layout: diagonal`, `theme: warm`, `heroScene: auto` produces
+> the same render as before).
+
+### [X] Task 16.1 — Implement the four layout modes
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per design §3.1–§3.2, apply layout via a CSS class on the welcome root:
+
+- `.welcome--layout-diagonal` (default) — pitch column `position: relative;
+  z-index: 2; width: 55%; max-width: 760px; padding: 6vw 5vw 6vw 6vw`.
+  Preview slab `position: absolute; inset: 0; left: auto; width: 62%`;
+  `clip-path: polygon(22% 0, 100% 0, 100% 100%, 6% 100%)`. Slab background
+  `--navy` (or `--navy-deep` on navy theme).
+- `.welcome--layout-split` — straight 55/45 vertical split, no diagonal.
+- `.welcome--layout-centered` — pitch centred top, preview as a 280px-tall
+  horizontal band beneath; also auto-applied at tablet width (760–1099px)
+  regardless of Tweaks selection.
+- `.welcome--layout-hero` — pitch overlays a full-bleed preview that
+  gradient-fades into the page.
+
+Mini footer position varies by layout (absolute on diagonal/split; bottom-
+centred full-width on centered).
+
+**Constraints**:
+- A single root element gets the layout class; sub-elements adapt via
+  selectors.
+- Mobile (`<760px`) ignores all layout classes — the `.welcome--mobile`
+  class from 14.11 wins.
+
+**Validation**:
+- Manual at each layout × theme combination — record any visual delta
+  against the design in the Phase 14 PR description.
+
+---
+
+### [X] Task 16.2 — Tweaks store + URL-param overlay
+
+**Target files**:
+- `src/pages/welcome/tweaks/tweaksStore.js` (new)
+- `src/pages/welcome/WelcomePage.js` (subscribe + apply tweaks)
+
+**What to do**:
+Implement a small pub/sub store mirroring `src/data/authStore.js`:
+
+```js
+const TWEAK_DEFAULTS = Object.freeze({
+  layout: 'diagonal',
+  theme: 'warm',
+  copyIntensity: 'none',
+  authState: 'signin',
+  heroScene: 'auto',
+});
+const ALLOWED = {
+  layout: ['diagonal', 'split', 'centered', 'hero'],
+  theme: ['warm', 'white', 'navy'],
+  copyIntensity: ['none', 'minimal', 'pitch'],
+  authState: ['signin', 'signup'],
+  heroScene: ['auto', 'stack', 'pipeline', 'profile', 'logo'],
+};
+
+// At init: read window.location.search; for each known key with a value in ALLOWED, overlay onto defaults.
+```
+
+API:
+- `getTweaks()` → current snapshot
+- `setTweak(key, value)` → validated set + notify
+- `subscribe(fn)` → unsubscribe
+
+Apply to the welcome root in `WelcomePage.js`:
+- `theme` and `layout` map to CSS classes
+  (`welcome--theme-${theme}`, `welcome--layout-${layout}`)
+- `copyIntensity` maps to `welcome--copy-${value}`
+- `heroScene` passes to `HeroSlideshow`
+- `authState` passes to `AuthOverlay` (when mounted)
+
+**Constraints**:
+- **No persistence** — do not write to `localStorage` or cookies.
+- Validation: invalid query-string values are ignored and the default
+  retained.
+- Module-level state; single instance per page.
+
+**Validation**:
+- `tests/pages/welcome/tweaks/tweaksStore.test.js` (new):
+  - Defaults match design §5.
+  - URL `?layout=centered&theme=navy` overlays correctly.
+  - Invalid value (`?layout=spinny`) ignored.
+  - `setTweak` notifies subscribers.
+
+---
+
+### [X] Task 16.3 — Tweaks panel UI
+
+**Target files**:
+- `src/pages/welcome/tweaks/TweaksPanel.js` (new)
+- `src/styles/main.css`
+- `src/pages/welcome/WelcomePage.js` (mount the panel)
+
+**What to do**:
+Implement a floating control panel per design §5:
+
+- Toggle button (`◆` glyph, ~32×32) anchored to the top-right of the
+  viewport. Hidden at `<760px` (mobile).
+- Clicking the toggle opens a small panel with one labeled select per
+  tweak key.
+- Each select reflects `getTweaks()` and calls `setTweak(key, e.target.value)`
+  on change.
+- Pressing Escape or clicking outside closes the panel.
+- z-index above the welcome chrome but below the auth modal.
+
+**Constraints**:
+- Implementation uses the same DOM utilities as the rest of the project
+  (no framework).
+- The panel is part of the production bundle (user decision); keep its
+  CSS minimal so it doesn't bloat first paint.
+- Do not auto-open on first load.
+
+**Validation**:
+- `tests/pages/welcome/tweaks/tweaksPanel.test.js` (new):
+  - Renders with all five selects at desktop width.
+  - Not in DOM at width 700 (mobile).
+  - Changing a select calls `setTweak` with the right key/value.
+  - Escape closes the panel.
+
+---
+
+---
+
+## Phase 17 — Welcome refresh: Auth Modal restyle
+
+> Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md) §4.6.
+> Behavior contract: spec.md FR-024.
+>
+> Drops the existing tab strip, applies the new 440px shell + overlay, adds
+> the in-modal demo button (wired to the Phase 14 `showDemoComingSoon()`
+> stub) + "or" divider + swap-mode link + legal copy on signup. Auth logic
+> is unchanged.
+
+### [X] Task 17.1 — Restyle Auth Modal (was `AuthOverlay`) to the new design
+
+**Target files**:
+- `src/pages/welcome/AuthOverlay.js`
+- `src/pages/welcome/LoginForm.js`
+- `src/pages/welcome/SignupForm.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per design §4.6 and FR-024:
+
+- Overlay: `rgba(8,8,24,.55)` + `backdrop-filter: blur(6px)`.
+- Modal: 440px max-width, 14px radius, white surface,
+  `box-shadow: 0 12px 40px rgba(26,26,46,.22)`.
+- Header: 40px Alice logo + title + close button.
+- Body (`signin` mode): email → password. **No "Forgot?" link** — the
+  design's `Forgot?` affordance is **out of scope for Phase 14** because
+  (a) 018 spec mandates "no custom in-app reset UI" and (b) Phase 14
+  forbids new auth-API call sites. Password reset stays operator-driven
+  (the operator triggers reset from the Supabase dashboard). When the
+  user-base grows past the allowlisted operator-managed model, add the
+  Forgot link as a follow-up feature that wires `supabase.auth.resetPasswordForEmail`
+  with a defined redirect URL. Track this as a non-blocking divergence
+  from `design/welcome_page.md` §4.6 in the PR description.
+- Body (`signup` mode): email → password (no name field).
+- Footer: primary submit button → `or` text divider → demo button (warm
+  fill, green pulse dot, click fires the demo-coming-soon toast) → swap-
+  mode link ("Don't have an account? Create one" / "Already have one?
+  Sign in") → legal copy on signup only ("By creating an account, you
+  agree to…").
+- Mode swap is in-place — overlay does not remount, focus does not leave
+  the modal, the entered email persists across the swap (this is already
+  done in the existing implementation; preserve it).
+- Subscribe to `tweaksStore` for `authState` — the Tweaks panel can drive
+  the open mode directly.
+
+**Constraints**:
+- Do not add a name field to `SignupForm`.
+- Do not call any new auth API.
+- Preserve focus trap, ESC-to-close, backdrop-click-to-close,
+  previous-focus restoration.
+
+**Validation**:
+- Extend `tests/components/welcome.test.js`:
+  - Modal width / radius / overlay rgba match.
+  - Signin mode has "Forgot?" link; signup mode does not.
+  - Signup form has no name input.
+  - Demo button inside the modal triggers the toast helper.
+  - Swap-mode link preserves email value.
+
+---
+
+---
+
+## Phase 18 — Welcome refresh: Mobile branch + asset cleanup + test rewrite + cross-check
+
+> Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md) §3.3.
+> Behavior contract: spec.md FR-025 + FR-020 closure.
+>
+> Closes out the welcome refresh: the `<760px` portrait-stack branch lands
+> alongside the deletion of the six `welcome-hero/*.png` files, a full
+> rewrite of `tests/components/welcome.test.js`, and a final spec/design
+> cross-check.
+
+### [X] Task 18.1 — Mobile responsive branch (`<760px`)
+
+**Target files**:
+- `src/pages/welcome/WelcomePage.js`
+- `src/styles/main.css`
+
+**What to do**:
+Per design §3.3 and FR-025, implement the mobile portrait stack as a
+viewport branch inside `WelcomePage.js`:
+
+- `matchMedia('(max-width: 759px)')` attaches a listener at mount; toggles
+  `.welcome--mobile` on the root.
+- Mobile rules (CSS scoped under `.welcome--mobile`):
+  - Container: `width: 100%; height: 100%; background: var(--warm);
+    display: flex; flex-direction: column; padding: 96px 28px 56px`.
+  - Brand stack: left-aligned column, `gap: 18px`. Logo
+    `Alice_Colored.png` 68×68. Wordmark Sora 700 / 32 / `-.6px` tracking.
+  - Headline: 38 / `-1.2px` / line-height 1.04 / `text-wrap: balance`.
+    `<em>organized.</em>` keeps the same indigo + underline-glow.
+  - CTA group: `margin-top: auto`. Buttons full-width, 12px radius,
+    `16px / 20px` padding, 15px font, vertical stack with 10px gap.
+    Pulsing green dot on the "Try the demo" button (`mw-pulse` 1.8s
+    infinite).
+  - **Hide**: hero slideshow, mini footer, Tweaks panel toggle.
+- Tweaks panel does not affect mobile; layout is fixed.
+
+**Constraints**:
+- No separate page module — this is the same `WelcomePage.js`.
+- Keep the auth flow available on mobile (clicking Sign In / Create
+  Account still opens the Auth Modal).
+
+**Validation**:
+- Manual at 360px, 414px, and 759px viewports: stack renders per design.
+- `tests/components/welcome.test.js`: mount with width 700, assert
+  slideshow is not present and the Tweaks panel toggle is not rendered.
+
+---
+
+### [X] Task 18.2 — Asset cleanup: remove `welcome-hero/*.png`
+
+**Target files**:
+- `src/assets/welcome-hero/*.png` (delete)
+- `src/pages/welcome/WelcomePage.js` (drop unused imports)
+- `docs/REPO_MAP.md` (remove the directory entry added in Phase 11.5;
+  defer the docs edit to Phase 19.3 if cleaner)
+
+**What to do**:
+After Tasks 15.1–15.2 land, the six hero screenshots are no longer
+referenced. Delete them and any orphan import statements. Verify
+`npm run build` still succeeds.
+
+**Constraints**:
+- Use `git rm` (or VSCode/Explorer delete) for tracked files so the
+  deletion is captured in the next commit.
+- Do not delete `Alice_White.png` (still used by Scene 4 and by the
+  Navbar / Footer).
+
+**Validation**:
+- `grep -rn "welcome-hero" src/` returns no hits.
+- `npm run build` succeeds; bundle size shrinks.
+
+---
+
+### [X] Task 18.3 — Test pass: rewrite `tests/components/welcome.test.js`
+
+**Target file**: `tests/components/welcome.test.js`
+
+**What to do**:
+- Drop assertions about the removed elements (floating pills, disclaimer,
+  product screenshots, char-count truncation, disabled demo CTA).
+- Add assertions for the new structure (per Tasks 14.4 / 14.5 / 14.7 /
+  17.1 / 14.8 / 18.1).
+- Tweaks panel + tweaks store get their own test files (Tasks 16.2–16.3).
+
+**Validation**:
+- `npm run test:run -- tests/components/welcome.test.js` passes.
+- Full `npm run test:run` still green.
+
+---
+
+### [X] Task 18.4 — Spec/design cross-check
+
+**Target files** (read-only sweep):
+- `design/welcome_page.md`
+- `specs/018-auth-user-access/spec.md` (FR-020 through FR-026)
+- `specs/018-auth-user-access/plan.md` §14.A–§14.F
+
+**What to do**:
+After Phases 14–18 land (Tasks 14.1–18.3):
+
+1. Walk every requirement in FR-020 through FR-026 and confirm there's a
+   corresponding code change.
+2. Walk every section in `design/welcome_page.md` (purpose, tokens,
+   layouts, components, tweaks, behaviour, assets) and confirm the code
+   matches — or note the divergence in the PR description.
+3. Confirm the four resolved divergences in the design's "Implementation
+   note" header (license, version source, demo placeholder, name field)
+   are honored in code.
+
+**Out of scope**:
+- Re-running the full test suite or build assertion — owned by Phase 19
+  (Release Prep) and Phase 20 (Smoke Test).
+
+---
+
+## Phase 19 — Release Prep Redo (v0.8.1)
+
+> Runs once Phases 13 through 18 are all implementation-complete. Bundles
+> a single CHANGELOG entry + version bump for the tracker chrome refresh
+> (Phase 13) and the full welcome refresh (Phases 14–18).
+
+### [ ] Task 19.1 — Bump version to `0.8.1`
+
+**Target files**:
+- `package.json`
+- `src/components/Footer.js` (`APP_VERSION`)
+
+**What to do**: bump `0.8.0` → `0.8.1` (SemVer patch — UI-only, no API or
+schema change). Run `npm install` so `package-lock.json` resyncs. Update
+the "Built …" date string in the footer if stale.
+
+**Validation**:
+- `grep -n "0\.8\.0" package.json src/` returns no matches outside
+  CHANGELOG.
+- `npm run test:run` still green.
+
+---
+
+### [ ] Task 19.2 — `CHANGELOG.md` entry for 0.8.1
+
+**Target file**: `CHANGELOG.md`
+
+**What to do**:
+Add a `## [0.8.1] — <merge-date>` section above `[0.8.0]`. Group entries
+under **Changed** (Tracker chrome unification, identity cluster polish,
+mobile bottom tab bar + FAB, fold-narrow breakpoint, welcome-page polish
+from Phase 14) and **Fixed** (anything Phase 14 surfaces as a bug). No
+**Added** / **Security** / **Removed** sections expected — this is pure
+UI polish on top of v0.8.0.
+
+**Validation**: section parses by eye; Keep-a-Changelog ordering preserved.
+
+---
+
+### [ ] Task 19.3 — Docs sweep
+
+**Target files**:
+- `README.md` (only if Phase 13/14 changed user-visible behavior — likely
+  a no-op)
+- `docs/REPO_MAP.md` (add `src/components/BottomTabBar.js`, `Fab.js`, and
+  any other new files from Phase 13/14)
+- `docs/deployment.md` (no-op expected; UI-only)
+
+**Validation**: cross-references resolve; new paths exist.
+
+---
+
+## Phase 20 — UI-Only Browser Smoke Test
+
+> Constitution Amendment 1.3.0: Browser Smoke Test is the final phase and
+> must run against the to-be-merged state. Scope here is limited to the
+> UI surfaces touched by Phases 13 through 18 (functionality was already
+> validated in Phase 12 for v0.8.0).
+
+### [ ] Task 20.1 — Walk the UI-affected acceptance paths
+
+**What to do**: in a live browser session against the merge-state build,
+exercise the chrome surfaces:
+
+- [ ] **Desktop ≥ 1024px** — top bar identity cluster renders email
+  (truncated at 220px CSS) + door-arrow sign-out button; clicking
+  sign-out clears state and routes to welcome.
+- [ ] **Tablet 640–1023px** — same as desktop; toolbar chips remain
+  readable on the navy band.
+- [ ] **Mobile ≤ 639px** — bottom tab bar visible; top-bar page nav hidden;
+  sign-out collapses to icon-only; email hidden; "+ New application"
+  hidden; FAB visible above the tab bar; tapping the FAB opens the
+  Create-mode detail modal.
+- [ ] **Fold-narrow < 380px** — "Project Alice" wordmark hidden; logo
+  mark + sign-out icon remain.
+- [ ] **Sign-out behavior** — clicking sign-out from any viewport fires
+  the toast and returns the app to the welcome page (US3 chrome path).
+- [ ] **Unauthenticated path** — visit the Tracker URL while signed out
+  in a hosted preview; confirm the welcome page renders (US4 chrome path).
+- [ ] **Welcome — desktop diagonal** — open the welcome page at ≥ 1100px;
+  confirm the diagonal split, indigo "organized." underline-glow, four-
+  scene slideshow auto-cycle, dot navigation + progress bar, and the
+  mini footer's version / PolyForm link / Report-issue / Request-feature
+  links all match design.
+- [ ] **Welcome — Tweaks panel** — toggle the Tweaks panel; cycle each
+  control (`layout`, `theme`, `copyIntensity`, `authState`, `heroScene`)
+  and confirm the page responds without errors. Load
+  `?layout=centered&theme=navy&heroScene=pipeline` and confirm the URL
+  overlay applies.
+- [ ] **Welcome — tablet centered** — at 900px width, confirm the
+  layout collapses to the centered preset with the 280px preview band;
+  scene-1 renders as 2 flat cards, scene-4 logo is fixed 200×200.
+- [ ] **Welcome — mobile portrait stack** — at 360px width, confirm:
+  no slideshow, no Tweaks panel, brand stack left-aligned with
+  `Alice_Colored.png` 68×68, full-width CTAs with the green pulsing dot
+  on Try the demo, headline at 38px with "organized." glow.
+- [ ] **Welcome — Try the demo placeholder** — click Try the demo on
+  desktop, tablet, mobile, and inside the Auth Modal; each click
+  surfaces the "Demo coming soon" toast and does not navigate.
+- [ ] **Welcome — Auth Modal restyle** — open the modal in `signin` and
+  `signup`; confirm 440px max-width, white surface, "Forgot?" link in
+  signin only, no name field in signup, in-place mode swap preserves
+  the email value, ESC + backdrop + close button all dismiss, focus
+  returns to the originating CTA.
+
+Mark each path complete in the PR description. Functional smoke
+(US1/US2/US5) is **not** repeated — those were validated in Phase 12 and
+the underlying code is unchanged.
 
 ---
 

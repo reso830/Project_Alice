@@ -146,8 +146,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 
 | Path | Purpose |
 |------|---------|
-| `src/assets/Alice_White.png` · `Alice_Colored.png` | Brand marks (used by Navbar, Footer, WelcomePage, ConfigError) |
-| `src/assets/welcome-hero/` | Six hero screenshots (tracker, application-modal, profile, filters, calendar, mobile-tracker) wired into `HeroSlideshow` |
+| `src/assets/Alice_White.png` · `Alice_Colored.png` | Brand marks (used by Navbar, Footer, WelcomePage, ConfigError, Auth modal header, Scene 4 of `HeroSlideshow`) |
 
 ---
 

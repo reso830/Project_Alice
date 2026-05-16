@@ -1,6 +1,7 @@
 import { Card } from '../components/Card.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { CreationPicker } from '../components/CreationPicker.js';
+import { Fab } from '../components/Fab.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
@@ -217,17 +218,6 @@ function onAddApplication() {
   });
 }
 
-function createFab() {
-  const button = document.createElement('button');
-
-  button.className = 'fab';
-  button.type = 'button';
-  button.setAttribute('aria-label', 'New application');
-  button.textContent = '+';
-  button.addEventListener('click', onAddApplication);
-
-  return button;
-}
 
 function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
@@ -414,7 +404,7 @@ export async function mount(container) {
     onClearAll,
     onAddApplication,
   });
-  const fab = createFab();
+  const fab = Fab.render({ onClick: onAddApplication });
 
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');

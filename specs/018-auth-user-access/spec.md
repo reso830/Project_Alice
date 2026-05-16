@@ -12,6 +12,52 @@
 > contract. Earlier references in this spec to HS256/`SUPABASE_JWT_SECRET`
 > reflect the original design.
 
+> **Amendment 2026-05-16 (Phase 13 — tracker chrome refresh)**: The Tracker page
+> chrome (top bar, toolbar, mobile shell) is being refreshed to integrate the
+> authentication identity cluster (email + sign-out) into a unified navy band,
+> and to introduce mobile-specific navigation (bottom tab bar + FAB). Behavior
+> remains as specified by FR-010 (session-aware navigation); the changes are
+> primarily visual + mobile-layout, plus a small behavior delta around the
+> signed-out state of the Tracker chrome (see FR-010a below). Source of truth
+> for the visual design is `design/tracker.md`. Release Prep and Browser Smoke
+> Test are deferred until the welcome-page refresh (Phase 14) also lands, so
+> a single 0.8.1 release covers both UI phases.
+
+> **Amendment 2026-05-16 (Phases 14–18 — welcome page refresh)**: The Welcome
+> page introduced by Phases 06–09 is being rewritten to match the updated
+> `design/welcome_page.md`, split across five phases by risk and dependency:
+>
+> - **Phase 14 (Foundation)** — appMeta module, design tokens, headline accent,
+>   brand mark swap, removal of floating pills + disclaimer, mini-footer
+>   sourced from `appMeta.js`, demo CTA placeholder via shared
+>   `showDemoComingSoon()` stub. FR-020 (partial) + FR-023 + FR-026.
+> - **Phase 15 (Hero scenes)** — four abstract animated scenes
+>   (`SceneStack`, `ScenePipeline`, `SceneProfile`, `SceneLogo`); rebuilt
+>   `HeroSlideshow` with 5500ms cycle, 700ms cross-fade, dot navigation
+>   with progress bar. FR-021.
+> - **Phase 16 (Tweaks + layouts + themes)** — Tweaks store + panel UI
+>   (production), four layout modes (`diagonal | split | centered | hero`),
+>   three theme variants (`warm | white | navy`). FR-022.
+> - **Phase 17 (Auth Modal restyle)** — 440px shell, new overlay rgba +
+>   blur, drop the tab strip, add "or" divider + in-modal demo button +
+>   swap-mode link + legal copy on signup. No Forgot link. FR-024.
+> - **Phase 18 (Mobile + cleanup)** — `<760px` portrait-stack branch in the
+>   single `WelcomePage.js` module, deletion of the six `welcome-hero/*.png`
+>   files, full rewrite of `tests/components/welcome.test.js`, spec/design
+>   cross-check. FR-025 + FR-020 closure.
+>
+> The auth contract is unchanged across all five phases (still email +
+> password via Supabase, still allowlist-gated, still verification-mailed).
+> The "Try the demo" CTA renders enabled across the welcome page and the
+> Auth Modal but always routes to the shared `showDemoComingSoon()` toast
+> (Phase 14 ships the stub; Phase 17 wires the in-modal demo button to it).
+> `window.alert()` is forbidden — see Task 14.8. Real demo behavior remains
+> owned by feature 020. The Auth Modal's name field is **not** added
+> (Supabase signup stays email + password; FR-002 unchanged). Mini footer
+> version + license + issue links are sourced from the same constants as
+> `src/components/Footer.js`. See FR-020 through FR-026 below; each FR
+> tags the phase that owns it.
+
 ---
 
 ## Problem Statement
@@ -311,6 +357,24 @@ the response body.
 - **FR-010**: Frontend MUST render session-aware navigation: signed-in users see an
   identifier (email or display name) and a sign-out control; signed-out users see a
   call-to-action to sign in or sign up.
+- **FR-010a (Phase 13)**: The Tracker top bar MUST integrate the identity cluster
+  (email readout + sign-out button) into a unified navy band shared with the
+  toolbar, per `design/tracker.md` §Top Bar / §Toolbar / §Authentication-Identity.
+  When the auth state is `unauthenticated`, the identity cluster MUST NOT render
+  on the Tracker — unauthenticated visitors are routed to the Welcome page, which
+  remains the sole sign-in surface. The Tracker chrome therefore renders the
+  cluster only in its signed-in form (email + sign-out) or in `local-mode`
+  (no cluster).
+- **FR-010b (Phase 13)**: The Tracker chrome MUST collapse responsively per
+  `design/tracker.md` §Responsive Breakpoints — at ≤ 639px the page nav moves
+  to a Bottom Tab Bar, the "+ New application" toolbar button is replaced by a
+  FAB, and the sign-out button collapses to icon-only (32px hit target) with the
+  email readout hidden; at < 380px ("fold-narrow"), the "Project Alice" wordmark
+  hides leaving only the 38px logo mark beside the sign-out icon.
+- **FR-010c (Phase 13)**: Email truncation in the Tracker top bar MUST be
+  driven by a `max-width: 220px` single-line ellipsis (CSS), not by a JavaScript
+  character-count cap. The full email MUST be exposed via the element's `title`
+  attribute for hover/focus.
 - **FR-011**: Frontend MUST gate the resume-import entry point on an authenticated
   session: signed-out visitors MUST NOT see or be able to invoke it.
 - **FR-012**: Frontend MUST NOT be relied on as the only enforcement layer; every
@@ -351,6 +415,66 @@ the response body.
   "Configuration Error" view when the server reports `hosted` but the frontend's
   Supabase client is unconfigured — defense in depth against a deploy whose
   build-time check was somehow bypassed.
+- **FR-020 (Phases 14 + 18)**: The Welcome page MUST be rewritten to match
+  `design/welcome_page.md`. The headline MUST render `Your job search,
+  <em>organized.</em>` with the indigo underline-glow on the `<em>` per
+  design §4.2. The brand block MUST swap between `Alice_Colored.png` (warm /
+  white themes) and `Alice_White.png` (navy theme + Scene 4) per design §4.1.
+  The floating metadata pills + "Sample data — illustrative only" disclaimer
+  from the previous design MUST be removed.
+- **FR-021 (Phase 15)**: The hero slideshow MUST replace the 6 product
+  screenshots with the four abstract scenes specified in design §4.4:
+  `SceneStack` (tilted card stack), `ScenePipeline` (status-cycling preview
+  card), `SceneProfile` (donut + 4 stat chips), and `SceneLogo` (Alice mark
+  with sparkles). Auto-cycle 5500ms per scene, 700ms cross-fade, with
+  click-to-jump dot controls and a per-scene progress indicator.
+  `prefers-reduced-motion: reduce` MUST disable rotation, scene-internal
+  animations, and the dot progress bar.
+- **FR-022 (Phase 16)**: The Welcome page MUST expose a runtime Tweaks panel
+  controlling `layout` (`diagonal | split | centered | hero`), `theme`
+  (`warm | white | navy`), `copyIntensity` (`none | minimal | pitch`),
+  `authState` (`signin | signup`), and `heroScene` (`auto | stack | pipeline
+  | profile | logo`). Defaults match design §5. The panel MUST also honor
+  matching `?key=value` URL query parameters at load time (overlaying any
+  matches onto defaults) so deep links can pre-configure the page. Panel
+  state MUST NOT be persisted across sessions — the page is unauthenticated
+  pre-app and storing UI prefs there has no value.
+- **FR-023 (Phase 14, extended by Phase 17)**: The "Try the demo" CTA MUST
+  render enabled (no disabled attribute, no "Coming soon" tooltip), but
+  clicking it MUST surface a transient "Demo coming soon" toast (via the
+  existing `src/components/Toast.js`) rather than navigating. `window.alert()`
+  MUST NOT be used. Real demo behavior is out of scope for 018 and is owned
+  by feature 020. The Auth Modal demo button (design §4.6 footer) shares
+  this exact handler (Phase 14 ships the shared `showDemoComingSoon()` stub
+  in `src/pages/welcome/demoStub.js`; Phase 17 wires the in-modal demo
+  button to the same handler — see Task 14.8 + Task 17.1).
+- **FR-024 (Phase 17)**: The Auth Modal MUST be restyled per design §4.6 —
+  440px max-width, 14px radius, `rgba(8,8,24,.55)` overlay with 6px backdrop
+  blur, 40px header logo, `signin` body containing email → password,
+  `signup` body containing email → password (no name field), footer
+  containing primary submit → "or" divider → demo button → swap-mode link
+  → legal copy (signup only). The "Forgot?" link from the design is
+  **deferred** — Phase 14 does not ship a forgot-password trigger
+  (operator-driven reset only, consistent with 018's "no custom in-app
+  reset UI" + Phase 14's "no new auth API" constraints). The mode swap
+  MUST occur in-place without remounting; the entered email value MUST
+  persist across the swap.
+- **FR-025 (Phase 18)**: At viewports `<760px`, the Welcome page MUST render
+  the simplified portrait stack from design §3.3 within the same module
+  (single responsive `WelcomePage.js`; no separate page or HTML file).
+  Mobile mode MUST omit the slideshow, render full-width CTAs with the
+  pulsing green dot on the demo button, and use `Alice_Colored.png` 68×68
+  with the brand block left-aligned per design §3.3. The Tweaks panel MAY
+  be hidden on mobile (its layout/theme switches are not meaningful at this
+  viewport).
+- **FR-026 (Phase 14)**: The Welcome mini footer MUST render the version,
+  license, and feedback-link items sourced from a single shared module that
+  also feeds [src/components/Footer.js](src/components/Footer.js). The
+  version constant (e.g. `APP_VERSION`) and the issue URL (e.g. `ISSUE_URL`)
+  MUST NOT be duplicated; the license string MUST be `PolyForm Noncommercial
+  1.0.0` (not "MIT"). Report-an-issue and Request-a-feature items MUST be
+  anchor elements with `target="_blank"` and `rel="noopener noreferrer"`
+  pointing at `ISSUE_URL`, mirroring `createFeedbackLink` in Footer.js.
 
 ### Key Entities
 
