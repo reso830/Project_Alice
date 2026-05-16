@@ -1300,7 +1300,7 @@ Update any entry whose description changed (e.g. `server/index.js`'s
 
 ## Phase 12 — Verification
 
-### [ ] Task 12.1 — Run the full automated test suite
+### [X] Task 12.1 — Run the full automated test suite
 
 **Command**: `npm run test:run`
 
@@ -1308,7 +1308,7 @@ Update any entry whose description changed (e.g. `server/index.js`'s
 
 ---
 
-### [ ] Task 12.2 — Verify secrets are not in the Vite bundle
+### [X] Task 12.2 — Verify secrets are not in the Vite bundle
 
 **Target output**: `dist/`
 
@@ -1322,7 +1322,7 @@ Update any entry whose description changed (e.g. `server/index.js`'s
 
 ---
 
-### [ ] Task 12.3 — Verify build-time assertion fails closed
+### [X] Task 12.3 — Verify build-time assertion fails closed
 
 **What to do**:
 - Run `npm run build` with `VITE_SUPABASE_URL` unset.
@@ -1335,7 +1335,7 @@ Update any entry whose description changed (e.g. `server/index.js`'s
 
 ---
 
-### [ ] Task 12.4 — Walk `checklists/plan-review.md`
+### [X] Task 12.4 — Walk `checklists/plan-review.md`
 
 **Target file**: `specs/018-auth-user-access/checklists/plan-review.md`
 
@@ -1343,7 +1343,7 @@ Update any entry whose description changed (e.g. `server/index.js`'s
 
 ---
 
-### [ ] Task 12.5 — Manual validation via `quickstart.md §6-7`
+### [X] Task 12.5 — Manual validation via `quickstart.md §6-7`
 
 **What to do**: follow quickstart §6 (run) and §7 (manual validation flow,
 including negative paths) end-to-end on a real Supabase project.
@@ -1353,7 +1353,7 @@ including negative paths) end-to-end on a real Supabase project.
 
 ---
 
-### [ ] Task 12.5b — Pre-deploy verification gate (`quickstart.md §10`)
+### [X] Task 12.5b — Pre-deploy verification gate (`quickstart.md §10`)
 
 **What to do**: before promoting any hosted deploy to production, run the
 six checks in `quickstart.md §10` against the **production** Supabase
@@ -1371,7 +1371,7 @@ only mechanism that catches that misconfiguration before users hit it.
 
 ---
 
-### [ ] Task 12.6 — Browser smoke tests (constitution Amendment 1.1.0)
+### [X] Task 12.6 — Browser smoke tests (constitution Amendment 1.1.0)
 
 **What to do**: in a live browser session against the hosted deploy (or a
 local hosted-mode dev), execute each user-story Independent Test from spec.md:
@@ -1396,7 +1396,7 @@ follow-up issues.
 
 ---
 
-### [ ] Task 12.7 — Update memory and `CLAUDE.md` if patterns emerged
+### [X] Task 12.7 — Update memory and `CLAUDE.md` if patterns emerged
 
 **Target files**: `CLAUDE.md` (project), user auto-memory.
 

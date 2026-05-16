@@ -24,11 +24,11 @@ Skills are defined in `.agents/skills/` and mirrored to `.claude/skills/`. Run t
 
 Feature branches follow sequential numbering: `###-feature-name` (e.g. `001-core-tracker`), configured in `.specify/init-options.json`.
 
-## Project Constitution (v1.0.1)
+## Project Constitution (v1.3.0)
 
-Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of governing rules:
+Ratified 2026-04-25, last amended 2026-05-16. Full text in `.specify/memory/constitution.md`. Summary of governing rules:
 
-**Required data fields**: company name, job title, status, last_status_update / lastStatusUpdate.  
+**Required data fields**: company name, job title, status, last_status_update / lastStatusUpdate, responsibilities (Amendment 1.2.0).  
 **Optional fields**: source, URL, application date, salary, notes, follow-up action/date.
 
 **Architecture constraints**:
@@ -55,9 +55,14 @@ Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of 
 - Core validation logic must have automated tests
 - Cover: status transitions, required field enforcement, URL validation, date handling
 
+**Mandatory final phases for every feature** (Amendments 1.1.0 + 1.3.0):
+1. **Release Prep** (second-to-last phase) — version bump, CHANGELOG entry, README updates, `docs/deployment.md` when env vars/runtime modes change, `docs/REPO_MAP.md` for new files, docs sanity check
+2. **Browser Smoke Test** (final phase, UI features only) — walk each user story's Independent Test in a real browser against the to-be-merged state; ordered AFTER Release Prep so the smoke test exercises the actual merge state
+
 **Review gates** (must pass before accepting a plan or completing a phase):
 - Constitution compliance check
 - Tasks include validation, state handling, and quality-gate work
+- Tasks include Release Prep + Browser Smoke Test as the final two phases (in that order)
 - Lint/format checks pass
 - Any skipped check documented with reason and residual risk
 
