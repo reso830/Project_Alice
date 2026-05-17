@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SceneProfile } from '../../../../src/pages/welcome/scenes/SceneProfile.js';
+
+const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 let container;
 
@@ -77,5 +82,11 @@ describe('SceneProfile', () => {
     // Final values come from DONUT_AFTER.
     expect(container.querySelector('[data-legend-value="interview"]').textContent).toBe('8');
     expect(container.querySelector('[data-legend-value="offered"]').textContent).toBe('4');
+  });
+
+  it('keeps the centered/tablet variant compact enough for the slideshow band', () => {
+    expect(mainCss).toContain('.scene-profile--centered');
+    expect(mainCss).toContain('gap: 18px');
+    expect(mainCss).toContain('flex-basis: 124px');
   });
 });

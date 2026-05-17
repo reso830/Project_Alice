@@ -149,6 +149,13 @@ function buildDots(state) {
   return { row, dots };
 }
 
+function buildDisclaimer() {
+  const note = document.createElement('div');
+  note.className = 'hero-slideshow__disclaimer';
+  note.textContent = 'Illustrative purposes';
+  return note;
+}
+
 export function mount(container, { heroScene = 'auto', variant = 'default' } = {}) {
   unmount();
 
@@ -160,7 +167,8 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
   layer0.className = 'hero-slideshow__layer hero-slideshow__layer--active';
   const layer1 = document.createElement('div');
   layer1.className = 'hero-slideshow__layer';
-  root.append(layer0, layer1);
+  const disclaimer = buildDisclaimer();
+  root.append(layer0, layer1, disclaimer);
 
   const state = {
     root,

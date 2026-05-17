@@ -2,7 +2,7 @@
 
 > Authoritative spec for the Welcome / sign-in page across **desktop, tablet, and mobile**. Written for coding agents (Claude, Codex). Source of truth wins over any rendered file when they disagree.
 
-> **Implementation note (2026-05-16).** This document was drafted against a React/JSX prototype. The production project is **Vanilla JS + Vite**. The `.jsx`/`.html` filenames below (`welcome-app.jsx`, `Welcome.html`, `Welcome Mobile.html`, `tweaks-panel.jsx`, `ios-frame.jsx`) refer to the prototype; the production implementation lives in `src/pages/welcome/*.js` as a single responsive Vanilla JS module. Design intent (tokens, behavior, scene composition, tweaks) carries over; the file structure does not.
+> **Implementation note (2026-05-16; updated 2026-05-17).** This document was drafted against a React/JSX prototype. The production project is **Vanilla JS + Vite**. The `.jsx`/`.html` filenames below (`welcome-app.jsx`, `Welcome.html`, `Welcome Mobile.html`, `ios-frame.jsx`) refer to the prototype; the production implementation lives in `src/pages/welcome/*.js` as a single responsive Vanilla JS module. Design intent (tokens, behavior, scene composition) carries over; the prototype Tweaks panel does not.
 >
 > Specific resolved divergences from the prototype, applied in Phase 14 of feature 018:
 > - **License** in the mini footer is **PolyForm Noncommercial 1.0.0**, not MIT. Source the value from the same constant used by [Footer.js](../src/components/Footer.js); do not hard-code "MIT".
@@ -18,7 +18,7 @@
 - `welcome-app.jsx` — React app (mounts `<App>` into `#root`)
 - `Welcome Mobile.html` — standalone mobile-portrait artboard (iPhone bezel)
 - `Welcome Tablet.html` — tablet artboards (iPad portrait + landscape bezels embedding `Welcome.html?layout=centered`)
-- `tweaks-panel.jsx`, `ios-frame.jsx` — shared utilities
+- `ios-frame.jsx` — prototype-only visual framing utility
 
 ---
 
@@ -166,7 +166,7 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 - **Brand stack** — left-aligned column, `gap: 18px`. Logo 68×68 (`Alice_Colored.png`), wordmark Sora 700 / 32px / `-.6px` tracking.
 - **Headline** — 38px / `-1.2px` tracking / line-height 1.04 / `text-wrap: balance`. "organized." rendered in indigo with the same underline-glow `::after` as desktop.
 - **CTA group** — `margin-top: auto` anchors it to the lower half. Buttons are **full-width**, 12px radius, 16px / 20px padding, 15px font, vertical stack with 10px gap. Pulsing green dot on the ghost "Try the demo" button (`mw-pulse` 1.8s infinite).
-- No mini footer, no slideshow, no Tweaks panel toggle at this viewport. The Auth Modal is still mounted — tapping Sign in / Create account opens it in the same overlay used on desktop.
+- No slideshow and no prototyping controls at this viewport. The mini footer remains visible. The Auth Modal is still mounted — tapping Sign in / Create account opens it in the same overlay used on desktop.
 
 > Mobile is intentionally a different *layout*, not a squished desktop. In production, the difference is implemented as a `.welcome--mobile` branch inside `WelcomePage.js`, not as a separate page module. Do not fork into a second module to satisfy this section.
 
@@ -239,23 +239,27 @@ Auto-cycles four scenes. 5.5s per scene, 0.7s cross-fade. Click any of the 4 bot
 - Header: 40px Alice logo + title + close button.
 - Body: email → password. (Per Phase 14 header note: name field is omitted, and the "Forgot?" link is **deferred** — operator-driven reset only until a follow-up feature wires `supabase.auth.resetPasswordForEmail`. Do not ship a placeholder/inert Forgot link.)
 - Footer: primary submit → `or` divider → demo button (warm fill, green pulse dot) → swap-mode link → legal copy (signup only).
-- Mode is controlled by `tweaks.authState` (`signin` | `signup`).
+- Mode is controlled by the CTA that opens the modal (`Sign In` or `Create Account`) and by the modal's in-place swap link.
 
 ---
 
-## 5. Tweaks
+## 5. Production Defaults
 
-Exposed via the floating Tweaks panel (toggle in the top toolbar). Defaults live in the `EDITMODE-BEGIN/END` block in `welcome-app.jsx`.
+Production uses `layout=diagonal` on desktop, forces `layout=centered` at tablet width, uses the `warm` theme, `copyIntensity=none`, and `heroScene=auto`. The old floating Tweaks panel and its URL-param overrides were prototype-only and MUST NOT render in production.
 
-| Key             | Values                                                          | Default     |
-|-----------------|-----------------------------------------------------------------|-------------|
+### Retired Prototype Tweaks
+
+The floating Tweaks panel from the React prototype is not part of the production welcome page. Production uses the defaults below; URL parameters do not configure layout, theme, copy, auth mode, or hero scene.
+
+| Setting         | Production value |
+|-----------------|------------------|
 | `layout`        | `diagonal` · `split` · `centered` · `hero`                      | `diagonal`  |
 | `theme`         | `warm` · `white` · `navy`                                       | `warm`      |
 | `copyIntensity` | `none` · `minimal` · `pitch`                                    | `none`      |
 | `authState`     | `signin` · `signup`                                             | `signin`    |
 | `heroScene`     | `auto` · `stack` · `pipeline` · `profile` · `logo`              | `auto`      |
 
-### URL-param override
+### Retired URL-param override
 `welcome-app.jsx` reads `window.location.search` at load and overlays any matching query param onto `TWEAK_DEFAULTS`. Used by `Welcome Tablet.html` to embed `Welcome.html?layout=centered`. Pattern:
 
 ```
@@ -292,7 +296,7 @@ No other raster assets are required. Icons (`IconArrow`, `IconClose`, `IconCheck
 - **Do not** add a top nav bar to Welcome — identity comes from the brand block.
 - **Mobile (`<760px`) is a responsive branch inside the single `WelcomePage.js` module**, not a separate page. Implement it via the `.welcome--mobile` class toggled by a `matchMedia` listener (see §3.3 + FR-025 + Task 14.15). The "do not make Welcome.html responsive" guidance from the React prototype does **not** apply to the production module; the prototype split into HTML artboards because the design tool couldn't switch layouts at one viewport, the Vite SPA can.
 - **Tablet (760–1099px) uses the `centered` layout** — implemented as a CSS branch on the same root element, not a forked module or iframe. The prototype's "embed `Welcome.html?layout=centered` inside iPad bezels" approach is a design-tool artifact; production just applies the `welcome--layout-centered` class at this viewport range.
-- The `EDITMODE-BEGIN/END` JSON block from the prototype is a React-host concept; the production Tweaks store (`src/pages/welcome/tweaks/tweaksStore.js`) is a plain JS module with a frozen `TWEAK_DEFAULTS` object and the same URL-param overlay semantics.
+- The `EDITMODE-BEGIN/END` JSON block and floating Tweaks panel from the prototype are React-host/prototyping concepts; production does not include a Tweaks store, Tweaks panel, or URL-param overlay for design variants.
 - **Style object naming** (`mwStyles`, etc.) is a prototype-only constraint from the multi-file Babel setup. Production uses plain CSS (`src/styles/main.css`); ignore this bullet.
 - The slideshow's parent container must have an explicit `display: flex` on any child that relies on percentage heights or `gap` (this caused the donut-spacing bug in the prototype). Carries over to production CSS.
 - Preserve any `data-comment-anchor` attribute encountered when porting from the prototype — they're used by the design-review tool.

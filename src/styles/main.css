@@ -3547,13 +3547,29 @@ textarea.modal-inline-control {
 }
 
 .welcome__cta--ghost {
+  position: relative;
   background: transparent;
   color: var(--t2);
   border-color: transparent;
+  padding-left: 36px;
 }
 
 .welcome__cta--ghost:hover {
   opacity: 0.75;
+}
+
+.welcome__cta--ghost::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16A34A;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  animation: mw-pulse 1.8s ease-out infinite;
 }
 
 .welcome__cta:disabled {
@@ -3566,6 +3582,10 @@ textarea.modal-inline-control {
    version (plain), license link, and two issue/feature links separated by
    round 3px dots at 35% opacity. */
 .welcome__footer-meta {
+  position: absolute;
+  left: clamp(22px, 6vw, 64px);
+  bottom: clamp(20px, 3vw, 32px);
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3676,7 +3696,13 @@ textarea.modal-inline-control {
   clip-path: none;
 }
 .welcome--layout-centered .welcome__footer-meta {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  order: 3;
+  width: 100%;
   justify-content: center;
+  margin-top: 18px;
 }
 
 /* `hero` — pitch overlays a full-bleed preview that gradient-fades into the page. */
@@ -3752,76 +3778,6 @@ textarea.modal-inline-control {
    Phase 16 — Tweaks panel (design §5)
    --------------------------------------------------------------------------- */
 
-.tweaks-panel {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 50;
-  font-family: var(--font-ui);
-  font-size: 12px;
-}
-
-.tweaks-panel__toggle {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--t1);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  font-size: 14px;
-  padding: 0;
-}
-
-.tweaks-panel__toggle:hover {
-  background: #FFFFFF;
-}
-
-.tweaks-panel__body {
-  position: absolute;
-  top: 40px;
-  right: 0;
-  background: #FFFFFF;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-  min-width: 200px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-}
-
-.tweaks-panel__field {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--t2);
-}
-
-.tweaks-panel__label {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--t3);
-}
-
-.tweaks-panel__select {
-  font: inherit;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--border-2);
-  background: #FFFFFF;
-  color: var(--t1);
-  min-width: 100px;
-}
-
 /* Phase 15 — Hero scene system (replaces the 6-screenshot rotation). */
 
 .hero-slideshow {
@@ -3847,6 +3803,19 @@ textarea.modal-inline-control {
   opacity: 1;
   pointer-events: auto;
   z-index: 2;
+}
+
+.hero-slideshow__disclaimer {
+  position: absolute;
+  right: clamp(16px, 3vw, 28px);
+  bottom: clamp(14px, 2.5vw, 24px);
+  z-index: 4;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.46);
+  pointer-events: none;
 }
 
 .hero-slideshow__dots {
@@ -3915,7 +3884,7 @@ textarea.modal-inline-control {
 
 .scene-stack__card {
   position: absolute;
-  width: 88%;
+  width: 62%;
   background: #FFFFFF;
   color: var(--t1);
   border-radius: 14px;
@@ -3933,10 +3902,10 @@ textarea.modal-inline-control {
     transform 400ms cubic-bezier(.2,.7,.3,1.05);
 }
 
-.scene-stack__card--0 { transform: translate(-22%, -14%) rotate(var(--scene-stack-rotation, -4deg)); z-index: 1; }
-.scene-stack__card--1 { transform: translate(-8%, -4%) rotate(var(--scene-stack-rotation, -1.5deg)); z-index: 2; }
-.scene-stack__card--2 { transform: translate(8%, 6%) rotate(var(--scene-stack-rotation, 1.5deg)); z-index: 3; }
-.scene-stack__card--3 { transform: translate(22%, 16%) rotate(var(--scene-stack-rotation, 4deg)); z-index: 4; }
+.scene-stack__card--0 { left: 0; top: 12%; transform: translate(-8%, -14%) rotate(var(--scene-stack-rotation, -4deg)); z-index: 1; }
+.scene-stack__card--1 { left: 12%; top: 18%; transform: translate(-3%, -8%) rotate(var(--scene-stack-rotation, -1.5deg)); z-index: 2; }
+.scene-stack__card--2 { left: 27%; top: 28%; transform: translate(2%, -2%) rotate(var(--scene-stack-rotation, 1.5deg)); z-index: 3; }
+.scene-stack__card--3 { left: 42%; top: 38%; transform: translate(7%, 4%) rotate(var(--scene-stack-rotation, 4deg)); z-index: 4; }
 
 .scene-stack__card--entering {
   opacity: 0;
@@ -4174,14 +4143,50 @@ textarea.modal-inline-control {
   color: #FFFFFF;
 }
 
-/* ---------------------------------------------------------------------------
-   Scene 4 — SceneLogo
-   --------------------------------------------------------------------------- */
+.scene-profile--centered {
+  gap: 18px;
+  width: min(420px, 88%);
+}
+
+.scene-profile--centered .scene-profile__chip {
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.scene-profile--centered .scene-profile__chip-label {
+  font-size: 9px;
+}
+
+.scene-profile--centered .scene-profile__chip-value {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.scene-profile--centered .scene-profile__bottom {
+  gap: 20px;
+}
+
+.scene-profile--centered .scene-profile__donut {
+  width: 124px;
+  height: 124px;
+  flex-basis: 124px;
+}
+
+.scene-profile--centered .scene-profile__legend {
+  gap: 5px 16px;
+}
+
+.scene-profile--centered .scene-profile__legend-row {
+  gap: 7px;
+  font-size: 12px;
+}
 
 .scene-logo {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1 1 auto;
+  align-self: stretch;
   width: 100%;
   height: 100%;
 }
@@ -4211,21 +4216,19 @@ textarea.modal-inline-control {
 
 .scene-logo__sparkle {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  top: var(--scene-logo-sparkle-y, 50%);
+  left: var(--scene-logo-sparkle-x, 50%);
+  width: var(--scene-logo-sparkle-size, 16px);
+  height: var(--scene-logo-sparkle-size, 16px);
   background:
     linear-gradient(90deg, transparent 46%, var(--gold) 46%, var(--gold) 54%, transparent 54%),
     linear-gradient(0deg,  transparent 46%, var(--gold) 46%, var(--gold) 54%, transparent 54%);
   background-size: 100% 100%;
   opacity: 0;
-  transform: scale(0.4);
+  transform: translate(-50%, -50%) scale(0.4);
   animation: scene-sparkle 2.4s ease-in-out infinite;
+  animation-delay: var(--scene-logo-sparkle-delay, 0s);
 }
-
-.scene-logo__sparkle--0 { top: 4%;  left: 4%;  animation-delay: 0s; }
-.scene-logo__sparkle--1 { top: 4%;  right: 4%; animation-delay: 0.6s; }
-.scene-logo__sparkle--2 { bottom: 4%; left: 4%; animation-delay: 1.2s; }
-.scene-logo__sparkle--3 { bottom: 4%; right: 4%; animation-delay: 1.8s; }
 
 @keyframes scene-logo-float {
   0%, 100% { transform: translateY(0); }
@@ -4233,8 +4236,8 @@ textarea.modal-inline-control {
 }
 
 @keyframes scene-sparkle {
-  0%, 100% { opacity: 0;   transform: scale(0.4); }
-  50%      { opacity: 0.95; transform: scale(1); }
+  0%, 100% { opacity: 0;   transform: translate(-50%, -50%) scale(0.4); }
+  50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* Tablet (760–1100px) — hero slab narrows slightly per design §4 */
@@ -4305,8 +4308,20 @@ textarea.modal-inline-control {
 }
 
 .welcome--mobile .welcome__supporting,
-.welcome--mobile .welcome__footer-meta {
+.welcome--mobile .welcome__supporting {
   display: none;
+}
+
+.welcome--mobile .welcome__footer-meta {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: 2;
+  margin: 28px 0 0;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.7;
 }
 
 .welcome--mobile .welcome__cta-group {
@@ -4721,12 +4736,6 @@ textarea.modal-inline-control {
     width: min(92vw, 380px);
     padding: 22px;
   }
-  /* Phase 16: Tweaks panel hidden on mobile. JS already skips mount when
-     `(max-width: 759px)` matches at mount time; this is the defense-in-depth
-     rule for late-loading or post-resize cases. */
-  .tweaks-panel {
-    display: none;
-  }
 }
 
 /* ===========================================================================
@@ -4805,7 +4814,7 @@ textarea.modal-inline-control {
 
   .auth-overlay__panel,
   .auth-overlay__demo-dot,
-  .welcome--mobile .welcome__cta--ghost::before {
+  .welcome__cta--ghost::before {
     animation: none;
   }
 

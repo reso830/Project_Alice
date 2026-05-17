@@ -3,18 +3,23 @@ import aliceWhite from '../../assets/Alice_White.png';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { showDemoComingSoon } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
-import * as defaultTweaksStore from './tweaks/tweaksStore.js';
-import { TweaksPanel as DefaultTweaksPanel } from './tweaks/TweaksPanel.js';
 
-// Phase 14: theme-driven brand mark. The Tweaks panel (Phase 16) will swap
-// `theme` between `warm | white | navy`; the colored variant pairs with the
-// two light themes, the white variant with the navy theme. Phase 14 ships
+// Theme-driven brand mark. Production uses the warm default; white/navy
+// variants remain as CSS design states, but the old prototyping controls
+// is no longer rendered.
 // the default (`warm` theme → colored mark).
 const BRAND_MARKS = {
   warm: aliceColored,
   white: aliceColored,
   navy: aliceWhite,
 };
+
+const DEFAULT_WELCOME_CONFIG = Object.freeze({
+  layout: 'diagonal',
+  theme: 'warm',
+  copyIntensity: 'none',
+  heroScene: 'auto',
+});
 
 const VALID_AUTH_VIEWS = new Set([null, 'login', 'signup', 'verification_sent']);
 
@@ -24,9 +29,7 @@ let _overlaySlot = null;
 let _heroSlideshow = null;
 let _heroSlot = null;
 let _brandMarkEl = null;
-let _tweaksStore = null;
-let _tweaksPanel = null;
-let _tweaksUnsubscribe = null;
+let _footerMetaEl = null;
 let _tabletMql = null;
 let _tabletListener = null;
 let _mobileMql = null;
@@ -63,19 +66,18 @@ function mobileMatches() {
   }
 }
 
-function computeEffective(tweaks) {
+function computeEffective(config) {
   // Plan §14.C: tablet width forces `layout: centered` regardless of Tweaks
   // panel selection. `variant` flows to `HeroSlideshow` so SceneStack /
   // SceneLogo render their tablet-correct DOM (2 cards / fixed 200×200).
   const isTablet = tabletMatches();
-  const layout = isTablet ? 'centered' : tweaks.layout;
+  const layout = isTablet ? 'centered' : config.layout;
   const variant = layout === 'centered' ? 'centered' : 'default';
   return {
     layout,
-    theme: tweaks.theme,
-    copyIntensity: tweaks.copyIntensity,
-    authState: tweaks.authState,
-    heroScene: tweaks.heroScene,
+    theme: config.theme,
+    copyIntensity: config.copyIntensity,
+    heroScene: config.heroScene,
     variant,
     isTablet,
   };
@@ -96,9 +98,16 @@ function applyTweakClasses(root, eff) {
   root.classList.add(`welcome--copy-${eff.copyIntensity}`);
 }
 
+function effectiveBrandMark(theme, isMobile) {
+  // Phase 18 / design §3.3: mobile always uses Alice_Colored regardless of
+  // the active theme. Mobile ignores theme + layout selectors entirely.
+  if (isMobile) return BRAND_MARKS.warm;
+  return BRAND_MARKS[theme] ?? BRAND_MARKS.warm;
+}
+
 function updateBrandMark(theme) {
   if (!_brandMarkEl) return;
-  _brandMarkEl.src = BRAND_MARKS[theme] ?? BRAND_MARKS.warm;
+  _brandMarkEl.src = effectiveBrandMark(theme, _isMobile);
 }
 
 function mountHero(slot, eff) {
@@ -116,45 +125,46 @@ function mountHero(slot, eff) {
   });
 }
 
-function authStateToView(authState) {
-  if (authState === 'signin') return 'login';
-  if (authState === 'signup') return 'signup';
-  return null;
+function ensureSlideshowMounted() {
+  // Idempotent: creates `_heroSlot`, mounts the slideshow module, and inserts
+  // the slot before `_overlaySlot` so DOM order matches the initial mount.
+  if (_heroSlot || !_root || !_deps) return;
+  _heroSlot = el('aside', 'welcome__hero');
+  _heroSlideshow = _deps.heroSlideshow ?? DefaultHeroSlideshow;
+  _heroSlideshow.mount(_heroSlot, {
+    heroScene: _effective.heroScene,
+    variant: _effective.variant,
+  });
+  const beforeNode = _footerMetaEl?.parentNode === _root ? _footerMetaEl : _overlaySlot;
+  if (beforeNode && beforeNode.parentNode === _root) {
+    _root.insertBefore(_heroSlot, beforeNode);
+  } else {
+    _root.append(_heroSlot);
+  }
 }
 
-function handleTweaksChange(next) {
+function teardownSlideshow() {
+  if (_heroSlideshow) {
+    try { _heroSlideshow.unmount(); } catch { /* best-effort */ }
+    _heroSlideshow = null;
+  }
+  if (_heroSlot && _heroSlot.parentNode) {
+    _heroSlot.remove();
+  }
+  _heroSlot = null;
+}
+
+function handleViewportChange() {
   if (!_root) return;
   const prev = _effective;
-  const eff = computeEffective(next);
+  const eff = computeEffective(DEFAULT_WELCOME_CONFIG);
   _effective = eff;
   applyTweakClasses(_root, eff);
   if (prev?.theme !== eff.theme) updateBrandMark(eff.theme);
   const heroChanged = !prev || prev.heroScene !== eff.heroScene || prev.variant !== eff.variant;
   if (heroChanged) mountHero(_heroSlot, eff);
-  // Phase 17: the Tweaks panel can drive the auth modal directly. A change to
-  // `authState` opens the modal if it is closed, swaps the view if it is open
-  // in the other sign-in/up mode, and is a no-op in `verification_sent`. The
-  // initial `init()` notify fires before WelcomePage subscribes, so this only
-  // runs in response to user-driven `setTweak` calls.
-  const authChanged = !prev || prev.authState !== eff.authState;
-  const targetView = authStateToView(eff.authState);
-  if (authChanged && targetView) {
-    if (_authView === null) {
       // Modal closed — open it in the target view via the full mount path.
-      setAuthView(targetView);
-    } else if ((_authView === 'login' || _authView === 'signup') && _authView !== targetView) {
       // Modal already open — swap views in place via the overlay's internal
-      // setView so the DOM node, focus, and entered email persist.
-      const overlayNode = _overlaySlot?.firstElementChild;
-      const overlayApi = overlayNode?.__authOverlay;
-      if (overlayApi?.setView) {
-        overlayApi.setView(targetView);
-      } else {
-        setAuthView(targetView);
-      }
-    }
-    // verification_sent intentionally left alone.
-  }
 }
 
 function el(tag, className, text) {
@@ -192,7 +202,7 @@ function renderBrand({ theme = 'warm' } = {}) {
   const brand = el('div', 'welcome__brand');
   const mark = document.createElement('img');
   mark.className = 'welcome__brand-mark';
-  mark.src = BRAND_MARKS[theme] ?? BRAND_MARKS.warm;
+  mark.src = effectiveBrandMark(theme, _isMobile);
   mark.alt = '';
   _brandMarkEl = mark;
   const text = el('span', 'welcome__brand-text', 'Project Alice');
@@ -260,6 +270,7 @@ function makeExternalLink(text, href, ariaLabel) {
 function renderFooterMeta() {
   const wrap = document.createElement('p');
   wrap.className = 'welcome__footer-meta';
+  _footerMetaEl = wrap;
 
   const version = document.createElement('span');
   version.className = 'welcome__footer-version';
@@ -418,10 +429,7 @@ export function mount(container, deps = {}) {
   _deps = deps;
   _authView = null;
 
-  _tweaksStore = deps.tweaksStore ?? defaultTweaksStore;
-  _tweaksStore.init();
-  const initialTweaks = _tweaksStore.getTweaks();
-  _effective = computeEffective(initialTweaks);
+  _effective = computeEffective(DEFAULT_WELCOME_CONFIG);
   _isMobile = mobileMatches();
 
   _root = el('div', 'welcome');
@@ -434,74 +442,56 @@ export function mount(container, deps = {}) {
     renderHeadline(),
     renderSupportingCopy(),
     renderCtaGroup(),
-    renderFooterMeta(),
   );
-
-  // Phase 18: on mobile the hero slideshow is omitted entirely. Resize-driven
-  // viewport crossings only toggle `.welcome--mobile` on the root; the
-  // slideshow remains in whatever state it was at mount.
-  if (!_isMobile) {
-    _heroSlot = el('aside', 'welcome__hero');
-    _heroSlideshow = deps.heroSlideshow ?? DefaultHeroSlideshow;
-    _heroSlideshow.mount(_heroSlot, {
-      heroScene: _effective.heroScene,
-      variant: _effective.variant,
-    });
-  }
+  const footerMeta = renderFooterMeta();
 
   _overlaySlot = el('div', 'welcome__auth-overlay-slot');
   _overlaySlot.hidden = true;
 
-  if (_heroSlot) {
-    _root.append(left, _heroSlot, _overlaySlot);
-  } else {
-    _root.append(left, _overlaySlot);
-  }
+  _root.append(left, footerMeta, _overlaySlot);
   container.replaceChildren(_root);
+
+  // On mobile the hero slideshow is omitted entirely; on desktop + tablet it
+  // mounts before the footer/overlay slot.
+  if (!_isMobile) {
+    ensureSlideshowMounted();
+  }
 
   _keyHandler = onKeyDown;
   document.addEventListener('keydown', _keyHandler);
-
-  // Subscribe to tweaks AFTER initial render so the first notify is a no-op
-  // (state hasn't changed; we only react to subsequent setTweak calls).
-  _tweaksUnsubscribe = _tweaksStore.subscribe(handleTweaksChange);
 
   // Tablet width forces `centered` layout — listen for viewport changes so
   // resize-driven layout swaps mount the right scene variant.
   if (typeof globalThis.matchMedia === 'function') {
     try {
       _tabletMql = globalThis.matchMedia('(min-width: 760px) and (max-width: 1099px)');
-      _tabletListener = () => handleTweaksChange(_tweaksStore.getTweaks());
+      _tabletListener = () => handleViewportChange();
       _tabletMql.addEventListener('change', _tabletListener);
     } catch {
       _tabletMql = null;
       _tabletListener = null;
     }
-    // Phase 18: mobile listener toggles the `.welcome--mobile` class on the
-    // root. CSS handles the visual swap; components already mounted at
-    // load-time stay mounted (no remount on viewport crossing).
+    // Mobile listener toggles the `.welcome--mobile` class and mounts/unmounts
+    // the hero slideshow so the DOM matches the viewport branch.
     try {
       _mobileMql = globalThis.matchMedia('(max-width: 759px)');
       _mobileListener = () => {
         if (!_root) return;
-        _isMobile = _mobileMql.matches === true;
+        const nextMobile = _mobileMql.matches === true;
+        if (nextMobile === _isMobile) return;
+        _isMobile = nextMobile;
         _root.classList.toggle('welcome--mobile', _isMobile);
+        if (_isMobile) {
+          teardownSlideshow();
+        } else {
+          ensureSlideshowMounted();
+        }
+        updateBrandMark(_effective.theme);
       };
       _mobileMql.addEventListener('change', _mobileListener);
     } catch {
       _mobileMql = null;
       _mobileListener = null;
-    }
-  }
-
-  // Tweaks panel is hidden on mobile (self-skips at mount via its own
-  // matchMedia check). Skipping the mount call here keeps the DOM clean.
-  if (!_isMobile) {
-    _tweaksPanel = deps.tweaksPanel ?? DefaultTweaksPanel;
-    try {
-      _tweaksPanel.mount(_root, { tweaksStore: _tweaksStore });
-    } catch {
-      _tweaksPanel = null;
     }
   }
 
@@ -514,10 +504,6 @@ export function unmount() {
     document.removeEventListener('keydown', _keyHandler);
     _keyHandler = null;
   }
-  if (_tweaksUnsubscribe) {
-    try { _tweaksUnsubscribe(); } catch { /* best-effort */ }
-    _tweaksUnsubscribe = null;
-  }
   if (_tabletMql && _tabletListener) {
     try { _tabletMql.removeEventListener('change', _tabletListener); } catch { /* best-effort */ }
   }
@@ -529,10 +515,6 @@ export function unmount() {
   _mobileMql = null;
   _mobileListener = null;
   _isMobile = false;
-  if (_tweaksPanel) {
-    try { _tweaksPanel.unmount(); } catch { /* best-effort */ }
-    _tweaksPanel = null;
-  }
   if (_heroSlideshow) {
     try {
       _heroSlideshow.unmount();
@@ -549,7 +531,7 @@ export function unmount() {
   _overlaySlot = null;
   _heroSlot = null;
   _brandMarkEl = null;
-  _tweaksStore = null;
+  _footerMetaEl = null;
   _effective = null;
   _deps = null;
   _authView = null;

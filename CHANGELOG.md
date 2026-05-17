@@ -7,6 +7,29 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-05-17
+
+> UI polish release on top of v0.8.0 — no API, schema, or auth-behavior
+> changes. Bundles the Tracker chrome refresh (feature 018 Phase 13) and the
+> full Welcome refresh (Phases 14–18).
+
+### Changed
+- Tracker top bar restyled to a unified navy band (52px sticky) with brand cluster, page nav, and right-aligned identity cluster
+- Email truncation switched from JS char-count to CSS `max-width` (full email always in the `title` attribute); `EMAIL_DISPLAY_LIMIT` and `truncateEmail()` retired from `Navbar.js`
+- Sign-out button restyled with a door-arrow icon; collapses to icon-only at `≤ 639px`
+- Mobile chrome (`≤ 639px`) gains a bottom tab bar (`src/components/BottomTabBar.js`) for page nav and a floating "+ New application" button (`src/components/Fab.js`) above it
+- Fold-narrow breakpoint (`< 380px`) hides the "Project Alice" wordmark while keeping the logo mark + sign-out icon
+- Tracker toolbar flipped onto the navy band with refreshed filter chip / count badge / erase-all tints (`design/tracker.md` § Toolbar-on-navy tints)
+- Welcome page rewritten to match `design/welcome_page.md` — headline accent `<em>organized.</em>` with indigo underline-glow, theme-driven brand mark; the previous floating metadata pills + "Sample data" disclaimer are no longer rendered
+- Welcome mini footer sourced from a new shared `src/pages/welcome/shared/appMeta.js` (`APP_VERSION`, `ISSUE_URL`, `LICENSE_NAME`, `LICENSE_URL`) — single source of truth shared with `Footer.js`; license set to `PolyForm Noncommercial 1.0.0`
+- Hero slideshow replaced — the six product-screenshot slides (`src/assets/welcome-hero/*.png`) and their imports are gone; the new cycler shows four animated scenes (`SceneStack`, `ScenePipeline`, `SceneProfile`, `SceneLogo` in `src/pages/welcome/scenes/`), 5500ms per scene, 700ms cross-fade, dot navigation with a per-scene progress bar; all motion gated behind `prefers-reduced-motion: reduce`
+- Welcome page now ships fixed production defaults for layout, theme, copy intensity, and hero scene — the prototype Tweaks panel and `?key=value` URL overrides were prototyped during Phase 16 but cut before merge; responsive desktop / tablet / mobile branches remain
+- Auth modal restyled per design §4.6 — 440px / 14px-radius shell, `rgba(8,8,24,.55)` overlay with 6px backdrop blur, 40px header logo, footer with primary submit → "or" divider → demo button (warm fill, green pulse dot) → swap-mode link → legal copy on signup only; the previous tab strip is replaced by the in-footer swap link
+- Welcome `<760px` portrait stack lands inside the same `WelcomePage.js` module via a JS-toggled `.welcome--mobile` class; full-width CTAs with pulsing green dot on the demo button; brand mark forced to `Alice_Colored.png` regardless of theme
+- Resize-driven viewport crossings mount/unmount the hero slideshow so the DOM matches the active branch (mobile omits it; desktop/tablet keep it)
+- "Try the demo" CTA (welcome page + auth modal) now fires a shared "Demo coming soon" toast via `src/pages/welcome/demoStub.js` — `window.alert()` no longer used; real demo behavior owned by a future feature
+- Test coverage extended in `tests/components/{bottomTabBar,fab}.test.js`, `tests/pages/welcome/heroSlideshow.test.js`, and `tests/pages/welcome/scenes/*.test.js`
+
 ## [0.8.0] — 2026-05-16
 
 ### Added
@@ -240,7 +263,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/reso830/Project_Alice/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/reso830/Project_Alice/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/reso830/Project_Alice/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/reso830/Project_Alice/compare/v0.5.1...v0.6.0

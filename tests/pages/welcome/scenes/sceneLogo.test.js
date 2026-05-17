@@ -29,13 +29,19 @@ afterEach(() => {
 });
 
 describe('SceneLogo', () => {
-  it('mounts the floating logo with four sparkles in the default variant', () => {
+  it('mounts the floating logo with randomized sparkles in the default variant', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     SceneLogo.mount(container, { variant: 'default' });
     const root = container.querySelector('.scene-logo');
     expect(root).not.toBeNull();
     expect(root.dataset.variant).toBe('default');
     expect(container.querySelector('.scene-logo__mark')).not.toBeNull();
-    expect(container.querySelectorAll('.scene-logo__sparkle').length).toBe(4);
+    const sparkles = container.querySelectorAll('.scene-logo__sparkle');
+    expect(sparkles.length).toBe(12);
+    expect(sparkles[0].style.getPropertyValue('--scene-logo-sparkle-x')).toBe('50%');
+    expect(sparkles[0].style.getPropertyValue('--scene-logo-sparkle-y')).toBe('50%');
+    expect(sparkles[0].style.getPropertyValue('--scene-logo-sparkle-size')).toBe('16px');
+    expect(sparkles[0].style.getPropertyValue('--scene-logo-sparkle-delay')).toBe('0.13s');
   });
 
   it('mounts with the centered variant class for tablet sizing', () => {

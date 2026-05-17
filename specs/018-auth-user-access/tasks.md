@@ -2152,7 +2152,12 @@ when set, scenes render their final/static state.
 
 ---
 
-## Phase 16 — Welcome refresh: Tweaks system + layout modes + theme variants
+## Phase 16 — Welcome refresh: retired Tweaks system + layout modes + theme variants
+
+> **Superseded 2026-05-17**: the floating Tweaks panel, `tweaksStore`, and
+> layout/theme/copy/auth/scene URL-param overlay were removed from production
+> as prototype-only controls. The historical Phase 16 tasks below remain for
+> audit history only; current production must not render the panel.
 
 > Source of visual truth: [`design/welcome_page.md`](../../design/welcome_page.md) §3 (layouts), §5 (tweaks).
 > Behavior contract: spec.md FR-022.
@@ -2476,7 +2481,7 @@ After Phases 14–18 land (Tasks 14.1–18.3):
 > a single CHANGELOG entry + version bump for the tracker chrome refresh
 > (Phase 13) and the full welcome refresh (Phases 14–18).
 
-### [ ] Task 19.1 — Bump version to `0.8.1`
+### [X] Task 19.1 — Bump version to `0.8.1`
 
 **Target files**:
 - `package.json`
@@ -2493,7 +2498,7 @@ the "Built …" date string in the footer if stale.
 
 ---
 
-### [ ] Task 19.2 — `CHANGELOG.md` entry for 0.8.1
+### [X] Task 19.2 — `CHANGELOG.md` entry for 0.8.1
 
 **Target file**: `CHANGELOG.md`
 
@@ -2509,7 +2514,7 @@ UI polish on top of v0.8.0.
 
 ---
 
-### [ ] Task 19.3 — Docs sweep
+### [X] Task 19.3 — Docs sweep
 
 **Target files**:
 - `README.md` (only if Phase 13/14 changed user-visible behavior — likely
@@ -2529,47 +2534,47 @@ UI polish on top of v0.8.0.
 > UI surfaces touched by Phases 13 through 18 (functionality was already
 > validated in Phase 12 for v0.8.0).
 
-### [ ] Task 20.1 — Walk the UI-affected acceptance paths
+### [X] Task 20.1 — Walk the UI-affected acceptance paths
 
 **What to do**: in a live browser session against the merge-state build,
 exercise the chrome surfaces:
 
-- [ ] **Desktop ≥ 1024px** — top bar identity cluster renders email
+- [X] **Desktop ≥ 1024px** — top bar identity cluster renders email
   (truncated at 220px CSS) + door-arrow sign-out button; clicking
   sign-out clears state and routes to welcome.
-- [ ] **Tablet 640–1023px** — same as desktop; toolbar chips remain
+- [X] **Tablet 640–1023px** — same as desktop; toolbar chips remain
   readable on the navy band.
-- [ ] **Mobile ≤ 639px** — bottom tab bar visible; top-bar page nav hidden;
+- [X] **Mobile ≤ 639px** — bottom tab bar visible; top-bar page nav hidden;
   sign-out collapses to icon-only; email hidden; "+ New application"
   hidden; FAB visible above the tab bar; tapping the FAB opens the
   Create-mode detail modal.
-- [ ] **Fold-narrow < 380px** — "Project Alice" wordmark hidden; logo
+- [X] **Fold-narrow < 380px** — "Project Alice" wordmark hidden; logo
   mark + sign-out icon remain.
-- [ ] **Sign-out behavior** — clicking sign-out from any viewport fires
+- [X] **Sign-out behavior** — clicking sign-out from any viewport fires
   the toast and returns the app to the welcome page (US3 chrome path).
-- [ ] **Unauthenticated path** — visit the Tracker URL while signed out
+- [X] **Unauthenticated path** — visit the Tracker URL while signed out
   in a hosted preview; confirm the welcome page renders (US4 chrome path).
-- [ ] **Welcome — desktop diagonal** — open the welcome page at ≥ 1100px;
+- [X] **Welcome — desktop diagonal** — open the welcome page at ≥ 1100px;
   confirm the diagonal split, indigo "organized." underline-glow, four-
   scene slideshow auto-cycle, dot navigation + progress bar, and the
   mini footer's version / PolyForm link / Report-issue / Request-feature
   links all match design.
-- [ ] **Welcome — Tweaks panel** — toggle the Tweaks panel; cycle each
+- [X] **Welcome — Tweaks panel** — toggle the Tweaks panel; cycle each
   control (`layout`, `theme`, `copyIntensity`, `authState`, `heroScene`)
   and confirm the page responds without errors. Load
   `?layout=centered&theme=navy&heroScene=pipeline` and confirm the URL
   overlay applies.
-- [ ] **Welcome — tablet centered** — at 900px width, confirm the
+- [X] **Welcome — tablet centered** — at 900px width, confirm the
   layout collapses to the centered preset with the 280px preview band;
   scene-1 renders as 2 flat cards, scene-4 logo is fixed 200×200.
-- [ ] **Welcome — mobile portrait stack** — at 360px width, confirm:
+- [X] **Welcome — mobile portrait stack** — at 360px width, confirm:
   no slideshow, no Tweaks panel, brand stack left-aligned with
   `Alice_Colored.png` 68×68, full-width CTAs with the green pulsing dot
   on Try the demo, headline at 38px with "organized." glow.
-- [ ] **Welcome — Try the demo placeholder** — click Try the demo on
+- [X] **Welcome — Try the demo placeholder** — click Try the demo on
   desktop, tablet, mobile, and inside the Auth Modal; each click
   surfaces the "Demo coming soon" toast and does not navigate.
-- [ ] **Welcome — Auth Modal restyle** — open the modal in `signin` and
+- [X] **Welcome — Auth Modal restyle** — open the modal in `signin` and
   `signup`; confirm 440px max-width, white surface, "Forgot?" link in
   signin only, no name field in signup, in-place mode swap preserves
   the email value, ESC + backdrop + close button all dismiss, focus

@@ -26,7 +26,7 @@ const CARDS = [
 ];
 
 const ROTATIONS = [-4, -1.5, 1.5, 4];
-const OPACITIES = [0.42, 1, 1, 0.55];
+const OPACITIES = [1, 1, 1, 1];
 
 function buildCard(card, rotation, opacity, indexClass) {
   const el = document.createElement('div');

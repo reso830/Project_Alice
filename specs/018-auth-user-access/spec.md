@@ -439,6 +439,10 @@ the response body.
   matches onto defaults) so deep links can pre-configure the page. Panel
   state MUST NOT be persisted across sessions — the page is unauthenticated
   pre-app and storing UI prefs there has no value.
+- **FR-022A (Supersession, 2026-05-17)**: The runtime Tweaks panel and its
+  layout/theme/copy/auth/scene URL-param overrides were removed as
+  prototype-only controls. Production uses fixed defaults from
+  `design/welcome_page.md` §5 and MUST NOT render the panel on any viewport.
 - **FR-023 (Phase 14, extended by Phase 17)**: The "Try the demo" CTA MUST
   render enabled (no disabled attribute, no "Coming soon" tooltip), but
   clicking it MUST surface a transient "Demo coming soon" toast (via the

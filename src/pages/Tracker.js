@@ -194,8 +194,8 @@ function onClearAll() {
   updateToolbar();
 }
 
-function onAddApplication() {
-  CreationPicker.open({
+function applicationMutationCallbacks() {
+  return {
     onApplicationCreate: (newRecord) => {
       _applications = [newRecord, ..._applications];
       _salaryBounds = getSalaryBounds(_applications);
@@ -215,7 +215,15 @@ function onAddApplication() {
       updateToolbar();
       focusCardList();
     },
-  });
+  };
+}
+
+function onAddApplication() {
+  CreationPicker.open(applicationMutationCallbacks());
+}
+
+function onFabAddApplication() {
+  Modal.open(null, { mode: 'create', ...applicationMutationCallbacks() });
 }
 
 
@@ -404,7 +412,7 @@ export async function mount(container) {
     onClearAll,
     onAddApplication,
   });
-  const fab = Fab.render({ onClick: onAddApplication });
+  const fab = Fab.render({ onClick: onFabAddApplication });
 
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');

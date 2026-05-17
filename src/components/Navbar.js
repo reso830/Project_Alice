@@ -1,4 +1,5 @@
 import aliceWhite from '../assets/Alice_White.png';
+import { Toast } from './Toast.js';
 import * as authStore from '../data/authStore.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -79,8 +80,9 @@ function renderIdentityCluster(state) {
   label.textContent = 'Sign out';
 
   signOut.append(createDoorArrowIcon(), label);
-  signOut.addEventListener('click', () => {
-    authStore.signOut();
+  signOut.addEventListener('click', async () => {
+    await authStore.signOut();
+    Toast.show('Signed out', 'success');
   });
 
   _identityCluster.append(email, signOut);

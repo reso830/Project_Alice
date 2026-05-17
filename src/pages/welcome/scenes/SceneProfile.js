@@ -1,8 +1,8 @@
 // Scene 3 — Profile donut (`SceneProfile`)
 // design/welcome_page.md §4.4
 //
-// Flex column with 44px gap. Top row: 4 stat chips (Total / Active / Pending
-// / Offer). Bottom row: 168×168 SVG donut (22px ring) + 2-column legend.
+// Flex column with generous default spacing; centered/tablet is compacted in CSS.
+// Top row: 4 stat chips. Bottom row: donut plus 2-column legend.
 // Donut animates 0 → strokeDasharray over 0.7s (CSS transition); at 2700ms
 // the DONUT_INITIAL → DONUT_AFTER swap re-allocates segments and ticks
 // chip numbers via cubic ease-out.

@@ -38,6 +38,7 @@ describe('HeroSlideshow — auto mode', () => {
     expect(activeSceneName()).toBe('stack');
     expect(container.querySelectorAll('.hero-slideshow__dot').length).toBe(4);
     expect(container.querySelector('.hero-slideshow__dot--active')?.dataset.dotScene).toBe('stack');
+    expect(container.querySelector('.hero-slideshow__disclaimer')?.textContent).toBe('Illustrative purposes');
   });
 
   it('auto-cycles through all 4 scenes over time (fake timers)', () => {
@@ -64,6 +65,7 @@ describe('HeroSlideshow — pinned scene', () => {
 
     expect(activeSceneName()).toBe('pipeline');
     expect(container.querySelector('.hero-slideshow__dots')).toBeNull();
+    expect(container.querySelector('.hero-slideshow__disclaimer')?.textContent).toBe('Illustrative purposes');
     // ScenePipeline schedules its own setInterval; the slideshow itself does not.
     // The pipeline interval is the only pending timer at this point.
     expect(vi.getTimerCount()).toBe(1);

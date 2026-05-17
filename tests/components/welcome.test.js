@@ -111,7 +111,7 @@ describe('WelcomePage — structure', () => {
     expect(meta).not.toBeNull();
 
     const version = meta.querySelector('.welcome__footer-version');
-    expect(version?.textContent).toBe('v0.8.0');
+    expect(version?.textContent).toBe('v0.8.1');
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
     expect(links.length).toBe(3);
@@ -838,39 +838,6 @@ describe('Phase 17 — Auth modal footer', () => {
     expect(spy.mock.calls[0][0]).toContain('Demo coming soon');
   });
 
-  it('Tweaks panel can open the auth modal directly via authState (Phase 17)', async () => {
-    const tweaksStore = await import('../../src/pages/welcome/tweaks/tweaksStore.js');
-    tweaksStore._resetForTests();
-
-    mountWelcomeWithOverlay();
-    expect(container.querySelector('.auth-overlay')).toBeNull();
-    expect(WelcomePage.getAuthView()).toBeNull();
-
-    // Closed modal: setting authState='signup' opens it in signup view.
-    tweaksStore.setTweak('authState', 'signup');
-    expect(container.querySelector('.auth-overlay')).not.toBeNull();
-    expect(WelcomePage.getAuthView()).toBe('signup');
-
-    // Type something into the signup email so we can verify the in-place swap
-    // preserves form state when authState flips.
-    const signupEmail = container.querySelector('.auth-form--signup input[name="email"]');
-    signupEmail.value = 'persist@example.com';
-    signupEmail.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Already open in signup: setting authState='signin' swaps view in place
-    // (same overlay node, email preserved).
-    const overlayBefore = container.querySelector('.auth-overlay');
-    tweaksStore.setTweak('authState', 'signin');
-    const overlayAfter = container.querySelector('.auth-overlay');
-    expect(overlayAfter).toBe(overlayBefore);
-    expect(WelcomePage.getAuthView()).toBe('login');
-    expect(container.querySelector('.auth-form--login input[name="email"]').value).toBe(
-      'persist@example.com',
-    );
-
-    tweaksStore._resetForTests();
-  });
-
   it('hides the footer chrome on verification_sent', async () => {
     supabaseMocks.signUp.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
     mountWelcomeWithOverlay();
@@ -914,7 +881,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
     expect(container.querySelector('.welcome__hero')).toBeNull();
   });
 
-  it('does not render the Tweaks panel on mobile', () => {
+  it('does not render the removed prototyping controls on mobile', () => {
     stubMobile(true);
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     expect(container.querySelector('.tweaks-panel')).toBeNull();
@@ -931,12 +898,124 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
     expect(WelcomePage.getAuthView()).toBe('login');
   });
 
-  it('desktop mount (default stub) still renders the slideshow + Tweaks panel', () => {
+  it('desktop mount (default stub) renders the slideshow without prototyping controls', () => {
     // Sanity baseline: the default stub (matches: false everywhere) is desktop.
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     expect(container.querySelector('.welcome--mobile')).toBeNull();
     expect(container.querySelector('.welcome__hero')).not.toBeNull();
     expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('.tweaks-panel__toggle')).not.toBeNull();
+    expect(container.querySelector('.tweaks-panel__toggle')).toBeNull();
+  });
+
+  it('keeps the mini footer visible on mobile', () => {
+    stubMobile(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const footer = container.querySelector('.welcome__footer-meta');
+    expect(footer).not.toBeNull();
+    expect(footer.textContent).toContain('v0.8.1');
+  });
+
+  it('renders the centered/tablet mini footer after the slideshow in DOM order', () => {
+    globalThis.matchMedia = vi.fn().mockImplementation((q) => ({
+      matches: typeof q === 'string' && q.includes('min-width: 760px'),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    const rootChildren = [...container.querySelector('.welcome').children];
+    const heroIndex = rootChildren.findIndex((node) => node.classList.contains('welcome__hero'));
+    const footerIndex = rootChildren.findIndex((node) => node.classList.contains('welcome__footer-meta'));
+
+    expect(container.querySelector('.welcome--layout-centered')).not.toBeNull();
+    expect(heroIndex).toBeGreaterThan(-1);
+    expect(footerIndex).toBeGreaterThan(heroIndex);
+  });
+
+  // -------------------------------------------------------------------------
+  // Live viewport-resize handling (FR-025: desktop MUST keep slideshow/panel;
+  // mobile MUST omit them — applies on resize, not just initial mount).
+  // -------------------------------------------------------------------------
+
+  function liveMatchMedia(initialMobile) {
+    const state = { mobile: initialMobile, listeners: new Set() };
+    globalThis.matchMedia = vi.fn().mockImplementation((q) => {
+      const isMobileQuery = typeof q === 'string' && q.includes('max-width: 759px');
+      const mql = {
+        get matches() {
+          return isMobileQuery ? state.mobile : false;
+        },
+        addEventListener: vi.fn((evt, fn) => {
+          if (evt === 'change' && isMobileQuery) state.listeners.add(fn);
+        }),
+        removeEventListener: vi.fn((evt, fn) => {
+          if (evt === 'change' && isMobileQuery) state.listeners.delete(fn);
+        }),
+      };
+      return mql;
+    });
+    state.setMobile = (next) => {
+      if (next === state.mobile) return;
+      state.mobile = next;
+      state.listeners.forEach((fn) => fn({ matches: next }));
+    };
+    return state;
+  }
+
+  it('desktop → mobile resize tears down the slideshow', () => {
+    const media = liveMatchMedia(false);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
+    expect(container.querySelector('.tweaks-panel')).toBeNull();
+    expect(heroSlideshowStub.unmount).not.toHaveBeenCalled();
+
+    media.setMobile(true);
+
+    expect(container.querySelector('.welcome--mobile')).not.toBeNull();
+    expect(container.querySelector('.welcome__hero')).toBeNull();
+    expect(container.querySelector('.tweaks-panel')).toBeNull();
+    expect(heroSlideshowStub.unmount).toHaveBeenCalled();
+  });
+
+  it('mobile → desktop resize mounts the slideshow without prototyping controls', () => {
+    const media = liveMatchMedia(true);
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    expect(container.querySelector('.welcome__hero')).toBeNull();
+    expect(container.querySelector('.tweaks-panel')).toBeNull();
+    expect(heroSlideshowStub.mount).not.toHaveBeenCalled();
+
+    media.setMobile(false);
+
+    expect(container.querySelector('.welcome--mobile')).toBeNull();
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
+    expect(container.querySelector('.tweaks-panel')).toBeNull();
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Brand mark override — mobile always uses Alice_Colored.png regardless of
+  // the active theme (design §3.3).
+  // -------------------------------------------------------------------------
+
+  it('mobile mount uses Alice_Colored.png', () => {
+    stubMobile(true);
+
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const mark = container.querySelector('.welcome__brand-mark');
+    expect(mark.src).toContain('Alice_Colored');
+  });
+
+  it('desktop → mobile resize keeps Alice_Colored.png', () => {
+    const media = liveMatchMedia(false);
+
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+    const mark = container.querySelector('.welcome__brand-mark');
+    expect(mark.src).toContain('Alice_Colored');
+
+    media.setMobile(true);
+
+    expect(mark.src).toContain('Alice_Colored');
   });
 });

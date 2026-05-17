@@ -758,6 +758,12 @@ the version bump in Phase 15 only touches one place. `APP_VERSION`,
 
 ### 14.B — Tweaks system
 
+**Superseded 2026-05-17**: the floating Tweaks panel, `tweaksStore`, and
+layout/theme/copy/auth/scene URL-param overlay were removed from production.
+Welcome now ships fixed defaults from `design/welcome_page.md` §5. The
+historical notes below describe the prototype-era implementation and are not
+current requirements.
+
 The Tweaks system is a small in-memory store with three concerns:
 
 1. **Defaults** (`TWEAK_DEFAULTS`) — frozen object matching design §5

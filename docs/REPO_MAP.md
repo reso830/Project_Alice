@@ -19,11 +19,14 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/pages/Profile.js` | User profile screen |
 | `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays |
 | `src/pages/ConfigError.js` | Operator-facing fallback when hosted runtime detects missing Vite env vars |
-| `src/pages/welcome/WelcomePage.js` | Diagonal-split landing page — CTAs, hero slideshow, floating pills, `?auth=callback` handler |
-| `src/pages/welcome/HeroSlideshow.js` | 5-second auto-rotating screenshot slideshow; reduced-motion → single static slide |
-| `src/pages/welcome/AuthOverlay.js` | Centered-modal overlay — tabs, focus trap, ESC/backdrop/close dismissal, `verification_sent` state |
+| `src/pages/welcome/WelcomePage.js` | Welcome landing page — applies fixed production layout/theme/copy classes plus viewport matchMedia; mounts the hero slideshow on desktop/tablet and tears it down on mobile; `?auth=callback` verification banner handler |
+| `src/pages/welcome/HeroSlideshow.js` | 4-scene cycler — auto 5500ms cycle + 700ms cross-fade + click-to-jump dots with per-scene progress bar; `heroScene` prop pins to one scene; reduced-motion → static scene 1, no dots |
+| `src/pages/welcome/scenes/SceneStack.js` · `ScenePipeline.js` · `SceneProfile.js` · `SceneLogo.js` | Four hero scene modules — each exports `{ mount(container, { variant }), unmount() }`; `centered` variant flips Scene 1 to 2 flat cards and Scene 4 to a fixed 200×200 logo (tablet) |
+| `src/pages/welcome/AuthOverlay.js` | Centered-modal overlay — header (40px Alice mark + title + close), focus trap, ESC/backdrop dismissal, footer with "or" divider + demo button + swap-mode link + signup-only legal copy; `verification_sent` state |
 | `src/pages/welcome/LoginForm.js` | Email/password login — neutral error, accessible inline loading |
 | `src/pages/welcome/SignupForm.js` | Email/password signup — inline validation, neutral rejection, → `verification_sent` |
+| `src/pages/welcome/shared/appMeta.js` | `APP_VERSION` / `ISSUE_URL` / `LICENSE_NAME` / `LICENSE_URL` — single source consumed by both `Footer.js` and the welcome mini footer |
+| `src/pages/welcome/demoStub.js` | Shared `showDemoComingSoon()` toast — wired by both the welcome CTA and the auth-modal demo button; feature 020 will replace it with the real demo route |
 | `index.html` | Vite entry HTML |
 
 ---
@@ -42,8 +45,10 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/StatusDropdown.js` | Inline status change control |
 | `src/components/RangeSlider.js` | Dual-handle range slider (salary, compat) |
 | `src/components/Toast.js` | User feedback notifications |
-| `src/components/Navbar.js` | Top navigation bar — subscribes to `authStore`; renders email (truncated) + Sign Out when authenticated; `destroy()` unsubscribes |
-| `src/components/Footer.js` | Page footer; `APP_VERSION` kept in sync with `package.json` |
+| `src/components/Navbar.js` | Top navigation bar — sticky navy band (52px), brand cluster + page nav + identity cluster; email truncated via CSS `max-width` with full value in `title`; door-arrow sign-out button (icon-only at `≤ 639px`); subscribes to `authStore`; `destroy()` unsubscribes |
+| `src/components/BottomTabBar.js` | Mobile bottom tab bar (`≤ 639px`) — three tabs (Tracker / Calendar / Profile); same `setActive(page)` contract as Navbar |
+| `src/components/Fab.js` | Mobile floating action button — "+ New application" above the bottom tab bar at `≤ 639px`; opens the Create-mode detail modal |
+| `src/components/Footer.js` | Page footer; sources `APP_VERSION` / `ISSUE_URL` / `LICENSE_NAME` / `LICENSE_URL` from `src/pages/welcome/shared/appMeta.js` |
 | `src/components/ResumeImport.js` | Drag-and-drop resume parser; subscribes to `authStore` and hides outside `local-mode` / `authenticated` |
 | `src/components/CompatBar.js` | Compatibility score visual bar |
 | `src/components/DonutChart.js` | SVG donut chart with per-segment hover tooltips (Profile page) |
