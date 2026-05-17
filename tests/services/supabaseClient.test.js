@@ -44,6 +44,22 @@ describe('supabaseClient', () => {
     expect(mod.isHostedAuthAvailable).toBe(false);
   });
 
+  it('exports null when VITE_AUTH_EMAIL_REDIRECT_URL is absent (PR #27 review)', async () => {
+    // Defense-in-depth: the production build assertion fail-closes on missing
+    // env vars, but `npm run dev` and custom build modes skip it. Gate the
+    // runtime client construction so a missing redirect URL falls into local
+    // mode instead of letting signup fire with `emailRedirectTo: undefined`.
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+    vi.stubEnv('VITE_AUTH_EMAIL_REDIRECT_URL', '');
+
+    const mod = await import('../../src/services/supabaseClient.js');
+
+    expect(mod.supabase).toBeNull();
+    expect(mod.isHostedAuthAvailable).toBe(false);
+    expect(createClientMock).not.toHaveBeenCalled();
+  });
+
   it('creates a client when both VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are present', async () => {
     vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
     vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
