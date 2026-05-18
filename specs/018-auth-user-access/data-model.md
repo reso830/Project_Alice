@@ -167,14 +167,16 @@ Relevant fields the server reads:
 
 ## 5. JWT payload (consumed from Supabase Auth)
 
-The Supabase Auth-issued access token (HS256, signed with the project's
-`SUPABASE_JWT_SECRET`) carries the claims the middleware reads:
+The Supabase Auth-issued access token (asymmetrically signed; the middleware
+accepts `['ES256', 'RS256']` and verifies the signature against the project's
+JWKS endpoint at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) carries the
+claims the middleware reads:
 
 | Claim | Source | Used as |
 |---|---|---|
 | `sub` | Supabase user id (`uuid`) | `req.user.id` |
 | `email` | Supabase user email | `req.user.email` |
-| `aud`, `iss`, `exp` | standard | verified by `jsonwebtoken` |
+| `aud`, `iss`, `exp` | standard | verified by `jose.jwtVerify` |
 
 The middleware does **not** decode or trust `app_metadata` or `user_metadata` in
 this feature. 019 may add role/tier claims; that's a future concern.

@@ -400,8 +400,11 @@ the response body.
   visibility MUST consult **Supabase Dashboard → Logs → Auth Logs**, which is
   the source of truth for signup/login events in this architecture.
 - **FR-017**: The Express server MUST surface a clear startup configuration
-  error if hosted mode is active but `SUPABASE_JWT_SECRET` (or any other
-  hosted-required server env var from 017's contract) is missing. The server
+  error if hosted mode is active but the JWKS-discovery inputs (`SUPABASE_URL`,
+  from which the middleware derives the `/auth/v1/.well-known/jwks.json` URI)
+  or any other hosted-required server env var from 017's contract is missing.
+  No shared-secret env var is required for JWT verification — the middleware
+  fetches signing keys from Supabase's JWKS endpoint at runtime. The server
   has no Supabase client in this feature and therefore CANNOT verify
   `allowed_emails` reachability or trigger installation at startup. Those
   Supabase-side concerns are operator responsibilities and are verified
@@ -531,13 +534,15 @@ the response body.
 - **SC-006**: Local SQLite mode boots and operates with no authentication enabled,
   no Supabase calls, and no regression in existing automated tests.
 - **SC-007**: Hosted mode boots with a clear, descriptive startup error if any
-  required server env var (`SUPABASE_JWT_SECRET`, plus the vars inherited from
-  017's contract) is missing. The Express server has no Supabase client and
+  required server env var (the JWKS-discovery `SUPABASE_URL`, plus the vars
+  inherited from 017's contract) is missing. The Express server has no Supabase client and
   therefore CANNOT verify the `allowed_emails` table or the allowlist trigger
   at startup — those concerns are operator responsibilities and are validated
   manually via the quickstart §10 pre-deploy gate.
-- **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY` or
-  `SUPABASE_JWT_SECRET` (carried over from 017 and re-verified here).
+- **SC-008**: The frontend bundle does not contain `SUPABASE_SERVICE_ROLE_KEY`
+  (carried over from 017 and re-verified here). `SUPABASE_JWT_SECRET` is no
+  longer in the project's env contract — verification uses Supabase's public
+  JWKS endpoint — so its absence from the bundle is trivially satisfied.
 - **SC-008b**: A production `npm run build` with any of `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_ANON_KEY`, or `VITE_AUTH_EMAIL_REDIRECT_URL` missing or empty
   fails with a descriptive error naming the offending variable(s) and does not
@@ -580,7 +585,7 @@ the response body.
 
   | Variable | Scope | Required in local | Required in hosted |
   |---|---|---|---|
-  | `SUPABASE_JWT_SECRET` | server-only | no | yes |
+  | `SUPABASE_URL` | server-only | no | yes — also used by the middleware to derive `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` for JWT signature verification |
   | `VITE_SUPABASE_URL` | client (Vite, build-time) | no | yes (hosted build) |
   | `VITE_SUPABASE_ANON_KEY` | client (Vite, build-time) | no | yes (hosted build) |
   | `VITE_AUTH_EMAIL_REDIRECT_URL` | client (Vite, build-time) | no | yes (hosted build) — used for verification email callbacks; passed to `supabase.auth.signUp({ options: { emailRedirectTo } })` |
@@ -650,8 +655,11 @@ the response body.
   the single source of truth for allowlist enforcement, regardless of which
   Supabase caller initiated the signup. Operators MUST install and verify the
   trigger before any production deploy (see quickstart §10).
-- The Express API validates Supabase JWTs locally using `SUPABASE_JWT_SECRET`
-  rather than calling Supabase Auth on every request.
+- The Express API validates Supabase JWTs locally using Supabase's public JWKS
+  endpoint (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`), accepting `ES256`
+  / `RS256` asymmetric signatures via `jose.jwtVerify`. No shared secret is
+  configured anywhere — signing key material is fetched at runtime and cached
+  by the JWKS client. The API does not call Supabase Auth on every request.
 - The allowlist is small (operator-managed, on the order of tens of entries at most);
   enumeration performance is not a design concern.
 - Email addresses are compared case-insensitively (lowercased on both the allowlist

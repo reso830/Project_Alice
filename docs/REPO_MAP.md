@@ -80,7 +80,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/routes/applications.js` | CRUD route handlers — accepts `{ repo, requireAuth }`, mounts `requireAuth` when present |
 | `server/routes/profile.js` | Profile route handlers — same `{ repo, requireAuth }` shape |
 | `server/routes/resume.js` | Resume parse handler — `{ requireAuth }` |
-| `server/auth/middleware.js` | `createRequireAuth({ jwtSecret, logger })` — HS256 JWT verification with categorized rejection logging (token contents never logged) |
+| `server/auth/middleware.js` | `createRequireAuth({ jwksUri, jwks?, logger })` — verifies Supabase JWTs against the project's JWKS endpoint (`['ES256', 'RS256']` algorithm allowlist) via `jose.jwtVerify`; categorized rejection logging (token contents never logged) |
 | `server/db/applications.js` | SQL query layer (repository pattern) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
