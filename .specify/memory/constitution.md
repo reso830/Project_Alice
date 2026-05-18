@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-Version change: template -> 1.0.0
+Version change: template -> 1.3.0 (current)
 Modified principles:
 - Template Principle 1 -> I. User-First Application Tracking
 - Template Principle 2 -> II. Simple, Maintainable Web Architecture
@@ -55,6 +55,23 @@ Templates updated: none
 Follow-up TODOs: server/validation/application.js — responsibilities to required text;
 src/models/application.js — add responsibilities to required field validation;
 src/components/Modal.js — add responsibilities to inline error guard in Save/Create handlers
+
+Amendment 1.3.0 — 2026-05-16
+Reason: Added mandatory Release Prep phase to every feature, executed BEFORE the
+Browser Smoke Test phase. Identified after feature 018 shipped its smoke-test
+phase ahead of docs/version work, requiring a tasks.md edit mid-stream to add a
+release-prep phase. Documentation, version bumps, and CHANGELOG entries should
+land in the same state the operator will smoke-test, not in a follow-up pass.
+Modified principles:
+- V. Testing and Quality Gates — added Release Prep requirement immediately
+  before the Browser Smoke Test
+Modified sections:
+- Development Workflow and Review Gates — Release Prep phase added as mandatory
+  pre-merge phase, ordered before the existing Browser Smoke Test phase
+Templates updated: .specify/templates/tasks-template.md (Release Prep phase
+inserted between Polish and Browser Smoke Test); scripts/prompts/claude-tasks.md
+(Release Prep noted in Requirements)
+Follow-up TODOs: none
 -->
 
 # Application Tracker Constitution
@@ -114,8 +131,17 @@ is considered complete. Automated tests are necessary but not sufficient for UI
 features — rendering, CSS layout, real keyboard interaction, and mobile viewports
 require human verification in the browser.
 
+Every feature MUST include a Release Prep phase before the Browser Smoke Test
+covering version bump (SemVer in `package.json` + any in-app version display),
+`CHANGELOG.md` entry, README updates for new user-facing surface, deployment
+docs updates when env vars or runtime modes change, and repo-map / navigation
+docs updates when new directories or files were introduced. The smoke test
+walks the same state the operator will merge, so docs and version land first.
+
 Rationale: Validation and status behavior define the reliability of the tracker,
-so they require repeatable automated checks.
+so they require repeatable automated checks. Docs and version metadata define
+how the tracker is discovered, deployed, and rolled forward, so they belong in
+the merge boundary rather than in a follow-up pass.
 
 ## Privacy, Accessibility, and Extensibility Constraints
 
@@ -142,10 +168,13 @@ the feature touches application records, forms, filtering, persistence, or statu
 behavior.
 
 Before completion, contributors MUST run the relevant automated tests and the
-project's lint/format checks when those commands exist. Features with user-facing
-UI changes MUST include a browser smoke test phase as the final implementation
+project's lint/format checks when those commands exist. Features MUST include a
+Release Prep phase as the second-to-last implementation phase (version bump,
+CHANGELOG, README, deployment docs, repo map). Features with user-facing UI
+changes MUST then include a Browser Smoke Test phase as the final implementation
 phase, walking through each user story's Independent Test from spec.md in a real
-browser. Any skipped check MUST be documented with the reason and residual risk.
+browser against the to-be-merged state. Any skipped check MUST be documented with
+the reason and residual risk.
 
 ## Governance
 
@@ -163,4 +192,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.2.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-09
+**Version**: 1.3.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-16

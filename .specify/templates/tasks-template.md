@@ -166,7 +166,22 @@ Examples of foundational tasks (adjust based on your project):
 
 ---
 
-## Phase N+1: Browser Smoke Test (REQUIRED for UI features)
+## Phase N+1: Release Prep (REQUIRED for every feature)
+
+**Purpose**: Land documentation, version metadata, and operator-facing references in the same state the operator will merge. Required by the project constitution for every feature. Runs immediately before the Browser Smoke Test so the smoke test walks the to-be-merged state, not a follow-up snapshot.
+
+- [ ] TXXX Bump version in `package.json` (SemVer: MAJOR / MINOR / PATCH per change shape) and keep any in-app version display (`src/components/Footer.js` `APP_VERSION`, etc.) in sync; update the matching version-string assertions in tests if they pin the literal.
+- [ ] TXXX `CHANGELOG.md` — new `## [<new-version>] — <merge-date>` section above the previous entry; group under **Added**, **Changed**, **Removed**, **Security** as applicable; preserve Keep-a-Changelog format; update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of the file.
+- [ ] TXXX `README.md` — add Features bullet(s) for new user-facing surface; add a dedicated section if the feature introduces a new mode, env-var requirement, or operator workflow; update the `Current version` line; add cross-links under Further Reading to the spec package and any new docs.
+- [ ] TXXX `docs/deployment.md` — only required if the feature changes env vars, runtime modes, the architecture diagram, or the deployment procedure. Link the feature's `quickstart.md` rather than restating operator steps.
+- [ ] TXXX `docs/REPO_MAP.md` — add entries for every new directory and file; update existing entries whose description changed (factory signatures, new subscriptions, etc.); add a Spec Packages row pointing at `specs/###-feature/` if non-trivial.
+- [ ] TXXX Docs sanity check — `grep` the previous version string across `package.json`, `src/`, `README.md`, `CHANGELOG.md`, `docs/` and confirm the only remaining matches are historical CHANGELOG headings / diff URLs; verify every new cross-link path exists; confirm the running app renders the new version.
+
+**Note**: Do not duplicate operator-install steps from `quickstart.md` — link to them. The quickstart is authoritative; README and deployment docs are entry points.
+
+---
+
+## Phase N+2: Browser Smoke Test (REQUIRED for UI features)
 
 **Purpose**: Verify the feature end-to-end in a real browser against a running server. Catches rendering, CSS layout, real keyboard interaction, and mobile viewport issues that automated tests cannot detect. Required by the project constitution for any feature with user-facing UI changes.
 
@@ -192,7 +207,9 @@ For each user story in this feature, add one task using the Independent Test fro
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
   - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
+- **Polish**: Depends on all desired user stories being complete
+- **Release Prep (Phase N+1)**: Depends on Polish completion - lands docs and version bump for the to-be-merged state
+- **Browser Smoke Test (Phase N+2)**: Depends on Release Prep - walks the to-be-merged state in a real browser
 
 ### User Story Dependencies
 

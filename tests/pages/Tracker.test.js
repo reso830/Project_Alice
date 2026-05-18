@@ -81,7 +81,8 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(fab).not.toBeNull();
     expect(fab.type).toBe('button');
     expect(fab.getAttribute('aria-label')).toBe('New application');
-    expect(fab.textContent).toBe('+');
+    // Phase 13: FAB renders an inline plus SVG instead of a "+" text glyph.
+    expect(fab.querySelector('svg.fab__icon')).not.toBeNull();
     expect(toolbarRenderOptions[0].onAddApplication).toBeTypeOf('function');
   });
 
@@ -134,14 +135,17 @@ describe('Tracker quick filter toolbar integration', () => {
   });
 
   it('defines responsive FAB, safe-area, desktop-hidden, and modal stacking styles', () => {
-    expect(mainCss).toContain('bottom: calc(1.5rem + env(safe-area-inset-bottom));');
-    expect(mainCss).toContain('right: 1.5rem;');
-    expect(mainCss).toContain('z-index: 200;');
+    // Phase 13: FAB sits above the bottom tab bar at 72px + safe area, anchored at
+    // right: 16px; z-index uses the --z-nav stack (FAB is one above the nav layer).
+    expect(mainCss).toContain('bottom: calc(72px + env(safe-area-inset-bottom));');
+    expect(mainCss).toContain('right: 16px;');
+    expect(mainCss).toContain('z-index: calc(var(--z-nav) + 1);');
     expect(mainCss).toContain('width: 56px;');
     expect(mainCss).toContain('height: 56px;');
     expect(mainCss).toContain('border-radius: 50%;');
-    expect(mainCss).toContain('@media (max-width: 768px)');
-    expect(mainCss).toMatch(/\.fab \{\r?\n    display: flex;/);
+    // FAB visibility flipped from <=768px to <=639px to match the design's mobile breakpoint.
+    expect(mainCss).toContain('@media (max-width: 639px)');
+    expect(mainCss).toMatch(/\.fab \{\r?\n    display: inline-flex;/);
     expect(mainCss).toMatch(/\.new-app-btn \{\r?\n    display: none;/);
     expect(mainCss).toContain('--z-modal: 300;');
     expect(mainCss).toMatch(

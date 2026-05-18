@@ -43,6 +43,34 @@
   --z-dropdown: 200;
   --z-modal: 300;
   --z-toast: 400;
+
+  /* Phase 13: tracker chrome — on-navy tints for the unified navy band
+     (top bar + toolbar). Backgrounds, borders, and foreground tints used by
+     filter chips, the count badge, and the erase-all button when they sit on
+     the navy toolbar surface. */
+  --on-navy-fg-soft: rgba(255, 255, 255, 0.8);
+  --on-navy-fg-muted: rgba(255, 255, 255, 0.7);
+  --on-navy-fg: #FFFFFF;
+  --on-navy-count-bg: rgba(129, 140, 248, 0.18);
+  --on-navy-count-fg: #C7CCFE;
+  --on-navy-chip-bg: rgba(255, 255, 255, 0.06);
+  --on-navy-chip-border: rgba(255, 255, 255, 0.16);
+  --on-navy-chip-hover-bg: rgba(129, 140, 248, 0.18);
+  --on-navy-chip-active-bg: rgba(79, 70, 229, 0.40);
+  --on-navy-chip-open-bg: rgba(79, 70, 229, 0.32);
+  --on-navy-erase-bg: rgba(239, 68, 68, 0.18);
+  --on-navy-erase-border: rgba(252, 165, 165, 0.45);
+  --on-navy-erase-fg: #FCA5A5;
+  --on-navy-hairline: rgba(255, 255, 255, 0.06);
+
+  --shadow-fab: 0 6px 16px rgba(79, 70, 229, 0.42), 0 2px 6px rgba(0, 0, 0, 0.12);
+
+  /* Phase 14: welcome-page tokens. `--warm` is an alias of `--bg` matching
+     the design-doc spelling; `--navy-deep` is the slab background on the
+     navy theme; `--gold` is the SceneLogo sparkle color (used by Phase 15). */
+  --warm: var(--bg);
+  --navy-deep: #0E0E20;
+  --gold: #F2B544;
 }
 
 *,
@@ -1377,43 +1405,45 @@ button:focus-visible,
 }
 
 /* Navbar */
-.navbar {
+/* Phase 13: Top bar (unified navy band with the toolbar). */
+.topbar {
   position: sticky;
   top: 0;
   z-index: var(--z-nav);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 28px;
   height: 52px;
   padding: 0 24px;
   background: var(--navy);
   box-shadow: none;
 }
 
-.navbar__logo {
+.topbar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.navbar__logo-mark {
+.topbar-brand-mark {
   width: 38px;
   height: 38px;
   flex-shrink: 0;
   object-fit: contain;
 }
 
-.navbar__logo-text {
-  color: #FFFFFF;
+.topbar-brand-text {
+  color: var(--on-navy-fg);
+  font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -.3px;
 }
 
-.navbar__actions {
+.topbar-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .nav-btn {
@@ -1421,18 +1451,77 @@ button:focus-visible,
   border-radius: var(--r-sm);
   padding: 7px 11px;
   background: transparent;
-  color: #FFFFFF;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
 }
 
-.nav-btn--active {
-  background: var(--indigo);
-  color: #FFFFFF;
+.nav-btn:hover,
+.nav-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy-fg);
 }
 
-/* Toolbar */
+.nav-btn--active,
+.nav-btn--active:hover,
+.nav-btn--active:focus-visible {
+  background: var(--indigo);
+  color: var(--on-navy-fg);
+}
+
+.topbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.topbar-identity[hidden] {
+  display: none;
+}
+
+/* CSS-driven email truncation: full email lives in textContent + title;
+   the visible string is clipped at 220px via ellipsis. */
+.topbar-email {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--on-navy-fg-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.signout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy-fg-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.signout-btn:hover,
+.signout-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--on-navy-fg);
+}
+
+.signout-btn__icon {
+  flex-shrink: 0;
+}
+
+/* Toolbar — Phase 13: unified with the top bar on a single navy band. */
 .toolbar {
   position: sticky;
   top: 52px;
@@ -1441,7 +1530,9 @@ button:focus-visible,
   align-items: center;
   gap: 8px;
   padding: 11px 24px;
-  border-bottom: 1px solid var(--border);
+  background: var(--navy);
+  border-bottom: 1px solid var(--on-navy-hairline);
+  color: var(--on-navy-fg);
 }
 
 .toolbar__left {
@@ -1461,13 +1552,14 @@ button:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #FFFFFF;
+  color: var(--on-navy-fg-soft);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
 }
 
 .toolbar__label strong {
+  color: var(--on-navy-fg);
   font-weight: 600;
 }
 
@@ -1495,11 +1587,13 @@ button:focus-visible,
   background: var(--indigo-hover);
 }
 
+/* FAB — Phase 13: mobile-only, sits above the bottom tab bar.
+   See z-index notes in plan/tasks: calc(var(--z-nav) + 1) → 101. */
 .fab {
   position: fixed;
-  right: 1.5rem;
-  bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  z-index: 200;
+  right: 16px;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: calc(var(--z-nav) + 1);
   display: none;
   align-items: center;
   justify-content: center;
@@ -1509,15 +1603,73 @@ button:focus-visible,
   border-radius: 50%;
   background: var(--indigo);
   color: #FFFFFF;
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-fab);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.fab:hover,
+.fab:focus-visible {
+  background: var(--indigo-hover);
+}
+
+.fab:active {
+  transform: scale(0.96);
+}
+
+.fab__icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Bottom Tab Bar — Phase 13: mobile-only, replaces the top-bar page nav. */
+.bottom-tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-nav);
+  display: none;
+  justify-content: space-around;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--navy);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bottom-tab {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: 6px 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
   cursor: pointer;
 }
 
-.fab:hover {
-  background: var(--indigo-hover);
+.bottom-tab:hover,
+.bottom-tab:focus-visible {
+  color: var(--on-navy-fg);
+}
+
+.bottom-tab--active,
+.bottom-tab--active:hover,
+.bottom-tab--active:focus-visible {
+  background: rgba(79, 70, 229, 0.32);
+  color: var(--on-navy-fg);
+}
+
+.bottom-tab__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .filter-trigger {
@@ -1532,11 +1684,11 @@ button:focus-visible,
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1.5px solid var(--color-border);
+  border: 1px solid var(--on-navy-chip-border);
   border-radius: 5px;
   padding: 0;
-  background: #FFFFFF;
-  color: #888888;
+  background: var(--on-navy-chip-bg);
+  color: var(--on-navy-fg-muted);
   cursor: pointer;
 }
 
@@ -1564,43 +1716,44 @@ button:focus-visible,
 }
 
 .filter-btn:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-light);
-  color: var(--color-accent);
+  border-color: var(--indigo-mid);
+  background: var(--on-navy-chip-hover-bg);
+  color: var(--on-navy-fg);
 }
 
 .filter-btn[aria-pressed="true"] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-tint);
-  color: var(--color-accent);
+  border-color: var(--indigo-mid);
+  background: var(--on-navy-chip-active-bg);
+  color: var(--on-navy-fg);
 }
 
 .filter-btn--open {
-  border-color: var(--color-accent);
-  background: var(--color-accent-tint);
-  color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, .15);
+  border-color: var(--indigo-mid);
+  background: var(--on-navy-chip-open-bg);
+  color: var(--on-navy-fg);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
 }
 
 .filter-btn[disabled],
 .filter-btn[aria-disabled="true"] {
-  border-color: var(--color-border);
-  background: #FFFFFF;
-  color: #888888;
+  border-color: var(--on-navy-chip-border);
+  background: var(--on-navy-chip-bg);
+  color: var(--on-navy-fg-muted);
   cursor: not-allowed;
   opacity: .4;
   pointer-events: none;
 }
 
 .erase-btn {
-  border: 1.5px solid #FCA5A5;
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  border: 1px solid var(--on-navy-erase-border);
+  background: var(--on-navy-erase-bg);
+  color: var(--on-navy-erase-fg);
 }
 
 .erase-btn:hover {
-  border-color: var(--color-danger);
-  background: #FEE2E2;
+  border-color: var(--on-navy-erase-fg);
+  background: rgba(239, 68, 68, 0.28);
+  color: var(--on-navy-fg);
 }
 
 .filter-panel {
@@ -1821,8 +1974,9 @@ button:focus-visible,
   align-items: center;
   border-radius: var(--r-pill);
   padding: 3px 10px;
-  background: var(--indigo-dim);
-  color: var(--indigo);
+  background: var(--on-navy-count-bg);
+  color: var(--on-navy-count-fg);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 500;
 }
@@ -2690,14 +2844,6 @@ textarea.modal-inline-control {
 }
 
 @media (max-width: 768px) {
-  .fab {
-    display: flex;
-  }
-
-  .new-app-btn {
-    display: none;
-  }
-
   .toolbar {
     flex-direction: row;
     align-items: center;
@@ -2716,16 +2862,43 @@ textarea.modal-inline-control {
 }
 
 @media (max-width: 639px) {
-  .navbar {
+  .topbar {
     padding: 0 14px;
   }
 
-  .navbar__actions {
-    gap: 4px;
+  /* Page nav moves to the Bottom Tab Bar at mobile width. */
+  .topbar-nav {
+    display: none;
   }
 
-  .nav-btn {
-    padding: 7px 8px;
+  /* Identity cluster collapses to icon-only sign-out (32px hit target);
+     email readout is hidden. */
+  .topbar-email {
+    display: none;
+  }
+
+  .signout-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .signout-btn__label {
+    display: none;
+  }
+
+  /* "+ New application" disappears in favor of the FAB. */
+  .new-app-btn {
+    display: none;
+  }
+
+  .fab {
+    display: inline-flex;
+  }
+
+  .bottom-tab-bar {
+    display: flex;
   }
 
   .toolbar {
@@ -2768,10 +2941,6 @@ textarea.modal-inline-control {
     width: 100%;
   }
 
-  .fab {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
-  }
-
   .filter-trigger {
     display: inline-flex;
   }
@@ -2780,13 +2949,14 @@ textarea.modal-inline-control {
     width: 100%;
   }
 
+  /* Card list reserves room for the bottom tab bar + FAB clearance. */
   .card-list {
-    padding: 14px;
+    padding: 14px 14px 86px;
   }
 
   .calendar-page,
   .profile-page {
-    padding: 14px;
+    padding: 14px 14px 86px;
   }
 
   .footer__inner {
@@ -2853,6 +3023,14 @@ textarea.modal-inline-control {
     justify-content: flex-end;
   }
 
+}
+
+/* Fold-narrow — Phase 13: hide the wordmark below 380px so the 38px logo mark +
+   sign-out icon can still fit comfortably on the smallest realistic phone width. */
+@media (max-width: 379px) {
+  .topbar-brand-text {
+    display: none;
+  }
 }
 
 @media (max-width: 360px) {
@@ -3217,3 +3395,1438 @@ textarea.modal-inline-control {
     font-size: 1rem;
   }
 }
+
+/* ===========================================================================
+   Welcome page (feature 018) — Phase 09
+   Reuses existing tokens declared in :root above; no new CSS variables.
+   =========================================================================== */
+
+.welcome {
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
+  font-family: var(--font-ui);
+  color: var(--t1);
+}
+
+.welcome__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  width: 55%;
+  min-height: 100vh;
+  padding: 6vw 5vw 6vw 6vw;
+  box-sizing: border-box;
+  max-width: 760px;
+}
+
+.welcome__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Phase 14 (Task 14.5): brand sizing per design §4.1.
+   Desktop logo `clamp(56px, 6vw, 84px)`, wordmark Sora 700 /
+   `clamp(28px, 3vw, 40px)` / `-.6px` tracking. Mobile overrides
+   (logo 68×68, wordmark 32px / `-.6px`) land with the `<760px`
+   branch in Phase 18. */
+.welcome__brand-mark {
+  width: clamp(56px, 6vw, 84px);
+  height: clamp(56px, 6vw, 84px);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.welcome__brand-text {
+  font-family: var(--font-ui);
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: var(--t1);
+}
+
+.welcome__headline {
+  font-family: var(--font-ui);
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1.6px;
+  color: var(--t1);
+  margin: 0;
+}
+
+/* Phase 14: indigo "organized." accent with a soft underline-glow. */
+.welcome__headline-accent {
+  position: relative;
+  color: var(--indigo);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.welcome__headline-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  height: 12%;
+  background: var(--indigo);
+  border-radius: 999px;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.welcome__supporting {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--t2);
+  max-width: 420px;
+  margin: 0;
+}
+
+.welcome__verification-banner {
+  align-self: flex-start;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--indigo-soft);
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+
+.welcome__cta-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.welcome__cta {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 12px 18px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background 150ms ease, border-color 150ms ease,
+    color 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+
+.welcome__cta:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+.welcome__cta--primary {
+  background: var(--indigo);
+  color: #FFFFFF;
+}
+
+.welcome__cta--primary:hover {
+  background: var(--indigo-hover);
+  transform: translateY(-1px);
+}
+
+.welcome__cta--secondary {
+  background: transparent;
+  color: var(--t1);
+  border-color: var(--border);
+}
+
+.welcome__cta--secondary:hover {
+  border-color: var(--indigo);
+  background: var(--indigo-soft);
+}
+
+.welcome__cta--ghost {
+  position: relative;
+  background: transparent;
+  color: var(--t2);
+  border-color: transparent;
+  padding-left: 36px;
+}
+
+.welcome__cta--ghost:hover {
+  opacity: 0.75;
+}
+
+.welcome__cta--ghost::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16A34A;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  animation: mw-pulse 1.8s ease-out infinite;
+}
+
+.welcome__cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Phase 14: mini footer sourced from `shared/appMeta.js`. Renders the
+   version (plain), license link, and two issue/feature links separated by
+   round 3px dots at 35% opacity. */
+.welcome__footer-meta {
+  position: absolute;
+  left: clamp(22px, 6vw, 64px);
+  bottom: clamp(20px, 3vw, 32px);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--t3);
+  margin: 28px 0 0 0;
+}
+
+.welcome__footer-meta > * + *::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin-right: 10px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+.welcome__footer-version {
+  color: var(--t3);
+}
+
+.welcome__footer-link {
+  color: var(--t3);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.welcome__footer-link:hover,
+.welcome__footer-link:focus-visible {
+  color: var(--indigo);
+}
+
+/* Phase 16 — Hero slab. Width / clip-path / position vary by layout class
+   (see `.welcome--layout-*` blocks below). Default values match the
+   `diagonal` layout so legacy callers without a layout class continue to
+   render the original Phase 14 design. */
+
+.welcome__hero {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 62%;
+  z-index: 1;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.18), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.04), transparent 30%),
+    var(--navy);
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 6% 100%);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Phase 16 — Layout modes (design §3.1–§3.2, plan §14.B/§14.C)
+   --------------------------------------------------------------------------- */
+
+/* `diagonal` (default) inherits the base rules above — no overrides needed. */
+
+/* `split` — straight 55/45 vertical, no diagonal clip-path. */
+.welcome--layout-split .welcome__hero {
+  width: 45%;
+  clip-path: none;
+}
+.welcome--layout-split .welcome__content {
+  width: 55%;
+  max-width: none;
+}
+
+/* `centered` — pitch top, preview as a 280px-tall horizontal band beneath. */
+.welcome--layout-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px 64px;
+}
+.welcome--layout-centered .welcome__content {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  min-height: auto;
+  padding: 0;
+  text-align: center;
+  align-items: center;
+}
+.welcome--layout-centered .welcome__brand,
+.welcome--layout-centered .welcome__cta-group {
+  justify-content: center;
+}
+.welcome--layout-centered .welcome__supporting {
+  margin-left: auto;
+  margin-right: auto;
+}
+.welcome--layout-centered .welcome__hero {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  max-width: 1100px;
+  height: 280px;
+  margin-top: 56px;
+  border-radius: 16px;
+  clip-path: none;
+}
+.welcome--layout-centered .welcome__footer-meta {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  order: 3;
+  width: 100%;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+/* `hero` — pitch overlays a full-bleed preview that gradient-fades into the page. */
+.welcome--layout-hero .welcome__hero {
+  width: 100%;
+  clip-path: none;
+}
+.welcome--layout-hero .welcome__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    var(--bg) 0%,
+    rgba(244, 241, 237, 0.7) 30%,
+    rgba(244, 241, 237, 0.1) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.welcome--layout-hero .welcome__content {
+  z-index: 2;
+}
+
+/* ---------------------------------------------------------------------------
+   Phase 16 — Theme variants (design §2)
+   --------------------------------------------------------------------------- */
+
+/* `warm` (default) — inherits the `--bg` token; no overrides. */
+
+.welcome--theme-white {
+  background: var(--surface);
+}
+
+.welcome--theme-navy {
+  background: var(--navy);
+  color: rgba(255, 255, 255, 0.92);
+}
+.welcome--theme-navy .welcome__brand-text,
+.welcome--theme-navy .welcome__headline {
+  color: #FFFFFF;
+}
+.welcome--theme-navy .welcome__supporting,
+.welcome--theme-navy .welcome__footer-meta {
+  color: rgba(255, 255, 255, 0.72);
+}
+.welcome--theme-navy .welcome__hero {
+  background:
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.22), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.04), transparent 30%),
+    var(--navy-deep);
+}
+.welcome--theme-navy .welcome__headline-accent {
+  color: var(--indigo-mid);
+}
+.welcome--theme-navy .welcome__cta--secondary {
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.welcome--theme-navy .welcome__cta--ghost {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* `copyIntensity` is a class hook only in Phase 16 — the design has not
+   yet defined the content variations for `minimal` / `pitch`. The CSS
+   selectors stay in place so future work can attach copy variants without
+   another WelcomePage edit. */
+.welcome--copy-none,
+.welcome--copy-minimal,
+.welcome--copy-pitch { /* hook only — see Phase 16 Task 16.2 note */ }
+
+/* ---------------------------------------------------------------------------
+   Welcome hero slideshow scenes
+   --------------------------------------------------------------------------- */
+
+/* Phase 15 — Hero scene system (replaces the 6-screenshot rotation). */
+
+.hero-slideshow {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-slideshow__layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  pointer-events: none;
+}
+
+.hero-slideshow__layer--active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.hero-slideshow__disclaimer {
+  position: absolute;
+  right: clamp(16px, 3vw, 28px);
+  bottom: clamp(14px, 2.5vw, 24px);
+  z-index: 4;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.46);
+  pointer-events: none;
+}
+
+.hero-slideshow__dots {
+  position: absolute;
+  bottom: clamp(20px, 3vw, 32px);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 3;
+}
+
+.hero-slideshow__dot {
+  position: relative;
+  width: 28px;
+  height: 6px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 200ms ease, width 200ms ease;
+}
+
+.hero-slideshow__dot:hover {
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.hero-slideshow__dot--active {
+  background: rgba(255, 255, 255, 0.28);
+  width: 44px;
+}
+
+.hero-slideshow__dot-progress {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: #FFFFFF;
+  border-radius: 999px;
+}
+
+.hero-slideshow__dot--active .hero-slideshow__dot-progress--running {
+  animation: hero-slideshow-progress 5500ms linear forwards;
+}
+
+@keyframes hero-slideshow-progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ---------------------------------------------------------------------------
+   Scene 1 — SceneStack
+   --------------------------------------------------------------------------- */
+
+.scene-stack {
+  position: relative;
+  width: min(560px, 70%);
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene-stack__card {
+  position: absolute;
+  width: 62%;
+  background: #FFFFFF;
+  color: var(--t1);
+  border-radius: 14px;
+  box-shadow:
+    0 24px 60px -20px rgba(0, 0, 0, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.18);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: var(--scene-stack-opacity, 1);
+  transform: rotate(var(--scene-stack-rotation, 0deg));
+  transition:
+    opacity 400ms ease,
+    transform 400ms cubic-bezier(.2,.7,.3,1.05);
+}
+
+.scene-stack__card--0 { left: 0; top: 12%; transform: translate(-8%, -14%) rotate(var(--scene-stack-rotation, -4deg)); z-index: 1; }
+.scene-stack__card--1 { left: 12%; top: 18%; transform: translate(-3%, -8%) rotate(var(--scene-stack-rotation, -1.5deg)); z-index: 2; }
+.scene-stack__card--2 { left: 27%; top: 28%; transform: translate(2%, -2%) rotate(var(--scene-stack-rotation, 1.5deg)); z-index: 3; }
+.scene-stack__card--3 { left: 42%; top: 38%; transform: translate(7%, 4%) rotate(var(--scene-stack-rotation, 4deg)); z-index: 4; }
+
+.scene-stack__card--entering {
+  opacity: 0;
+  transform:
+    translate(var(--scene-stack-enter-x, 0), var(--scene-stack-enter-y, 0))
+    rotate(var(--scene-stack-rotation, 0deg))
+    scale(0.55);
+}
+
+.scene-stack--centered {
+  flex-direction: row;
+  gap: 14px;
+  aspect-ratio: auto;
+  height: 200px;
+}
+
+.scene-stack--centered .scene-stack__card {
+  position: relative;
+  flex: 1;
+  transform: none !important;
+  opacity: 1;
+}
+
+.scene-stack__card-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--t3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scene-stack__card-role {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--t1);
+}
+
+.scene-stack__card-company {
+  margin: 0;
+  font-size: 13px;
+  color: var(--t2);
+}
+
+.scene-stack__card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.scene-stack__card-compat {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--indigo);
+}
+
+.scene-stack__card-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--indigo-dim);
+  color: var(--indigo);
+}
+
+/* ---------------------------------------------------------------------------
+   Scene 2 — ScenePipeline
+   --------------------------------------------------------------------------- */
+
+.scene-pipeline {
+  width: min(420px, 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene-pipeline__card {
+  width: 100%;
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow:
+    0 24px 60px -20px rgba(0, 0, 0, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.scene-pipeline__eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scene-pipeline__role {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--t1);
+}
+
+.scene-pipeline__company {
+  margin: 0;
+  font-size: 13px;
+  color: var(--t2);
+}
+
+.scene-pipeline__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.scene-pipeline__compat {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--indigo);
+}
+
+.scene-pipeline__badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--indigo-dim);
+  color: var(--indigo);
+  animation: pipeline-badge 0.55s cubic-bezier(.2,.7,.3,1.05);
+}
+
+.scene-pipeline__badge--applied      { background: var(--indigo-dim);  color: var(--indigo); }
+.scene-pipeline__badge--phone_screen { background: #FFF7E5;            color: #B47A00; }
+.scene-pipeline__badge--interview    { background: #FEEBC8;            color: #92400E; }
+.scene-pipeline__badge--assessment   { background: #DCFCE7;            color: #166534; }
+.scene-pipeline__badge--offer        { background: var(--gold);        color: #2A1B00; }
+
+@keyframes pipeline-badge {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------------
+   Scene 3 — SceneProfile
+   --------------------------------------------------------------------------- */
+
+.scene-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  width: min(420px, 80%);
+  align-items: center;
+}
+
+.scene-profile__chips {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.scene-profile__chip {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.scene-profile__chip-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.scene-profile__chip-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.scene-profile__bottom {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  justify-content: center;
+}
+
+.scene-profile__donut {
+  flex: 0 0 168px;
+}
+
+.scene-profile__donut-segment {
+  transition: stroke-dasharray 0.7s ease, stroke-dashoffset 0.7s ease;
+  transition-delay: var(--scene-profile-segment-delay, 0ms);
+}
+
+.scene-profile__legend {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px 18px;
+}
+
+.scene-profile__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.scene-profile__legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.scene-profile__legend-value {
+  font-family: 'DM Mono', monospace;
+  margin-left: 4px;
+  color: #FFFFFF;
+}
+
+.scene-profile--centered {
+  gap: 18px;
+  width: min(420px, 88%);
+}
+
+.scene-profile--centered .scene-profile__chip {
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.scene-profile--centered .scene-profile__chip-label {
+  font-size: 9px;
+}
+
+.scene-profile--centered .scene-profile__chip-value {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.scene-profile--centered .scene-profile__bottom {
+  gap: 20px;
+}
+
+.scene-profile--centered .scene-profile__donut {
+  width: 124px;
+  height: 124px;
+  flex-basis: 124px;
+}
+
+.scene-profile--centered .scene-profile__legend {
+  gap: 5px 16px;
+}
+
+.scene-profile--centered .scene-profile__legend-row {
+  gap: 7px;
+  font-size: 12px;
+}
+
+.scene-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+.scene-logo__inner {
+  position: relative;
+  width: min(360px, 70%);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: scene-logo-float 6s ease-in-out infinite;
+}
+
+.scene-logo--centered .scene-logo__inner {
+  width: 200px;
+  height: 200px;
+  aspect-ratio: auto;
+}
+
+.scene-logo__mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.scene-logo__sparkle {
+  position: absolute;
+  top: var(--scene-logo-sparkle-y, 50%);
+  left: var(--scene-logo-sparkle-x, 50%);
+  width: var(--scene-logo-sparkle-size, 16px);
+  height: var(--scene-logo-sparkle-size, 16px);
+  background:
+    linear-gradient(90deg, transparent 46%, var(--gold) 46%, var(--gold) 54%, transparent 54%),
+    linear-gradient(0deg,  transparent 46%, var(--gold) 46%, var(--gold) 54%, transparent 54%);
+  background-size: 100% 100%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.4);
+  animation: scene-sparkle 2.4s ease-in-out infinite;
+  animation-delay: var(--scene-logo-sparkle-delay, 0s);
+}
+
+@keyframes scene-logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+@keyframes scene-sparkle {
+  0%, 100% { opacity: 0;   transform: translate(-50%, -50%) scale(0.4); }
+  50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Tablet (760–1100px) — hero slab narrows slightly per design §4 */
+@media (max-width: 1100px) {
+  .welcome__content {
+    width: 58%;
+    padding: 5vw;
+  }
+  .welcome__hero {
+    width: 58%;
+  }
+  .welcome__headline {
+    font-size: 46px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Phase 18 — Mobile branch (`<760px`) per design §3.3
+   Driven by JS-toggled `.welcome--mobile` class on the welcome root, NOT
+   by a media query. Phase 18.1 ignores all layout/theme classes when
+   `.welcome--mobile` is present.
+   --------------------------------------------------------------------------- */
+
+.welcome--mobile {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding: 96px 28px 56px;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.welcome--mobile .welcome__content {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  min-height: auto;
+  padding: 0;
+  gap: 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.welcome--mobile .welcome__brand {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.welcome--mobile .welcome__brand-mark {
+  width: 68px;
+  height: 68px;
+}
+
+.welcome--mobile .welcome__brand-text {
+  font-size: 32px;
+  letter-spacing: -0.6px;
+}
+
+.welcome--mobile .welcome__headline {
+  font-size: 38px;
+  letter-spacing: -1.2px;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.welcome--mobile .welcome__supporting,
+.welcome--mobile .welcome__supporting {
+  display: none;
+}
+
+.welcome--mobile .welcome__footer-meta {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: 2;
+  margin: 28px 0 0;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.welcome--mobile .welcome__cta-group {
+  margin-top: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+.welcome--mobile .welcome__cta {
+  width: 100%;
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 15px;
+}
+
+.welcome--mobile .welcome__cta--ghost {
+  position: relative;
+  padding-left: 36px;
+}
+
+.welcome--mobile .welcome__cta--ghost::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16A34A;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  animation: mw-pulse 1.8s ease-out infinite;
+}
+
+@keyframes mw-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+/* ===========================================================================
+   Auth overlay (feature 018) — Phase 09
+   =========================================================================== */
+
+.welcome__auth-overlay-slot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
+.welcome__auth-overlay-slot[hidden] {
+  display: none;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: var(--z-modal);
+}
+
+/* Phase 17 — Auth modal restyle per design §4.6 */
+
+.auth-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 24, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.auth-overlay__panel {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(26, 26, 46, 0.22);
+  padding: 24px 24px 20px;
+  font-family: var(--font-ui);
+  color: var(--t1);
+  animation: auth-overlay-enter 200ms ease both;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@keyframes auth-overlay-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-overlay__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-overlay__header-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.auth-overlay__title {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--t1);
+  flex: 1;
+}
+
+.auth-overlay__close {
+  border: 0;
+  background: transparent;
+  color: var(--t2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.auth-overlay__close:hover,
+.auth-overlay__close:focus-visible {
+  background: var(--bg);
+  color: var(--t1);
+  outline: none;
+}
+
+.auth-overlay__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-overlay__form-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-overlay__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-overlay__footer[hidden] {
+  display: none;
+}
+
+.auth-overlay__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--t3);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-overlay__divider::before,
+.auth-overlay__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-overlay__divider-text {
+  padding: 0 2px;
+}
+
+.auth-overlay__demo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg);
+  color: var(--t1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.auth-overlay__demo:hover,
+.auth-overlay__demo:focus-visible {
+  background: #FFFFFF;
+  color: var(--indigo);
+  outline: none;
+  border-color: var(--indigo);
+}
+
+.auth-overlay__demo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16A34A;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6);
+  animation: auth-overlay-demo-pulse 1.8s ease-out infinite;
+}
+
+@keyframes auth-overlay-demo-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.auth-overlay__swap {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--t2);
+  cursor: pointer;
+  text-align: center;
+}
+
+.auth-overlay__swap[hidden] {
+  display: none;
+}
+
+.auth-overlay__swap-action {
+  color: var(--indigo);
+  font-weight: 500;
+}
+
+.auth-overlay__swap:hover .auth-overlay__swap-action,
+.auth-overlay__swap:focus-visible .auth-overlay__swap-action {
+  color: var(--indigo-hover);
+  text-decoration: underline;
+}
+
+.auth-overlay__swap:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}
+
+.auth-overlay__legal {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--t3);
+  margin: 0;
+  text-align: center;
+}
+
+.auth-overlay__legal[hidden] {
+  display: none;
+}
+
+.auth-overlay__verification-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--t2);
+  margin: 0 0 18px;
+}
+
+.auth-overlay__done {
+  align-self: flex-end;
+  background: var(--indigo);
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.auth-overlay__done:hover {
+  background: var(--indigo-hover);
+}
+
+.auth-overlay__done:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+/* Auth forms */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-form__label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t2);
+}
+
+.auth-form__input {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--t1);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.auth-form__input:focus-visible {
+  outline: none;
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px var(--indigo-soft);
+}
+
+.auth-form__field-error {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-danger);
+  min-height: 1em;
+}
+
+.auth-form__error {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  min-height: 1em;
+}
+
+.auth-form__error:empty {
+  display: none;
+}
+
+.auth-form__submit {
+  background: var(--indigo);
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+
+.auth-form__submit:hover:not(:disabled) {
+  background: var(--indigo-hover);
+  transform: translateY(-1px);
+}
+
+.auth-form__submit:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+.auth-form__submit:disabled,
+.auth-form__submit[aria-busy='true'] {
+  opacity: 0.7;
+  cursor: progress;
+  transform: none;
+}
+
+.auth-form__status {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--t2);
+  min-height: 1em;
+}
+
+.auth-form__status:empty {
+  display: none;
+}
+
+/* Auth overlay breakpoints */
+@media (max-width: 1100px) {
+  .auth-overlay__panel {
+    width: 420px;
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-overlay__panel {
+    width: min(92vw, 380px);
+    padding: 22px;
+  }
+}
+
+/* ===========================================================================
+   ConfigError page — Phase 08 styling
+   =========================================================================== */
+
+.config-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 100vh;
+  padding: 40px 24px;
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--font-ui);
+  text-align: center;
+}
+
+.config-error__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.config-error__brand-mark {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.config-error__brand-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.config-error__headline {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin: 0;
+}
+
+.config-error__body {
+  font-size: 14px;
+  color: var(--t2);
+  max-width: 420px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ===========================================================================
+   Reduced motion + accessibility pass — Phase 09 Task 09.3
+   The HeroSlideshow JS already skips its interval under reduced-motion;
+   these rules disable CSS-side transitions and entrance animations.
+   =========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slideshow__layer {
+    transition: none;
+  }
+
+  .hero-slideshow__dot-progress--running,
+  .scene-logo__inner,
+  .scene-logo__sparkle,
+  .scene-pipeline__badge,
+  .scene-stack__card,
+  .scene-stack__card--entering,
+  .scene-profile__donut-segment {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .auth-overlay__panel,
+  .auth-overlay__demo-dot,
+  .welcome__cta--ghost::before {
+    animation: none;
+  }
+
+  .welcome__cta,
+  .auth-form__submit,
+  .auth-overlay__demo {
+    transition: none;
+  }
+
+  .welcome__cta--primary:hover,
+  .auth-form__submit:hover:not(:disabled) {
+    transform: none;
+  }
+}
+

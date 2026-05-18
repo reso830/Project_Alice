@@ -7,6 +7,71 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-05-17
+
+> UI polish release on top of v0.8.0 — no API, schema, or auth-behavior
+> changes. Bundles the Tracker chrome refresh (feature 018 Phase 13) and the
+> full Welcome refresh (Phases 14–18).
+
+### Changed
+- Tracker top bar restyled to a unified navy band (52px sticky) with brand cluster, page nav, and right-aligned identity cluster
+- Email truncation switched from JS char-count to CSS `max-width` (full email always in the `title` attribute); `EMAIL_DISPLAY_LIMIT` and `truncateEmail()` retired from `Navbar.js`
+- Sign-out button restyled with a door-arrow icon; collapses to icon-only at `≤ 639px`
+- Mobile chrome (`≤ 639px`) gains a bottom tab bar (`src/components/BottomTabBar.js`) for page nav and a floating "+ New application" button (`src/components/Fab.js`) above it
+- Fold-narrow breakpoint (`< 380px`) hides the "Project Alice" wordmark while keeping the logo mark + sign-out icon
+- Tracker toolbar flipped onto the navy band with refreshed filter chip / count badge / erase-all tints (`design/tracker.md` § Toolbar-on-navy tints)
+- Welcome page rewritten to match `design/welcome_page.md` — headline accent `<em>organized.</em>` with indigo underline-glow, theme-driven brand mark; the previous floating metadata pills + "Sample data" disclaimer are no longer rendered
+- Welcome mini footer sourced from a new shared `src/pages/welcome/shared/appMeta.js` (`APP_VERSION`, `ISSUE_URL`, `LICENSE_NAME`, `LICENSE_URL`) — single source of truth shared with `Footer.js`; license set to `PolyForm Noncommercial 1.0.0`
+- Hero slideshow replaced — the six product-screenshot slides (`src/assets/welcome-hero/*.png`) and their imports are gone; the new cycler shows four animated scenes (`SceneStack`, `ScenePipeline`, `SceneProfile`, `SceneLogo` in `src/pages/welcome/scenes/`), 5500ms per scene, 700ms cross-fade, dot navigation with a per-scene progress bar; all motion gated behind `prefers-reduced-motion: reduce`
+- Welcome page now ships fixed production defaults for layout, theme, copy intensity, and hero scene — the prototype Tweaks panel and `?key=value` URL overrides were prototyped during Phase 16 but cut before merge; responsive desktop / tablet / mobile branches remain
+- Auth modal restyled per design §4.6 — 440px / 14px-radius shell, `rgba(8,8,24,.55)` overlay with 6px backdrop blur, 40px header logo, footer with primary submit → "or" divider → demo button (warm fill, green pulse dot) → swap-mode link → legal copy on signup only; the previous tab strip is replaced by the in-footer swap link
+- Welcome `<760px` portrait stack lands inside the same `WelcomePage.js` module via a JS-toggled `.welcome--mobile` class; full-width CTAs with pulsing green dot on the demo button; brand mark forced to `Alice_Colored.png` regardless of theme
+- Resize-driven viewport crossings mount/unmount the hero slideshow so the DOM matches the active branch (mobile omits it; desktop/tablet keep it)
+- "Try the demo" CTA (welcome page + auth modal) now fires a shared "Demo coming soon" toast via `src/pages/welcome/demoStub.js` — `window.alert()` no longer used; real demo behavior owned by a future feature
+- Test coverage extended in `tests/components/{bottomTabBar,fab}.test.js`, `tests/pages/welcome/heroSlideshow.test.js`, and `tests/pages/welcome/scenes/*.test.js`
+
+## [0.8.0] — 2026-05-16
+
+### Added
+- Hosted authenticated user access via Supabase email/password — feature 018-auth-user-access; local mode is unchanged and remains the default
+- `allowed_emails` table + `auth.users` `BEFORE INSERT` trigger — operator-managed allowlist enforced inside Postgres so unauthorized signups never reach `auth.users`
+- `server/auth/middleware.js` — `createRequireAuth({ jwksUri, logger })` factory; verifies `Authorization: Bearer <jwt>` against Supabase's JWKS endpoint (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) via `jose.jwtVerify`, accepting `ES256` and `RS256` (Supabase's modern asymmetric signing modes); logs categorized rejections (`missing | malformed | expired | signature | other`) with redacted-path context, never the token
+- `/api/health` now returns `{ status, runtime: 'local' | 'hosted' }` so the frontend can detect a runtime/config mismatch
+- `createApp({ repositories, config, requireAuth? })` — `server/index.js` factory now accepts an optional `requireAuth`; hosted mode throws if `supabase.jwtSecret` is missing and no explicit `requireAuth` is passed
+- `logBoot(config)` — single-line `[runtime] mode=<runtime> port=<port>` entry so operators can grep the active mode in production logs
+- `src/services/supabaseClient.js` — Supabase JS client wrapper; reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`; exports `isHostedAuthAvailable`
+- `src/data/authStore.js` — module-state subscribable auth store with `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`; states: `initializing | local-mode | unauthenticated | authenticated`
+- `src/services/healthApi.js` — `getHealth()` standalone fetcher returning the raw `{ status, runtime }` envelope (does not go through `request()`'s `data` unwrap)
+- `Authorization: Bearer <token>` automatically attached by `src/services/api.js` and `src/services/resumeApi.js` whenever `authStore.getAccessToken()` returns a value
+- `src/pages/welcome/WelcomePage.js` — diagonal-split landing page with brand block, headline, three CTAs (Sign In, Create Account, Try Demo), floating metadata pills with illustrative disclaimer, footer metadata, and a `?auth=callback` verification banner handler that cleans the URL while preserving other query params
+- `src/pages/welcome/HeroSlideshow.js` — 5-second auto-rotating screenshot slideshow, single static slide under `prefers-reduced-motion: reduce`
+- `src/pages/welcome/AuthOverlay.js` — centered-modal overlay with `role="dialog"` + `aria-modal`, tab strip with login/signup switching, focus trap, ESC + backdrop + close-button dismissal, previous-focus restoration, `verification_sent` state, `dispose()` cleanup path used by parent unmount
+- `src/pages/welcome/LoginForm.js` — email/password login form with neutral error copy and accessible inline loading state (`aria-busy`, mirrored `aria-live` status)
+- `src/pages/welcome/SignupForm.js` — email/password signup with inline field validation (email regex, password min 8), neutral signup-rejection error (never leaks the cause), and `onSuccess` → overlay transitions to `verification_sent`
+- `src/pages/ConfigError.js` — operator-facing fallback page; mounted when the hosted runtime handshake (`getHealth()` returns `runtime: 'hosted'` but `isHostedAuthAvailable` is false) detects missing Vite env vars
+- `bootstrap()` + `runtimeHandshake()` exports in `src/main.js` — runtime handshake now runs BEFORE `authStore.subscribe` / `init`, so a misconfigured hosted deploy never flashes the welcome page or app shell before ConfigError replaces it
+- `Navbar` user segment — email (truncated past 24 chars with full value in `title`) + Sign Out button; hidden in `local-mode` and `unauthenticated`; `Navbar.destroy()` unsubscribes from `authStore`
+- `ResumeImport.create()` subscribes to `authStore` and toggles `root.hidden` based on auth state — gated to `local-mode` / `authenticated` only
+- Welcome + auth overlay + ConfigError CSS in `src/styles/main.css` — diagonal-split layout (55% content / 62% hero anchored right with the design's clip-path), responsive breakpoints (≥1100px / 760–1100px / <760px / <420px), reduced-motion media query disabling card transforms and overlay entrance
+- Six hero screenshots in `src/assets/welcome-hero/` (`tracker`, `application-modal`, `profile`, `filters`, `calendar`, `mobile-tracker`)
+- Vite build-time assertion (`assertHostedFrontendEnv`) — production builds fail closed when any of `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL` is missing
+- `@supabase/supabase-js` (^2.45.0) and `jose` (^6.x) dependencies
+- Spec package at `specs/018-auth-user-access/` — `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/api.md`, `research.md`, `quickstart.md`, `checklists/plan-review.md`
+- `design/welcome_page.md` — visual specification for the welcome experience
+- Test suites: `tests/server/auth-middleware.test.js`, `tests/server/routes-protected.test.js`, `tests/data/authStore.test.js`, `tests/services/{supabaseClient,healthApi,resumeApi}.test.js`, `tests/components/{welcome,heroSlideshow,navbar,resumeImport}.test.js`, `tests/pages/configError.test.js`, `tests/main.test.js`, `tests/build/vite-config.test.js`
+
+### Changed
+- `createApp()` signature now `({ repositories, config, requireAuth? })`; route factories (`createApplicationsRouter`, `createProfileRouter`, `createResumeRouter`) likewise accept `{ repo, requireAuth }`
+- `unmountAppShell` in `src/main.js` calls `Navbar.destroy()` to clean up the auth-store subscription on transitions back to the welcome page
+- `ResumeImport.create()` always returns an element; visibility now driven by `root.hidden` from a subscription, with completion state tracked separately so post-import hiding survives auth-state transitions
+
+### Security
+- Allowlist enforcement lives in a Postgres `SECURITY DEFINER` trigger on `auth.users` — an Express endpoint approach was considered and rejected because it could be bypassed by direct Supabase calls from the browser
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only — never appears in `src/` or in the Vite production bundle (verified in Phase 12)
+- JWT verification pins `['ES256', 'RS256']` algorithm allowlist explicitly to defeat `alg: none` and downgrade attacks
+- No long-lived shared HS256 secret is configured anywhere; signing key material is fetched at runtime from the Supabase-managed JWKS endpoint
+- Token contents are never logged; categorized rejection logs include `category` and request path only
+
 ## [0.7.0] — 2026-05-13
 
 ### Added
@@ -198,7 +263,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/reso830/Project_Alice/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/reso830/Project_Alice/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/reso830/Project_Alice/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/reso830/Project_Alice/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/reso830/Project_Alice/compare/v0.5.0...v0.5.1

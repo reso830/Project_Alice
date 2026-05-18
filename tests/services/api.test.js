@@ -9,9 +9,11 @@ import {
   saveProfile,
   update,
 } from '../../src/services/api.js';
+import * as authStore from '../../src/data/authStore.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('api service', () => {
@@ -158,6 +160,54 @@ describe('api service', () => {
     await expect(request('GET', '/api/applications')).rejects.toEqual({
       code: 'NETWORK_ERROR',
       message: 'Cannot connect to the backend — is the server running?',
+    });
+  });
+
+  describe('Authorization header', () => {
+    it('omits Authorization when getAccessToken returns null', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue(null);
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: null }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await request('GET', '/api/applications');
+
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers).not.toHaveProperty('Authorization');
+    });
+
+    it('attaches Authorization: Bearer <token> when getAccessToken returns a token', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue('abc');
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: null }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await request('GET', '/api/applications');
+
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers.Authorization).toBe('Bearer abc');
+    });
+
+    it('surfaces 401 responses as UNAUTHORIZED error envelopes', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          },
+        }),
+      }));
+
+      await expect(request('GET', '/api/applications')).rejects.toEqual({
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+        fields: undefined,
+      });
     });
   });
 });

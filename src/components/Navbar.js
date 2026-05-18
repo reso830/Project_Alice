@@ -1,4 +1,8 @@
 import aliceWhite from '../assets/Alice_White.png';
+import { Toast } from './Toast.js';
+import * as authStore from '../data/authStore.js';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const pages = [
   { id: 'tracker', label: 'Tracker' },
@@ -7,6 +11,36 @@ const pages = [
 ];
 
 let _root = null;
+let _identityCluster = null;
+let _unsubscribe = null;
+
+function createDoorArrowIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'signout-btn__icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '13');
+  svg.setAttribute('height', '13');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const doorFrame = document.createElementNS(SVG_NS, 'path');
+  doorFrame.setAttribute('d', 'M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8');
+  const arrowShaft = document.createElementNS(SVG_NS, 'path');
+  arrowShaft.setAttribute('d', 'M11 12h10');
+  const arrowHead = document.createElementNS(SVG_NS, 'path');
+  arrowHead.setAttribute('d', 'M17 8l4 4-4 4');
+
+  for (const element of [doorFrame, arrowShaft, arrowHead]) {
+    element.setAttribute('fill', 'none');
+    element.setAttribute('stroke', 'currentColor');
+    element.setAttribute('stroke-width', '2');
+    element.setAttribute('stroke-linecap', 'round');
+    element.setAttribute('stroke-linejoin', 'round');
+  }
+
+  svg.append(doorFrame, arrowShaft, arrowHead);
+  return svg;
+}
 
 export function setActive(page) {
   if (!_root) {
@@ -18,22 +52,65 @@ export function setActive(page) {
   }
 }
 
-export function render(activePage) {
-  const navbar = document.createElement('header');
-  const logo = document.createElement('div');
-  const logoMark = document.createElement('img');
-  const logoText = document.createElement('span');
-  const navActions = document.createElement('nav');
+function renderIdentityCluster(state) {
+  if (!_identityCluster) {
+    return;
+  }
+  _identityCluster.replaceChildren();
 
-  navbar.className = 'navbar';
-  logo.className = 'navbar__logo';
-  logoMark.className = 'navbar__logo-mark';
-  logoMark.src = aliceWhite;
-  logoMark.alt = '';
-  logoText.className = 'navbar__logo-text';
-  logoText.textContent = 'Project Alice';
-  navActions.className = 'navbar__actions';
-  navActions.setAttribute('aria-label', 'Primary navigation');
+  if (!state || state.status !== 'authenticated' || !state.user?.email) {
+    _identityCluster.hidden = true;
+    return;
+  }
+
+  _identityCluster.hidden = false;
+
+  const email = document.createElement('span');
+  email.className = 'topbar-email';
+  email.textContent = state.user.email;
+  email.title = state.user.email;
+
+  const signOut = document.createElement('button');
+  signOut.type = 'button';
+  signOut.className = 'signout-btn';
+  signOut.setAttribute('aria-label', 'Sign out');
+
+  const label = document.createElement('span');
+  label.className = 'signout-btn__label';
+  label.textContent = 'Sign out';
+
+  signOut.append(createDoorArrowIcon(), label);
+  signOut.addEventListener('click', async () => {
+    await authStore.signOut();
+    Toast.show('Signed out', 'success');
+  });
+
+  _identityCluster.append(email, signOut);
+}
+
+export function render(activePage) {
+  destroy();
+
+  const topbar = document.createElement('header');
+  topbar.className = 'topbar';
+
+  const brand = document.createElement('div');
+  brand.className = 'topbar-brand';
+
+  const brandMark = document.createElement('img');
+  brandMark.className = 'topbar-brand-mark';
+  brandMark.src = aliceWhite;
+  brandMark.alt = '';
+
+  const brandText = document.createElement('span');
+  brandText.className = 'topbar-brand-text';
+  brandText.textContent = 'Project Alice';
+
+  brand.append(brandMark, brandText);
+
+  const pageNav = document.createElement('nav');
+  pageNav.className = 'topbar-nav';
+  pageNav.setAttribute('aria-label', 'Primary navigation');
 
   for (const page of pages) {
     const button = document.createElement('button');
@@ -41,15 +118,30 @@ export function render(activePage) {
     button.type = 'button';
     button.dataset.page = page.id;
     button.textContent = page.label;
-    navActions.append(button);
+    pageNav.append(button);
   }
 
-  logo.append(logoMark, logoText);
-  navbar.append(logo, navActions);
-  _root = navbar;
-  setActive(activePage);
+  _identityCluster = document.createElement('div');
+  _identityCluster.className = 'topbar-identity';
+  _identityCluster.hidden = true;
 
-  return navbar;
+  topbar.append(brand, pageNav, _identityCluster);
+  _root = topbar;
+
+  renderIdentityCluster(authStore.getAuthState());
+  _unsubscribe = authStore.subscribe(renderIdentityCluster);
+
+  setActive(activePage);
+  return topbar;
 }
 
-export const Navbar = { render, setActive };
+export function destroy() {
+  if (typeof _unsubscribe === 'function') {
+    _unsubscribe();
+  }
+  _unsubscribe = null;
+  _root = null;
+  _identityCluster = null;
+}
+
+export const Navbar = { render, setActive, destroy };

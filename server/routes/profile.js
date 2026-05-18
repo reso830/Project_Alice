@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { validateProfile } from '../../src/models/profile.js';
 
-export function createProfileRouter({ repo } = {}) {
+export function createProfileRouter({ repo, requireAuth } = {}) {
   const router = Router();
+
+  if (requireAuth) {
+    router.use(requireAuth);
+  }
 
   router.get('/', (_req, res, next) => {
     try {

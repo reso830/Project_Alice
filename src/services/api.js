@@ -1,14 +1,20 @@
+import { getAccessToken } from '../data/authStore.js';
+
 const NETWORK_ERROR_MESSAGE = 'Cannot connect to the backend — is the server running?';
 
 export async function request(method, path, body, { signal } = {}) {
   let response;
 
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   try {
     response = await globalThis.fetch(path, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     });

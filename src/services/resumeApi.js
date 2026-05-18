@@ -1,3 +1,5 @@
+import { getAccessToken } from '../data/authStore.js';
+
 const NETWORK_ERROR = {
   code: 'NETWORK_ERROR',
   message: 'Cannot connect to the backend — is the server running?',
@@ -9,9 +11,16 @@ export async function parseResume(file) {
 
   body.append('resume', file);
 
+  const headers = {};
+  const token = getAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   try {
     response = await globalThis.fetch('/api/resume/parse', {
       method: 'POST',
+      headers,
       body,
     });
   } catch (error) {

@@ -1049,6 +1049,7 @@ function renderResumeImportArea(page) {
     },
     onDismiss: () => {},
   });
+
   _importArea = importArea;
 
   if (_highlightImport) {

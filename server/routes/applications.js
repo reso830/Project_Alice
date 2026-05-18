@@ -37,8 +37,12 @@ function sendNotFound(res) {
   });
 }
 
-export function createApplicationsRouter({ repo } = {}) {
+export function createApplicationsRouter({ repo, requireAuth } = {}) {
   const router = Router();
+
+  if (requireAuth) {
+    router.use(requireAuth);
+  }
 
   router.post('/', (req, res, next) => {
     try {

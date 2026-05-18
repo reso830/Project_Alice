@@ -1,6 +1,31 @@
+import process from 'node:process';
 import { defineConfig } from 'vite';
 
+const HOSTED_FRONTEND_REQUIRED = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_AUTH_EMAIL_REDIRECT_URL',
+];
+
+export function assertHostedFrontendEnv() {
+  return {
+    name: 'alice:assert-hosted-frontend-env',
+    config(_userConfig, env) {
+      if (env.mode !== 'production') return;
+      const missing = HOSTED_FRONTEND_REQUIRED.filter(
+        (key) => !process.env[key],
+      );
+      if (missing.length) {
+        throw new Error(
+          `Production build requires ${missing.join(', ')} — set them in your build environment.`,
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
+  plugins: [assertHostedFrontendEnv()],
   server: {
     proxy: {
       '/api': 'http://localhost:3001',

@@ -1,8 +1,5 @@
 import aliceWhite from '../assets/Alice_White.png';
-
-const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
-// Keep this static release string in sync with package.json for each release.
-const APP_VERSION = 'v0.7.0';
+import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welcome/shared/appMeta.js';
 
 function createText(className, text) {
   const element = document.createElement('p');
@@ -79,10 +76,10 @@ function createLicense() {
   label.textContent = 'LICENSE';
 
   link.className = 'footer__link';
-  link.href = 'https://polyformproject.org/licenses/noncommercial/1.0.0';
+  link.href = LICENSE_URL;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = 'PolyForm Noncommercial 1.0.0';
+  link.textContent = LICENSE_NAME;
 
   section.append(label, link);
 

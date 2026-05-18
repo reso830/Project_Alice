@@ -25,7 +25,19 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npm run build --if-present
+
+      # CI build supplies stub Vite env vars to satisfy the fail-closed
+      # `assertHostedFrontendEnv` plugin in `vite.config.js` (added in
+      # feature 018 Phase 01). The bundle is built for verification only —
+      # real Supabase credentials are injected at deploy time by the
+      # hosting provider.
+      - name: Build (with stub Supabase env vars)
+        run: npm run build --if-present
+        env:
+          VITE_SUPABASE_URL: https://stub.supabase.co
+          VITE_SUPABASE_ANON_KEY: stub-anon-key
+          VITE_AUTH_EMAIL_REDIRECT_URL: https://stub.example/?auth=callback
+
       - run: npm run test:ci
 
       - name: Upload test results
