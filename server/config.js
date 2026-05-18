@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-const VALID_RUNTIMES = ['local', 'hosted'];
+const VALID_RUNTIMES = ['local', 'hosted', 'demo'];
 const HOSTED_REQUIRED = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
@@ -12,7 +12,7 @@ export function loadConfig() {
 
   if (!VALID_RUNTIMES.includes(runtime)) {
     throw new Error(
-      `Invalid APP_RUNTIME: "${runtime}". Valid values: "local", "hosted".`,
+      `Invalid APP_RUNTIME: "${runtime}". Valid values: "local", "hosted", "demo".`,
     );
   }
 
@@ -29,6 +29,7 @@ export function loadConfig() {
   return Object.freeze({
     runtime,
     isHosted: runtime === 'hosted',
+    isDemo: runtime === 'demo',
     port: Number(process.env.PORT) || 3001,
     supabase:
       runtime === 'hosted'

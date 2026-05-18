@@ -17,6 +17,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
+- **Hosted persistence** — applications and profile data persist per-user in Supabase Postgres, scoped by Row Level Security. New hosted users see 2 seeded starter applications on first sign-in (empty profile by design). Operators apply the schema migration from `specs/019-supabase-persistence/data-model.md §5` before deploying hosted mode; see [docs/deployment.md](docs/deployment.md). Local SQLite mode is unaffected.
 
 ## Tech Stack
 
@@ -58,7 +59,7 @@ Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests 
 Project Alice is local-first by default. A second, optional **hosted** mode adds Supabase email/password authentication with a small operator-managed allowlist, for cases where a single deployment needs to serve a handful of trusted users.
 
 - **Local mode** (default): Express + SQLite on your machine. No external services. Single anonymous user. No auth.
-- **Hosted mode**: Vite frontend on Vercel + Express API on Vercel Functions + Supabase for auth. Each verified user signs in to access the same shared dataset (per-user isolation is planned for feature 019).
+- **Hosted mode**: Vite frontend on Vercel + Express API on Vercel Functions + Supabase for auth and persistence. Each verified user signs in to their own per-user dataset; ownership is enforced server-side via repository filters and database-side via Supabase Row Level Security (feature 019, v0.9.0+).
 
 ### Required Environment Variables
 
@@ -199,7 +200,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.8.1** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.9.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

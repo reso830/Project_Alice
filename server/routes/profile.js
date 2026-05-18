@@ -1,22 +1,44 @@
 import { Router } from 'express';
+import { attachRepos } from '../repositories/middleware.js';
 import { validateProfile } from '../../src/models/profile.js';
 
-export function createProfileRouter({ repo, requireAuth } = {}) {
+/**
+ * @param {{
+ *   repos: { forRequest: (req: any) => any },
+ *   requireAuth?: import('express').Handler,
+ *   seedHostedUserIfNeeded?: import('express').Handler,
+ * }} deps
+ */
+export function createProfileRouter({
+  repos,
+  requireAuth,
+  seedHostedUserIfNeeded,
+} = {}) {
+  if (!repos) {
+    throw new Error(
+      'createProfileRouter: `repos` (dispatcher with forRequest(req)) is required',
+    );
+  }
+
   const router = Router();
 
   if (requireAuth) {
     router.use(requireAuth);
   }
+  router.use(attachRepos(repos));
+  if (seedHostedUserIfNeeded) {
+    router.use(seedHostedUserIfNeeded);
+  }
 
-  router.get('/', (_req, res, next) => {
+  router.get('/', async (req, res, next) => {
     try {
-      return res.status(200).json({ data: repo.get() });
+      return res.status(200).json({ data: await req.repos.profile.get() });
     } catch (error) {
       return next(error);
     }
   });
 
-  router.put('/', (req, res, next) => {
+  router.put('/', async (req, res, next) => {
     try {
       const result = validateProfile(req.body);
       if (!result.valid) {
@@ -29,7 +51,7 @@ export function createProfileRouter({ repo, requireAuth } = {}) {
         });
       }
 
-      return res.status(200).json({ data: repo.upsert(req.body) });
+      return res.status(200).json({ data: await req.repos.profile.upsert(req.body) });
     } catch (error) {
       return next(error);
     }

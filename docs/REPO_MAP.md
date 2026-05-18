@@ -76,16 +76,28 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()` |
-| `server/routes/applications.js` | CRUD route handlers — accepts `{ repo, requireAuth }`, mounts `requireAuth` when present |
-| `server/routes/profile.js` | Profile route handlers — same `{ repo, requireAuth }` shape |
-| `server/routes/resume.js` | Resume parse handler — `{ requireAuth }` |
+| `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only |
+| `api/index.js` | Vercel serverless entry — lazy-imports the seed middleware in hosted mode; passes `config` + dispatcher + seed middleware into `createApp` |
+| `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; three PostgREST sentinel probes against `applications`, `profile`, `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
+| `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises) |
+| `server/routes/profile.js` | Profile route handlers — same `{ repos, requireAuth, seedHostedUserIfNeeded }` shape |
+| `server/routes/resume.js` | Resume parse handler — `{ requireAuth, seedHostedUserIfNeeded }`; doesn't consume repos but mounts seed so a hosted user's first action via resume upload still seeds |
 | `server/auth/middleware.js` | `createRequireAuth({ jwksUri, jwks?, logger })` — verifies Supabase JWTs against the project's JWKS endpoint (`['ES256', 'RS256']` algorithm allowlist) via `jose.jwtVerify`; categorized rejection logging (token contents never logged) |
-| `server/db/applications.js` | SQL query layer (repository pattern) |
+| `server/auth/seedHostedUser.js` | `seedHostedUserIfNeeded(req, res, next)` — async middleware; calls `client.rpc('claim_and_seed_starter')`; the RPC atomically claims the per-user seed marker and inserts 2 starter applications in one Postgres transaction (idempotent, race-safe, deletion-survivable per FR-014) |
+| `server/repositories/index.js` | `createRepositories(config)` returns uniform `{ forRequest(req) }` across all three runtimes (local / hosted / demo). Hosted lazy-imports the Supabase modules; local/demo never load `@supabase/supabase-js`. Exports `DemoRepositoryNotImplementedError` |
+| `server/repositories/middleware.js` | `attachRepos(dispatcher)` — Express middleware factory that sets `req.repos = dispatcher.forRequest(req)`; mounted after `requireAuth` in every protected router |
+| `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter |
+| `server/repositories/profile.js` | `createSqliteProfileRepository(db)` — local SQLite adapter |
+| `server/repositories/supabase/client.js` | `createSupabaseClientForRequest(req)` — per-request anon-key Supabase client initialized with the caller's JWT; never reads `SUPABASE_SERVICE_ROLE_KEY` |
+| `server/repositories/supabase/applications.js` | `createSupabaseApplicationsRepository(client, userId)` — hosted adapter. RLS-scoped reads/writes via PostgREST; `normalizeForPostgres()` helper coerces SQLite-shaped int booleans + JSON strings to Postgres `bool`/`jsonb` before any write |
+| `server/repositories/supabase/profile.js` | `createSupabaseProfileRepository(client, userId)` — hosted adapter; `data` jsonb projection; one-row-per-user via `{ onConflict: 'user_id' }` upsert |
+| `server/db/applications.js` | SQL query layer for SQLite (re-exports `toRow`/`toRecord` from columns.js for backward compat with foundation.test.js) |
+| `server/db/profile.js` | SQL query layer for SQLite profile (`getProfile` / `saveProfile`) |
+| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate`, `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
-| `server/db-seed.js` | Load 23 demo records |
-| `server/db-init.js` | Standalone schema init script |
+| `server/db-seed.js` | Load 23 demo records (local SQLite only) |
+| `server/db-init.js` | Standalone schema init script (local SQLite only) |
 
 **API proxy:** Vite dev server proxies `/api/*` → Express on port 3001.
 

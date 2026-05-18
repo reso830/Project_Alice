@@ -37,3 +37,18 @@ export function makeMemoryDb() {
   initSchema(db);
   return db;
 }
+
+/**
+ * Wrap a flat `{ applications, profile }` repository bundle (typically the
+ * return of `createTestRepositories(db)`) in the dispatcher shape expected
+ * by `createApp({ repositories })`. After Phase 05, `createApp` consumes
+ * the uniform `{ forRequest(req) }` contract; this helper bridges legacy
+ * test fixtures without forcing every test to refactor.
+ *
+ * @template T
+ * @param {T} repos
+ * @returns {{ forRequest: () => T }}
+ */
+export function wrapAsDispatcher(repos) {
+  return { forRequest: () => repos };
+}

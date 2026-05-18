@@ -7,6 +7,108 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-17
+
+> Hosted persistence release — feature 019-supabase-persistence.
+> Local SQLite mode is byte-equivalent to v0.8.1 and remains the default.
+> Hosted operators MUST apply the migration in
+> [`specs/019-supabase-persistence/data-model.md §5`](specs/019-supabase-persistence/data-model.md)
+> before deploying a v0.9.0+ build to hosted mode; the boot check refuses
+> to serve until the migration is in place.
+
+### Added
+- Supabase-backed repository adapters for `applications` and `profile` —
+  every read scopes by the caller's `user_id` via both server-side
+  `.eq('user_id', userId)` filters and Supabase Row Level Security
+  (defense in depth, FR-016)
+- `user_seed_state` marker table + `claim_and_seed_starter()` RPC — first
+  authenticated API call from a hosted user atomically seeds 2 sample
+  applications and a starter-state marker inside one Postgres transaction;
+  empty profile is intentional onboarding (FR-012, FR-013, FR-014)
+- `demo` runtime mode added as a third `APP_RUNTIME` value (alongside
+  `local` and `hosted`) — currently returns
+  `DemoRepositoryNotImplementedError` on every method; reserved for
+  feature 020
+- Per-request Supabase client factory
+  ([server/repositories/supabase/client.js](server/repositories/supabase/client.js))
+  — constructs an anon-key client carrying the caller's JWT so PostgREST
+  applies RLS as the authenticated user; never reads
+  `SUPABASE_SERVICE_ROLE_KEY` at runtime
+- Boot-time hosted schema check
+  ([server/health.js](server/health.js)) — sentinel PostgREST probes
+  against `applications`, `profile`, `user_seed_state` refuse to start
+  the server until the 019 migration is applied
+- `attachRepos(dispatcher)` Express middleware
+  ([server/repositories/middleware.js](server/repositories/middleware.js))
+  — sets `req.repos = dispatcher.forRequest(req)` so route handlers have
+  one uniform contract across all three runtime modes
+- `seedHostedUserIfNeeded` Express middleware
+  ([server/auth/seedHostedUser.js](server/auth/seedHostedUser.js))
+  — runs after `requireAuth` on every protected hosted route, invoking
+  the seed RPC exactly once per user
+- `server/db/columns.js` — shared module exporting column lists, the
+  `FIELD_TO_COLUMN` map, `toRow`/`toRecord` translators, and SQLite-side
+  helpers. Both the SQLite and Supabase adapters consume it so they
+  cannot drift; backward-compat re-exports preserve existing imports
+  from [server/db/applications.js](server/db/applications.js)
+
+### Changed
+- `createRepositories(config)` now returns a uniform
+  `{ forRequest(req) }` shape across all three runtimes (local, hosted,
+  demo). Route handlers obtain their per-request repository bundle via
+  `req.repositories.forRequest(req)`. Hosted mode constructs a per-
+  request RLS-scoped Supabase client; local and demo return long-lived
+  bundles. Route factories now receive `{ repos, requireAuth,
+  seedHostedUserIfNeeded }` instead of pre-extracted `{ repo, requireAuth }`.
+- All protected route handlers converted to `async` with explicit `await`
+  on every repository call — the Supabase adapter returns Promises and
+  the status-transition check in `PATCH /api/applications/:id` cannot
+  function without `await` (forbidden transitions would silently slip
+  through validation)
+- `api/index.js` (Vercel hosted entry) now passes `config` +
+  lazy-imported `seedHostedUserIfNeeded` to `createApp`, fixing two
+  pre-existing latent gaps (hosted Vercel runtime had not been
+  receiving auth/seed middleware)
+- Adapter shape (`ApplicationsRepository` / `ProfileRepository`) method
+  names + arguments unchanged; only return type changed from sync values
+  to Promises (route handlers add `await` to existing call sites)
+
+### Dependencies
+- `@supabase/supabase-js` (added in 018 for the frontend bundle) is now
+  also used **server-side** to construct per-request RLS-scoped clients.
+  No new package install required; the existing dependency is reused at
+  the Node runtime. Verify with `npm ls @supabase/supabase-js`.
+
+### Migration required
+- Hosted operators MUST apply
+  [`data-model.md §5`](specs/019-supabase-persistence/data-model.md) via
+  Supabase dashboard → SQL Editor before deploying v0.9.0+ to hosted
+  mode. The block is idempotent (CREATE TABLE IF NOT EXISTS + DROP
+  POLICY IF EXISTS) and safe to re-run. Pre-019 hosted data is wiped per
+  018's *Accepted Limitations* — though in practice 017's hosted schema
+  was documented but never applied so most projects have nothing to
+  wipe.
+- The boot check in
+  [server/health.js](server/health.js) refuses to start the hosted
+  server if the migration has not been applied; expect a descriptive
+  startup error naming the missing column or table.
+
+### Security
+- Per-user ownership enforced by RLS + server-side filters on every
+  hosted read and write. Cross-user access attempts return responses
+  indistinguishable from "resource does not exist" — no information
+  leak via differential status codes or response bodies.
+- Verified end-to-end against a live multi-tenant Supabase project
+  during Task 08.2 manual smoke (quickstart §6 RLS direct-bypass):
+  user A's JWT against user B's row id returned `[]` from both Express
+  (404) and direct PostgREST calls — both server-side filter and RLS
+  policy independently refused.
+
+### Local mode (unchanged)
+- SQLite repositories and schema are byte-equivalent to v0.8.1. Local
+  developer workflow (`npm run server:dev` + `npm run dev`) requires
+  no setup changes. Existing local data is untouched.
+
 ## [0.8.1] — 2026-05-17
 
 > UI polish release on top of v0.8.0 — no API, schema, or auth-behavior
@@ -263,7 +365,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/reso830/Project_Alice/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/reso830/Project_Alice/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/reso830/Project_Alice/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/reso830/Project_Alice/compare/v0.6.0...v0.7.0

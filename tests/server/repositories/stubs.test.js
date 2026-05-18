@@ -3,22 +3,62 @@ import process from 'node:process';
 import { describe, expect, it } from 'vitest';
 import {
   createRepositories,
-  HostedRepositoryNotImplementedError,
+  DemoRepositoryNotImplementedError,
 } from '../../../server/repositories/index.js';
 
-function expectHostedStub(method) {
-  expect(method).toThrow(HostedRepositoryNotImplementedError);
-  expect(method).toThrow(/019-supabase-persistence/);
+function expectDemoStub(method) {
+  expect(method).toThrow(DemoRepositoryNotImplementedError);
+  expect(method).toThrow(/feature 020/);
 
   try {
     method();
   } catch (error) {
-    expect(error.name).toBe('HostedRepositoryNotImplementedError');
+    expect(error.name).toBe('DemoRepositoryNotImplementedError');
   }
 }
 
-describe('hosted repository stubs', () => {
-  it('does not load better-sqlite3 during hosted cold start', () => {
+// Phase 05 note: `HostedRepositoryNotImplementedError` and `createHostedStub`
+// were removed when the hosted-mode dispatcher branch was replaced with the
+// real Supabase adapters. The cold-start invariant below remains important
+// (the Supabase adapters and client factory must also stay free of any
+// `better-sqlite3` / PDF/DOCX runtime imports), so this test stays.
+
+describe('local dispatcher cold-start invariants', () => {
+  it('does NOT load @supabase/supabase-js during local-mode startup', () => {
+    // Regression guard for the Codex finding (Phase 07 close-out): the seed
+    // middleware's static import chain transitively pulls in
+    // `@supabase/supabase-js`. If `server/index.js` ever re-introduces a
+    // static import of `./auth/seedHostedUser.js`, this test will fail.
+    const script = [
+      "await import('./api/index.js');",
+      "const { createRequire } = await import('node:module');",
+      "const { pathToFileURL } = await import('node:url');",
+      "const require = createRequire(pathToFileURL(process.cwd() + '/package.json'));",
+      'const cacheKeys = Object.keys(require.cache);',
+      "const supabaseLoaded = cacheKeys.some((key) => key.includes('@supabase/supabase-js'));",
+      "console.log(JSON.stringify({ ok: true, supabaseLoaded }));",
+    ].join(' ');
+
+    const output = execFileSync(process.execPath, ['-e', script], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        APP_RUNTIME: 'local',
+        // Local mode does not consume hosted env vars; leaving them unset
+        // exercises the real local-boot path.
+      },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+
+    const result = JSON.parse(output.trim());
+    expect(result.ok).toBe(true);
+    expect(result.supabaseLoaded).toBe(false);
+  });
+});
+
+describe('hosted dispatcher cold-start invariants', () => {
+  it('does not load better-sqlite3 or document parsers during hosted cold start', () => {
     // Asserts the invariant directly via require.cache introspection. A
     // writable ALICE_DB_PATH would let SQLite open successfully even if the
     // cold-start regression returned, so we check whether the native module
@@ -56,20 +96,32 @@ describe('hosted repository stubs', () => {
     expect(result.pdfjsLoaded).toBe(false);
     expect(result.mammothLoaded).toBe(false);
   });
+});
 
+describe('demo repository stubs', () => {
   it('throws for every applications repository method', async () => {
-    const { applications } = await createRepositories({ isHosted: true });
+    const dispatcher = await createRepositories({ isDemo: true });
+    const { applications } = dispatcher.forRequest({});
 
     for (const methodName of ['getAll', 'getById', 'create', 'update', 'archive']) {
-      expectHostedStub(() => applications[methodName]());
+      expectDemoStub(() => applications[methodName]());
     }
   });
 
   it('throws for every profile repository method', async () => {
-    const { profile } = await createRepositories({ isHosted: true });
+    const dispatcher = await createRepositories({ isDemo: true });
+    const { profile } = dispatcher.forRequest({});
 
     for (const methodName of ['get', 'upsert']) {
-      expectHostedStub(() => profile[methodName]());
+      expectDemoStub(() => profile[methodName]());
     }
+  });
+
+  it('error message names the missing repository and points to feature 020', async () => {
+    const dispatcher = await createRepositories({ isDemo: true });
+    const { applications } = dispatcher.forRequest({});
+
+    expect(() => applications.getAll()).toThrow(/applications/);
+    expect(() => applications.getAll()).toThrow(/feature 020/);
   });
 });

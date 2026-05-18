@@ -41,6 +41,7 @@ describe('loadConfig', () => {
     expect(loadConfig()).toEqual({
       runtime: 'local',
       isHosted: false,
+      isDemo: false,
       port: 3001,
       supabase: null,
     });
@@ -52,6 +53,7 @@ describe('loadConfig', () => {
     expect(loadConfig()).toMatchObject({
       runtime: 'local',
       isHosted: false,
+      isDemo: false,
       supabase: null,
     });
   });
@@ -62,12 +64,36 @@ describe('loadConfig', () => {
     expect(loadConfig()).toEqual({
       runtime: 'hosted',
       isHosted: true,
+      isDemo: false,
       port: 3001,
       supabase: {
         url: 'https://example.supabase.co',
         anonKey: 'anon-key',
         serviceRoleKey: 'service-role-key',
       },
+    });
+  });
+
+  it('accepts demo mode without requiring any hosted env vars', () => {
+    process.env.APP_RUNTIME = 'demo';
+
+    expect(loadConfig()).toEqual({
+      runtime: 'demo',
+      isHosted: false,
+      isDemo: true,
+      port: 3001,
+      supabase: null,
+    });
+  });
+
+  it('demo mode ignores hosted env vars when they happen to be set', () => {
+    setHostedEnv({ APP_RUNTIME: 'demo' });
+
+    expect(loadConfig()).toMatchObject({
+      runtime: 'demo',
+      isHosted: false,
+      isDemo: true,
+      supabase: null,
     });
   });
 
@@ -93,6 +119,12 @@ describe('loadConfig', () => {
     process.env.APP_RUNTIME = 'production';
 
     expect(() => loadConfig()).toThrow(/Invalid APP_RUNTIME.*production/);
+  });
+
+  it('error message lists all valid runtimes including demo', () => {
+    process.env.APP_RUNTIME = 'staging';
+
+    expect(() => loadConfig()).toThrow(/local.*hosted.*demo/);
   });
 
   it('returns a frozen config object', () => {
