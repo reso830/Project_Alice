@@ -202,8 +202,10 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 
 Auto-cycles four scenes. 5.5s per scene, 0.7s cross-fade. Click any of the 4 bottom dots to jump; the active dot shows a 0→1 progress bar matching scene duration.
 
+An "Illustrative purposes" caption renders at the lower-right of the slideshow whenever the slideshow is visible. It preserves the sample-data disclosure without reintroducing the removed floating metadata pills.
+
 #### Scene 1 — Tilted card stack (`SceneStack`)
-- **Diagonal/split:** 4 `PreviewCard` instances stacked with rotation `-4° → +4°`, alternating ghost opacities (42% / 100% / 100% / 55%). Cards enter from `scale(.55) opacity(0)` with 90ms stagger via `cubic-bezier(.2,.7,.3,1.05)`.
+- **Diagonal/split:** 4 `PreviewCard` instances stacked with rotation `-4° → +4°`, all at full opacity so the stacked-card look stays readable at smaller preview sizes. Cards enter from `scale(.55) opacity(0)` with 90ms stagger via `cubic-bezier(.2,.7,.3,1.05)`.
 - **Centered/hero (tablet):** 2 cards in a flat horizontal row, `flex: 1`, 14px gap. No rotation, no ghosting.
 
 #### Scene 2 — Pipeline animation (`ScenePipeline`)

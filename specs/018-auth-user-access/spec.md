@@ -429,7 +429,9 @@ the response body.
   with sparkles). Auto-cycle 5500ms per scene, 700ms cross-fade, with
   click-to-jump dot controls and a per-scene progress indicator.
   `prefers-reduced-motion: reduce` MUST disable rotation, scene-internal
-  animations, and the dot progress bar.
+  animations, and the dot progress bar. Whenever the slideshow is visible, it
+  MUST render a lower-right "Illustrative purposes" caption as the replacement
+  disclosure for the removed floating metadata pills.
 - **FR-022 (Phase 16)**: The Welcome page MUST expose a runtime Tweaks panel
   controlling `layout` (`diagonal | split | centered | hero`), `theme`
   (`warm | white | navy`), `copyIntensity` (`none | minimal | pitch`),

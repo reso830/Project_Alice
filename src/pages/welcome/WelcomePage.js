@@ -5,9 +5,8 @@ import { showDemoComingSoon } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 
 // Theme-driven brand mark. Production uses the warm default; white/navy
-// variants remain as CSS design states, but the old prototyping controls
-// is no longer rendered.
-// the default (`warm` theme → colored mark).
+// variants remain as CSS design states after the prototype controls were
+// removed.
 const BRAND_MARKS = {
   warm: aliceColored,
   white: aliceColored,
@@ -163,8 +162,6 @@ function handleViewportChange() {
   if (prev?.theme !== eff.theme) updateBrandMark(eff.theme);
   const heroChanged = !prev || prev.heroScene !== eff.heroScene || prev.variant !== eff.variant;
   if (heroChanged) mountHero(_heroSlot, eff);
-      // Modal closed — open it in the target view via the full mount path.
-      // Modal already open — swap views in place via the overlay's internal
 }
 
 function el(tag, className, text) {

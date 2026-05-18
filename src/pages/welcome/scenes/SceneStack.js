@@ -2,7 +2,7 @@
 // design/welcome_page.md §4.4
 //
 // `default` (diagonal/split/hero): 4 tilted preview cards, rotation -4°→+4°,
-// ghost opacities 42% / 100% / 100% / 55%, 90ms stagger enter from
+// full-opacity stacked cards, 90ms stagger enter from
 // scale(.55) opacity(0) via cubic-bezier(.2,.7,.3,1.05).
 // `centered` (tablet): 2 flat cards in a row, no rotation, no ghosting.
 // prefers-reduced-motion → final/static state, no JS timers.
