@@ -17,10 +17,6 @@ Project Alice supports two persistence modes selected at runtime via the
 - **Hosted mode** (`APP_RUNTIME=hosted`): the Express API is deployed as a
   Vercel Function and persists data to Supabase Postgres. This mode requires
   Supabase credentials supplied via environment variables.
-- **Demo mode** (`APP_RUNTIME=demo`): reserved routing slot — every
-  protected API method throws `DemoRepositoryNotImplementedError`
-  pointing at feature 020. Boot is identical to local mode in that no
-  hosted env vars are required.
 
 Hosted mode boots, validates configuration, gates API access through
 Supabase email/password authentication (feature **018-auth-user-access**),
@@ -230,6 +226,12 @@ via Supabase Row Level Security plus server-side filter (defense in
 depth). New hosted users get 2 sample applications seeded on first
 sign-in via an atomic `claim_and_seed_starter()` RPC; the profile
 starts empty by design.
+
+The welcome page's **Try the demo** CTA (feature **020**, since
+v0.10.0) is enabled by default in hosted deployments and requires no
+configuration. The demo runs entirely client-side — no API calls, no
+storage, no Supabase access — so it adds no operator surface beyond
+shipping the existing Vite bundle.
 
 ---
 

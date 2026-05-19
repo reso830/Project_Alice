@@ -1,5 +1,6 @@
 import { ResumeImport } from '../components/ResumeImport.js';
 import { Toast } from '../components/Toast.js';
+import * as authStore from '../data/authStore.js';
 import { mergeResumeData, normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
@@ -1034,8 +1035,26 @@ function renderAwardsCard(page) {
   page.append(card);
 }
 
+function renderResumeImportDemoNote() {
+  // Feature 020: in demo, the upload widget is hidden by
+  // ResumeImport's own VISIBLE_STATUSES exclusion (Phase 07.2). We
+  // still render a small inline note in the slot so the visitor sees
+  // the feature exists but is told sign-in is required — calmer than
+  // a visibly-disabled multi-step uploader.
+  const note = document.createElement('p');
+  note.className = 'profile-edit__resume-demo-note';
+  note.setAttribute('role', 'note');
+  note.textContent = 'Resume import is available after signing in.';
+  return note;
+}
+
 function renderResumeImportArea(page) {
   if (_importDone) {
+    return;
+  }
+
+  if (authStore.getAuthState().status === 'demo') {
+    page.append(renderResumeImportDemoNote());
     return;
   }
 

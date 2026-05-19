@@ -17,7 +17,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/pages/Tracker.js` | Main page — card grid, filters, sort, pagination, modal wiring |
 | `src/pages/Calendar.js` | Calendar view (follow-up dates) |
 | `src/pages/Profile.js` | User profile screen |
-| `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays |
+| `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays. In demo (feature 020) the resume-import slot renders an inline `.profile-edit__resume-demo-note` ("Resume import is available after signing in.") instead of mounting `ResumeImport` |
 | `src/pages/ConfigError.js` | Operator-facing fallback when hosted runtime detects missing Vite env vars |
 | `src/pages/welcome/WelcomePage.js` | Welcome landing page — applies fixed production layout/theme/copy classes plus viewport matchMedia; mounts the hero slideshow on desktop/tablet and tears it down on mobile; `?auth=callback` verification banner handler |
 | `src/pages/welcome/HeroSlideshow.js` | 4-scene cycler — auto 5500ms cycle + 700ms cross-fade + click-to-jump dots with per-scene progress bar; `heroScene` prop pins to one scene; reduced-motion → static scene 1, no dots |
@@ -26,7 +26,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/pages/welcome/LoginForm.js` | Email/password login — neutral error, accessible inline loading |
 | `src/pages/welcome/SignupForm.js` | Email/password signup — inline validation, neutral rejection, → `verification_sent` |
 | `src/pages/welcome/shared/appMeta.js` | `APP_VERSION` / `ISSUE_URL` / `LICENSE_NAME` / `LICENSE_URL` — single source consumed by both `Footer.js` and the welcome mini footer |
-| `src/pages/welcome/demoStub.js` | Shared `showDemoComingSoon()` toast — wired by both the welcome CTA and the auth-modal demo button; feature 020 will replace it with the real demo route |
+| `src/pages/welcome/demoStub.js` | Shared `enterDemo()` entry point for the portfolio demo — wired by both the welcome CTA and the auth-modal demo button (feature 020). Delegates to `authStore.enterDemo()` |
 | `index.html` | Vite entry HTML |
 
 ---
@@ -45,11 +45,11 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/StatusDropdown.js` | Inline status change control |
 | `src/components/RangeSlider.js` | Dual-handle range slider (salary, compat) |
 | `src/components/Toast.js` | User feedback notifications |
-| `src/components/Navbar.js` | Top navigation bar — sticky navy band (52px), brand cluster + page nav + identity cluster; email truncated via CSS `max-width` with full value in `title`; door-arrow sign-out button (icon-only at `≤ 639px`); subscribes to `authStore`; `destroy()` unsubscribes |
+| `src/components/Navbar.js` | Top navigation bar — sticky navy band (52px), brand cluster + page nav + identity cluster; email truncated via CSS `max-width` with full value in `title`; door-arrow sign-out button (icon-only at `≤ 639px`); subscribes to `authStore`; `destroy()` unsubscribes. In demo (feature 020) the identity cluster renders a "Demo mode" badge and an Exit demo button that calls `authStore.exitDemo()` |
 | `src/components/BottomTabBar.js` | Mobile bottom tab bar (`≤ 639px`) — three tabs (Tracker / Calendar / Profile); same `setActive(page)` contract as Navbar |
 | `src/components/Fab.js` | Mobile floating action button — "+ New application" above the bottom tab bar at `≤ 639px`; opens the Create-mode detail modal |
 | `src/components/Footer.js` | Page footer; sources `APP_VERSION` / `ISSUE_URL` / `LICENSE_NAME` / `LICENSE_URL` from `src/pages/welcome/shared/appMeta.js` |
-| `src/components/ResumeImport.js` | Drag-and-drop resume parser; subscribes to `authStore` and hides outside `local-mode` / `authenticated` |
+| `src/components/ResumeImport.js` | Drag-and-drop resume parser; subscribes to `authStore` and hides outside `local-mode` / `authenticated`. Exports `VISIBLE_STATUSES` (feature 020 design-by-contract guard — `'demo'` intentionally excluded) |
 | `src/components/CompatBar.js` | Compatibility score visual bar |
 | `src/components/DonutChart.js` | SVG donut chart with per-segment hover tooltips (Profile page) |
 | `src/components/StackedBar.js` | Horizontal proportional bar for mobile stats (Profile page) |
@@ -84,7 +84,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/routes/resume.js` | Resume parse handler — `{ requireAuth, seedHostedUserIfNeeded }`; doesn't consume repos but mounts seed so a hosted user's first action via resume upload still seeds |
 | `server/auth/middleware.js` | `createRequireAuth({ jwksUri, jwks?, logger })` — verifies Supabase JWTs against the project's JWKS endpoint (`['ES256', 'RS256']` algorithm allowlist) via `jose.jwtVerify`; categorized rejection logging (token contents never logged) |
 | `server/auth/seedHostedUser.js` | `seedHostedUserIfNeeded(req, res, next)` — async middleware; calls `client.rpc('claim_and_seed_starter')`; the RPC atomically claims the per-user seed marker and inserts 2 starter applications in one Postgres transaction (idempotent, race-safe, deletion-survivable per FR-014) |
-| `server/repositories/index.js` | `createRepositories(config)` returns uniform `{ forRequest(req) }` across all three runtimes (local / hosted / demo). Hosted lazy-imports the Supabase modules; local/demo never load `@supabase/supabase-js`. Exports `DemoRepositoryNotImplementedError` |
+| `server/repositories/index.js` | `createRepositories(config)` returns uniform `{ forRequest(req) }` across `local` and `hosted` runtimes. Hosted lazy-imports the Supabase modules; local never loads `@supabase/supabase-js` |
 | `server/repositories/middleware.js` | `attachRepos(dispatcher)` — Express middleware factory that sets `req.repos = dispatcher.forRequest(req)`; mounted after `requireAuth` in every protected router |
 | `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter |
 | `server/repositories/profile.js` | `createSqliteProfileRepository(db)` — local SQLite adapter |
@@ -96,8 +96,10 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate`, `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
-| `server/db-seed.js` | Load 23 demo records (local SQLite only) |
+| `server/db-seed.js` | Load 23 demo records (local SQLite only); imports `DEMO_RECORDS` from `server/seeds/applicationsData.js` |
 | `server/db-init.js` | Standalone schema init script (local SQLite only) |
+| `server/seeds/applicationsData.js` | Side-effect-free module exporting `DEMO_RECORDS` (23 records in SQLite storage shape); consumed by `db-seed.js` and by the demo-store parity test |
+| `server/seeds/profileData.js` | Side-effect-free module exporting `DEMO_PROFILE` (frontend shape); consumed by `db-seed-profile.js` and the demo-store parity test |
 
 **API proxy:** Vite dev server proxies `/api/*` → Express on port 3001.
 
@@ -107,11 +109,13 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/services/api.js` | Fetch wrapper for all `/api/*` calls; auto-attaches `Authorization: Bearer <token>` when `authStore.getAccessToken()` returns one |
-| `src/services/resumeApi.js` | Resume upload client — same auth-header behavior as `api.js` |
+| `src/services/api.js` | Fetch wrapper for all `/api/*` calls; auto-attaches `Authorization: Bearer <token>` when `authStore.getAccessToken()` returns one; in demo, every export short-circuits to `src/data/demoStore.js` and never calls `fetch` |
+| `src/services/resumeApi.js` | Resume upload client — same auth-header behavior as `api.js`; in demo, throws `{ code: 'DEMO_FEATURE_UNAVAILABLE' }` before any network call |
 | `src/services/supabaseClient.js` | Supabase JS client wrapper; reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`; exports `isHostedAuthAvailable` |
 | `src/services/healthApi.js` | `getHealth()` — standalone fetcher returning raw `{ status, runtime }` (does not unwrap `data`) |
-| `src/data/authStore.js` | Module-state subscribable auth store — `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`; states `initializing | local-mode | unauthenticated | authenticated` |
+| `src/data/authStore.js` | Module-state subscribable auth store — `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`, `enterDemo`, `exitDemo`, `DEMO_STATUS`; states `initializing | local-mode | unauthenticated | authenticated | demo`. `init()` has no demo restore path — refresh always ends the demo (feature 020) |
+| `src/data/demoStore.js` | In-memory portfolio-demo data adapter (feature 020) — `loadSeed`, `clear`, `getAll`, `getById`, `create`, `update`, `archive`, `getProfile`, `saveProfile`. Reads deep-clone; validation reuses `src/models/application.js` + `src/models/profile.js`; no `localStorage`, `sessionStorage`, `IndexedDB`, or `fetch` |
+| `src/data/demoSeed.js` | Demo seed fixture (feature 020) — `buildDemoSeed()` returns `{ applications, profile }` with the 23 SQLite seed records translated to frontend shape and dates shifted so the most recent `lastStatusUpdate` anchors to today; profile biographical dates static |
 | `src/utils/filterSort.js` | Client-side filter + sort logic (all 8 filter dimensions) |
 | `src/utils/currency.js` | `parseSalaryInput`, `formatSalaryDisplay` — peso salary formatting |
 | `src/utils/pagination.js` | Pagination state model |

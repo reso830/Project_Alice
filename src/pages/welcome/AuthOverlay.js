@@ -2,16 +2,16 @@
 //
 // Phase 17 restyle: drops the tab strip; adds a header row (40px Alice
 // mark + title + close), a footer block (submit lives in the form, then
-// "or" divider, demo button wired to `showDemoComingSoon`, swap-mode link,
-// and signup-only legal copy). Mode swap is in-place — overlay does not
-// remount, focus stays inside the modal, entered email persists. No
-// Forgot-password affordance (spec FR "no custom in-app reset UI";
-// password reset stays operator-driven).
+// "or" divider, demo button wired to `demoStub.enterDemo` (feature 020
+// entry), swap-mode link, and signup-only legal copy). Mode swap is
+// in-place — overlay does not remount, focus stays inside the modal,
+// entered email persists. No Forgot-password affordance (spec FR "no
+// custom in-app reset UI"; password reset stays operator-driven).
 
 import aliceColored from '../../assets/Alice_Colored.png';
 import { mountLoginForm } from './LoginForm.js';
 import { mountSignupForm } from './SignupForm.js';
-import { showDemoComingSoon } from './demoStub.js';
+import { enterDemo } from './demoStub.js';
 
 const VALID_VIEWS = new Set(['login', 'signup', 'verification_sent']);
 
@@ -150,7 +150,7 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
   let closed = false;
 
   const footerBuilt = buildFooter({
-    onDemo: () => showDemoComingSoon(),
+    onDemo: () => enterDemo(),
     onSwap: (target) => setView(target),
   });
 

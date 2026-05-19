@@ -194,16 +194,21 @@ path; either resolution is acceptable and the tasks phase picks one.)
 
 ## 5. `src/components/ResumeImport.js`
 
-**No code changes.** The existing visibility gate is:
+**Minimal code change.** The existing internal const is promoted to an
+export so the demo's design-by-contract test can pin the contract:
 
 ```js
-const VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
+export const VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
 ```
 
-The new `'demo'` value is intentionally not added. The component is
-hidden whenever `getAuthState().status === 'demo'`. A unit test asserts
-this (since the behavior is by construction, the test guards against a
-future refactor that broadens the set).
+`'demo'` is intentionally NOT added to the set, so the component stays
+hidden whenever `getAuthState().status === 'demo'` via the existing
+`root.hidden = !VISIBLE_STATUSES.has(state.status)` gate. A unit test
+(`tests/components/ResumeImport.demo.test.js`) imports both
+`VISIBLE_STATUSES` and `DEMO_STATUS` and asserts
+`expect(VISIBLE_STATUSES.has(DEMO_STATUS)).toBe(false)` — making the
+exclusion a design contract rather than incidental membership; a
+future change that adds `'demo'` to the set fails immediately.
 
 ---
 

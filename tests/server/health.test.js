@@ -68,13 +68,6 @@ describe('assertHostedSchema', () => {
       expect(createClient).not.toHaveBeenCalled();
     });
 
-    it('does nothing for demo runtime (isDemo true, isHosted false)', async () => {
-      await expect(
-        assertHostedSchema({ isHosted: false, isDemo: true }),
-      ).resolves.toBeUndefined();
-      expect(createClient).not.toHaveBeenCalled();
-    });
-
     it('does nothing when SKIP_HOSTED_SCHEMA_CHECK=true (test-only escape hatch)', async () => {
       const original = process.env.SKIP_HOSTED_SCHEMA_CHECK;
       process.env.SKIP_HOSTED_SCHEMA_CHECK = 'true';

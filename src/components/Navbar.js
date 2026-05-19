@@ -58,6 +58,37 @@ function renderIdentityCluster(state) {
   }
   _identityCluster.replaceChildren();
 
+  // Feature 020: demo branch — render a textual "Demo mode" badge plus
+  // an Exit demo button. The badge keeps the mode unambiguous for
+  // visitors who land deep in the app; the button is the canonical
+  // exit affordance (FR-007).
+  if (state?.status === 'demo') {
+    _identityCluster.hidden = false;
+
+    const badge = document.createElement('span');
+    badge.className = 'topbar-demo-badge';
+    badge.textContent = 'Demo mode';
+    badge.setAttribute('aria-label', 'Demo mode active');
+
+    const exit = document.createElement('button');
+    exit.type = 'button';
+    exit.className = 'signout-btn';
+    exit.setAttribute('aria-label', 'Exit demo');
+
+    const exitLabel = document.createElement('span');
+    exitLabel.className = 'signout-btn__label';
+    exitLabel.textContent = 'Exit demo';
+
+    exit.append(createDoorArrowIcon(), exitLabel);
+    exit.addEventListener('click', () => {
+      authStore.exitDemo();
+      Toast.show('Exited demo', 'success');
+    });
+
+    _identityCluster.append(badge, exit);
+    return;
+  }
+
   if (!state || state.status !== 'authenticated' || !state.user?.email) {
     _identityCluster.hidden = true;
     return;

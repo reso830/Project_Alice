@@ -7,6 +7,7 @@ import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
 import { STATUS_VALUES } from '../../shared/constants.js';
+import * as authStore from '../data/authStore.js';
 import { SHIFT_VALUES, WORK_SETUP_VALUES } from '../models/application.js';
 import * as api from '../services/api.js';
 import {
@@ -97,6 +98,14 @@ export function normalizeStoredFilterState(value) {
 }
 
 function loadPersistedFilterState() {
+  // Feature 020: demo sessions start from the default filter state and
+  // never read a prior authenticated session's persisted filters. Pairs
+  // with the persist gate below so the demo never reads or writes
+  // `apptracker_filters` (see Task 05.4 / data-model §5).
+  if (authStore.getAuthState().status === 'demo') {
+    return { ...DEFAULT_FILTER_STATE };
+  }
+
   try {
     const raw = window.localStorage?.getItem(FILTER_STORAGE_KEY);
 
@@ -107,6 +116,14 @@ function loadPersistedFilterState() {
 }
 
 function persistFilterState(filterState) {
+  // Feature 020: skip the write when the visitor is in the portfolio
+  // demo. Zero project-namespaced localStorage writes during a demo
+  // session is the canonical FR-004 invariant verified by Task 08.2's
+  // storage audit.
+  if (authStore.getAuthState().status === 'demo') {
+    return;
+  }
+
   try {
     window.localStorage?.setItem(FILTER_STORAGE_KEY, JSON.stringify(filterState));
   } catch {

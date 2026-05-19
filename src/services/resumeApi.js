@@ -1,4 +1,4 @@
-import { getAccessToken } from '../data/authStore.js';
+import { DEMO_STATUS, getAccessToken, getAuthState } from '../data/authStore.js';
 
 const NETWORK_ERROR = {
   code: 'NETWORK_ERROR',
@@ -6,6 +6,19 @@ const NETWORK_ERROR = {
 };
 
 export async function parseResume(file) {
+  // Demo-mode guard (feature 020). Defense in depth: `ResumeImport.js`
+  // already hides the upload affordance in demo via `VISIBLE_STATUSES`,
+  // and `ProfileEdit.js` renders an inline note in the slot. If a future
+  // call site reaches this function while in demo anyway, fail loudly
+  // instead of attempting an unauthenticated POST to `/api/resume/parse`
+  // (which `requireAuth` would reject with 401).
+  if (getAuthState().status === DEMO_STATUS) {
+    throw {
+      code: 'DEMO_FEATURE_UNAVAILABLE',
+      message: 'Resume import is available after signing in.',
+    };
+  }
+
   const body = new globalThis.FormData();
   let response;
 

@@ -37,7 +37,7 @@ routing slot reserved by 019. No new code; no new tests; deletions only,
 plus three doc edits. Independent of the client work and can run in
 parallel with Phase 02+.
 
-### Task 01.1 — Remove `'demo'` from `VALID_RUNTIMES` and drop `isDemo`
+### [X] Task 01.1 — Remove `'demo'` from `VALID_RUNTIMES` and drop `isDemo`
 
 **Target file**: `server/config.js`
 
@@ -66,7 +66,7 @@ parallel with Phase 02+.
 
 ---
 
-### Task 01.2 — Remove `DemoRepositoryNotImplementedError` + `createDemoStub` + the demo branch in the dispatcher
+### [X] Task 01.2 — Remove `DemoRepositoryNotImplementedError` + `createDemoStub` + the demo branch in the dispatcher
 
 **Target file**: `server/repositories/index.js`
 
@@ -97,7 +97,7 @@ Supabase forRequest factory exactly as today; `createRepositories({ runtime:
 
 ---
 
-### Task 01.3 — Remove the `config.isDemo` short-circuit in `assertHostedSchema`
+### [X] Task 01.3 — Remove the `config.isDemo` short-circuit in `assertHostedSchema`
 
 **Target file**: `server/health.js`
 
@@ -116,7 +116,7 @@ the three PostgREST probes (unchanged). The demo case no longer exists.
 
 ---
 
-### Task 01.4 — Update server-side tests to drop demo coverage
+### [X] Task 01.4 — Update server-side tests to drop demo coverage
 
 **Target files**:
 - `tests/server/config.test.js`
@@ -159,7 +159,7 @@ remaining tests still cover local and hosted exhaustively.
 
 ---
 
-### Task 01.5 — Update server docs to drop demo references
+### [X] Task 01.5 — Update server docs to drop demo references
 
 **Target files**:
 - `docs/deployment.md`
@@ -202,7 +202,7 @@ references to `APP_RUNTIME=demo` or `DemoRepositoryNotImplementedError`.
 
 Foundation for the demo. Pure modules, no DOM, no async.
 
-### Task 02.0 — Extract SQLite seed data to side-effect-free modules
+### [X] Task 02.0 — Extract SQLite seed data to side-effect-free modules
 
 **Target files**:
 - `server/seeds/applicationsData.js` (NEW)
@@ -277,7 +277,7 @@ in [research.md §13](research.md).
 
 ---
 
-### Task 02.1 — Create `src/data/demoSeed.js`
+### [X] Task 02.1 — Create `src/data/demoSeed.js`
 
 **Target file**: `src/data/demoSeed.js` (NEW)
 
@@ -423,7 +423,7 @@ deliberate duplication for 020, see
 
 ---
 
-### Task 02.2 — Create `src/data/demoStore.js`
+### [X] Task 02.2 — Create `src/data/demoStore.js`
 
 **Target file**: `src/data/demoStore.js` (NEW)
 
@@ -467,7 +467,7 @@ Implement the demo store per [contracts/api.md §1](contracts/api.md):
 
 ---
 
-### Task 02.3 — Add tests for `demoStore`
+### [X] Task 02.3 — Add tests for `demoStore`
 
 **Target file**: `tests/data/demoStore.test.js` (NEW)
 
@@ -527,7 +527,7 @@ Cover (Vitest, jsdom environment):
 
 ## Phase 03 — `authStore` demo state machine
 
-### Task 03.1 — Extend `authStore` with `'demo'` status + transitions
+### [X] Task 03.1 — Extend `authStore` with `'demo'` status + transitions
 
 **Target file**: `src/data/authStore.js`
 
@@ -560,7 +560,7 @@ Per [contracts/api.md §2](contracts/api.md):
 
 ---
 
-### Task 03.2 — Add tests for `authStore` demo transitions
+### [X] Task 03.2 — Add tests for `authStore` demo transitions
 
 **Target file**: `tests/data/authStore.demo.test.js` (NEW)
 
@@ -591,7 +591,7 @@ Cover:
 
 ## Phase 04 — Service-layer mode switch
 
-### Task 04.1 — Add demo branch to every export in `src/services/api.js`
+### [X] Task 04.1 — Add demo branch to every export in `src/services/api.js`
 
 **Target file**: `src/services/api.js`
 
@@ -625,7 +625,7 @@ Per [contracts/api.md §3](contracts/api.md):
 
 ---
 
-### Task 04.2 — Add demo throw to `src/services/resumeApi.js`
+### [X] Task 04.2 — Add demo throw to `src/services/resumeApi.js`
 
 **Target file**: `src/services/resumeApi.js`
 
@@ -650,7 +650,7 @@ Per [contracts/api.md §3](contracts/api.md):
 
 ---
 
-### Task 04.3 — Add network-discipline tests for the service-layer switch
+### [X] Task 04.3 — Add network-discipline tests for the service-layer switch
 
 **Target files**:
 - `tests/services/api.demo.test.js` (NEW)
@@ -687,7 +687,7 @@ In `resumeApi.demo.test.js`:
 
 ## Phase 05 — Welcome CTA + main routing
 
-### Task 05.1 — Rewrite `src/pages/welcome/demoStub.js`
+### [X] Task 05.1 — Rewrite `src/pages/welcome/demoStub.js`
 
 **Target file**: `src/pages/welcome/demoStub.js`
 
@@ -710,7 +710,7 @@ Per [contracts/api.md §8](contracts/api.md):
 
 ---
 
-### Task 05.2 — Update `AuthOverlay.js` import + welcome page CTA wiring
+### [X] Task 05.2 — Update `AuthOverlay.js` import + welcome page CTA wiring
 
 **Target files**:
 - `src/pages/welcome/AuthOverlay.js`
@@ -744,7 +744,7 @@ In `WelcomePage.js`:
 
 ---
 
-### Task 05.3 — Route `'demo'` status to the app shell in `src/main.js`
+### [X] Task 05.3 — Route `'demo'` status to the app shell in `src/main.js`
 
 **Target file**: `src/main.js`
 
@@ -784,7 +784,7 @@ In `WelcomePage.js`:
 
 ---
 
-### Task 05.4 — Gate `apptracker_filters` localStorage write on non-demo status
+### [X] Task 05.4 — Gate `apptracker_filters` localStorage write on non-demo status
 
 **Target file**: `src/pages/Tracker.js`
 
@@ -844,7 +844,7 @@ makes **zero** writes to `localStorage` under any project key.
 
 ---
 
-### Task 05.5 — Update `demoStub.test.js`; cover the welcome CTA path
+### [X] Task 05.5 — Update `demoStub.test.js`; cover the welcome CTA path
 
 **Target files**:
 - `tests/pages/welcome/demoStub.test.js` (UPDATED — existing file)
@@ -872,7 +872,7 @@ In `AuthOverlay.test.js`:
 
 ## Phase 06 — Navbar Exit demo affordance
 
-### Task 06.1 — Render Exit demo button + Demo mode badge in `Navbar.js`
+### [X] Task 06.1 — Render Exit demo button + Demo mode badge in `Navbar.js`
 
 **Target file**: `src/components/Navbar.js`
 
@@ -931,7 +931,7 @@ Add CSS for `.topbar-demo-badge` in `src/styles/main.css`:
 
 ---
 
-### Task 06.2 — Test Navbar demo state
+### [X] Task 06.2 — Test Navbar demo state
 
 **Target file**: `tests/components/Navbar.demo.test.js` (NEW)
 
@@ -954,7 +954,7 @@ Add CSS for `.topbar-demo-badge` in `src/styles/main.css`:
 
 ## Phase 07 — ProfileEdit inline note + ResumeImport regression
 
-### Task 07.1 — Add the demo inline note in `ProfileEdit.js`
+### [X] Task 07.1 — Add the demo inline note in `ProfileEdit.js`
 
 **Target file**: `src/pages/ProfileEdit.js`
 
@@ -1004,7 +1004,7 @@ muted text colour, small inline padding, accessible contrast).
 
 ---
 
-### Task 07.2 — Test ProfileEdit demo behavior + ResumeImport visibility
+### [X] Task 07.2 — Test ProfileEdit demo behavior + ResumeImport visibility
 
 **Target files**:
 - `tests/pages/ProfileEdit.demo.test.js` (NEW)
@@ -1038,7 +1038,7 @@ In `ResumeImport.demo.test.js`:
 
 ## Phase 08 — Regression + integration verification
 
-### Task 08.1 — Run the full automated test suite **and** lint
+### [X] Task 08.1 — Run the full automated test suite **and** lint
 
 **What to do**: run **both** quality-gate commands and confirm each
 exits clean.
@@ -1061,9 +1061,16 @@ exits clean.
 **Validation**: green run on both. If either fails, do not proceed to
 Phase 09; fix the failure root-cause first.
 
+**Result** (2026-05-19):
+- `npm run test:run` — **72 files / 856 tests passing**. No new warnings.
+  (First-run vitest worker-pool startup flake hit on the initial invocation;
+  immediate re-run was instantly clean. Same flake observed at the start of
+  Phases 03 and 05 — not a regression.)
+- `npm run lint` — **clean**. No errors, no new warnings.
+
 ---
 
-### Task 08.2 — Manual browser-storage audit
+### [X] Task 08.2 — Manual browser-storage audit
 
 **Target context**: run the dev server (`npm run dev`) or hit a preview
 deploy. Use a fresh private window.
@@ -1091,9 +1098,15 @@ deploy. Use a fresh private window.
 **Validation**: visual confirmation. Record observations in the
 Phase 10 smoke test artefact.
 
+**Result** (2026-05-19): **Pass.** No storage used during the demo session.
+Quick filters working as expected; changing an application's state in the
+tracker is reflected in the donut chart on the profile page; profile edits
+can be made and saved within the session but are lost on refresh
+(refresh-as-reset, per spec FR-005).
+
 ---
 
-### Task 08.3 — Manual network-discipline spot check
+### [X] Task 08.3 — Manual network-discipline spot check
 
 **What to do**:
 
@@ -1110,13 +1123,17 @@ Phase 10 smoke test artefact.
 
 **Validation**: visual confirmation in DevTools Network panel.
 
+**Result** (2026-05-19): **Pass.** No Supabase calls and no API requests
+observed during demo writes (create, edit, status change, archive, profile
+save) or on Exit demo.
+
 ---
 
 ## Phase 09 — Release Prep
 
 Required by constitution Amendment 1.3.0 — second-to-last phase.
 
-### Task 09.1 — Version bump
+### [X] Task 09.1 — Version bump
 
 **Target files**:
 - `package.json` — bump `"version"` from `0.9.0` to `0.10.0` (MINOR
@@ -1136,7 +1153,7 @@ version in the welcome footer reads `v0.10.0`.
 
 ---
 
-### Task 09.2 — `CHANGELOG.md` entry
+### [X] Task 09.2 — `CHANGELOG.md` entry
 
 **Target file**: `CHANGELOG.md`
 
@@ -1159,7 +1176,7 @@ entry.
 
 ---
 
-### Task 09.3 — `README.md` updates
+### [X] Task 09.3 — `README.md` updates
 
 **Target file**: `README.md`
 
@@ -1175,7 +1192,7 @@ surface:
 
 ---
 
-### Task 09.4 — `docs/deployment.md` updates
+### [X] Task 09.4 — `docs/deployment.md` updates
 
 **Target file**: `docs/deployment.md`
 
@@ -1194,7 +1211,7 @@ exists per plan).
 
 ---
 
-### Task 09.5 — `docs/REPO_MAP.md` updates
+### [X] Task 09.5 — `docs/REPO_MAP.md` updates
 
 **Target file**: `docs/REPO_MAP.md`
 
@@ -1218,7 +1235,7 @@ existing file.
 
 ---
 
-### Task 09.6 — Docs sanity check
+### [X] Task 09.6 — Docs sanity check
 
 **What to do**: read [spec.md](spec.md), [plan.md](plan.md), the four
 supporting artefacts, and the updated README / deployment / REPO_MAP.
@@ -1235,7 +1252,7 @@ Required by constitution Amendment 1.1.0. Walk each user story's
 Independent Test from [spec.md](spec.md) in a real browser against the
 to-be-merged state (e.g. a preview deploy).
 
-### Task 10.1 — US1: Visitor opts into demo from the welcome page
+### [X] Task 10.1 — US1: Visitor opts into demo from the welcome page
 
 Open the deploy in a fresh private window. Click **Try the demo**.
 Verify the welcome page unmounts and the Tracker mounts with **23
@@ -1250,7 +1267,7 @@ a condition of entry.
 
 ---
 
-### Task 10.2 — US2: Visitor interacts and changes feel real
+### [X] Task 10.2 — US2: Visitor interacts and changes feel real
 
 Inside the demo: create an application (fill all required fields),
 edit a card, change a status, archive one, edit and save the profile.
@@ -1260,7 +1277,7 @@ Verify each operation reflects immediately on the tracker / profile.
 
 ---
 
-### Task 10.3 — US3: Demo never persists
+### [X] Task 10.3 — US3: Demo never persists
 
 DevTools Network panel open. Repeat write actions. Confirm zero
 requests to `/api/applications`, `/api/profile`, `/api/resume/parse`,
@@ -1271,7 +1288,7 @@ demo data in `localStorage`, `sessionStorage`, IndexedDB, or cookies.
 
 ---
 
-### Task 10.4 — US4: Refresh resets
+### [X] Task 10.4 — US4: Refresh resets
 
 Inside demo with edits, press Ctrl+R / Cmd+R. Verify the welcome page
 renders fresh. Re-enter the demo; verify the seed is back to the
@@ -1281,7 +1298,7 @@ starting state.
 
 ---
 
-### Task 10.5 — US5: Resume Import unavailable in demo
+### [X] Task 10.5 — US5: Resume Import unavailable in demo
 
 Inside demo, navigate to Profile → Edit profile. Verify the upload
 widget is absent and the inline "Resume import is available after
@@ -1293,7 +1310,7 @@ ProfileEdit, verify the full Resume Import flow is restored.
 
 ---
 
-### Task 10.6 — US6: Authenticated user is unaffected
+### [X] Task 10.6 — US6: Authenticated user is unaffected
 
 In a separate browser, sign in as a real hosted user (post-019 setup).
 Note their applications and profile. In a private window in the first
@@ -1306,14 +1323,14 @@ state.
 
 ---
 
-### Task 10.7 — Verify `APP_RUNTIME=demo` is rejected at boot
+### [X] Task 10.7 — Verify `APP_RUNTIME=demo` is rejected at boot
 
 (Server-side cleanup verification — quick, no UI.)
 
 In a local terminal, run the server with `APP_RUNTIME=demo`:
 
 ```bash
-APP_RUNTIME=demo npm run dev:server
+APP_RUNTIME=demo npm run server:start
 ```
 
 Verify the process exits with the standard config error naming the

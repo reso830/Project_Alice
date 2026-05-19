@@ -1,4 +1,10 @@
 import { supabase, isHostedAuthAvailable } from '../services/supabaseClient.js';
+import * as demoStore from './demoStore.js';
+
+// Status value for the portfolio demo (feature 020). Demo is opt-in from
+// the welcome page; refresh always exits the demo because `init()` has no
+// path that restores this status.
+export const DEMO_STATUS = 'demo';
 
 let state = { status: 'initializing', user: null, accessToken: null };
 const subscribers = new Set();
@@ -51,4 +57,16 @@ export async function signOut() {
   if (supabase) {
     await supabase.auth.signOut();
   }
+}
+
+export function enterDemo() {
+  demoStore.loadSeed();
+  state = { status: DEMO_STATUS, user: null, accessToken: null };
+  notify();
+}
+
+export function exitDemo() {
+  demoStore.clear();
+  state = { status: 'unauthenticated', user: null, accessToken: null };
+  notify();
 }
