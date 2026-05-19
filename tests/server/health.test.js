@@ -1,3 +1,4 @@
+import process from 'node:process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createClient = vi.fn();
@@ -72,6 +73,54 @@ describe('assertHostedSchema', () => {
         assertHostedSchema({ isHosted: false, isDemo: true }),
       ).resolves.toBeUndefined();
       expect(createClient).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when SKIP_HOSTED_SCHEMA_CHECK=true (test-only escape hatch)', async () => {
+      const original = process.env.SKIP_HOSTED_SCHEMA_CHECK;
+      process.env.SKIP_HOSTED_SCHEMA_CHECK = 'true';
+      try {
+        const logger = makeLogger();
+        await expect(
+          assertHostedSchema(
+            {
+              isHosted: true,
+              supabase: { url: 'https://x.supabase.co', anonKey: 'k' },
+            },
+            { logger },
+          ),
+        ).resolves.toBeUndefined();
+        expect(createClient).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.stringMatching(/SKIP_HOSTED_SCHEMA_CHECK/),
+        );
+      } finally {
+        if (original === undefined) {
+          delete process.env.SKIP_HOSTED_SCHEMA_CHECK;
+        } else {
+          process.env.SKIP_HOSTED_SCHEMA_CHECK = original;
+        }
+      }
+    });
+
+    it('still runs the probe for any non-"true" SKIP value', async () => {
+      // Guard against operators thinking "skip=1" or "skip=yes" works.
+      // Only the exact string "true" disables the check.
+      const original = process.env.SKIP_HOSTED_SCHEMA_CHECK;
+      process.env.SKIP_HOSTED_SCHEMA_CHECK = '1';
+      try {
+        setupClient([{ error: null }, { error: null }, { error: null }]);
+        await assertHostedSchema({
+          isHosted: true,
+          supabase: { url: 'https://x.supabase.co', anonKey: 'k' },
+        });
+        expect(createClient).toHaveBeenCalled();
+      } finally {
+        if (original === undefined) {
+          delete process.env.SKIP_HOSTED_SCHEMA_CHECK;
+        } else {
+          process.env.SKIP_HOSTED_SCHEMA_CHECK = original;
+        }
+      }
     });
   });
 

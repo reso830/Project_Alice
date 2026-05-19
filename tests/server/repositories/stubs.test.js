@@ -84,6 +84,11 @@ describe('hosted dispatcher cold-start invariants', () => {
         SUPABASE_URL: 'https://example.supabase.co',
         SUPABASE_ANON_KEY: 'anon-key',
         SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+        // Bypass `assertHostedSchema`'s real PostgREST probes (api/index.js
+        // calls them on cold start to satisfy FR-021). Without this gate
+        // the test would issue three real network round-trips against
+        // example.supabase.co per run.
+        SKIP_HOSTED_SCHEMA_CHECK: 'true',
       },
       encoding: 'utf8',
       timeout: 30_000,

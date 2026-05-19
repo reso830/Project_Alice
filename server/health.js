@@ -51,6 +51,20 @@ export async function assertHostedSchema(config, { logger = console } = {}) {
     return;
   }
 
+  // Explicit escape hatch for the cold-start subprocess test in
+  // `tests/server/repositories/stubs.test.js`, which boots `api/index.js`
+  // with `APP_RUNTIME=hosted` against an unreachable
+  // `https://example.supabase.co`. Without this gate the test would make
+  // three real PostgREST round-trips per run, slowing it from ~1s to
+  // ~30s. Production hosted deploys MUST NOT set this — the default
+  // behavior is "always run the probe."
+  if (process.env.SKIP_HOSTED_SCHEMA_CHECK === 'true') {
+    logger.warn(
+      '[hosted-schema] SKIP_HOSTED_SCHEMA_CHECK=true — boot-time probe skipped (test-only escape hatch; production deploys MUST NOT set this)',
+    );
+    return;
+  }
+
   const url = config.supabase?.url;
   const anonKey = config.supabase?.anonKey;
   if (!url || !anonKey) {
