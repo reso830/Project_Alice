@@ -17,21 +17,52 @@ Project Alice supports two persistence modes selected at runtime via the
 - **Hosted mode** (`APP_RUNTIME=hosted`): the Express API is deployed as a
   Vercel Function and persists data to Supabase Postgres. This mode requires
   Supabase credentials supplied via environment variables.
+- **Demo mode** (`APP_RUNTIME=demo`): reserved routing slot — every
+  protected API method throws `DemoRepositoryNotImplementedError`
+  pointing at feature 020. Boot is identical to local mode in that no
+  hosted env vars are required.
 
-Hosted mode boots, validates configuration, and gates API access through
-Supabase email/password authentication today (feature
-**018-auth-user-access**). The Supabase repository implementation for
-persisting application/profile data is deferred to feature
-**019-supabase-persistence**. Until 019 lands, authenticated hosted API
-requests for `/api/applications` and `/api/profile` return HTTP 500 with:
+Hosted mode boots, validates configuration, gates API access through
+Supabase email/password authentication (feature **018-auth-user-access**),
+and persists application + profile data per-user in Supabase Postgres
+under Row Level Security (feature **019-supabase-persistence**, since
+v0.9.0). New hosted users receive 2 seeded sample applications on first
+sign-in via an atomic `claim_and_seed_starter()` RPC; the profile starts
+empty by design (FR-012). Cross-user access is refused at both the
+server-side filter and RLS layers — verified end-to-end against a live
+multi-tenant project.
 
-```
-Hosted persistence is not yet implemented for: <applications|profile>. See feature 019-supabase-persistence.
-```
+### Schema migrations
 
-Unauthenticated requests to those routes return HTTP 401 (handled by
-`requireAuth`). The frontend bundle and the local development workflow are
-unaffected.
+Hosted operators **MUST** apply the canonical migration SQL in
+[`specs/019-supabase-persistence/data-model.md §5`](../specs/019-supabase-persistence/data-model.md)
+via the Supabase dashboard's **SQL Editor** before deploying a v0.9.0+
+build to hosted mode. The block is idempotent (`CREATE TABLE IF NOT
+EXISTS` + `DROP POLICY IF EXISTS`) and safe to re-run.
+
+The Express server runs a **boot-time schema check**
+([server/health.js](../server/health.js)) that issues sentinel PostgREST
+probes against `applications`, `profile`, and `user_seed_state`. If the
+migration has not been applied:
+- The server logs a descriptive error naming the missing column or
+  table (e.g. `[hosted-schema] missing artifact: public.applications.user_id`).
+- The process exits non-zero so deployment orchestrators detect the failure.
+- No HTTP listener is bound — the function/server refuses to serve.
+
+To validate manually, walk
+[`specs/019-supabase-persistence/quickstart.md §§4–10`](../specs/019-supabase-persistence/quickstart.md)
+against a fresh Supabase project before promoting to production.
+
+### Server-side dependencies (v0.9.0+)
+
+The Express server uses `@supabase/supabase-js` to construct per-request
+RLS-scoped clients in hosted mode. The same package version that ships
+in the Vite frontend bundle (added by 018) is reused at the Node runtime
+— no separate server install. Verify with `npm ls @supabase/supabase-js`.
+
+Unauthenticated requests to protected routes still return HTTP 401
+(handled by `requireAuth`). The frontend bundle and the local
+development workflow are unaffected by 019.
 
 ---
 
@@ -191,10 +222,14 @@ If `APP_RUNTIME=hosted` is set but any of the three required Supabase variables
 or empty, the function throws at cold start. Vercel surfaces this as a
 deployment-time error naming the missing variable.
 
-Authentication (feature **018**) is implemented; Supabase persistence
-(feature **019**) is still pending. Hosted deployments today gate all
-`/api/applications` and `/api/profile` requests behind a verified Supabase
-session but return HTTP 500 from the repository layer until 019 lands.
+Authentication (feature **018**) and Supabase persistence (feature
+**019**, since v0.9.0) are both implemented. Hosted deployments gate all
+`/api/applications` and `/api/profile` requests behind a verified
+Supabase session AND scope every read/write to the caller's `user_id`
+via Supabase Row Level Security plus server-side filter (defense in
+depth). New hosted users get 2 sample applications seeded on first
+sign-in via an atomic `claim_and_seed_starter()` RPC; the profile
+starts empty by design.
 
 ---
 
@@ -224,11 +259,11 @@ purpose of hosted-mode required checks. The Vite plugin
 | Aspect | Local mode | Hosted mode |
 |---|---|---|
 | Trigger | `APP_RUNTIME` absent or `local` | `APP_RUNTIME=hosted` |
-| Persistence | SQLite file (`data/alice.db`) | Supabase Postgres (feature 019) |
+| Persistence | SQLite file (`data/alice.db`) | Supabase Postgres, per-user via RLS (v0.9.0+) |
 | Server entry | `node server/index.js` → `app.listen(config.port)` | `api/index.js` exported as a Vercel Function |
-| Repository layer | `createSqliteApplicationsRepository` / `createSqliteProfileRepository` | Stub repositories that throw `HostedRepositoryNotImplementedError` |
+| Repository layer | `createSqliteApplicationsRepository` / `createSqliteProfileRepository` | `createSupabaseApplicationsRepository` / `createSupabaseProfileRepository` — per-request RLS-scoped Supabase clients constructed from the caller's JWT |
 | Required env vars | None | Three server (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) + three client (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`) |
-| API behavior | Fully functional CRUD on applications and profile | `GET /api/health` returns `{ status, runtime }`; protected routes require `Authorization: Bearer <jwt>` and currently return HTTP 500 from the repository layer pending feature 019 |
+| API behavior | Fully functional CRUD on applications and profile | Fully functional CRUD scoped per user; `GET /api/health` returns `{ status, runtime }`; protected routes require `Authorization: Bearer <jwt>` and seed starter data on first authenticated request |
 | Auth | None (single local user) | Supabase email/password with operator allowlist (feature 018) |
 | Frontend | Same Vite bundle, same `/api/*` calls | Same Vite bundle, same `/api/*` calls |
 

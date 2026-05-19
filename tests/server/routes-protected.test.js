@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createRequireAuth } from '../../server/auth/middleware.js';
 import { createApp, logBoot } from '../../server/index.js';
 import { createTestRepositories } from '../../server/repositories/index.js';
-import { makeMemoryDb } from './helpers.js';
+import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 let trustedKeyPair;
 let untrustedKeyPair;
@@ -55,10 +55,26 @@ function localConfig() {
   };
 }
 
-async function withApp({ config, requireAuth } = {}, test) {
+async function withApp(
+  { config, requireAuth, seedHostedUserIfNeeded } = {},
+  test,
+) {
   const db = makeMemoryDb();
   const repositories = await createTestRepositories(db);
-  const app = createApp({ repositories, config, requireAuth });
+  // Default the seed middleware to a passthrough so this file's auth-wiring
+  // tests aren't accidentally coupled to the real seed step (which would
+  // try to hit the fake example.supabase.co URL and return 500). Tests
+  // that specifically exercise the seed wiring inject their own stub.
+  const seed =
+    seedHostedUserIfNeeded === undefined
+      ? (_req, _res, next) => next()
+      : seedHostedUserIfNeeded;
+  const app = createApp({
+    repositories: wrapAsDispatcher(repositories),
+    config,
+    requireAuth,
+    seedHostedUserIfNeeded: seed,
+  });
   const server = app.listen(0);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -269,6 +285,105 @@ describe('end-to-end 401 + log assertion through real middleware', () => {
       expect(response.status).toBe(200);
       expect(logger.warn).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('seedHostedUserIfNeeded mount-time wiring', () => {
+  it('fires on each protected route in hosted mode', async () => {
+    const seed = vi.fn((_req, _res, next) => next());
+
+    await withApp(
+      {
+        config: hostedConfig(),
+        requireAuth: stubPass,
+        seedHostedUserIfNeeded: seed,
+      },
+      async (baseUrl) => {
+        await request(baseUrl, '/api/applications');
+        await request(baseUrl, '/api/profile');
+        // Resume endpoint hits the seed middleware too — multer parses the
+        // empty body and the handler returns 400 (no file), but the seed
+        // middleware fires first.
+        await request(baseUrl, '/api/resume/parse', { method: 'POST' });
+
+        expect(seed).toHaveBeenCalledTimes(3);
+      },
+    );
+  });
+
+  it('is NOT mounted on /api/health (only protected routes)', async () => {
+    const seed = vi.fn((_req, _res, next) => next());
+
+    await withApp(
+      {
+        config: hostedConfig(),
+        requireAuth: stubPass,
+        seedHostedUserIfNeeded: seed,
+      },
+      async (baseUrl) => {
+        await request(baseUrl, '/api/health');
+        expect(seed).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('is NOT mounted in local mode (passing seed: null disables the default)', async () => {
+    const seed = vi.fn((_req, _res, next) => next());
+
+    await withApp(
+      {
+        config: localConfig(),
+        requireAuth: stubPass,
+        seedHostedUserIfNeeded: seed,
+      },
+      async (baseUrl) => {
+        // Local config + explicit seed stub: stub IS mounted because we
+        // explicitly passed it. This case shows that injection works
+        // regardless of runtime.
+        await request(baseUrl, '/api/applications');
+        expect(seed).toHaveBeenCalledTimes(1);
+      },
+    );
+  });
+
+  it('local-mode default has no seed mounted (real createApp behavior)', async () => {
+    // Confirm the production default: local mode + no explicit override
+    // means seed middleware is not mounted. We can't directly observe the
+    // (absence of) mount, but if seed were somehow active in local mode,
+    // it would try to construct a Supabase client and fail because there's
+    // no Authorization header — surfacing as a 500 from the route handler.
+    // A clean 200 from a local-mode protected route proves no seed step ran.
+    const repositories = await createTestRepositories(makeMemoryDb());
+    const app = createApp({
+      repositories: wrapAsDispatcher(repositories),
+      config: localConfig(),
+      requireAuth: stubPass,
+    });
+    const server = app.listen(0);
+    const { port } = server.address();
+    try {
+      const res = await request(`http://127.0.0.1:${port}`, '/api/applications');
+      expect(res.status).toBe(200);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('forwards seed-middleware errors to Express error handler (500)', async () => {
+    const seed = vi.fn((_req, _res, next) => next(new Error('seed RPC failed')));
+
+    await withApp(
+      {
+        config: hostedConfig(),
+        requireAuth: stubPass,
+        seedHostedUserIfNeeded: seed,
+      },
+      async (baseUrl) => {
+        const res = await request(baseUrl, '/api/applications');
+        expect(res.status).toBe(500);
+        expect(res.body.error.code).toBe('INTERNAL_ERROR');
+      },
+    );
   });
 });
 

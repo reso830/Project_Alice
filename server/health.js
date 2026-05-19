@@ -1,0 +1,100 @@
+// PostgREST error codes that mean "migration not applied":
+const UNDEFINED_COLUMN = '42703';
+const UNDEFINED_TABLE = '42P01';
+
+const PROBES = [
+  { table: 'applications', column: 'user_id', failOn: [UNDEFINED_TABLE, UNDEFINED_COLUMN] },
+  { table: 'profile', column: 'user_id', failOn: [UNDEFINED_TABLE, UNDEFINED_COLUMN] },
+  // user_id is the PK on user_seed_state — present iff the table is.
+  // Only the table-missing case warrants a hard fail.
+  { table: 'user_seed_state', column: 'user_id', failOn: [UNDEFINED_TABLE] },
+];
+
+function migrationHint(table, column) {
+  const artifact = column ? `${table}.${column}` : table;
+  return (
+    `[hosted-schema] missing artifact: public.${artifact}. ` +
+    'The 019 migration has not been applied to the configured Supabase ' +
+    'project. Apply the SQL block from ' +
+    'specs/019-supabase-persistence/data-model.md §5 via Supabase ' +
+    'dashboard → SQL Editor, then restart the server.'
+  );
+}
+
+/**
+ * Boot-time schema check for hosted mode. Verifies that the 019 migration
+ * (see `specs/019-supabase-persistence/data-model.md §5`) has been applied
+ * to the configured Supabase project by issuing three sentinel PostgREST
+ * probes — `SELECT user_id FROM <t> LIMIT 0` against `applications`,
+ * `profile`, and `user_seed_state`.
+ *
+ * Behavior:
+ *   - `!config.isHosted` → early return, no network call.
+ *   - PostgREST error code `42703` / `42P01` → throws a descriptive Error
+ *     naming the missing column or table. Caller is expected to exit
+ *     non-zero so deployment orchestrators detect the problem.
+ *   - HTTP 200 (any payload, including empty array from RLS) → probe
+ *     passes.
+ *   - Other errors (network, 5xx, transient PostgREST) → logged at
+ *     warning level and boot continues. The next real request will
+ *     surface the connectivity problem.
+ *
+ * The Supabase client is lazy-imported so local-mode boot does not pull
+ * `@supabase/supabase-js` into the Node module registry.
+ *
+ * @param {{ isHosted: boolean, supabase?: { url: string, anonKey: string } }} config
+ * @param {{ logger?: Pick<Console, 'info' | 'warn'> }} [options]
+ * @returns {Promise<void>}
+ */
+export async function assertHostedSchema(config, { logger = console } = {}) {
+  if (!config?.isHosted) {
+    return;
+  }
+
+  // Explicit escape hatch for the cold-start subprocess test in
+  // `tests/server/repositories/stubs.test.js`, which boots `api/index.js`
+  // with `APP_RUNTIME=hosted` against an unreachable
+  // `https://example.supabase.co`. Without this gate the test would make
+  // three real PostgREST round-trips per run, slowing it from ~1s to
+  // ~30s. Production hosted deploys MUST NOT set this — the default
+  // behavior is "always run the probe."
+  if (process.env.SKIP_HOSTED_SCHEMA_CHECK === 'true') {
+    logger.warn(
+      '[hosted-schema] SKIP_HOSTED_SCHEMA_CHECK=true — boot-time probe skipped (test-only escape hatch; production deploys MUST NOT set this)',
+    );
+    return;
+  }
+
+  const url = config.supabase?.url;
+  const anonKey = config.supabase?.anonKey;
+  if (!url || !anonKey) {
+    throw new Error(
+      '[hosted-schema] config.supabase.url and config.supabase.anonKey are required in hosted mode',
+    );
+  }
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const client = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  for (const probe of PROBES) {
+    const { error } = await client
+      .from(probe.table)
+      .select(probe.column)
+      .limit(0);
+
+    if (!error) continue;
+
+    if (probe.failOn.includes(error.code)) {
+      const missing = error.code === UNDEFINED_TABLE ? null : probe.column;
+      throw new Error(migrationHint(probe.table, missing));
+    }
+
+    logger.warn(
+      `[hosted-schema] probe error on public.${probe.table} (continuing): ${error.message ?? error.code ?? String(error)}`,
+    );
+  }
+
+  logger.info('[hosted-schema] all probes passed');
+}

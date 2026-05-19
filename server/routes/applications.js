@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { isValidTransition, TERMINAL_STATES } from '../../shared/constants.js';
+import { attachRepos } from '../repositories/middleware.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
 function parseIdParam(value) {
@@ -37,14 +38,35 @@ function sendNotFound(res) {
   });
 }
 
-export function createApplicationsRouter({ repo, requireAuth } = {}) {
+/**
+ * @param {{
+ *   repos: { forRequest: (req: any) => any },
+ *   requireAuth?: import('express').Handler,
+ *   seedHostedUserIfNeeded?: import('express').Handler,
+ * }} deps
+ */
+export function createApplicationsRouter({
+  repos,
+  requireAuth,
+  seedHostedUserIfNeeded,
+} = {}) {
+  if (!repos) {
+    throw new Error(
+      'createApplicationsRouter: `repos` (dispatcher with forRequest(req)) is required',
+    );
+  }
+
   const router = Router();
 
   if (requireAuth) {
     router.use(requireAuth);
   }
+  router.use(attachRepos(repos));
+  if (seedHostedUserIfNeeded) {
+    router.use(seedHostedUserIfNeeded);
+  }
 
-  router.post('/', (req, res, next) => {
+  router.post('/', async (req, res, next) => {
     try {
       const result = createSchema.safeParse(req.body);
       if (!result.success) {
@@ -57,29 +79,29 @@ export function createApplicationsRouter({ repo, requireAuth } = {}) {
         });
       }
 
-      const record = repo.create(result.data);
+      const record = await req.repos.applications.create(result.data);
       return res.status(201).json({ data: record });
     } catch (error) {
       return next(error);
     }
   });
 
-  router.get('/', (_req, res, next) => {
+  router.get('/', async (req, res, next) => {
     try {
-      return res.status(200).json({ data: repo.getAll() });
+      return res.status(200).json({ data: await req.repos.applications.getAll() });
     } catch (error) {
       return next(error);
     }
   });
 
-  router.get('/:id', (req, res, next) => {
+  router.get('/:id', async (req, res, next) => {
     try {
       const id = parseIdParam(req.params.id);
       if (id === null) {
         return sendInvalidId(res);
       }
 
-      const record = repo.getById(id);
+      const record = await req.repos.applications.getById(id);
       if (!record) {
         return sendNotFound(res);
       }
@@ -90,7 +112,7 @@ export function createApplicationsRouter({ repo, requireAuth } = {}) {
     }
   });
 
-  router.patch('/:id', (req, res, next) => {
+  router.patch('/:id', async (req, res, next) => {
     try {
       const id = parseIdParam(req.params.id);
       if (id === null) {
@@ -109,7 +131,12 @@ export function createApplicationsRouter({ repo, requireAuth } = {}) {
       }
 
       if (result.data.status !== undefined) {
-        const currentRecord = repo.getById(id);
+        // CRITICAL: must `await` here. The Supabase adapter returns a
+        // Promise; without `await`, currentRecord would be a Promise
+        // object, currentRecord.status would be undefined,
+        // TERMINAL_STATES.has(undefined) would return false, and
+        // forbidden status transitions would silently slip through.
+        const currentRecord = await req.repos.applications.getById(id);
         if (!currentRecord) {
           return sendNotFound(res);
         }
@@ -131,7 +158,7 @@ export function createApplicationsRouter({ repo, requireAuth } = {}) {
         }
       }
 
-      const record = repo.update(id, result.data);
+      const record = await req.repos.applications.update(id, result.data);
       if (!record) {
         return sendNotFound(res);
       }
@@ -142,14 +169,14 @@ export function createApplicationsRouter({ repo, requireAuth } = {}) {
     }
   });
 
-  router.post('/:id/archive', (req, res, next) => {
+  router.post('/:id/archive', async (req, res, next) => {
     try {
       const id = parseIdParam(req.params.id);
       if (id === null) {
         return sendInvalidId(res);
       }
 
-      const record = repo.archive(id);
+      const record = await req.repos.applications.archive(id);
       if (!record) {
         return sendNotFound(res);
       }

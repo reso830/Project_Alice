@@ -111,7 +111,7 @@ describe('WelcomePage — structure', () => {
     expect(meta).not.toBeNull();
 
     const version = meta.querySelector('.welcome__footer-version');
-    expect(version?.textContent).toBe('v0.8.1');
+    expect(version?.textContent).toBe('v0.9.0');
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
     expect(links.length).toBe(3);
@@ -913,7 +913,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
 
     const footer = container.querySelector('.welcome__footer-meta');
     expect(footer).not.toBeNull();
-    expect(footer.textContent).toContain('v0.8.1');
+    expect(footer.textContent).toContain('v0.9.0');
   });
 
   it('renders the centered/tablet mini footer after the slideshow in DOM order', () => {
