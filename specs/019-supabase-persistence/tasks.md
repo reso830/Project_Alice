@@ -181,10 +181,12 @@ workflow.
 Paste the entire SQL block from [data-model.md §5](data-model.md) into the
 Supabase SQL editor and run it. The block:
 
-- TRUNCATEs `applications` and `profile` (destructive — per 018's *Accepted
-  Limitations* and 019 spec FR-009).
-- Adds `user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
-  to `applications` and `profile`, with `applications_user_id_idx` and the
+- Creates the hosted `applications` and `profile` tables when absent using
+  the corrected 019 shape. If a project has legacy wrong-typed 017/019
+  attempt tables, drop them first per [data-model.md §5](data-model.md)
+  before running the block.
+- Includes `user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
+  on `applications` and `profile`, with `applications_user_id_idx` and the
   `profile_user_id_unique` constraint.
 - Creates the `user_seed_state` table.
 - Enables RLS on all three tables and creates the policies described in
@@ -1194,8 +1196,10 @@ Add a new entry under the bumped version with sections:
   dependency is reused in the Node runtime.
 - **Migration required** — hosted operators MUST apply
   [data-model.md §5](specs/019-supabase-persistence/data-model.md) before
-  deploy; the migration TRUNCATEs pre-019 hosted `applications` and
-  `profile` rows by design (018 *Accepted Limitations*).
+  deploy; the migration is idempotent for the intended 019 hosted schema.
+  Projects with legacy wrong-typed hosted tables from earlier manual attempts
+  should drop those tables first per the schema-lineage note in
+  `data-model.md §5`.
 - **Security** — per-user ownership enforced by RLS + server-side filters
   on every hosted read and write; cross-user access attempts return
   not-found-shaped responses.

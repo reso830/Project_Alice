@@ -40,8 +40,11 @@ No new env vars are introduced by 019.
 1. Open the Supabase dashboard → **SQL Editor**.
 2. Paste the entire contents of
    [data-model.md §5](data-model.md).
-3. Read the leading `-- DESTRUCTIVE` comment block carefully. The migration
-   begins by `TRUNCATE`-ing the hosted `applications` and `profile` tables.
+3. Review the leading SQL comment block carefully. The migration is
+   idempotent (`CREATE TABLE IF NOT EXISTS` + `DROP POLICY IF EXISTS`) for
+   the intended 019 hosted schema. If you have legacy 017-shaped hosted
+   tables from an earlier manual attempt, drop them first per the schema
+   lineage note in [data-model.md §5](data-model.md).
 4. Run.
 5. Verify the result by inspecting (in the **Table Editor**):
    - `applications` has a `user_id` column (uuid, NOT NULL, FK to

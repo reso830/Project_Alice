@@ -32,9 +32,9 @@ post-Codex state.
 
 ## Data Model
 
-- [ ] Migration `TRUNCATE`s pre-019 hosted `applications` and `profile`
-      rows. This is intentional per 018's *Accepted Limitations* and
-      019's FR-009.
+- [ ] Migration is idempotent for the intended 019 hosted schema, and
+      operators are instructed to drop any legacy wrong-typed hosted tables
+      rather than inventing ownership for unowned rows.
 - [ ] `applications.user_id` is `uuid NOT NULL REFERENCES auth.users(id)
       ON DELETE CASCADE` with an index on `user_id`.
 - [ ] `profile.user_id` is `uuid NOT NULL REFERENCES auth.users(id) ON

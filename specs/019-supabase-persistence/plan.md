@@ -602,12 +602,14 @@ tests/
    *Not included in the initial implementation*; added only if profiling
    shows it matters.
 
-4. **Pre-019 hosted data is wiped by the migration.** Per 018's *Accepted
-   Limitations*, this is intentional but irreversible. Operators must accept
-   the data loss before running the migration.
-   *Mitigation*: quickstart explicitly calls this out as a P0 step; the
-   migration `up.sql` begins with a `TRUNCATE` comment block explaining the
-   consequence.
+4. **Legacy pre-019 hosted data cannot be backfilled safely.** Per 018's
+   *Accepted Limitations*, operators must not invent ownership for unowned
+   hosted rows. The final migration is idempotent for fresh 019 tables; if
+   legacy wrong-typed tables exist from an earlier manual attempt, operators
+   drop them first and accept that data loss.
+   *Mitigation*: quickstart explicitly calls this out before the migration
+   step, and [data-model.md §5](data-model.md) documents the schema-lineage
+   note beside the canonical SQL.
 
 5. **RLS misconfiguration is silent in unit tests.** The CI test suite
    mocks `@supabase/supabase-js`, so RLS policies aren't exercised. A bad
@@ -635,8 +637,10 @@ tests/
   + relative dates so the seed always reads as current and doesn't overwhelm
   a new user. Sacrifices first-paint "wow" for honesty about who owns the
   data.
-- **TRUNCATE pre-019 data vs. backfill attempt.** Chose TRUNCATE per 018's
-  *Accepted Limitations*. Avoids inventing ownership.
+- **Drop legacy pre-019 data vs. backfill attempt.** Chose explicit operator
+  drop for any legacy wrong-typed hosted tables per 018's *Accepted
+  Limitations*. Avoids inventing ownership while keeping the canonical 019
+  SQL idempotent for fresh projects.
 - **Boot-time schema check via PostgREST anon-key probes vs. via a
   service-role information_schema query.** Chose PostgREST so 019 has no
   runtime service-role-client codepath. Slightly more brittle (depends on

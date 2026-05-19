@@ -20,11 +20,10 @@ Post-019: same columns plus a non-nullable `user_id` referencing `auth.users(id)
 
 **Migration sequence** (see §5 below for the executable form):
 
-1. `TRUNCATE applications;`
-   — required by 018's *Accepted Limitations*. Any pre-019 hosted rows have
-   no `user_id` attribution and the spec explicitly forbids inventing one.
-2. `ALTER TABLE applications ADD COLUMN user_id uuid NOT NULL REFERENCES
-   auth.users(id) ON DELETE CASCADE;`
+1. Create `applications` with `user_id uuid NOT NULL REFERENCES
+   auth.users(id) ON DELETE CASCADE` when absent.
+2. If a project has legacy pre-019 or wrong-typed hosted rows, drop the
+   legacy table first rather than inventing `user_id` attribution.
 3. `CREATE INDEX applications_user_id_idx ON applications (user_id);`
    — supports the per-user list query that backs `GET /api/applications`.
 4. `ALTER TABLE applications ENABLE ROW LEVEL SECURITY;`
@@ -45,10 +44,11 @@ Post-019: one row per user, owned via `user_id`.
 
 **Migration sequence**:
 
-1. `TRUNCATE profile;` — same rationale as `applications`.
-2. `ALTER TABLE profile ADD COLUMN user_id uuid NOT NULL REFERENCES
-   auth.users(id) ON DELETE CASCADE;`
-3. `ALTER TABLE profile ADD CONSTRAINT profile_user_id_unique UNIQUE (user_id);`
+1. Create `profile` with `user_id uuid NOT NULL REFERENCES auth.users(id)
+   ON DELETE CASCADE` when absent.
+2. If a project has a legacy unowned profile table, drop it first rather than
+   inventing `user_id` attribution.
+3. Add `UNIQUE (user_id)`.
    — enforces the one-row-per-user invariant in the database, not just
    in the adapter.
 4. `ALTER TABLE profile ENABLE ROW LEVEL SECURITY;`
@@ -217,9 +217,9 @@ manually applied" workflow — no separate `.sql` file is shipped.
 -- Creates the hosted applications + profile schema from scratch with
 -- 019 ownership columns + RLS + seed marker + seed RPC. Idempotent via
 -- CREATE TABLE IF NOT EXISTS + DROP POLICY IF EXISTS, so re-runs are
--- safe. Pre-019 hosted rows (if any) are wiped before column changes
--- per 018's *Accepted Limitations* — but in practice no such rows
--- exist because 017's schema was documented but never applied.
+-- safe for the intended 019 schema. If a project has legacy wrong-typed
+-- tables from an earlier failed migration attempt, drop them first as
+-- described in the schema-lineage note above.
 -- ============================================================
 
 BEGIN;
