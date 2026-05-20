@@ -55,7 +55,7 @@ describe('Footer', () => {
   it('renders the current static app version', () => {
     const footer = Footer.render();
 
-    expect(footer.textContent).toContain('v0.10.0');
+    expect(footer.textContent).toContain('v0.11.0');
     expect(footer.textContent).toContain('Built May 2026');
   });
 

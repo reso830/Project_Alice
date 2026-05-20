@@ -201,7 +201,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.10.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.11.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -234,3 +234,4 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 - [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
 - [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup
 - [specs/018-auth-user-access/data-model.md](specs/018-auth-user-access/data-model.md) — `allowed_emails` schema and trigger contract
+- [specs/021-hosted-resume-import-security/contracts/api.md](specs/021-hosted-resume-import-security/contracts/api.md) — resume import security model (021)
