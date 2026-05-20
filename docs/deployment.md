@@ -117,6 +117,92 @@ the first hosted deploy is promoted.
 
 ---
 
+## Supabase Setup Checklist
+
+Run these steps top to bottom against a fresh Supabase project. Each step
+is idempotent and safe to re-run. Per-feature quickstarts under `specs/`
+remain authoritative for deep-dive context — this checklist is the
+ordered procedure and the pass/fail framing.
+
+1. **Create the Supabase project.**
+   - [ ] Sign in at [supabase.com](https://supabase.com) and create a new
+     project; wait for provisioning to complete.
+   - [ ] In **Settings → API**, copy `Project URL` → `SUPABASE_URL`,
+     `anon public` → `SUPABASE_ANON_KEY`, and
+     `service_role secret` → `SUPABASE_SERVICE_ROLE_KEY`.
+   - [ ] Treat `SUPABASE_SERVICE_ROLE_KEY` as a secret: never commit,
+     never expose to the frontend, never prefix with `VITE_`.
+
+2. **Apply the schema migration.**
+   - [ ] Open the Supabase **SQL Editor** and run the canonical
+     migration block from
+     [`specs/019-supabase-persistence/data-model.md §5`](../specs/019-supabase-persistence/data-model.md).
+     It creates `public.applications`, `public.profile`,
+     `public.user_seed_state`, all RLS policies, and the
+     `claim_and_seed_starter()` RPC.
+   - [ ] The block uses `CREATE TABLE IF NOT EXISTS` /
+     `DROP POLICY IF EXISTS` and is safe to re-run.
+
+3. **Install the allowlist trigger.**
+   - [ ] Follow
+     [`specs/018-auth-user-access/quickstart.md`](../specs/018-auth-user-access/quickstart.md)
+     to create the `allowed_emails` table and the `BEFORE INSERT`
+     trigger on `auth.users`.
+   - [ ] Populate `allowed_emails` with the operator's own email
+     (and any additional trusted emails) before attempting the first
+     signup, or the trigger will reject it.
+
+4. **Configure Auth redirect URLs.**
+   - [ ] In **Authentication → URL Configuration**, set the
+     **Site URL** to your production URL and add Redirect URLs for
+     production, preview, and `http://localhost:5173/**` per the
+     [Supabase Auth redirect URL configuration](#supabase-auth-redirect-url-configuration)
+     subsection below.
+   - [ ] Each Redirect URL must end with `/**` so the `?auth=callback`
+     query the frontend uses is permitted.
+
+5. **Verify JWKS reachability.**
+   - [ ] `curl <SUPABASE_URL>/auth/v1/.well-known/jwks.json` and
+     confirm the response is a JWKS document of the shape
+     `{ "keys": [ { ... } ] }`. The middleware fetches this endpoint
+     on demand to verify JWTs.
+
+6. **Verify RLS policies enforce per-user isolation.**
+   - [ ] In the Supabase **SQL Editor**, confirm `applications`,
+     `profile`, and `user_seed_state` all show
+     `ROW LEVEL SECURITY = enabled` (run
+     `SELECT relname, relrowsecurity FROM pg_class WHERE relname IN
+     ('applications', 'profile', 'user_seed_state');` — every row
+     should report `true`).
+   - [ ] Walk the cross-user denial verification recipe in
+     [`specs/019-supabase-persistence/quickstart.md`](../specs/019-supabase-persistence/quickstart.md)
+     against the production Supabase project: sign in as user A,
+     create an application; sign in as user B; attempt to read
+     user A's application by ID and confirm the response is `404`
+     (RLS-scoped — the row does not exist from user B's
+     perspective), not `200` and not `403`.
+   - [ ] This step pins both the database-side defense (RLS) and
+     the server-side defense (repository filters) that 019 ships;
+     a `200` response indicates a critical RLS misconfiguration —
+     do not promote.
+
+7. **Run the pre-deploy verification gate.**
+   - [ ] Walk the six checks in
+     [`specs/018-auth-user-access/quickstart.md` §10](../specs/018-auth-user-access/quickstart.md)
+     against the **production** Supabase project: allowlist table,
+     signup trigger, function privileges, non-allowlisted signup
+     rejected, allowlisted signup succeeds, JWKS endpoint reachable.
+
+If any step fails, do not promote. Install the missing piece and
+re-run from step 1 — every step is safe to re-run.
+
+After this checklist passes, walk
+[`docs/hosted-smoke-test.md`](hosted-smoke-test.md) against the
+deployed preview to verify the runtime end-to-end before promoting
+to production.
+
+---
+
 ## Hosted Mode Deployment
 
 This section assumes the Supabase project from the previous section is already
@@ -256,6 +342,100 @@ purpose of hosted-mode required checks. The Vite plugin
 
 ---
 
+## Environment Variable Checklist
+
+If you are deploying hosted mode for the first time, walk this checklist
+against your Vercel project's environment-variable configuration. Pair it
+with the [Environment Variable Reference](#environment-variable-reference)
+table above for one-row look-ups; this checklist groups variables by
+deployer-facing pass/fail framing.
+
+### Required for hosted mode
+
+All seven variables below MUST be set in Vercel **Settings → Environment
+Variables** for Production (and Preview, if you want hosted preview URLs)
+before the first deploy.
+
+- [ ] `APP_RUNTIME` — server scope, not secret. Set to `hosted`.
+- [ ] `SUPABASE_URL` — server scope, not secret. Supabase project REST
+  endpoint; middleware derives the JWKS endpoint from this.
+- [ ] `SUPABASE_ANON_KEY` — server scope, not secret. Supabase
+  anon/public key.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` — **server-only**, **secret**. Mark
+  as Sensitive in Vercel. Bypasses RLS; never expose to the frontend;
+  never prefix with `VITE_`.
+- [ ] `VITE_SUPABASE_URL` — client/build scope, not secret. Same value
+  as `SUPABASE_URL`; inlined into the Vite bundle.
+- [ ] `VITE_SUPABASE_ANON_KEY` — client/build scope, not secret. Same
+  value as `SUPABASE_ANON_KEY`; inlined into the Vite bundle.
+- [ ] `VITE_AUTH_EMAIL_REDIRECT_URL` — client/build scope, not secret.
+  Verification callback URL Supabase puts in confirmation emails
+  (e.g. `https://<your-host>/?auth=callback`).
+
+### Optional
+
+- [ ] `PORT` — server scope. API listen port for local mode; defaults
+  to `3001`. Hosted mode does not use this.
+- [ ] `ALICE_DB_PATH` — server scope. Local SQLite file path;
+  defaults to `data/alice.db`. Hosted mode does not use this.
+
+### Local-only
+
+No env vars are **required** for local mode — `npm run server:dev` +
+`npm run dev` against a SQLite file works with zero configuration. The
+two Optional variables above apply in local mode as well.
+
+### Example `.env.local` (hosted)
+
+The block below uses the variable names and ordering from
+[`.env.example`](../.env.example) verbatim. `APP_RUNTIME=hosted` is
+filled in because it is the one fixed value that switches the server
+into hosted mode; every other variable is left blank exactly as the
+template ships — fill each one with the value from your Supabase
+project (Settings → API) and your production host URL.
+
+```dotenv
+APP_RUNTIME=hosted
+
+PORT=
+
+ALICE_DB_PATH=
+
+SUPABASE_URL=
+
+SUPABASE_ANON_KEY=
+
+SUPABASE_SERVICE_ROLE_KEY=
+
+VITE_SUPABASE_URL=
+
+VITE_SUPABASE_ANON_KEY=
+
+VITE_AUTH_EMAIL_REDIRECT_URL=
+```
+
+`.env.example` is the authoritative template — copy it to
+`.env.local` and fill in the values rather than typing the keys by
+hand. The block above shows the minimum diff: only `APP_RUNTIME` has
+a fixed value the operator does not need to source from Supabase.
+
+### Secrets handling
+
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only. Vite would inline a
+  `VITE_`-prefixed variable into the public browser bundle — never use
+  that prefix for the service-role key.
+- An environment variable set to an empty string is treated as absent
+  for hosted-mode required checks. Either set every required variable
+  to a real value or leave it unset.
+- `VITE_*` values are inlined into the public bundle at build time.
+  Never put a credential, secret, or admin key behind that prefix.
+
+For one-row look-ups (scope, default, hosted-required), the
+[Environment Variable Reference](#environment-variable-reference) table
+above remains canonical.
+
+---
+
 ## Local vs Hosted Differences
 
 | Aspect | Local mode | Hosted mode |
@@ -271,6 +451,64 @@ purpose of hosted-mode required checks. The Vite plugin
 
 The frontend code and API surface are identical between modes. Only the server
 boot path and the repository implementation differ.
+
+---
+
+## Demo & Free-Tier Notes
+
+Project Alice's hosted deploy is shaped for free-tier hosting (Vercel
+Hobby + Supabase Free). The behaviors below are expected, not defects.
+
+- **Vercel Hobby cold starts.** The first request to the API after a
+  quiet period may take several seconds while the function instance
+  boots. Subsequent requests in the same warm window are fast. No
+  configuration change avoids cold starts on Hobby; this is a tier
+  characteristic. See the
+  [Vercel Functions docs](https://vercel.com/docs/functions) for
+  current behavior.
+- **Supabase Free inactivity pause.** A Supabase Free project that
+  receives no traffic for an extended quiet period pauses; the next
+  request fails. Resume the project from the Supabase dashboard and
+  wait 1–2 minutes for warmup, then retry. See the
+  [Supabase platform docs](https://supabase.com/docs/guides/platform)
+  for current free-tier policy.
+- **Demo mode resets on refresh.** The welcome page's **Try the demo**
+  flow (feature 020) runs entirely client-side — no API calls, no
+  Supabase access, no persistence. Refreshing the browser resets demo
+  state to the original seeded snapshot. This is intentional: the demo
+  is a portfolio preview, not a sandbox account.
+- **Hosted seeded data, not migrated.** New hosted users get 2 sample
+  applications seeded on first authenticated sign-in via the
+  `claim_and_seed_starter()` RPC (feature 019); the profile starts
+  empty by design. The seeded set is intentional — it is not migrated
+  from anyone's local SQLite database. See
+  [Migration Clarification](#migration-clarification) below.
+
+Portfolio reviewers should expect production-feel inside these
+constraints, not production-grade scale.
+
+---
+
+## Migration Clarification
+
+**No automatic migration.** Specifically:
+local SQLite data is not migrated automatically.
+A user who has been running local mode and decides to deploy hosted
+will not see their local data carry over. The hosted runtime reads
+from Supabase Postgres; the local runtime reads from a SQLite file.
+There is no bridge between the two.
+
+**Hosted users start from seeded data.** On first authenticated
+sign-in, the `claim_and_seed_starter()` RPC (feature 019) inserts 2
+seeded starter applications into the user's row-scoped slice of
+`public.applications`. The profile starts empty by design (feature
+019, FR-012). New hosted users see this seeded state, not migrated
+state.
+
+**Migration tooling is future work.** No script, CLI, or admin
+endpoint exists today to move SQLite rows into Supabase. If such a
+tool is added later, it will land as a separate feature with its
+own spec — track it in `specs/` when it arrives.
 
 ---
 

@@ -57,10 +57,11 @@ Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests 
 
 ## Hosted Mode (Supabase Authentication)
 
-Project Alice is local-first by default. A second, optional **hosted** mode adds Supabase email/password authentication with a small operator-managed allowlist, for cases where a single deployment needs to serve a handful of trusted users.
+Project Alice is local-first by default. The app supports three runtime modes — local (default), hosted, and demo — each with its own purpose. For the full operator-facing deployment guide covering setup, env vars, Supabase configuration, free-tier expectations, and pre-promotion verification, see [docs/deployment.md](docs/deployment.md).
 
 - **Local mode** (default): Express + SQLite on your machine. No external services. Single anonymous user. No auth.
 - **Hosted mode**: Vite frontend on Vercel + Express API on Vercel Functions + Supabase for auth and persistence. Each verified user signs in to their own per-user dataset; ownership is enforced server-side via repository filters and database-side via Supabase Row Level Security (feature 019, v0.9.0+).
+- **Demo mode**: client-side preview enabled by default in hosted deployments. Public visitors click **Try the demo** on the welcome page to explore the tracker with seeded data; changes feel real but live in memory only and reset on browser refresh (feature 020).
 
 ### Required Environment Variables
 
@@ -77,9 +78,13 @@ The `*_SERVICE_ROLE_KEY` variable must never be prefixed with `VITE_` — Vite w
 
 Access tokens are verified server-side via Supabase's JWKS endpoint using `jose`, accepting `ES256` and `RS256` (Supabase's modern asymmetric signing modes). There is no shared HS256 secret to manage — the middleware fetches the public key by `kid` from the JWKS endpoint on demand and caches it.
 
+For a deployer-oriented variant of this table — required vs. optional, server-only vs. client-safe, secrets-handling rules, plus a copy-pasteable example — see the [Environment Variable Checklist in docs/deployment.md](docs/deployment.md#environment-variable-checklist).
+
 ### Allowlist Model
 
 Hosted signups are gated by a Postgres trigger on `auth.users`. The trigger reads from an operator-managed `allowed_emails` table — an attempted signup with a non-allowlisted email is rejected before a row is ever created in `auth.users`, regardless of whether the request came through the in-app SignupForm or a direct Supabase API call from the browser. The frontend renders a neutral error and never leaks the rejection cause. Full operator install steps are in [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md).
+
+For a single consolidated Supabase Setup Checklist that walks project creation, schema migration (feature 019), allowlist install (feature 018), RLS policy verification, and the pre-deploy verification gate from a fresh Supabase project top-to-bottom, see the [Supabase Setup Checklist in docs/deployment.md](docs/deployment.md#supabase-setup-checklist).
 
 ### Defense in Depth: Build + Runtime Handshake
 
@@ -201,7 +206,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.11.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.11.1** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -228,6 +233,7 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 ## Further Reading
 
 - [docs/deployment.md](docs/deployment.md) — local + hosted deployment guide
+- [docs/hosted-smoke-test.md](docs/hosted-smoke-test.md) — pre-promotion hosted smoke-test checklist (Given/When/Then; runs after a hosted deploy before promoting to production)
 - [docs/REPO_MAP.md](docs/REPO_MAP.md) — file/folder navigation map for AI-assisted work
 - [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) — local two-agent AI pipeline reference
 - [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
