@@ -28,6 +28,7 @@ vi.mock('../../src/services/supabaseClient.js', () => ({
 
 import { AuthOverlay } from '../../src/pages/welcome/AuthOverlay.js';
 import { WelcomePage } from '../../src/pages/welcome/WelcomePage.js';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 let container;
 let heroSlideshowStub;
@@ -119,7 +120,7 @@ describe('WelcomePage — structure', () => {
     expect(meta).not.toBeNull();
 
     const version = meta.querySelector('.welcome__footer-version');
-    expect(version?.textContent).toBe('v0.11.0');
+    expect(version?.textContent).toBe(APP_VERSION);
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
     expect(links.length).toBe(3);
@@ -913,7 +914,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
 
     const footer = container.querySelector('.welcome__footer-meta');
     expect(footer).not.toBeNull();
-    expect(footer.textContent).toContain('v0.11.0');
+    expect(footer.textContent).toContain(APP_VERSION);
   });
 
   it('renders the centered/tablet mini footer after the slideshow in DOM order', () => {

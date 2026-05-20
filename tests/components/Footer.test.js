@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Footer } from '../../src/components/Footer.js';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 describe('Footer', () => {
   it('renders a footer element', () => {
@@ -55,7 +56,7 @@ describe('Footer', () => {
   it('renders the current static app version', () => {
     const footer = Footer.render();
 
-    expect(footer.textContent).toContain('v0.11.0');
+    expect(footer.textContent).toContain(APP_VERSION);
     expect(footer.textContent).toContain('Built May 2026');
   });
 
