@@ -1509,19 +1509,21 @@ button:focus-visible,
   font-weight: 400;
 }
 
-/* Feature 020 — visible mode indicator for the portfolio demo. Pairs
-   with the Exit demo button in the identity cluster. Textual label
-   keeps the indication non-color-only (constitution §IV). */
+/* Feature 020 — visible mode indicator for the portfolio demo. Solid
+   gold pill with deep-navy text. Matches the welcome page's warm-fill
+   demo button so the badge reads as a continuation of the click that
+   started the demo. Textual label keeps the indication non-color-only
+   (constitution §IV). */
 .topbar-demo-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
   border-radius: var(--r-sm);
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--on-navy-fg);
+  background: var(--gold);
+  color: var(--navy-deep);
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
