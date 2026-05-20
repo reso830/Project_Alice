@@ -1,5 +1,10 @@
-// Keep PDF/DOCX parsers lazy: pdf-parse pulls in pdfjs-dist, which needs DOM
-// globals such as DOMMatrix that serverless Node runtimes do not provide.
+import { DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
+
+// Keep PDF/DOCX parsers lazy: pdf-parse pulls in pdfjs-dist. PDF.js touches
+// DOMMatrix during module evaluation, before its own Node polyfill block runs,
+// so install the canvas globals before any dynamic pdf-parse import.
+installPdfDomGlobals();
+
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TXT_MIME = 'text/plain';
@@ -35,7 +40,7 @@ function resolveMimetype(mimetype, originalname) {
 }
 
 async function extractPdfText(buffer) {
-  await installPdfDomGlobals();
+  installPdfDomGlobals();
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
 
@@ -47,12 +52,7 @@ async function extractPdfText(buffer) {
   }
 }
 
-async function installPdfDomGlobals() {
-  if (globalThis.DOMMatrix && globalThis.ImageData && globalThis.Path2D) {
-    return;
-  }
-
-  const { DOMMatrix, ImageData, Path2D } = await import('@napi-rs/canvas');
+function installPdfDomGlobals() {
   globalThis.DOMMatrix ??= DOMMatrix;
   globalThis.ImageData ??= ImageData;
   globalThis.Path2D ??= Path2D;
