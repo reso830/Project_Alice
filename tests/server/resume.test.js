@@ -189,6 +189,8 @@ describe('resume API', () => {
     delete globalThis.DOMMatrix;
     delete globalThis.ImageData;
     delete globalThis.Path2D;
+    const { PDFParse } = await import('pdf-parse');
+    PDFParse.setWorker(undefined);
 
     await withServer(async (baseUrl) => {
       const response = await uploadResume(baseUrl, {
@@ -205,6 +207,7 @@ describe('resume API', () => {
       expect(typeof globalThis.DOMMatrix).toBe('function');
       expect(typeof globalThis.ImageData).toBe('function');
       expect(typeof globalThis.Path2D).toBe('function');
+      expect(PDFParse.setWorker()).toMatch(/^data:text\/javascript;base64,/);
     });
   });
 

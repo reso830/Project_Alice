@@ -41,7 +41,11 @@ function resolveMimetype(mimetype, originalname) {
 
 async function extractPdfText(buffer) {
   installPdfDomGlobals();
-  const { PDFParse } = await import('pdf-parse');
+  const [{ PDFParse }, { getData: getPdfWorkerData }] = await Promise.all([
+    import('pdf-parse'),
+    import('pdf-parse/worker'),
+  ]);
+  PDFParse.setWorker(getPdfWorkerData());
   const parser = new PDFParse({ data: buffer });
 
   try {

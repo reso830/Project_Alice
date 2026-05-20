@@ -48,11 +48,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   logged server-side — closing FR-007's "no client-shape error
   reaches the global 500 handler" guarantee.
 - PDF extraction now installs `DOMMatrix`, `ImageData`, and `Path2D`
-  globals from `@napi-rs/canvas` before loading `pdf-parse`, so valid
-  PDFs continue to parse in Vercel's Node/serverless runtime where
-  those browser canvas globals are absent. `@napi-rs/canvas` was
-  already present transitively via `pdf-parse`; it is now direct so
-  the runtime shim is explicit.
+  globals from `@napi-rs/canvas` before loading `pdf-parse`, and
+  points PDF.js at `pdf-parse`'s embedded data-URL worker instead of
+  the default `./pdf.worker.mjs` path. Valid PDFs now parse in
+  Vercel's Node/serverless runtime even when browser canvas globals
+  and untraced worker files are absent. `@napi-rs/canvas` was already
+  present transitively via `pdf-parse`; it is now direct so the
+  runtime shim is explicit.
 
 ### Internal
 - New regression guards in `tests/server/resume.test.js` —
@@ -73,7 +75,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added 18 new tests across the three new describe blocks plus the
   corrupted-file, log-shape, FR-007 sweep, and `LIMIT_UNEXPECTED_FILE`
   cases, including a valid-PDF regression with DOM canvas globals
-  deleted.
+  deleted and the embedded PDF worker selected.
 
 ## [0.10.0] — 2026-05-19
 

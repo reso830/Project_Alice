@@ -389,3 +389,20 @@ remaining hoisted.
 **Regression test**: `tests/server/resume.test.js` deletes the three
 globals, uploads a minimal valid PDF, asserts a `200` parse response,
 and confirms the globals were restored by the extractor.
+
+### §12.4 Vercel PDF worker source
+
+After the canvas globals were installed, hosted preview validation
+exposed a second serverless packaging issue: PDF.js tried to set up
+its fake worker by importing
+`/var/task/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs`, but
+that worker file was not included in the Lambda bundle.
+
+**Adopted**: the PDF extractor loads `pdf-parse/worker` and calls
+`PDFParse.setWorker(getData())` before parsing. PDF.js therefore uses
+the embedded data-URL worker shipped by `pdf-parse` instead of
+resolving `./pdf.worker.mjs` from the serverless filesystem.
+
+**Regression test**: the valid-PDF serverless test also asserts the
+selected PDF worker source is the embedded `data:text/javascript`
+worker rather than the default filesystem path.
