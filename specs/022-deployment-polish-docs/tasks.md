@@ -21,12 +21,12 @@ no `src/` path other than `appMeta.js` is touched.
 
 | Phase | Theme | Touches | Blocks | Status |
 |---|---|---|---|---|
-| 01 | Refresh `README.md` "Hosted Mode" section (FR-001) | `README.md` | 05 (Release Prep), 06 (Smoke Test) | [ ] |
-| 02 | Expand `docs/deployment.md` with four new sections (FR-002 / FR-003 / FR-004 / FR-005) | `docs/deployment.md` | 05, 06 | [ ] |
-| 03 | Create `docs/hosted-smoke-test.md` (FR-006) | `docs/hosted-smoke-test.md` (new) | 04, 05, 06 | [ ] |
-| 04 | Review-gate verification (link check, `.env.example` alignment, consolidation fidelity, diff-scope guard) | inspect-only | 05 | [ ] |
-| 05 | **Release Prep** — version bump (`0.11.0 → 0.11.1`) in `package.json` + `src/pages/welcome/shared/appMeta.js` + `README.md` Current-version line, `CHANGELOG.md`, `docs/REPO_MAP.md`, docs sanity check (FR-007 / FR-008) | `package.json`, `src/pages/welcome/shared/appMeta.js`, `README.md`, `CHANGELOG.md`, `docs/REPO_MAP.md` | 06 | [ ] |
-| 06 | **Browser Smoke Test** — single-task footer/welcome version-display check (`v0.11.1`); previous-feature flows unchanged and not re-walked; `docs/hosted-smoke-test.md` ships as future-operator artifact (FR-011 / research.md D6) | runtime verification only | merge | [ ] |
+| 01 | Refresh `README.md` "Hosted Mode" section (FR-001) | `README.md` | 05 (Release Prep), 06 (Smoke Test) | [X] |
+| 02 | Expand `docs/deployment.md` with four new sections (FR-002 / FR-003 / FR-004 / FR-005) | `docs/deployment.md` | 05, 06 | [X] |
+| 03 | Create `docs/hosted-smoke-test.md` (FR-006) | `docs/hosted-smoke-test.md` (new) | 04, 05, 06 | [X] |
+| 04 | Review-gate verification (link check, `.env.example` alignment, consolidation fidelity, diff-scope guard) | inspect-only | 05 | [X] |
+| 05 | **Release Prep** — version bump (`0.11.0 → 0.11.1`) in `package.json` + `src/pages/welcome/shared/appMeta.js` + `README.md` Current-version line, `CHANGELOG.md`, `docs/REPO_MAP.md`, docs sanity check (FR-007 / FR-008) | `package.json`, `src/pages/welcome/shared/appMeta.js`, `README.md`, `CHANGELOG.md`, `docs/REPO_MAP.md` | 06 | [X] |
+| 06 | **Browser Smoke Test** — single-task footer/welcome version-display check (`v0.11.1`); previous-feature flows unchanged and not re-walked; `docs/hosted-smoke-test.md` ships as future-operator artifact (FR-011 / research.md D6) | runtime verification only | merge | [X] |
 
 **Parallelism**: Phases 01, 02, and 03 touch independent files and may
 be executed in parallel by separate agents/sessions. Phase 04 depends
@@ -49,14 +49,14 @@ future-operator reference artifact, not validated by this feature
 
 ---
 
-## Phase 01 — Refresh README "Hosted Mode" section  [ ]
+## Phase 01 — Refresh README "Hosted Mode" section  [X]
 
 Implements **FR-001**. Scope is the existing
 [Hosted Mode (Supabase Authentication)](../../README.md#hosted-mode-supabase-authentication)
 section only — no new top-level blocks (per decision D2 in
 [research.md](research.md)).
 
-### Task 01.1 — Refresh `README.md` Hosted Mode section  [ ]
+### Task 01.1 — Refresh `README.md` Hosted Mode section  [X]
 
 **Target file**: `README.md`
 
@@ -116,7 +116,7 @@ for one bullet add in `## Features` and one link add in
 
 ---
 
-## Phase 02 — Expand `docs/deployment.md`  [ ]
+## Phase 02 — Expand `docs/deployment.md`  [X]
 
 Implements **FR-002**, **FR-003**, **FR-004**, **FR-005**. Adds four
 new sections to the existing canonical operator guide. Existing
@@ -127,7 +127,7 @@ All four tasks below touch the same file, so they execute
 sequentially even though they cover independent sections. Suggested
 insertion order documented per-task.
 
-### Task 02.1 — Add "Environment Variable Checklist" section  [ ]
+### Task 02.1 — Add "Environment Variable Checklist" section  [X]
 
 **Target file**: `docs/deployment.md`
 
@@ -184,7 +184,7 @@ variables against `.env.example`.
 
 ---
 
-### Task 02.2 — Add "Supabase Setup Checklist" section  [ ]
+### Task 02.2 — Add "Supabase Setup Checklist" section  [X]
 
 **Target file**: `docs/deployment.md`
 
@@ -256,7 +256,7 @@ this section.
 
 ---
 
-### Task 02.3 — Add "Demo & Free-Tier Notes" section  [ ]
+### Task 02.3 — Add "Demo & Free-Tier Notes" section  [X]
 
 **Target file**: `docs/deployment.md`
 
@@ -304,7 +304,7 @@ feature itself (research.md D6).
 
 ---
 
-### Task 02.4 — Add "Migration Clarification" section  [ ]
+### Task 02.4 — Add "Migration Clarification" section  [X]
 
 **Target file**: `docs/deployment.md`
 
@@ -346,7 +346,7 @@ this feature.
 
 ---
 
-### Task 02.5 — Wire anchors used by the README refresh  [ ]
+### Task 02.5 — Wire anchors used by the README refresh  [X]
 
 **Target file**: `docs/deployment.md`
 
@@ -365,12 +365,12 @@ task. No new content added.
 
 ---
 
-## Phase 03 — Create `docs/hosted-smoke-test.md`  [ ]
+## Phase 03 — Create `docs/hosted-smoke-test.md`  [X]
 
 Implements **FR-006**. Standalone Markdown checklist, Given/When/Then
 format per decision D3.
 
-### Task 03.1 — Create `docs/hosted-smoke-test.md` skeleton + framing  [ ]
+### Task 03.1 — Create `docs/hosted-smoke-test.md` skeleton + framing  [X]
 
 **Target file**: `docs/hosted-smoke-test.md` (NEW)
 
@@ -414,7 +414,7 @@ file. Not run against this feature's own merge (research.md D6).
 
 ---
 
-### Task 03.2 — Section 1: Login flow  [ ]
+### Task 03.2 — Section 1: Login flow  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -438,7 +438,7 @@ this section. Not validated by this feature (research.md D6).
 
 ---
 
-### Task 03.3 — Section 2: Demo flow  [ ]
+### Task 03.3 — Section 2: Demo flow  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -459,7 +459,7 @@ this section. Not validated by this feature (research.md D6).
 
 ---
 
-### Task 03.4 — Section 3: Application CRUD  [ ]
+### Task 03.4 — Section 3: Application CRUD  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -477,7 +477,7 @@ this section. Not validated by this feature (research.md D6).
 
 ---
 
-### Task 03.5 — Section 4: Profile editing  [ ]
+### Task 03.5 — Section 4: Profile editing  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -497,7 +497,7 @@ this section. Not validated by this feature (research.md D6).
 
 ---
 
-### Task 03.6 — Section 5: Authorization  [ ]
+### Task 03.6 — Section 5: Authorization  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -518,7 +518,7 @@ this section. Not validated by this feature (research.md D6).
 
 ---
 
-### Task 03.7 — Section 6: Resume import restrictions  [ ]
+### Task 03.7 — Section 6: Resume import restrictions  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -540,7 +540,7 @@ contracts being verified.
 
 ---
 
-### Task 03.8 — Section 7: Mobile layout sanity  [ ]
+### Task 03.8 — Section 7: Mobile layout sanity  [X]
 
 **Target file**: `docs/hosted-smoke-test.md`
 
@@ -561,12 +561,12 @@ section (research.md D6).
 
 ---
 
-## Phase 04 — Review-gate verification  [ ]
+## Phase 04 — Review-gate verification  [X]
 
 Runs after Phases 01–03 land. Mechanical checks against the merge
 state. No content authoring.
 
-### Task 04.1 — Link check  [ ]
+### Task 04.1 — Link check  [X]
 
 **Target**: every relative link added in Phases 01–03.
 
@@ -595,7 +595,7 @@ relevant Phase 01–03 task.
 
 ---
 
-### Task 04.2 — `.env.example` ↔ Env Var Checklist alignment  [ ]
+### Task 04.2 — `.env.example` ↔ Env Var Checklist alignment  [X]
 
 **What to do**:
 
@@ -609,7 +609,7 @@ relevant Phase 01–03 task.
 
 ---
 
-### Task 04.3 — Consolidation fidelity vs. per-feature quickstarts  [ ]
+### Task 04.3 — Consolidation fidelity vs. per-feature quickstarts  [X]
 
 **What to do**: For each item in the
 [`checklists/plan-review.md`](checklists/plan-review.md) "Consolidation
@@ -627,7 +627,7 @@ inline content) in the new "Supabase Setup Checklist" section of
 
 ---
 
-### Task 04.4 — Diff-scope guard  [ ]
+### Task 04.4 — Diff-scope guard  [X]
 
 **What to do**: Run `git diff main...HEAD --stat` (read-only). Confirm
 every changed path falls inside one of:
@@ -653,7 +653,7 @@ as part of Phase 05 docs sanity check.
 
 ---
 
-## Phase 05 — Release Prep  [ ]
+## Phase 05 — Release Prep  [X]
 
 Mandatory per constitution Amendment 1.3.0. Lands the operator-facing
 metadata (version, CHANGELOG, REPO_MAP) so Phase 06's Browser Smoke
@@ -661,7 +661,7 @@ Test walks the to-be-merged state, not a follow-up snapshot. Task
 05.4's grep verifies the source-literal correctness; Phase 06 then
 covers the rendered-output side of the same change.
 
-### Task 05.1 — Bump `package.json` version  [ ]
+### Task 05.1 — Bump `package.json` version  [X]
 
 **Target file**: `package.json`
 
@@ -677,7 +677,7 @@ bumps the in-app `APP_VERSION` literal in lockstep.
 
 ---
 
-### Task 05.1b — Bump in-app `APP_VERSION` literal  [ ]
+### Task 05.1b — Bump in-app `APP_VERSION` literal  [X]
 
 **Target file**: `src/pages/welcome/shared/appMeta.js`
 
@@ -714,7 +714,7 @@ CHANGELOG / diff-link occurrences remain.
 
 ---
 
-### Task 05.1c — Bump README `Current version` line  [ ]
+### Task 05.1c — Bump README `Current version` line  [X]
 
 **Target file**: `README.md`
 
@@ -745,7 +745,7 @@ no stray `0.11.0` strings remain in `README.md`.
 
 ---
 
-### Task 05.2 — CHANGELOG entry  [ ]
+### Task 05.2 — CHANGELOG entry  [X]
 
 **Target file**: `CHANGELOG.md`
 
@@ -802,7 +802,7 @@ entry uses it. A hyphen would break visual consistency.
 
 ---
 
-### Task 05.3 — `docs/REPO_MAP.md` update  [ ]
+### Task 05.3 — `docs/REPO_MAP.md` update  [X]
 
 **Target file**: `docs/REPO_MAP.md`
 
@@ -841,7 +841,7 @@ spec-package artifact.
 
 ---
 
-### Task 05.4 — Docs sanity check (final pre-smoke pass)  [ ]
+### Task 05.4 — Docs sanity check (final pre-smoke pass)  [X]
 
 **What to do**:
 
@@ -865,7 +865,7 @@ phase task, do not patch-merge.
 
 ---
 
-## Phase 06 — Browser Smoke Test  [ ]
+## Phase 06 — Browser Smoke Test  [X]
 
 Scoped to a single task on the only UI surface this feature changes:
 the footer / welcome-page version display. Constitution Amendment
@@ -887,7 +887,7 @@ state, or local `npm run dev` against the merge-target branch.
 Either is sufficient — the check exercises only the static
 footer / welcome version literal.
 
-### Task 06.1 — Footer / welcome-page version display sanity  [ ]
+### Task 06.1 — Footer / welcome-page version display sanity  [X]
 
 **What to do**:
 

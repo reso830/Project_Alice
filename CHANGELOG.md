@@ -7,6 +7,51 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-05-20
+
+> Documentation polish release — feature 022-deployment-polish-docs.
+> Consolidated hosted-deployment operator surface (README refresh +
+> `docs/deployment.md` expansion + new `docs/hosted-smoke-test.md`).
+> No runtime, schema, endpoint, or dependency changes. Only code
+> touch is the in-app `APP_VERSION` literal keeping pace with
+> `package.json` per constitution Amendment 1.3.0.
+
+### Docs
+
+- Refreshed README "Hosted Mode" section: three runtime modes
+  (local / hosted / demo) summarised in one place, with pointers to
+  the consolidated operator surface in `docs/deployment.md`.
+  (022-deployment-polish-docs)
+- Expanded `docs/deployment.md` with four new sections:
+  **Environment Variable Checklist** (deployer pass/fail framing
+  alongside the existing Reference table), **Supabase Setup
+  Checklist** (one ordered procedure consolidating features 018 +
+  019 quickstarts plus an explicit RLS-policy verification step),
+  **Demo & Free-Tier Notes** (Vercel Hobby cold starts, Supabase
+  Free pause, demo reset, hosted seeded data), and
+  **Migration Clarification** (local SQLite does not migrate to
+  hosted; migration tooling is future work).
+  (022-deployment-polish-docs)
+- Added `docs/hosted-smoke-test.md` — standalone Given/When/Then
+  smoke-test checklist for pre-promotion hosted verification.
+  Seven sections: login, demo, CRUD, profile editing, cross-user
+  authorization (RLS-scoped 404 check with proper Bearer-token
+  fetch), resume-import restrictions, and 375px mobile layout.
+  (022-deployment-polish-docs)
+- `docs/REPO_MAP.md`: added a `## Docs` section cataloguing
+  `AI_WORKFLOW_GUIDE.md`, `deployment.md`, `hosted-smoke-test.md`,
+  and `REPO_MAP.md`; added Spec Packages rows for
+  `specs/022-deployment-polish-docs/`.
+  (022-deployment-polish-docs)
+
+### Changed
+
+- `APP_VERSION` literal bumped to `'v0.11.1'` in
+  `src/pages/welcome/shared/appMeta.js` to stay in sync with
+  `package.json` per constitution Amendment 1.3.0 (in-app version
+  display in lockstep with SemVer).
+  (022-deployment-polish-docs)
+
 ## [0.11.0] — 2026-05-20
 
 > Hosted resume import security release — feature 021-hosted-resume-import-security.
@@ -522,7 +567,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/reso830/Project_Alice/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/reso830/Project_Alice/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/reso830/Project_Alice/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/reso830/Project_Alice/compare/v0.8.1...v0.9.0

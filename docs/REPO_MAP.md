@@ -183,7 +183,23 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/021-hosted-resume-import-security/quickstart.md` | Manual verification recipe for the sanitized-error contract |
 | `specs/021-hosted-resume-import-security/research.md` | Design + post-implementation decisions |
 | `specs/021-hosted-resume-import-security/checklists/plan-review.md` | Pre-implementation review gate |
+| `specs/022-deployment-polish-docs/spec.md` | Deployment polish & docs — feature spec (US1–US4, FR-001..013, SC-001..011) |
+| `specs/022-deployment-polish-docs/plan.md` | Docs-only architecture with one `APP_VERSION` literal carve-out; affected areas, risks, validation approach |
+| `specs/022-deployment-polish-docs/tasks.md` | Phased implementation tasks ledger |
+| `specs/022-deployment-polish-docs/research.md` | Clarification decisions D1–D6 with rejected alternatives |
+| `specs/022-deployment-polish-docs/checklists/plan-review.md` | Pre-implementation review gate |
 | `design/welcome_page.md` | Visual specification for the welcome experience |
+
+---
+
+## Docs
+
+| Path | Purpose |
+|------|---------|
+| `docs/AI_WORKFLOW_GUIDE.md` | Local two-agent AI orchestration reference (Claude + Codex pipeline) |
+| `docs/deployment.md` | Operator-facing deployment guide — local + hosted modes, Supabase Setup Checklist, Environment Variable Checklist, Demo & Free-Tier Notes, Migration Clarification (consolidated in feature 022) |
+| `docs/hosted-smoke-test.md` | Hosted smoke-test checklist — Given/When/Then verification flow run before promoting a deploy (feature 022) |
+| `docs/REPO_MAP.md` | This file — navigation shortcut for AI-assisted work |
 
 ---
 
