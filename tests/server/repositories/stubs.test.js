@@ -1,27 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
-import {
-  createRepositories,
-  DemoRepositoryNotImplementedError,
-} from '../../../server/repositories/index.js';
-
-function expectDemoStub(method) {
-  expect(method).toThrow(DemoRepositoryNotImplementedError);
-  expect(method).toThrow(/feature 020/);
-
-  try {
-    method();
-  } catch (error) {
-    expect(error.name).toBe('DemoRepositoryNotImplementedError');
-  }
-}
 
 // Phase 05 note: `HostedRepositoryNotImplementedError` and `createHostedStub`
 // were removed when the hosted-mode dispatcher branch was replaced with the
-// real Supabase adapters. The cold-start invariant below remains important
-// (the Supabase adapters and client factory must also stay free of any
-// `better-sqlite3` / PDF/DOCX runtime imports), so this test stays.
+// real Supabase adapters. Feature 020 removed the parallel demo-mode stub
+// (reserved by 019) when the portfolio demo landed entirely client-side.
+// The cold-start invariants below remain important (the Supabase adapters
+// and client factory must also stay free of any `better-sqlite3` / PDF/DOCX
+// runtime imports), so these tests stay.
 
 describe('local dispatcher cold-start invariants', () => {
   it('does NOT load @supabase/supabase-js during local-mode startup', () => {
@@ -103,30 +90,3 @@ describe('hosted dispatcher cold-start invariants', () => {
   });
 });
 
-describe('demo repository stubs', () => {
-  it('throws for every applications repository method', async () => {
-    const dispatcher = await createRepositories({ isDemo: true });
-    const { applications } = dispatcher.forRequest({});
-
-    for (const methodName of ['getAll', 'getById', 'create', 'update', 'archive']) {
-      expectDemoStub(() => applications[methodName]());
-    }
-  });
-
-  it('throws for every profile repository method', async () => {
-    const dispatcher = await createRepositories({ isDemo: true });
-    const { profile } = dispatcher.forRequest({});
-
-    for (const methodName of ['get', 'upsert']) {
-      expectDemoStub(() => profile[methodName]());
-    }
-  });
-
-  it('error message names the missing repository and points to feature 020', async () => {
-    const dispatcher = await createRepositories({ isDemo: true });
-    const { applications } = dispatcher.forRequest({});
-
-    expect(() => applications.getAll()).toThrow(/applications/);
-    expect(() => applications.getAll()).toThrow(/feature 020/);
-  });
-});

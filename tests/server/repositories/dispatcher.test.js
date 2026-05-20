@@ -2,12 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 // Factory-tracking mocks: each `vi.mock` factory is invoked exactly when the
 // corresponding module is loaded. The dispatcher's lazy `await import(...)`
-// for the Supabase modules MUST stay lazy — local-mode and demo-mode boot
-// loading any of these files would invoke the factories and fail the
-// assertions below.
+// for the Supabase modules MUST stay lazy — local-mode boot loading any of
+// these files would invoke the factories and fail the assertions below.
 //
-// Tests are ordered intentionally: local + demo tests run before hosted
-// tests, so the cumulative call counts on the module-level factories tell
+// Tests are ordered intentionally: the local test runs before the hosted
+// test, so the cumulative call counts on the module-level factories tell
 // the truth about which runtime branch loaded Supabase. We deliberately
 // avoid `vi.resetModules()` here — once a lazy-import lands in Node's ESM
 // cache for the file, re-importing returns the cached binding without
@@ -34,8 +33,8 @@ vi.mock('../../../server/repositories/supabase/profile.js', () =>
   supabaseProfileFactory(),
 );
 
-// Run the local + demo lazy-import discipline tests first, then hosted.
-// This is the order vitest executes `it` blocks in a `describe`.
+// Run the local lazy-import discipline test first, then hosted. This is
+// the order vitest executes `it` blocks in a `describe`.
 
 describe('createRepositories lazy-import discipline (order-sensitive)', () => {
   it('local-mode createRepositories does NOT load Supabase modules', async () => {
@@ -45,19 +44,7 @@ describe('createRepositories lazy-import discipline (order-sensitive)', () => {
     await createRepositories({
       isLocal: true,
       isHosted: false,
-      isDemo: false,
     });
-
-    expect(supabaseClientFactory).not.toHaveBeenCalled();
-    expect(supabaseAppsFactory).not.toHaveBeenCalled();
-    expect(supabaseProfileFactory).not.toHaveBeenCalled();
-  });
-
-  it('demo-mode createRepositories does NOT load Supabase modules', async () => {
-    const { createRepositories } = await import(
-      '../../../server/repositories/index.js'
-    );
-    await createRepositories({ isDemo: true });
 
     expect(supabaseClientFactory).not.toHaveBeenCalled();
     expect(supabaseAppsFactory).not.toHaveBeenCalled();
@@ -79,21 +66,6 @@ describe('createRepositories lazy-import discipline (order-sensitive)', () => {
 });
 
 describe('createRepositories dispatcher — uniform forRequest contract', () => {
-  it('demo runtime returns { forRequest } that yields demo stubs', async () => {
-    const { createRepositories, DemoRepositoryNotImplementedError } =
-      await import('../../../server/repositories/index.js');
-    const dispatcher = await createRepositories({ isDemo: true });
-
-    expect(typeof dispatcher.forRequest).toBe('function');
-    const repos = dispatcher.forRequest({});
-    expect(() => repos.applications.getAll()).toThrow(
-      DemoRepositoryNotImplementedError,
-    );
-    expect(() => repos.profile.get()).toThrow(
-      DemoRepositoryNotImplementedError,
-    );
-  });
-
   it('hosted runtime returns { forRequest } that constructs per-request Supabase repos', async () => {
     const { createRepositories } = await import(
       '../../../server/repositories/index.js'
@@ -142,7 +114,6 @@ describe('createRepositories dispatcher — uniform forRequest contract', () => 
     const dispatcher = await createRepositories({
       isLocal: true,
       isHosted: false,
-      isDemo: false,
     });
 
     expect(typeof dispatcher.forRequest).toBe('function');
@@ -156,19 +127,5 @@ describe('createRepositories dispatcher — uniform forRequest contract', () => 
     // Smoke-functional: SQLite adapter (not a stub) returns an array
     // for getAll(). A stub would throw.
     expect(Array.isArray(a.applications.getAll())).toBe(true);
-  });
-
-  it('demo takes precedence over hosted when both flags are set', async () => {
-    const { createRepositories, DemoRepositoryNotImplementedError } =
-      await import('../../../server/repositories/index.js');
-    const dispatcher = await createRepositories({
-      isDemo: true,
-      isHosted: true,
-    });
-
-    const repos = dispatcher.forRequest({});
-    expect(() => repos.applications.getAll()).toThrow(
-      DemoRepositoryNotImplementedError,
-    );
   });
 });

@@ -1,17 +1,15 @@
-import { Toast } from '../../components/Toast.js';
-
-// Phase 14 stub for the "Try the demo" CTA on the welcome page and the
-// Auth Modal demo button (the modal wiring lands in Phase 17). When feature
-// 020 ships the real demo-route handler, replace this file's call sites in
-// `WelcomePage.js` and `AuthOverlay.js` with the actual navigation/load —
-// this is the single call site to update.
+// Entry point for the portfolio demo CTA (feature 020). Both the
+// welcome page's "Try the demo" button (`WelcomePage.js`) and the auth
+// modal's footer demo button (`AuthOverlay.js`) call `enterDemo()` from
+// this module. The wrapper exists so tests can stub at this boundary
+// independently of `authStore`, and so future demo entry points (e.g.
+// a URL-based deep link) have one place to land.
 //
-// Per FR-023: `window.alert()` is forbidden; the user-facing surface MUST
-// be the existing Toast component.
+// The actual mode flip and seed load live in `authStore.enterDemo()`;
+// do NOT also call `demoStore.loadSeed()` here — single source of truth.
 
-const DEMO_COMING_SOON_MESSAGE =
-  'Demo coming soon — the public preview lands in a later release.';
+import { enterDemo as authEnterDemo } from '../../data/authStore.js';
 
-export function showDemoComingSoon() {
-  Toast.show(DEMO_COMING_SOON_MESSAGE, 'success');
+export function enterDemo() {
+  authEnterDemo();
 }

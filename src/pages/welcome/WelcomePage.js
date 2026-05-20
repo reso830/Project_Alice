@@ -1,7 +1,7 @@
 import aliceColored from '../../assets/Alice_Colored.png';
 import aliceWhite from '../../assets/Alice_White.png';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
-import { showDemoComingSoon } from './demoStub.js';
+import { enterDemo } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 
 // Theme-driven brand mark. Production uses the warm default; white/navy
@@ -240,11 +240,12 @@ function renderCtaGroup() {
     setAuthView('signup');
   }, { dataAuthView: 'signup' });
 
-  // Phase 14: enabled CTA wired to the shared `showDemoComingSoon` stub.
-  // Phase 17 wires the in-modal demo button to the same handler.
-  // Feature 020 will replace `demoStub.js` with the real demo route.
+  // Feature 020: enters the portfolio demo via `demoStub.enterDemo()`,
+  // which delegates to `authStore.enterDemo()` (loads the seed and flips
+  // the status to `'demo'`). The auth modal's footer demo button uses
+  // the same handler — single seam for both call sites.
   const tryDemo = button('Try the demo', 'welcome__cta welcome__cta--ghost', () => {
-    showDemoComingSoon();
+    enterDemo();
   });
 
   group.append(signIn, signUp, tryDemo);

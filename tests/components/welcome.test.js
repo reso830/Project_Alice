@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
 vi.mock('../../src/assets/Alice_Colored.png', () => ({ default: '/Alice_Colored.png' }));
 
+const demoStubMocks = vi.hoisted(() => ({
+  enterDemo: vi.fn(),
+}));
+
+vi.mock('../../src/pages/welcome/demoStub.js', () => demoStubMocks);
+
 const supabaseMocks = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
@@ -44,6 +50,7 @@ beforeEach(() => {
   });
   supabaseMocks.signInWithPassword.mockReset();
   supabaseMocks.signUp.mockReset();
+  demoStubMocks.enterDemo.mockReset();
 });
 
 afterEach(() => {
@@ -90,8 +97,9 @@ describe('WelcomePage — structure', () => {
     expect(ctas.length).toBe(3);
     expect(ctas[0].textContent).toBe('Sign In');
     expect(ctas[1].textContent).toBe('Create Account');
-    // Phase 14 (FR-023): "Try the demo" renders enabled; clicking surfaces
-    // the shared `showDemoComingSoon` toast (covered in its own test below).
+    // Feature 020: "Try the demo" renders enabled; clicking invokes the
+    // shared `demoStub.enterDemo` handler which enters the portfolio
+    // demo via authStore (covered in its own test below).
     expect(ctas[2].textContent).toBe('Try the demo');
     expect(ctas[2].disabled).toBe(false);
   });
@@ -111,7 +119,7 @@ describe('WelcomePage — structure', () => {
     expect(meta).not.toBeNull();
 
     const version = meta.querySelector('.welcome__footer-version');
-    expect(version?.textContent).toBe('v0.9.0');
+    expect(version?.textContent).toBe('v0.10.0');
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
     expect(links.length).toBe(3);
@@ -139,17 +147,12 @@ describe('WelcomePage — structure', () => {
     expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
   });
 
-  it('clicking "Try the demo" fires showDemoComingSoon via the shared toast', async () => {
-    const toastModule = await import('../../src/components/Toast.js');
-    const spy = vi.spyOn(toastModule.Toast, 'show').mockImplementation(() => {});
-
+  it('clicking "Try the demo" invokes demoStub.enterDemo() (feature 020)', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     const tryDemo = container.querySelectorAll('.welcome__cta')[2];
     tryDemo.click();
 
-    expect(spy).toHaveBeenCalledTimes(1);
-    const [message] = spy.mock.calls[0];
-    expect(message).toContain('Demo coming soon');
+    expect(demoStubMocks.enterDemo).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -251,12 +254,13 @@ describe('WelcomePage — auth overlay state machine', () => {
     expect(container.querySelector('.welcome__auth-panel')).toBeNull();
   });
 
-  it('Try Demo click fires the toast but does not flip authView', () => {
+  it('Try Demo click does not flip authView (feature 020: enters demo via enterDemo)', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     container.querySelectorAll('.welcome__cta')[2].click();
 
-    // Phase 14: Try Demo is enabled and surfaces the "Demo coming soon" toast;
-    // it never opens the auth overlay. Toast spy is covered by an earlier test.
+    // Feature 020: Try Demo enters the portfolio demo via
+    // `demoStub.enterDemo` — it never opens the auth overlay. The
+    // enterDemo invocation is covered by an earlier test.
     expect(WelcomePage.getAuthView()).toBeNull();
   });
 });
@@ -826,16 +830,12 @@ describe('Phase 17 — Auth modal footer', () => {
     expect(container.querySelector('.auth-overlay__legal').textContent.toLowerCase()).toContain('terms');
   });
 
-  it('clicking the in-modal demo button fires showDemoComingSoon via the toast helper', async () => {
-    const toastModule = await import('../../src/components/Toast.js');
-    const spy = vi.spyOn(toastModule.Toast, 'show').mockImplementation(() => {});
-
+  it('clicking the in-modal demo button invokes demoStub.enterDemo() (feature 020)', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="login"]').click();
     container.querySelector('.auth-overlay__demo').click();
 
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0][0]).toContain('Demo coming soon');
+    expect(demoStubMocks.enterDemo).toHaveBeenCalledTimes(1);
   });
 
   it('hides the footer chrome on verification_sent', async () => {
@@ -913,7 +913,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
 
     const footer = container.querySelector('.welcome__footer-meta');
     expect(footer).not.toBeNull();
-    expect(footer.textContent).toContain('v0.9.0');
+    expect(footer.textContent).toContain('v0.10.0');
   });
 
   it('renders the centered/tablet mini footer after the slideshow in DOM order', () => {

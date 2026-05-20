@@ -41,7 +41,6 @@ describe('loadConfig', () => {
     expect(loadConfig()).toEqual({
       runtime: 'local',
       isHosted: false,
-      isDemo: false,
       port: 3001,
       supabase: null,
     });
@@ -53,7 +52,6 @@ describe('loadConfig', () => {
     expect(loadConfig()).toMatchObject({
       runtime: 'local',
       isHosted: false,
-      isDemo: false,
       supabase: null,
     });
   });
@@ -64,7 +62,6 @@ describe('loadConfig', () => {
     expect(loadConfig()).toEqual({
       runtime: 'hosted',
       isHosted: true,
-      isDemo: false,
       port: 3001,
       supabase: {
         url: 'https://example.supabase.co',
@@ -74,27 +71,10 @@ describe('loadConfig', () => {
     });
   });
 
-  it('accepts demo mode without requiring any hosted env vars', () => {
+  it('rejects demo mode (no longer a valid runtime after 020)', () => {
     process.env.APP_RUNTIME = 'demo';
 
-    expect(loadConfig()).toEqual({
-      runtime: 'demo',
-      isHosted: false,
-      isDemo: true,
-      port: 3001,
-      supabase: null,
-    });
-  });
-
-  it('demo mode ignores hosted env vars when they happen to be set', () => {
-    setHostedEnv({ APP_RUNTIME: 'demo' });
-
-    expect(loadConfig()).toMatchObject({
-      runtime: 'demo',
-      isHosted: false,
-      isDemo: true,
-      supabase: null,
-    });
+    expect(() => loadConfig()).toThrow(/Invalid APP_RUNTIME.*demo/);
   });
 
   it('rejects hosted mode when SUPABASE_URL is missing', () => {
@@ -121,10 +101,10 @@ describe('loadConfig', () => {
     expect(() => loadConfig()).toThrow(/Invalid APP_RUNTIME.*production/);
   });
 
-  it('error message lists all valid runtimes including demo', () => {
+  it('error message lists the valid runtimes (local, hosted)', () => {
     process.env.APP_RUNTIME = 'staging';
 
-    expect(() => loadConfig()).toThrow(/local.*hosted.*demo/);
+    expect(() => loadConfig()).toThrow(/local.*hosted/);
   });
 
   it('returns a frozen config object', () => {

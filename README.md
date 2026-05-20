@@ -18,6 +18,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
 - **Hosted persistence** — applications and profile data persist per-user in Supabase Postgres, scoped by Row Level Security. New hosted users see 2 seeded starter applications on first sign-in (empty profile by design). Operators apply the schema migration from `specs/019-supabase-persistence/data-model.md §5` before deploying hosted mode; see [docs/deployment.md](docs/deployment.md). Local SQLite mode is unaffected.
+- **Portfolio demo mode** — public visitors can click **Try the demo** on the welcome page to preview the tracker and profile with 23 seeded sample applications and a fully populated persona; changes feel real but live in memory only and reset on browser refresh. No sign-in required, no data persisted, no network calls; always enabled in hosted deployments with no configuration (feature 020).
 
 ## Tech Stack
 
@@ -200,7 +201,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.9.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.10.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

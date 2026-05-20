@@ -1,7 +1,12 @@
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
 import { parseResume } from '../services/resumeApi.js';
 
-const VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
+// Exported (feature 020) so the demo test can assert
+// `!VISIBLE_STATUSES.has(DEMO_STATUS)` as a design-by-contract guard.
+// The set's contents intentionally exclude `'demo'` so the upload
+// widget stays hidden in the portfolio demo even if a future change
+// forgets the status-based gating elsewhere.
+export const VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
 
 function isAuthVisible(state) {
   return VISIBLE_STATUSES.has(state?.status);

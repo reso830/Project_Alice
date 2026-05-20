@@ -133,6 +133,20 @@ body {
   padding: 28px;
 }
 
+/* Feature 020 — inline note shown in the resume-import slot when the
+   visitor is in the portfolio demo. Replaces the uploader entirely so
+   demo users see the feature exists without being asked to interact
+   with a non-functional control. */
+.profile-edit__resume-demo-note {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  color: var(--pagination-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .profile-edit-nav {
   position: sticky;
   top: 0;
@@ -1493,6 +1507,25 @@ button:focus-visible,
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 400;
+}
+
+/* Feature 020 — visible mode indicator for the portfolio demo. Solid
+   gold pill with deep-navy text. Matches the welcome page's warm-fill
+   demo button so the badge reads as a continuation of the click that
+   started the demo. Textual label keeps the indication non-color-only
+   (constitution §IV). */
+.topbar-demo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--gold);
+  color: var(--navy-deep);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .signout-btn {

@@ -83,11 +83,19 @@ function mountAppShell() {
     _welcomeMounted = false;
   }
 
-  const hasStoredApplications = store.hasStoredApplications();
-  store.load();
+  // Skip the legacy `store` warm-up entirely in demo (feature 020). The
+  // legacy localStorage store is deprecated and is not the data source
+  // for demo — `src/data/demoStore.js` is, via the service-layer switch
+  // in `src/services/api.js`. Reading/writing `apptracker_applications`
+  // during a demo session would create persistent client-side state for
+  // the visitor, which FR-004 forbids.
+  if (authStore.getAuthState().status !== 'demo') {
+    const hasStoredApplications = store.hasStoredApplications();
+    store.load();
 
-  if (!hasStoredApplications && store.getAll().length === 0) {
-    store.save(SEED_DATA);
+    if (!hasStoredApplications && store.getAll().length === 0) {
+      store.save(SEED_DATA);
+    }
   }
 
   clearBody();
@@ -171,7 +179,11 @@ function render(state) {
     unmountWelcome();
     return;
   }
-  if (state.status === 'local-mode' || state.status === 'authenticated') {
+  if (
+    state.status === 'local-mode'
+    || state.status === 'authenticated'
+    || state.status === 'demo'
+  ) {
     mountAppShell();
     return;
   }

@@ -7,6 +7,93 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-05-19
+
+> Portfolio demo mode release — feature 020-portfolio-demo-mode.
+> A purely client-side, in-memory demo of the tracker is now reachable
+> from the welcome page's "Try the demo" CTA. Local SQLite and hosted
+> Supabase modes are unchanged. The reserved `APP_RUNTIME=demo` slot
+> from 019 is removed; setting it now fails at boot.
+
+### Added
+- Portfolio demo mode — public visitors can click **Try the demo** on
+  the welcome page (or the auth-modal's demo button) to explore the
+  tracker and profile with 23 seeded sample applications and a fully
+  populated demo persona (Alex Rivera). Application date and
+  `lastStatusUpdate` are shifted at session start so the most recent
+  record reads as "today" while preserving relative spacing. Profile
+  biographical dates remain static. Demo state lives in module-level
+  memory only and resets on every browser refresh (FR-005); no API
+  calls, no `localStorage`, `sessionStorage`, IndexedDB, or cookie
+  writes occur during a demo session
+- `'demo'` auth status — `src/data/authStore.js` gains `DEMO_STATUS`,
+  `enterDemo()`, and `exitDemo()`; `init()` has no demo restore path
+  (refresh ends the demo by design)
+- In-memory demo data layer — `src/data/demoStore.js` provides the same
+  CRUD surface as the network adapter (`getAll` / `getById` / `create`
+  / `update` / `archive` / `getProfile` / `saveProfile` / `loadSeed` /
+  `clear`) with deep-cloned reads, validation reused from
+  `src/models/application.js` and `src/models/profile.js`, and the
+  standard `{ code, message, fields? }` error shape; `src/data/demoSeed.js`
+  exposes `buildDemoSeed()` returning a fresh applications + profile
+  pair
+- Side-effect-free SQLite seed modules — `server/seeds/applicationsData.js`
+  and `server/seeds/profileData.js` expose `DEMO_RECORDS` and
+  `DEMO_PROFILE` as pure constants so the demo's parity tests can
+  assert byte-for-byte equivalence with the SQLite seed without
+  opening the database or calling `process.exit`
+- Service-layer mode switch — `src/services/api.js` short-circuits all
+  seven exported functions to `demoStore` when `getAuthState().status
+  === 'demo'`, never touching the network in demo; `src/services/resumeApi.js`
+  throws `{ code: 'DEMO_FEATURE_UNAVAILABLE' }` immediately in demo
+- Navbar Demo affordance — `src/components/Navbar.js` renders a
+  "Demo mode" badge and an **Exit demo** button (door-arrow icon
+  matching the sign-out button) when status is `'demo'`; clicking the
+  button calls `authStore.exitDemo()` and toasts "Exited demo"
+- ProfileEdit inline note — `src/pages/ProfileEdit.js` renders a small
+  `.profile-edit__resume-demo-note` element ("Resume import is
+  available after signing in.") in the resume-import slot when in
+  demo, replacing the upload widget
+- Design-by-contract guard — `src/components/ResumeImport.js` promotes
+  its previously internal `VISIBLE_STATUSES` set to an export; a test
+  asserts `!VISIBLE_STATUSES.has(DEMO_STATUS)` so a future change that
+  silently adds `'demo'` to the set fails immediately
+- Test coverage — `tests/data/{demoStore,authStore.demo}.test.js`,
+  `tests/services/{api,resumeApi}.demo.test.js`,
+  `tests/pages/welcome/demoStub.test.js`,
+  `tests/components/{Navbar.demo,ResumeImport.demo}.test.js`,
+  `tests/pages/ProfileEdit.demo.test.js` — including a fetch spy that
+  asserts zero network calls across every demo write
+
+### Changed
+- Server-side runtime config now accepts only `local` and `hosted` —
+  the reserved `'demo'` slot from 019 has been removed. Setting
+  `APP_RUNTIME=demo` now fails at boot with the standard
+  `Invalid APP_RUNTIME` error naming the two valid values. The
+  `DemoRepositoryNotImplementedError` class, the `createDemoStub`
+  factory, the dispatcher's demo branch, and the
+  `config.isDemo` short-circuit in `assertHostedSchema` are deleted
+- Welcome CTA wiring — `src/pages/welcome/demoStub.js` no longer fires
+  a "Demo coming soon" toast. It now exports `enterDemo()` which
+  delegates to `authStore.enterDemo()`. The welcome page CTA and the
+  auth-modal demo button both call through this entry
+- `src/main.js` routes `'demo'` status to the app shell alongside
+  `'local-mode'` and `'authenticated'`, and skips the legacy
+  `src/data/store.js` `localStorage` warm-up entirely in demo
+- `src/pages/Tracker.js` gates both `persistFilterState` and
+  `loadPersistedFilterState` on `status !== 'demo'` so demo sessions
+  perform zero `localStorage` writes under `apptracker_filters` and
+  start from default filter state regardless of any prior signed-in
+  session's persisted prefs
+
+### Internal
+- The legacy `server/db-seed.js` and `server/db-seed-profile.js`
+  scripts now import their data constants from the new
+  `server/seeds/*.js` modules; `db-seed-profile.js` additionally
+  guards its top-level side effects (`initSchema` / `saveProfile` /
+  `process.exit`) behind an `import.meta.url === pathToFileURL(process.argv[1]).href`
+  CLI check matching the pattern `db-seed.js` already uses
+
 ## [0.9.0] — 2026-05-17
 
 > Hosted persistence release — feature 019-supabase-persistence.
@@ -365,7 +452,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/reso830/Project_Alice/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/reso830/Project_Alice/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/reso830/Project_Alice/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/reso830/Project_Alice/compare/v0.7.0...v0.8.0

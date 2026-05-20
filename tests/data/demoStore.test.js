@@ -1,0 +1,341 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_RECORDS } from '../../server/seeds/applicationsData.js';
+import { DEMO_PROFILE } from '../../server/seeds/profileData.js';
+import * as demoStore from '../../src/data/demoStore.js';
+import { toISODate } from '../../src/utils/date.js';
+
+// --- storage discipline -----------------------------------------------------
+//
+// The demo MUST NOT write demo content to any browser-side storage. Vitest's
+// node environment has no Web Storage globals by default, so install spies
+// before each test and verify zero invocations after the test exercises
+// the demoStore. The spies double as a safety net — if a future code path
+// accidentally introduces a setItem call we'll see it.
+
+let localStorageSpy;
+let sessionStorageSpy;
+let indexedDbOpenSpy;
+
+function installStorageSpies() {
+  const setItemSpy = vi.fn();
+  const removeItemSpy = vi.fn();
+
+  globalThis.localStorage = {
+    getItem: vi.fn(() => null),
+    setItem: setItemSpy,
+    removeItem: removeItemSpy,
+    clear: vi.fn(),
+    key: vi.fn(),
+    length: 0,
+  };
+
+  const sessionSetItemSpy = vi.fn();
+  globalThis.sessionStorage = {
+    getItem: vi.fn(() => null),
+    setItem: sessionSetItemSpy,
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+    key: vi.fn(),
+    length: 0,
+  };
+
+  const idbOpenSpy = vi.fn(() => ({}));
+  globalThis.indexedDB = {
+    open: idbOpenSpy,
+    deleteDatabase: vi.fn(),
+  };
+
+  return { setItemSpy, sessionSetItemSpy, idbOpenSpy };
+}
+
+function uninstallStorageSpies() {
+  delete globalThis.localStorage;
+  delete globalThis.sessionStorage;
+  delete globalThis.indexedDB;
+}
+
+beforeEach(() => {
+  ({
+    setItemSpy: localStorageSpy,
+    sessionSetItemSpy: sessionStorageSpy,
+    idbOpenSpy: indexedDbOpenSpy,
+  } = installStorageSpies());
+  demoStore.clear();
+});
+
+afterEach(() => {
+  uninstallStorageSpies();
+  vi.restoreAllMocks();
+});
+
+// --- loadSeed + parity ------------------------------------------------------
+
+describe('demoStore.loadSeed + parity with SQLite seed', () => {
+  it('populates 23 applications and the seeded profile', () => {
+    demoStore.loadSeed();
+    expect(demoStore.getAll()).toHaveLength(23);
+    expect(demoStore.getProfile()).not.toBeNull();
+  });
+
+  it('is idempotent — calling loadSeed twice keeps the count at 23', () => {
+    demoStore.loadSeed();
+    demoStore.loadSeed();
+    expect(demoStore.getAll()).toHaveLength(23);
+  });
+
+  it('mirrors DEMO_RECORDS by index on (companyName, jobTitle, status)', () => {
+    demoStore.loadSeed();
+    const apps = demoStore.getAll();
+    expect(apps.length).toBe(DEMO_RECORDS.length);
+
+    DEMO_RECORDS.forEach((source, index) => {
+      expect(apps[index].companyName).toBe(source.company_name);
+      expect(apps[index].jobTitle).toBe(source.job_title);
+      expect(apps[index].status).toBe(source.status);
+    });
+  });
+
+  it('getProfile() deep-equals DEMO_PROFILE', () => {
+    demoStore.loadSeed();
+    expect(demoStore.getProfile()).toEqual(DEMO_PROFILE);
+  });
+
+  it('anchors the most recent lastStatusUpdate to today', () => {
+    demoStore.loadSeed();
+    const apps = demoStore.getAll();
+    const maxIso = apps.reduce(
+      (acc, row) => (row.lastStatusUpdate > acc ? row.lastStatusUpdate : acc),
+      '',
+    );
+    expect(maxIso).toBe(toISODate(new Date()));
+  });
+
+  it('assigns sequential ids 1..23 in DEMO_RECORDS order', () => {
+    demoStore.loadSeed();
+    const apps = demoStore.getAll();
+    apps.forEach((row, index) => {
+      expect(row.id).toBe(index + 1);
+    });
+  });
+});
+
+// --- getAll / getById defensive clones --------------------------------------
+
+describe('demoStore reads return defensive deep clones', () => {
+  it('getAll() returns a new array each call', () => {
+    demoStore.loadSeed();
+    const first = demoStore.getAll();
+    const second = demoStore.getAll();
+    expect(first).not.toBe(second);
+    expect(first[0]).not.toBe(second[0]);
+  });
+
+  it('mutating the result of getAll() does not affect the next read', () => {
+    demoStore.loadSeed();
+    const first = demoStore.getAll();
+    first[0].companyName = 'Tampered Inc.';
+    first[0].skills.push('SHOULD-NOT-LEAK');
+    const second = demoStore.getAll();
+    expect(second[0].companyName).not.toBe('Tampered Inc.');
+    expect(second[0].skills).not.toContain('SHOULD-NOT-LEAK');
+  });
+
+  it('getById returns a clone for known ids and undefined for unknown ones', () => {
+    demoStore.loadSeed();
+    const first = demoStore.getById(1);
+    expect(first.companyName).toBe(DEMO_RECORDS[0].company_name);
+    first.companyName = 'Tampered';
+    expect(demoStore.getById(1).companyName).toBe(DEMO_RECORDS[0].company_name);
+    expect(demoStore.getById(9_999)).toBeUndefined();
+  });
+});
+
+// --- create -----------------------------------------------------------------
+
+describe('demoStore.create', () => {
+  it('assigns the next id (max existing + 1) and prepends the row', () => {
+    demoStore.loadSeed();
+    const created = demoStore.create({
+      companyName: 'New Co',
+      jobTitle: 'Test Engineer',
+      status: 'wishlisted',
+      responsibilities: 'Demo write coverage.',
+      skills: ['Vitest'],
+    });
+    expect(created.id).toBe(24);
+    expect(demoStore.getAll()[0].id).toBe(24);
+    expect(demoStore.getAll()[0].companyName).toBe('New Co');
+    expect(demoStore.getAll()).toHaveLength(24);
+  });
+
+  it('assigns id=1 when the store is empty', () => {
+    const created = demoStore.create({
+      companyName: 'First Co',
+      jobTitle: 'Initial Role',
+      status: 'wishlisted',
+      responsibilities: 'First seed.',
+    });
+    expect(created.id).toBe(1);
+  });
+
+  it('throws VALIDATION_ERROR when a required field is missing', () => {
+    demoStore.loadSeed();
+    let captured;
+    try {
+      demoStore.create({
+        // companyName intentionally missing
+        jobTitle: 'No Company',
+        status: 'wishlisted',
+        responsibilities: 'Should fail validation.',
+      });
+    } catch (error) {
+      captured = error;
+    }
+    expect(captured).toBeDefined();
+    expect(captured.code).toBe('VALIDATION_ERROR');
+    expect(captured.fields).toHaveProperty('companyName');
+  });
+});
+
+// --- update -----------------------------------------------------------------
+
+describe('demoStore.update', () => {
+  it('merges fields and returns the updated clone', () => {
+    demoStore.loadSeed();
+    const updated = demoStore.update(1, { notes: 'updated note' });
+    expect(updated.notes).toBe('updated note');
+    expect(demoStore.getById(1).notes).toBe('updated note');
+  });
+
+  it('sets lastStatusUpdate to today when status changes', () => {
+    demoStore.loadSeed();
+    const today = toISODate(new Date());
+    const before = demoStore.getById(2);
+    // pick a status different from the seeded one
+    const nextStatus = before.status === 'interview' ? 'offer' : 'interview';
+
+    const updated = demoStore.update(2, { status: nextStatus });
+    expect(updated.status).toBe(nextStatus);
+    expect(updated.lastStatusUpdate).toBe(today);
+  });
+
+  it('does not bump lastStatusUpdate when the status is unchanged', () => {
+    demoStore.loadSeed();
+    const before = demoStore.getById(2);
+    const updated = demoStore.update(2, {
+      status: before.status,
+      notes: 'note-only edit',
+    });
+    expect(updated.lastStatusUpdate).toBe(before.lastStatusUpdate);
+  });
+
+  it('ignores explicit id reassignments in the patch', () => {
+    demoStore.loadSeed();
+    const updated = demoStore.update(2, { id: 9_999, notes: 'patch' });
+    expect(updated.id).toBe(2);
+    expect(demoStore.getById(9_999)).toBeUndefined();
+  });
+
+  it('throws NOT_FOUND for an unknown id', () => {
+    demoStore.loadSeed();
+    let captured;
+    try {
+      demoStore.update(9_999, { notes: 'will fail' });
+    } catch (error) {
+      captured = error;
+    }
+    expect(captured?.code).toBe('NOT_FOUND');
+  });
+});
+
+// --- archive ----------------------------------------------------------------
+
+describe('demoStore.archive', () => {
+  it('removes the row and returns the pre-removal copy', () => {
+    demoStore.loadSeed();
+    const archived = demoStore.archive(1);
+    expect(archived.id).toBe(1);
+    expect(demoStore.getById(1)).toBeUndefined();
+    expect(demoStore.getAll()).toHaveLength(22);
+  });
+
+  it('throws NOT_FOUND for an unknown id', () => {
+    demoStore.loadSeed();
+    let captured;
+    try {
+      demoStore.archive(9_999);
+    } catch (error) {
+      captured = error;
+    }
+    expect(captured?.code).toBe('NOT_FOUND');
+  });
+});
+
+// --- profile ----------------------------------------------------------------
+
+describe('demoStore profile CRUD', () => {
+  it('saveProfile replaces the profile and reads come back clean', () => {
+    demoStore.loadSeed();
+    const next = {
+      ...DEMO_PROFILE,
+      firstName: 'Sam',
+      summary: 'Updated demo persona.',
+    };
+    const saved = demoStore.saveProfile(next);
+    expect(saved.firstName).toBe('Sam');
+    expect(demoStore.getProfile().firstName).toBe('Sam');
+  });
+
+  it('saveProfile throws VALIDATION_ERROR when required fields are missing', () => {
+    demoStore.loadSeed();
+    let captured;
+    try {
+      demoStore.saveProfile({ ...DEMO_PROFILE, firstName: '', lastName: '' });
+    } catch (error) {
+      captured = error;
+    }
+    expect(captured?.code).toBe('VALIDATION_ERROR');
+    expect(captured.fields).toHaveProperty('firstName');
+    expect(captured.fields).toHaveProperty('lastName');
+  });
+});
+
+// --- clear ------------------------------------------------------------------
+
+describe('demoStore.clear', () => {
+  it('resets both applications and profile to their initial empty state', () => {
+    demoStore.loadSeed();
+    expect(demoStore.getAll()).toHaveLength(23);
+    expect(demoStore.getProfile()).not.toBeNull();
+
+    demoStore.clear();
+    expect(demoStore.getAll()).toEqual([]);
+    expect(demoStore.getProfile()).toBeNull();
+  });
+});
+
+// --- storage discipline (the canonical regression guard) --------------------
+
+describe('demoStore storage discipline', () => {
+  it('does not call localStorage / sessionStorage / indexedDB across a full CRUD pass', () => {
+    demoStore.loadSeed();
+    const created = demoStore.create({
+      companyName: 'Storage Audit Co',
+      jobTitle: 'Auditor',
+      status: 'wishlisted',
+      responsibilities: 'Verify no browser storage writes.',
+      skills: ['Audit'],
+    });
+    demoStore.update(created.id, { status: 'applied' });
+    demoStore.archive(created.id);
+    demoStore.getAll();
+    demoStore.getById(1);
+    demoStore.saveProfile({ ...DEMO_PROFILE, summary: 'audit pass' });
+    demoStore.getProfile();
+    demoStore.clear();
+
+    expect(localStorageSpy).not.toHaveBeenCalled();
+    expect(sessionStorageSpy).not.toHaveBeenCalled();
+    expect(indexedDbOpenSpy).not.toHaveBeenCalled();
+  });
+});

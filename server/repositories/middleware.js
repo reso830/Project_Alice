@@ -7,8 +7,6 @@
  *   - Local mode: `forRequest(req)` returns a long-lived SQLite bundle.
  *   - Hosted mode: `forRequest(req)` constructs a fresh RLS-scoped
  *     Supabase bundle from the caller's JWT.
- *   - Demo mode: `forRequest(req)` returns a long-lived stub bundle that
- *     throws on every method (feature 020 will replace it).
  *
  * Mount after `requireAuth` on every protected router so the handler can
  * read `req.repos.applications` / `req.repos.profile` without branching
