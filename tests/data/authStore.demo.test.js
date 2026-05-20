@@ -167,4 +167,108 @@ describe('authStore demo transitions', () => {
     const store = await import('../../src/data/authStore.js');
     expect(store.DEMO_STATUS).toBe('demo');
   });
+
+  // Regression guard for the PR #29 P1 finding. Without this guard, a
+  // Supabase auth event (e.g. SIGNED_IN broadcast from another tab via
+  // BroadcastChannel, a TOKEN_REFRESHED, or a refocus-driven event)
+  // would call applySession while the visitor is mid-demo and flip
+  // status to 'authenticated' with a real access token. The app shell
+  // is already mounted in demo so render() takes no remount action, the
+  // tracker keeps showing demo seed rows, and the next api.archive/
+  // update/saveProfile call would hit the real backend with the
+  // signed-in user's bearer token — mutating their actual data.
+  describe('Supabase auth events while in demo (P1 regression guard)', () => {
+    it('ignores SIGNED_IN from another tab — status stays demo', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+      expect(store.getAuthState().status).toBe('demo');
+
+      supabaseMock.fire('SIGNED_IN', {
+        user: { id: 'u-real', email: 'real@example.com' },
+        access_token: 'real-bearer-token',
+      });
+
+      expect(store.getAuthState()).toEqual({
+        status: 'demo',
+        user: null,
+        accessToken: null,
+      });
+    });
+
+    it('ignores SIGNED_OUT from another tab — status stays demo', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+      expect(store.getAuthState().status).toBe('demo');
+
+      supabaseMock.fire('SIGNED_OUT', null);
+
+      expect(store.getAuthState().status).toBe('demo');
+    });
+
+    it('ignores TOKEN_REFRESHED — getAccessToken() stays null in demo', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+
+      supabaseMock.fire('TOKEN_REFRESHED', {
+        user: { id: 'u-real', email: 'real@example.com' },
+        access_token: 'refreshed-bearer-token',
+      });
+
+      expect(store.getAccessToken()).toBeNull();
+    });
+
+    it('does NOT notify subscribers when ignoring an auth event in demo', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+
+      const listener = vi.fn();
+      store.subscribe(listener);
+      listener.mockClear();
+
+      supabaseMock.fire('SIGNED_IN', {
+        user: { id: 'u-real', email: 'real@example.com' },
+        access_token: 'real-bearer-token',
+      });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('after exitDemo(), auth events resume taking effect', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+      store.exitDemo();
+      expect(store.getAuthState().status).toBe('unauthenticated');
+
+      supabaseMock.fire('SIGNED_IN', {
+        user: { id: 'u-real', email: 'real@example.com' },
+        access_token: 'real-bearer-token',
+      });
+
+      expect(store.getAuthState()).toEqual({
+        status: 'authenticated',
+        user: { id: 'u-real', email: 'real@example.com' },
+        accessToken: 'real-bearer-token',
+      });
+    });
+  });
 });
