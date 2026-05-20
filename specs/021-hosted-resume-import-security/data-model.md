@@ -94,11 +94,16 @@ out of scope here.
 
 ---
 
-## 4. Server-side log shape (NEW in 021)
+## 4. Server-side log shapes (NEW in 021)
 
-The new resume-route–scoped catch emits exactly one log line on
-parse failure. The log is a structured object passed as the second
-argument to `console.error`:
+The resume route emits `[resume.parse]` logs from two failure branches.
+Each log is a structured object passed as the second argument to
+`console.error`.
+
+### Parser-throw log
+
+The resume-route–scoped catch emits exactly one log line when parser
+execution fails after multer has accepted the upload:
 
 ```js
 console.error('[resume.parse]', {
@@ -110,7 +115,8 @@ console.error('[resume.parse]', {
 });
 ```
 
-**Allowed fields**: `error`, `stack`, `nameSha8`, `mimetype`, `path`.
+**Allowed parser fields**: `error`, `stack`, `nameSha8`, `mimetype`,
+`path`.
 
 `mimetype` is included because it materially helps triage parser
 failures where the browser-asserted MIME does not match the actual
@@ -122,8 +128,28 @@ streams remain self-describing. The endpoint has a single route
 today, but the field future-proofs the log shape for downstream
 ingestion tools that filter by path.
 
+### Multer-error log
+
+Client-shape multer errors other than `LIMIT_FILE_SIZE` emit exactly
+one log line before returning `400 VALIDATION_ERROR`:
+
+```js
+console.error('[resume.parse]', {
+  error: uploadError.message,
+  code: uploadError.code,
+  path: req.originalUrl?.split('?')[0] ?? req.path,
+});
+```
+
+**Allowed multer-error fields**: `error`, `code`, `path`.
+
+`code` is included because it identifies the multer rejection class
+(`LIMIT_UNEXPECTED_FILE`, `LIMIT_FIELD_KEY`, etc.) without exposing
+the raw multipart field name or uploaded filename.
+
 **Forbidden fields** (regression-tested by `tests/server/resume.test.js`):
 - `originalname` — the raw filename is PII-adjacent and is never logged
+- raw multipart field names (for example, a misnamed upload field)
 - `buffer` or any representation of the resume bytes
 - `text` or any representation of the extracted text
 

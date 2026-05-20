@@ -197,10 +197,11 @@ Covered APIs:
   file" misfeature that would otherwise bypass the writeFile spies.
 - `fs.createWriteStream` — streamed writes (multer's `diskStorage`
   uses this path).
-- `fs.open`, `fs.openSync` + `fs.writeSync` — the low-level
-  file-descriptor write path that bypasses the `writeFile`-style
-  helpers. A direct `openSync` + `writeSync` regression would
-  otherwise be silent.
+- `fs.open`, `fs.openSync`, `fs.promises.open` + `fs.writeSync` —
+  the low-level file-descriptor write path that bypasses the
+  `writeFile`-style helpers. A direct `openSync` + `writeSync`
+  regression, or a promise-based file-handle write opened with write
+  flags, would otherwise be silent.
 
 **Rejected option A**: spy on `os.tmpdir()`.
 - Not a function call we can spy on cleanly; tmpdir returns a string

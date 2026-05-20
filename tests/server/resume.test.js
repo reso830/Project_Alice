@@ -311,6 +311,19 @@ describe('resume API', () => {
         expect(JSON.stringify(body)).not.toMatch(/wrong_field_name/);
         expect(JSON.stringify(body)).not.toMatch(/unexpected field/i);
       });
+      const resumeLogCalls = errorSpy.mock.calls.filter(
+        (args) => args[0] === '[resume.parse]',
+      );
+      expect(resumeLogCalls).toHaveLength(1);
+      const logged = resumeLogCalls[0][1];
+      expect(Object.keys(logged).sort()).toEqual(['code', 'error', 'path']);
+      expect(logged).toMatchObject({
+        error: expect.any(String),
+        code: 'LIMIT_UNEXPECTED_FILE',
+        path: '/api/resume/parse',
+      });
+      expect(JSON.stringify(logged)).not.toContain('wrong_field_name');
+      expect(JSON.stringify(logged)).not.toContain('r.txt');
     } finally {
       errorSpy.mockRestore();
     }
@@ -392,6 +405,7 @@ function installFsSpies() {
     open: passThrough(fs, 'open'),
     openSync: passThrough(fs, 'openSync'),
     writeSync: passThrough(fs, 'writeSync'),
+    promisesOpen: passThrough(fs.promises, 'open'),
     promisesWriteFile: passThrough(fs.promises, 'writeFile'),
     promisesAppendFile: passThrough(fs.promises, 'appendFile'),
   };
@@ -413,7 +427,7 @@ function isWriteMode(flags) {
 
 function assertNoFsWrites(spies) {
   for (const [name, spy] of Object.entries(spies)) {
-    if (name === 'open' || name === 'openSync') {
+    if (name === 'open' || name === 'openSync' || name === 'promisesOpen') {
       // open() / openSync() are also used for legitimate in-process
       // READS by the module loader, snapshot fixtures, etc. Only flag
       // calls whose flags argument indicates write/create/truncate/
