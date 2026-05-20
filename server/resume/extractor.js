@@ -35,6 +35,7 @@ function resolveMimetype(mimetype, originalname) {
 }
 
 async function extractPdfText(buffer) {
+  await installPdfDomGlobals();
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
 
@@ -44,6 +45,17 @@ async function extractPdfText(buffer) {
   } finally {
     await parser.destroy();
   }
+}
+
+async function installPdfDomGlobals() {
+  if (globalThis.DOMMatrix && globalThis.ImageData && globalThis.Path2D) {
+    return;
+  }
+
+  const { DOMMatrix, ImageData, Path2D } = await import('@napi-rs/canvas');
+  globalThis.DOMMatrix ??= DOMMatrix;
+  globalThis.ImageData ??= ImageData;
+  globalThis.Path2D ??= Path2D;
 }
 
 async function extractDocxText(buffer) {

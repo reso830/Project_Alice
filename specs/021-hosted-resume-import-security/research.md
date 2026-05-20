@@ -368,3 +368,24 @@ fs.writeSync spy sees no incidental call. `vi.restoreAllMocks()` in
 Documented here because a future maintainer adding new fs spies might
 not understand why the console.error mock is present; the answer is
 "to prevent stderr's syscall from tripping the writeSync spy."
+
+### §12.3 Vercel PDF runtime canvas globals
+
+During hosted preview validation, a known-good PDF upload returned
+`400 PARSE_FAILED` in Vercel even though TXT parsing and local tests
+were green. The PDF path uses `pdf-parse`, which is built on PDF.js.
+Some PDF.js paths expect browser canvas globals such as `DOMMatrix`,
+`ImageData`, and `Path2D`; Vercel's Node runtime does not provide
+those globals.
+
+**Adopted**: before dynamically importing `pdf-parse`, the PDF
+extractor lazily imports `DOMMatrix`, `ImageData`, and `Path2D` from
+`@napi-rs/canvas` and installs them on `globalThis` only when absent.
+`@napi-rs/canvas` was already present transitively through
+`pdf-parse`; it is now declared directly in `package.json` so the
+runtime contract is explicit and not dependent on a transitive package
+remaining hoisted.
+
+**Regression test**: `tests/server/resume.test.js` deletes the three
+globals, uploads a minimal valid PDF, asserts a `200` parse response,
+and confirms the globals were restored by the extractor.

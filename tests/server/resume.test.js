@@ -1,5 +1,5 @@
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs';
-import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,7 @@ describe('resume API — service-role credential isolation (FR-012)', () => {
   it.each(RESUME_CODE_PATH_FILES)(
     '%s contains no reference to service-role credentials',
     (relativePath) => {
-      const contents = readFileSync(join(REPO_ROOT, relativePath), 'utf8');
+      const contents = fs.readFileSync(join(REPO_ROOT, relativePath), 'utf8');
       for (const forbidden of FORBIDDEN_STRINGS) {
         expect(
           contents,
@@ -67,6 +67,13 @@ async function uploadResume(baseUrl, { content = '', type = 'text/plain', filena
     status: response.status,
     body: await response.json(),
   };
+}
+
+function makeMinimalPdfBuffer() {
+  return Buffer.from(
+    'JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjcyIDcyIFRkCihKYW5lIFNtaXRoKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNTIgMDAwMDAgbiAKMDAwMDAwMDM0NSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQxNQolJUVPRgo=',
+    'base64',
+  );
 }
 
 describe('resume API', () => {
@@ -175,6 +182,29 @@ describe('resume API', () => {
         firstName: 'Jane',
         lastName: 'Smith',
       });
+    });
+  });
+
+  it('parses a valid PDF when serverless DOM canvas globals are absent', async () => {
+    delete globalThis.DOMMatrix;
+    delete globalThis.ImageData;
+    delete globalThis.Path2D;
+
+    await withServer(async (baseUrl) => {
+      const response = await uploadResume(baseUrl, {
+        content: makeMinimalPdfBuffer(),
+        type: 'application/pdf',
+        filename: 'jane-smith.pdf',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        firstName: 'Jane',
+        lastName: 'Smith',
+      });
+      expect(typeof globalThis.DOMMatrix).toBe('function');
+      expect(typeof globalThis.ImageData).toBe('function');
+      expect(typeof globalThis.Path2D).toBe('function');
     });
   });
 

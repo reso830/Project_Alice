@@ -11,9 +11,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 > Hosted resume import security release — feature 021-hosted-resume-import-security.
 > Pure security hardening + regression guards on the existing
-> `POST /api/resume/parse` endpoint. No new endpoints, env vars, or
-> dependencies. The user-observable delta is a sanitized error code
-> for corrupted files; everything else is invariant-pinning.
+> `POST /api/resume/parse` endpoint. No new endpoints or env vars. The
+> user-observable delta is a sanitized error code for corrupted files;
+> everything else is invariant-pinning plus a serverless PDF runtime shim.
 
 ### Added
 - `PARSE_FAILED` error code for `POST /api/resume/parse` — returned
@@ -47,6 +47,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   now mapped to `400 VALIDATION_ERROR` with the raw multer message
   logged server-side — closing FR-007's "no client-shape error
   reaches the global 500 handler" guarantee.
+- PDF extraction now installs `DOMMatrix`, `ImageData`, and `Path2D`
+  globals from `@napi-rs/canvas` before loading `pdf-parse`, so valid
+  PDFs continue to parse in Vercel's Node/serverless runtime where
+  those browser canvas globals are absent. `@napi-rs/canvas` was
+  already present transitively via `pdf-parse`; it is now direct so
+  the runtime shim is explicit.
 
 ### Internal
 - New regression guards in `tests/server/resume.test.js` —
@@ -64,7 +70,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   body (no `pdf-parse`/`pdfjs`/`mammoth`/`node_modules` substrings),
   and the sanitized log object (`nameSha8` / `mimetype` / `path`
   present, raw filename absent).
-- Test count rose from 861 to 878 across 72 suites.
+- Added 18 new tests across the three new describe blocks plus the
+  corrupted-file, log-shape, FR-007 sweep, and `LIMIT_UNEXPECTED_FILE`
+  cases, including a valid-PDF regression with DOM canvas globals
+  deleted.
 
 ## [0.10.0] — 2026-05-19
 
