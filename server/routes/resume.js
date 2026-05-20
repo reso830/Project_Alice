@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { createHash } from 'node:crypto';
 import { extractText, UnsupportedFileTypeError } from '../resume/extractor.js';
 import { parseResumeText } from '../resume/parser.js';
 
@@ -16,6 +17,10 @@ const ERROR_RESPONSES = {
     code: 'VALIDATION_ERROR',
     message: 'No resume file provided.',
   },
+  PARSE_FAILED: {
+    code: 'PARSE_FAILED',
+    message: 'Could not read this resume. Try a different file.',
+  },
 };
 
 function sendError(res, status, error) {
@@ -24,6 +29,10 @@ function sendError(res, status, error) {
 
 function isUnsupportedFileType(error) {
   return error instanceof UnsupportedFileTypeError;
+}
+
+function hashFilename(originalname = '') {
+  return createHash('sha256').update(originalname).digest('hex').slice(0, 8);
 }
 
 export function createResumeRouter({ requireAuth, seedHostedUserIfNeeded } = {}) {
@@ -42,8 +51,16 @@ export function createResumeRouter({ requireAuth, seedHostedUserIfNeeded } = {})
 
   router.post('/parse', (req, res, next) => {
     upload.single('resume')(req, res, async (uploadError) => {
-      if (uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE') {
-        return sendError(res, 400, ERROR_RESPONSES.FILE_TOO_LARGE);
+      if (uploadError instanceof multer.MulterError) {
+        if (uploadError.code === 'LIMIT_FILE_SIZE') {
+          return sendError(res, 400, ERROR_RESPONSES.FILE_TOO_LARGE);
+        }
+        console.error('[resume.parse]', {
+          error: uploadError.message,
+          code: uploadError.code,
+          path: req.originalUrl?.split('?')[0] ?? req.path,
+        });
+        return sendError(res, 400, ERROR_RESPONSES.VALIDATION_ERROR);
       }
 
       if (uploadError) {
@@ -62,7 +79,14 @@ export function createResumeRouter({ requireAuth, seedHostedUserIfNeeded } = {})
           return sendError(res, 400, ERROR_RESPONSES.UNSUPPORTED_FILE_TYPE);
         }
 
-        return next(error);
+        console.error('[resume.parse]', {
+          error: error?.message ?? 'unknown',
+          stack: error?.stack,
+          nameSha8: hashFilename(req.file?.originalname),
+          mimetype: req.file?.mimetype,
+          path: req.originalUrl?.split('?')[0] ?? req.path,
+        });
+        return sendError(res, 400, ERROR_RESPONSES.PARSE_FAILED);
       }
     });
   });

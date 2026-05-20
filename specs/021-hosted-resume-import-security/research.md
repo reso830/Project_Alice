@@ -133,14 +133,21 @@ message's two-sentence "what failed / what to do" pattern.
 
 ## §6. Server-side log shape
 
-**Decision**: `console.error('[resume.parse]', { error, stack, nameSha8, mimetype })`
+**Decision**: `console.error('[resume.parse]', { error, stack, nameSha8, mimetype, path })`
 where `nameSha8` is the first 8 chars of a SHA-256 of the original
-filename and `mimetype` is the browser-asserted MIME from
-`req.file.mimetype`.
+filename, `mimetype` is the browser-asserted MIME from
+`req.file.mimetype`, and `path` is the sanitized request path
+(`req.originalUrl?.split('?')[0] ?? req.path`).
 
 `mimetype` is included (not PII) because it materially helps triage
 MIME/byte mismatches — the most common parser-failure shape is a
 client that mislabels the file type.
+
+`path` is required by spec FR-006 / Data Considerations so the log
+remains self-describing in aggregated log streams. The endpoint has
+a single route today (`/api/resume/parse`), but including the field
+keeps logs filterable by downstream tools and future-proofs the
+shape if the route ever splits.
 
 **Rejected**: log the original filename verbatim.
 - Filenames frequently contain PII (`alex_rivera_resume_2026.pdf`),
@@ -316,3 +323,47 @@ satisfied either way; the formal phase is omitted.
 5. **`/api/resume/parse` response shape change** — out of scope per
    spec Non-Goal §10. A future cleanup might trim the response
    payload to omit fields the client doesn't use.
+
+---
+
+## §12. Post-implementation notes
+
+Decisions that emerged during Phases 01–04 and were not anticipated
+in the original research notes above.
+
+### §12.1 fs default import vs. namespace import
+
+**Original spec snippet** (tasks.md Task 03.1) used
+`import * as fs from 'node:fs'` (namespace import). During Phase 03
+implementation this turned out to interact badly with `vi.spyOn`:
+ES module namespace bindings are sealed in Node, so `vi.spyOn(fs, …)`
+attempts to redefine a property on a sealed object. In some vitest
+versions this throws; in others it silently fails to attach.
+
+**Adopted**: `import fs from 'node:fs'` (default import). Node's
+ESM compatibility layer exposes the entire CJS `module.exports` as
+the default export, which is a regular mutable object — `vi.spyOn`
+attaches cleanly. `fs.promises.*` is reachable via the same handle,
+so the `node:fs/promises` namespace import is also unnecessary.
+
+Functionally identical; one less import line; the spy set in
+`installFsSpies()` works as documented.
+
+### §12.2 console.error suppression in the fs-spy `beforeEach`
+
+The Phase 01 implementation logs `[resume.parse]` via `console.error`
+on every parse-failure path. The Phase 03 fs-spy installs a
+pass-through spy on `fs.writeSync`. On some platforms / Node versions
+`process.stderr.write` ultimately calls `fs.writeSync(2, …)`, which
+would register a call on our spy and trip the `not.toHaveBeenCalled()`
+assertion even though no application code wrote to disk.
+
+**Mitigation**: the fs-spy describe's `beforeEach` runs
+`vi.spyOn(console, 'error').mockImplementation(() => {})` BEFORE
+`installFsSpies()`, suppressing the route's stderr emission so the
+fs.writeSync spy sees no incidental call. `vi.restoreAllMocks()` in
+`afterEach` cleans both up.
+
+Documented here because a future maintainer adding new fs spies might
+not understand why the console.error mock is present; the answer is
+"to prevent stderr's syscall from tripping the writeSync spy."

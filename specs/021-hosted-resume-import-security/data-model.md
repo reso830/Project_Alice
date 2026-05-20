@@ -106,14 +106,21 @@ console.error('[resume.parse]', {
   stack: error?.stack,
   nameSha8: <8-char SHA-256 prefix of req.file.originalname>,
   mimetype: req.file?.mimetype,
+  path: req.originalUrl?.split('?')[0] ?? req.path,
 });
 ```
 
-**Allowed fields**: `error`, `stack`, `nameSha8`, `mimetype`.
+**Allowed fields**: `error`, `stack`, `nameSha8`, `mimetype`, `path`.
 
 `mimetype` is included because it materially helps triage parser
 failures where the browser-asserted MIME does not match the actual
 bytes (e.g., `application/pdf` sent for a TXT file). It is not PII.
+
+`path` is the sanitized request path (query string stripped). It is
+required by spec FR-006 / Data Considerations so aggregated log
+streams remain self-describing. The endpoint has a single route
+today, but the field future-proofs the log shape for downstream
+ingestion tools that filter by path.
 
 **Forbidden fields** (regression-tested by `tests/server/resume.test.js`):
 - `originalname` — the raw filename is PII-adjacent and is never logged

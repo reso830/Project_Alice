@@ -7,6 +7,65 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-20
+
+> Hosted resume import security release — feature 021-hosted-resume-import-security.
+> Pure security hardening + regression guards on the existing
+> `POST /api/resume/parse` endpoint. No new endpoints, env vars, or
+> dependencies. The user-observable delta is a sanitized error code
+> for corrupted files; everything else is invariant-pinning.
+
+### Added
+- `PARSE_FAILED` error code for `POST /api/resume/parse` — returned
+  when the file parser throws (corrupted PDF, malformed DOCX,
+  empty/garbled file). The response is
+  `400 { error: { code: 'PARSE_FAILED', message: 'Could not read this resume. Try a different file.' } }`.
+  The raw library error is logged server-side via
+  `console.error('[resume.parse]', { error, stack, nameSha8, mimetype, path })`
+  with an 8-char SHA-256 prefix of the filename (not the raw filename)
+  and the request path; the resume content and the raw filename are
+  never logged.
+- `specs/021-hosted-resume-import-security/contracts/api.md` —
+  canonical post-021 security model for the parse endpoint:
+  threat model, four-layer defense (frontend demo gate → server
+  auth → multer validation → parser validation), explicit guarantees
+  (`§4.1` auth required, `§4.2` no disk write, `§4.3` no Supabase
+  persistence, `§4.5` fixed error code set, `§4.7` service-role-key
+  unreachable), and explicit non-guarantees (no malware scan, no
+  rate limiting, global 500 handler unchanged).
+
+### Changed
+- Pre-021, corrupted-file uploads fell through `next(error)` to the
+  global 500 handler at `server/index.js:74-91`, which echoed
+  `err.message` — exposing library internals (`pdf-parse` stack text,
+  `mammoth` ZIP error strings, internal paths) to the client. The
+  new resume-route catch sanitizes the response. The global 500
+  handler is unchanged for every other route.
+- Every non-`LIMIT_FILE_SIZE` `multer.MulterError`
+  (`LIMIT_UNEXPECTED_FILE`, `LIMIT_FIELD_KEY`, `LIMIT_FIELD_VALUE`,
+  `LIMIT_FIELD_COUNT`, `LIMIT_FILE_COUNT`, `LIMIT_PART_COUNT`) is
+  now mapped to `400 VALIDATION_ERROR` with the raw multer message
+  logged server-side — closing FR-007's "no client-shape error
+  reaches the global 500 handler" guarantee.
+
+### Internal
+- New regression guards in `tests/server/resume.test.js` —
+  `describe('resume API — hosted auth gate (FR-001, FR-009)')`
+  (2 cases) pins the hosted unauthenticated → 401 contract;
+  `describe('resume API — in-memory invariant (FR-002, FR-010)')`
+  (5 cases) installs pass-through `fs.write*` / `fs.open*` /
+  `fs.promises.*` spies and asserts zero write-mode calls across
+  happy + four failure paths;
+  `describe('resume API — service-role credential isolation (FR-012)')`
+  (5 cases) reads each resume-code-path file and asserts neither
+  `SUPABASE_SERVICE_ROLE_KEY` nor `service_role` appears.
+- New corrupted-file + log-shape + FR-007 sweep tests in the same
+  file pin the new `PARSE_FAILED` mapping, the sanitized response
+  body (no `pdf-parse`/`pdfjs`/`mammoth`/`node_modules` substrings),
+  and the sanitized log object (`nameSha8` / `mimetype` / `path`
+  present, raw filename absent).
+- Test count rose from 861 to 878 across 72 suites.
+
 ## [0.10.0] — 2026-05-19
 
 > Portfolio demo mode release — feature 020-portfolio-demo-mode.
@@ -452,7 +511,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/reso830/Project_Alice/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/reso830/Project_Alice/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/reso830/Project_Alice/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/reso830/Project_Alice/compare/v0.8.0...v0.8.1

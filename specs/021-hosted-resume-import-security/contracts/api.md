@@ -1,7 +1,7 @@
 # Contract: `POST /api/resume/parse` — Security Model
 
 **Feature**: [021-hosted-resume-import-security](../spec.md)
-**Status**: Draft (will be the post-021 canonical reference)
+**Status**: Canonical (post-021)
 
 This document is the explicit security model for the hosted resume
 parse endpoint. It supersedes any prior implicit assumptions in the
@@ -98,7 +98,7 @@ or a non-app HTTP client), Layer 2 catches it.
 
 ### Layer 2: Server auth gate
 
-[server/routes/resume.js:36-38](../../../server/routes/resume.js#L36-L38)
+[server/routes/resume.js:45-47](../../../server/routes/resume.js#L45-L47)
 mounts `router.use(requireAuth)` whenever a `requireAuth` middleware
 is passed to `createResumeRouter`. In hosted mode,
 [server/index.js:29-37](../../../server/index.js#L29-L37) builds
@@ -116,7 +116,7 @@ internal path.
 
 ### Layer 3: Upload validation (multer)
 
-[server/routes/resume.js:31-34](../../../server/routes/resume.js#L31-L34)
+[server/routes/resume.js:40-43](../../../server/routes/resume.js#L40-L43)
 configures:
 
 ```js
@@ -170,7 +170,7 @@ to `400 UNSUPPORTED_FILE_TYPE`.
 empty-buffer error, format-internal error) is caught by the new
 resume-route–scoped catch and mapped to `400 PARSE_FAILED` with a
 fixed generic message. The raw error is logged server-side via
-`console.error('[resume.parse]', { error, stack, nameSha8, mimetype })`.
+`console.error('[resume.parse]', { error, stack, nameSha8, mimetype, path })`.
 
 **Regression test (FR-011)**: corrupted PDF + corrupted DOCX each
 return `400 PARSE_FAILED` with the fixed message; response body
@@ -243,13 +243,13 @@ Every guarantee above is pinned by at least one automated test:
 
 | Guarantee | Pinning test |
 |---|---|
-| §4.1 auth-required in hosted | `tests/server/resume.test.js` — new `hosted unauthenticated returns 401` group (FR-009) |
-| §4.2 no disk write | `tests/server/resume.test.js` — new `no filesystem writes during any parse path` group (FR-010) |
+| §4.1 auth-required in hosted | `tests/server/resume.test.js` — `describe('resume API — hosted auth gate (FR-001, FR-009)')` (2 cases) |
+| §4.2 no disk write | `tests/server/resume.test.js` — `describe('resume API — in-memory invariant (FR-002, FR-010)')` (5 cases: happy TXT, corrupted PDF, UNSUPPORTED_FILE_TYPE, VALIDATION_ERROR, FILE_TOO_LARGE) |
 | §4.3 no Supabase persistence | Provable by §4.2 (no fs write) + endpoint code reading (the route does not import any Supabase adapter) |
-| §4.4 sanitized response shape | Existing parser tests in `tests/server/resumeParser.test.js` + new sanitization assertions in `tests/server/resume.test.js` |
-| §4.5 fixed error code set | `tests/server/resume.test.js` — exhaustive test cases for `FILE_TOO_LARGE`, `UNSUPPORTED_FILE_TYPE`, `VALIDATION_ERROR`, `PARSE_FAILED` |
-| §4.6 PII-minimized logs | Server-side; verified by reading the `[resume.parse]` log shape in the source |
-| §4.7 service-role-key unreachable | `tests/server/resume.test.js` — new grep-style regression guard (FR-012) |
+| §4.4 sanitized response shape | Existing parser tests in `tests/server/resumeParser.test.js` + new corrupted-PDF/DOCX sanitization tests in `tests/server/resume.test.js` (FR-006/FR-011) |
+| §4.5 fixed error code set | `tests/server/resume.test.js` — exhaustive cases for `FILE_TOO_LARGE`, `UNSUPPORTED_FILE_TYPE`, `VALIDATION_ERROR`, `PARSE_FAILED` plus the FR-007 sweep guard + `LIMIT_UNEXPECTED_FILE` closure |
+| §4.6 PII-minimized logs | `tests/server/resume.test.js` — log-shape test asserting `nameSha8` / `mimetype` / `path` are present and the raw filename is absent (FR-006) |
+| §4.7 service-role-key unreachable | `tests/server/resume.test.js` — `describe('resume API — service-role credential isolation (FR-012)')` (5 cases, one per resume-code-path file) |
 
 ---
 

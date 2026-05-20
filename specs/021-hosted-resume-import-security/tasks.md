@@ -8,14 +8,14 @@
 
 ## Phase Map
 
-| Phase | Theme                                                                     | Blocks |
-|-------|---------------------------------------------------------------------------|--------|
-| 01    | Implement `PARSE_FAILED` mapping in `server/routes/resume.js` + paired test | 05, 06 |
-| 02    | Regression test: hosted unauthenticated POST → 401, no library text in body | 06 (parallel) |
-| 03    | Regression test: zero filesystem writes during any parse path (fs-spy) | 06 (parallel) |
-| 04    | Regression test: `SUPABASE_SERVICE_ROLE_KEY` never referenced in resume code path | 06 (parallel) |
-| 05    | Verify `contracts/api.md` + `research.md` against the implementation built in Phases 01–04 | 06 |
-| 06    | Release Prep — version bump 0.10.0 → 0.11.0, CHANGELOG, README, REPO_MAP, docs sanity check | Merge |
+| Phase | Theme                                                                     | Blocks | Status |
+|-------|---------------------------------------------------------------------------|--------|--------|
+| 01    | Implement `PARSE_FAILED` mapping in `server/routes/resume.js` + paired test | 05, 06 | [X] |
+| 02    | Regression test: hosted unauthenticated POST → 401, no library text in body | 06 (parallel) | [X] |
+| 03    | Regression test: zero filesystem writes during any parse path (fs-spy) | 06 (parallel) | [X] |
+| 04    | Regression test: `SUPABASE_SERVICE_ROLE_KEY` never referenced in resume code path | 06 (parallel) | [X] |
+| 05    | Verify `contracts/api.md` + `research.md` against the implementation built in Phases 01–04 | 06 | [X] |
+| 06    | Release Prep — version bump 0.10.0 → 0.11.0, CHANGELOG, README, REPO_MAP, docs sanity check | Merge | [X] |
 
 Phases 02, 03, and 04 are independent of Phase 01 and of each other —
 they exercise existing or new server paths via the integration test
@@ -29,13 +29,13 @@ hosted preview as a pre-merge sanity check.
 
 ---
 
-## Phase 01 — Implement `PARSE_FAILED` mapping
+## Phase 01 — Implement `PARSE_FAILED` mapping  [X]
 
 This phase implements spec **FR-006** and **FR-007**. One small code
 change in the resume route plus one paired test that proves the new
 behavior.
 
-### Task 01.1 — Add `PARSE_FAILED` error constant + sanitized catch + server-side log
+### Task 01.1 — Add `PARSE_FAILED` error constant + sanitized catch + server-side log  [X]
 
 **Target file**: `server/routes/resume.js`
 
@@ -69,6 +69,7 @@ behavior.
      stack: error?.stack,
      nameSha8: hashFilename(req.file?.originalname),
      mimetype: req.file?.mimetype,
+     path: req.originalUrl?.split('?')[0] ?? req.path,
    });
    return sendError(res, 400, ERROR_RESPONSES.PARSE_FAILED);
    ```
@@ -112,8 +113,9 @@ behavior.
   `DOMMatrix`, `mammoth`, any stack-trace text, or any internal
   filesystem path.
 - Server logs MUST contain exactly one `[resume.parse]` line per
-  failed parse, with `error`, `stack`, `nameSha8`, and `mimetype`
-  fields. The raw `originalname` MUST NOT appear in the log object.
+  failed parse, with `error`, `stack`, `nameSha8`, `mimetype`, and
+  `path` fields. The raw `originalname` MUST NOT appear in the log
+  object.
 - The happy path is unchanged.
 - `FILE_TOO_LARGE`, `UNSUPPORTED_FILE_TYPE`, and `VALIDATION_ERROR`
   responses are unchanged.
@@ -133,7 +135,7 @@ server/resume/parser.js, any frontend file.
 
 ---
 
-### Task 01.2 — Test `PARSE_FAILED` mapping (corrupted PDF + corrupted DOCX + log shape)
+### Task 01.2 — Test `PARSE_FAILED` mapping (corrupted PDF + corrupted DOCX + log shape)  [X]
 
 **Target file**: `tests/server/resume.test.js`
 
@@ -206,6 +208,7 @@ route handler, so local-mode tests verify the same behavior).
          error: expect.any(String),
          nameSha8: expect.stringMatching(/^[a-f0-9]{8}$/),
          mimetype: 'application/pdf',
+         path: '/api/resume/parse',
        });
        expect(logged.nameSha8).not.toContain('alex');
        expect(JSON.stringify(logged)).not.toContain('alex_rivera_resume_2026.pdf');
@@ -243,7 +246,7 @@ guard (Task 01.3).
 
 ---
 
-### Task 01.3 — Add FR-007 sweep guard ("no failure mode reaches `INTERNAL_ERROR`")
+### Task 01.3 — Add FR-007 sweep guard ("no failure mode reaches `INTERNAL_ERROR`")  [X]
 
 **Target file**: `tests/server/resume.test.js`
 
@@ -347,13 +350,13 @@ it('multer LIMIT_UNEXPECTED_FILE does not reach the global 500 handler', async (
 
 ---
 
-## Phase 02 — Regression test: hosted unauthenticated POST → 401
+## Phase 02 — Regression test: hosted unauthenticated POST → 401  [X]
 
 This phase implements spec **FR-001** and **FR-009**. No code
 change; one test that pins the existing 401 behavior so a future
 refactor can't silently demote the endpoint to anonymous access.
 
-### Task 02.1 — Add hosted-mode integration test that asserts 401 without library leaks
+### Task 02.1 — Add hosted-mode integration test that asserts 401 without library leaks  [X]
 
 **Target file**: `tests/server/resume.test.js`
 
@@ -449,13 +452,13 @@ filesystem-spy assertions (Phase 03).
 
 ---
 
-## Phase 03 — Regression test: zero filesystem writes during parse
+## Phase 03 — Regression test: zero filesystem writes during parse  [X]
 
 This phase implements spec **FR-002** and **FR-010**. No code
 change; one test group that pins the multer `memoryStorage()`
 invariant by spying on every plausible filesystem write API.
 
-### Task 03.1 — Add `fs.write*` spy regression test covering happy + sad paths
+### Task 03.1 — Add `fs.write*` spy regression test covering happy + sad paths  [X]
 
 **Target file**: `tests/server/resume.test.js`
 
@@ -640,13 +643,13 @@ known limitations documented in [research.md §7](research.md#7-fs-spy-regressio
 
 ---
 
-## Phase 04 — Regression test: service-role-key absence
+## Phase 04 — Regression test: service-role-key absence  [X]
 
 This phase implements spec **FR-012**. One vitest test reads the
 resume code path files and asserts they contain no admin-credential
 references.
 
-### Task 04.1 — Add grep-style regression guard for `SUPABASE_SERVICE_ROLE_KEY`
+### Task 04.1 — Add grep-style regression guard for `SUPABASE_SERVICE_ROLE_KEY`  [X]
 
 **Target file**: `tests/server/resume.test.js`
 
@@ -713,13 +716,13 @@ audit, separate feature).
 
 ---
 
-## Phase 05 — Verify `contracts/api.md` + `research.md` against the implementation
+## Phase 05 — Verify `contracts/api.md` + `research.md` against the implementation  [X]
 
 This phase ensures the supporting artifacts written during planning
 still match the implementation after Phases 01–04. No new artifacts;
 just a sanity check pass.
 
-### Task 05.1 — Reconcile `contracts/api.md` with the implemented code
+### Task 05.1 — Reconcile `contracts/api.md` with the implemented code  [X]
 
 **Target file**: `specs/021-hosted-resume-import-security/contracts/api.md`
 
@@ -762,7 +765,7 @@ just a sanity check pass.
 
 ---
 
-### Task 05.2 — Add post-implementation notes to `research.md` (if any)
+### Task 05.2 — Add post-implementation notes to `research.md` (if any)  [X]
 
 **Target file**: `specs/021-hosted-resume-import-security/research.md`
 
@@ -790,12 +793,12 @@ in the PR description.
 
 ---
 
-## Phase 06 — Release Prep
+## Phase 06 — Release Prep  [X]
 
 Required by constitution Amendment 1.3.0 — second-to-last phase
 (and last phase in this case, since 021 is not a UI feature).
 
-### Task 06.1 — Version bump
+### Task 06.1 — Version bump  [X]
 
 **Target files**:
 - `package.json` — bump `"version"` from `0.10.0` to `0.11.0`
@@ -826,7 +829,7 @@ Required by constitution Amendment 1.3.0 — second-to-last phase
 
 ---
 
-### Task 06.2 — `CHANGELOG.md` entry
+### Task 06.2 — `CHANGELOG.md` entry  [X]
 
 **Target file**: `CHANGELOG.md`
 
@@ -867,7 +870,7 @@ resume route only.
 
 ---
 
-### Task 06.3 — `README.md` updates
+### Task 06.3 — `README.md` updates  [X]
 
 **Target file**: `README.md`
 
@@ -889,7 +892,7 @@ a new feature surface.
 
 ---
 
-### Task 06.4 — `docs/REPO_MAP.md` updates
+### Task 06.4 — `docs/REPO_MAP.md` updates  [X]
 
 **Target file**: `docs/REPO_MAP.md`
 
@@ -916,7 +919,7 @@ REPO_MAP sections — only add the minimal new rows.
 
 ---
 
-### Task 06.5 — Docs sanity check + `docs/deployment.md` verification + final quality gates
+### Task 06.5 — Docs sanity check + `docs/deployment.md` verification + final quality gates  [X]
 
 **What to do**:
 
