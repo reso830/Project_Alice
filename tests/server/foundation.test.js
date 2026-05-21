@@ -39,7 +39,11 @@ describe('initSchema', () => {
       'compat_notes',
       'general_notes',
       'preferred_skills',
+      'timeline',
     ]);
+    const timelineColumn = columns.find((column) => column.name === 'timeline');
+    expect(timelineColumn.notnull).toBe(1);
+    expect(timelineColumn.dflt_value).toBe("'[]'");
     expect(indexes.map((index) => index.name)).toEqual(expect.arrayContaining([
       'idx_applications_status',
       'idx_applications_archived',
@@ -137,6 +141,7 @@ describe('application row mapping', () => {
       updated_at: '2026-04-26T00:00:00.000Z',
       archived: 0,
       metadata: '{"source":"manual"}',
+      timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":"Submitted."}]',
     })).toMatchObject({
       companyName: 'Acme',
       jobTitle: 'Engineer',
@@ -145,6 +150,7 @@ describe('application row mapping', () => {
       salary: 100000,
       skills: ['JavaScript'],
       metadata: { source: 'manual' },
+      timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' }],
     });
   });
 
@@ -171,6 +177,7 @@ describe('application row mapping', () => {
       updated_at: '2026-04-26',
       archived: 0,
       metadata: null,
+      timeline: '[]',
     }).salary).toBe(120000);
   });
 
@@ -180,11 +187,13 @@ describe('application row mapping', () => {
       compat: 72,
       skills: ['React'],
       metadata: null,
+      timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: '' }],
     })).toEqual({
       fav: 1,
       compat: 72,
       skills: '["React"]',
       metadata: null,
+      timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":""}]',
     });
   });
 });

@@ -8,10 +8,23 @@ const PROBES = [
   // user_id is the PK on user_seed_state — present iff the table is.
   // Only the table-missing case warrants a hard fail.
   { table: 'user_seed_state', column: 'user_id', failOn: [UNDEFINED_TABLE] },
+  {
+    table: 'applications',
+    column: 'timeline',
+    failOn: [UNDEFINED_COLUMN],
+    docPath: 'specs/025-application-timeline/quickstart.md §3.1',
+  },
 ];
 
-function migrationHint(table, column) {
+function migrationHint(table, column, docPath) {
   const artifact = column ? `${table}.${column}` : table;
+  if (docPath) {
+    return (
+      `[hosted-schema] missing artifact: public.${artifact}. ` +
+      'The migration has not been applied to the configured Supabase ' +
+      `project. Apply the SQL block from ${docPath}.`
+    );
+  }
   return (
     `[hosted-schema] missing artifact: public.${artifact}. ` +
     'The 019 migration has not been applied to the configured Supabase ' +
@@ -24,9 +37,9 @@ function migrationHint(table, column) {
 /**
  * Boot-time schema check for hosted mode. Verifies that the 019 migration
  * (see `specs/019-supabase-persistence/data-model.md §5`) has been applied
- * to the configured Supabase project by issuing three sentinel PostgREST
+ * to the configured Supabase project by issuing sentinel PostgREST
  * probes — `SELECT user_id FROM <t> LIMIT 0` against `applications`,
- * `profile`, and `user_seed_state`.
+ * `profile`, `user_seed_state`, and `applications.timeline`.
  *
  * Behavior:
  *   - `!config.isHosted` → early return, no network call.
@@ -88,7 +101,7 @@ export async function assertHostedSchema(config, { logger = console } = {}) {
 
     if (probe.failOn.includes(error.code)) {
       const missing = error.code === UNDEFINED_TABLE ? null : probe.column;
-      throw new Error(migrationHint(probe.table, missing));
+      throw new Error(migrationHint(probe.table, missing, probe.docPath));
     }
 
     logger.warn(

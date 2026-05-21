@@ -324,6 +324,16 @@ CREATE POLICY user_seed_state_insert_self ON public.user_seed_state
 -- No UPDATE/DELETE policies → both denied for authenticated.
 
 -- 5.4 claim_and_seed_starter() RPC ------------------------------------
+--
+-- ⚠ SUPERSEDED — the canonical body now lives at
+--   docs/db/claim_and_seed_starter.md
+-- Feature 025 introduced the rule that the RPC body is owned by a
+-- single canonical doc; older feature specs (this one included) are
+-- snapshots of the body at the time they shipped. New hosted deploys
+-- MUST apply the v2 body from the canonical doc, not the v1 body
+-- below. The v1 body is preserved here for historical reference and
+-- as a rollback target.
+--
 -- Single atomic function: claim the seed marker AND insert the seed
 -- rows in one transaction. Returns true on first claim (rows inserted),
 -- false if the marker already existed (no-op).

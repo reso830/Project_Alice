@@ -47,6 +47,19 @@ const metadata = z.union([
   z.null(),
 ]).optional();
 
+const timelineEntry = z.object({
+  id: z.number().int().positive(),
+  date: z.string()
+    .regex(datePattern, 'Timeline entry date must use YYYY-MM-DD format'),
+  status: z.string().refine(
+    (value) => STATUS_VALUES.includes(value),
+    `Timeline entry status must be one of: ${STATUS_VALUES.join(', ')}`,
+  ),
+  text: z.string(),
+});
+
+const timeline = z.array(timelineEntry).optional();
+
 const status = z.string({
   error: 'Status is required',
 }).refine(
@@ -77,6 +90,7 @@ const writableFields = {
   generalNotes: optionalText,
   preferredSkills: z.array(z.string()).optional(),
   metadata,
+  timeline,
 };
 
 export const createSchema = z.object(writableFields).strip();

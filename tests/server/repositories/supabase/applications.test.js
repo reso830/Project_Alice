@@ -109,6 +109,7 @@ describe('createSupabaseApplicationsRepository', () => {
             skills: ['js'],
             preferred_skills: [],
             metadata: null,
+            timeline: [],
             application_date: '2026-05-01',
             last_status_update: '2026-05-01',
             created_at: '2026-05-01',
@@ -159,6 +160,7 @@ describe('createSupabaseApplicationsRepository', () => {
           skills: [],
           preferred_skills: [],
           metadata: null,
+          timeline: [],
         },
         error: null,
       });
@@ -228,6 +230,7 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(insertedRow.metadata).toBeNull();
       // skills (jsonb) is normalized from JSON-stringified to a native array.
       expect(insertedRow.skills).toEqual([]);
+      expect(insertedRow.timeline).toEqual([]);
       expect(insertedRow.created_at).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(insertedRow.updated_at).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(insertedRow.last_status_update).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -250,6 +253,7 @@ describe('createSupabaseApplicationsRepository', () => {
         skills: ['js', 'ts'],
         preferredSkills: ['storybook'],
         metadata: { source: 'manual' },
+        timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' }],
       });
 
       const row = callsOf(calls, 'insert')[0].args[0];
@@ -261,6 +265,10 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(row.preferred_skills).toEqual(['storybook']);
       expect(typeof row.metadata).toBe('object');
       expect(row.metadata).toEqual({ source: 'manual' });
+      expect(Array.isArray(row.timeline)).toBe(true);
+      expect(row.timeline).toEqual([
+        { id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' },
+      ]);
     });
 
     it('throws on PostgREST error', async () => {
@@ -294,6 +302,23 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(updatedRow).not.toHaveProperty('user_id');
       expect(updatedRow.notes).toBe('updated');
       expect(updatedRow.updated_at).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('passes timeline to PostgREST as an array on update', async () => {
+      const { client, calls } = makeClient({
+        data: { id: 1, timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: '' }] },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.update(1, {
+        timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: '' }],
+      });
+
+      const updatedRow = callsOf(calls, 'update')[0].args[0];
+      expect(updatedRow.timeline).toEqual([
+        { id: 1, date: '2026-05-21', status: 'applied', text: '' },
+      ]);
     });
 
     it('scopes UPDATE by id AND user_id', async () => {

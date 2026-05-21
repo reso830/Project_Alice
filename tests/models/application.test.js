@@ -186,6 +186,55 @@ describe('normalizeApplication', () => {
 
     expect(record.salary).toBe(150000);
   });
+
+  it('admits and deep-copies timeline entries', () => {
+    const timeline = [
+      { id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' },
+    ];
+    const record = normalizeApplication(validRecord({ timeline }));
+
+    expect(record.timeline).toEqual(timeline);
+    expect(record.timeline).not.toBe(timeline);
+    expect(record.timeline[0]).not.toBe(timeline[0]);
+  });
+
+  it('synthesizes a timeline when the persisted timeline is empty', () => {
+    const record = normalizeApplication(validRecord({
+      applicationDate: '2026-05-01',
+      lastStatusUpdate: '2026-05-10',
+      status: 'interview',
+      timeline: [],
+    }));
+
+    expect(record.timeline).toEqual([
+      { id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted application.' },
+      { id: 2, date: '2026-05-10', status: 'interview', text: '' },
+    ]);
+  });
+});
+
+describe('validateApplication timeline validation', () => {
+  it('coerces non-array timeline values to an empty array', () => {
+    const record = validateApplication(validRecord({ timeline: 'bad' }));
+
+    expect(record.timeline).toEqual([]);
+    expect(record._corrupt).toBeUndefined();
+  });
+
+  it('marks malformed timeline entries as corrupt', () => {
+    expect(validateApplication(validRecord({
+      timeline: [{ id: 0, date: '2026-05-01', status: 'applied', text: '' }],
+    }))._corrupt).toBe(true);
+    expect(validateApplication(validRecord({
+      timeline: [{ id: 1, date: '2026/05/01', status: 'applied', text: '' }],
+    }))._corrupt).toBe(true);
+    expect(validateApplication(validRecord({
+      timeline: [{ id: 1, date: '2026-05-01', status: 'unknown', text: '' }],
+    }))._corrupt).toBe(true);
+    expect(validateApplication(validRecord({
+      timeline: [{ id: 1, date: '2026-05-01', status: 'applied', text: null }],
+    }))._corrupt).toBe(true);
+  });
 });
 
 describe('STATUS_CONFIG', () => {

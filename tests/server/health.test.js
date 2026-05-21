@@ -101,7 +101,7 @@ describe('assertHostedSchema', () => {
       const original = process.env.SKIP_HOSTED_SCHEMA_CHECK;
       process.env.SKIP_HOSTED_SCHEMA_CHECK = '1';
       try {
-        setupClient([{ error: null }, { error: null }, { error: null }]);
+        setupClient([{ error: null }, { error: null }, { error: null }, { error: null }]);
         await assertHostedSchema({
           isHosted: true,
           supabase: { url: 'https://x.supabase.co', anonKey: 'k' },
@@ -138,9 +138,10 @@ describe('assertHostedSchema', () => {
   });
 
   describe('successful boot', () => {
-    it('resolves silently and logs info when all three probes return 200', async () => {
+    it('resolves silently and logs info when all probes return 200', async () => {
       const logger = makeLogger();
       const { fromCalls } = setupClient([
+        { error: null },
         { error: null },
         { error: null },
         { error: null },
@@ -150,7 +151,7 @@ describe('assertHostedSchema', () => {
         assertHostedSchema(hostedConfig(), { logger }),
       ).resolves.toBeUndefined();
 
-      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state']);
+      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state', 'applications']);
       expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringMatching(/all probes passed/),
@@ -158,7 +159,7 @@ describe('assertHostedSchema', () => {
     });
 
     it('constructs the anon-key client without auth session persistence', async () => {
-      setupClient([{ error: null }, { error: null }, { error: null }]);
+      setupClient([{ error: null }, { error: null }, { error: null }, { error: null }]);
       await assertHostedSchema(hostedConfig());
 
       expect(createClient).toHaveBeenCalledWith(
@@ -218,6 +219,19 @@ describe('assertHostedSchema', () => {
       ).rejects.toThrow(/public\.user_seed_state\b/);
     });
 
+    it('throws on 42703 for applications.timeline with the 025 quickstart hint', async () => {
+      setupClient([
+        { error: null },
+        { error: null },
+        { error: null },
+        { error: { code: '42703', message: 'column timeline does not exist' } },
+      ]);
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(/applications\.timeline.*specs\/025-application-timeline\/quickstart\.md/s);
+    });
+
     it('does NOT fail on 42703 for user_seed_state (contract: only table-missing triggers hard fail)', async () => {
       // user_id is the PK on user_seed_state, so 42703 is implausible; if
       // it happens, treat as transient/unknown and continue.
@@ -226,6 +240,7 @@ describe('assertHostedSchema', () => {
         { error: null },
         { error: null },
         { error: { code: '42703', message: 'unusual: user_id missing on user_seed_state' } },
+        { error: null },
       ]);
 
       await expect(
@@ -254,6 +269,7 @@ describe('assertHostedSchema', () => {
         { error: { code: 'XX000', message: 'PostgREST transient' } },
         { error: null },
         { error: null },
+        { error: null },
       ]);
 
       await expect(
@@ -271,6 +287,7 @@ describe('assertHostedSchema', () => {
         { error: { message: 'fetch failed' } },
         { error: null },
         { error: null },
+        { error: null },
       ]);
 
       await expect(
@@ -286,12 +303,13 @@ describe('assertHostedSchema', () => {
         { error: { code: 'XX000', message: 'transient' } },
         { error: null },
         { error: null },
+        { error: null },
       ]);
 
       await assertHostedSchema(hostedConfig(), { logger });
 
       // All three probes ran despite the first one's soft failure.
-      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state']);
+      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state', 'applications']);
     });
   });
 

@@ -129,6 +129,29 @@ describe('createSchema', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('accepts a valid timeline array', () => {
+    const result = createSchema.safeParse(validPayload({
+      timeline: [
+        { id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' },
+      ],
+    }));
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects malformed timeline payloads', () => {
+    expectFieldError(validPayload({
+      timeline: [{ date: '2026-05-21', status: 'applied', text: '' }],
+    }), 'timeline');
+    expectFieldError(validPayload({
+      timeline: [{ id: 1, date: '2026/05/21', status: 'applied', text: '' }],
+    }), 'timeline');
+    expectFieldError(validPayload({
+      timeline: [{ id: 1, date: '2026-05-21', status: 'unknown', text: '' }],
+    }), 'timeline');
+    expectFieldError(validPayload({ timeline: 'not-array' }), 'timeline');
+  });
 });
 
 describe('updateSchema', () => {
@@ -202,5 +225,20 @@ describe('updateSchema', () => {
   it('coerces null favorite updates to false and accepts archive updates', () => {
     expect(updateSchema.parse({ fav: null })).toEqual({ fav: false });
     expect(updateSchema.parse({ archived: true })).toEqual({ archived: true });
+  });
+
+  it('accepts valid timeline updates and rejects invalid entry ids', () => {
+    expect(updateSchema.parse({
+      timeline: [{ id: 1, date: '2026-06-20', status: 'phone_screen', text: 'Callback.' }],
+    })).toEqual({
+      timeline: [{ id: 1, date: '2026-06-20', status: 'phone_screen', text: 'Callback.' }],
+    });
+
+    const result = updateSchema.safeParse({
+      timeline: [{ id: 0, date: '2026-06-20', status: 'phone_screen', text: '' }],
+    });
+
+    expect(result.success).toBe(false);
+    expect(toApiError(result.error).timeline).toEqual(expect.any(String));
   });
 });

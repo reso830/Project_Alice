@@ -93,6 +93,16 @@ export const TRANSITIONS = {
 
 export const TERMINAL_STATES = new Set(['accepted', 'rejected', 'withdrawn', 'ghosted']);
 
+const TIMELINE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * @typedef {Object} TimelineEntry
+ * @property {number} id
+ * @property {string} date
+ * @property {string} status
+ * @property {string} text
+ */
+
 export function getValidTransitions(status) {
   return [...(TRANSITIONS[status] ?? [])];
 }
@@ -116,6 +126,52 @@ function isValidUrl(value) {
   } catch {
     return false;
   }
+}
+
+export function allocateTimelineEntryId(timeline) {
+  if (!Array.isArray(timeline) || timeline.length === 0) {
+    return 1;
+  }
+
+  return Math.max(0, ...timeline.map((entry) => entry.id)) + 1;
+}
+
+export function sortTimelineEntries(timeline) {
+  return [...(Array.isArray(timeline) ? timeline : [])].sort((a, b) => {
+    if (a.date !== b.date) {
+      return a.date < b.date ? 1 : -1;
+    }
+    return b.id - a.id;
+  });
+}
+
+export function synthesizeTimelineFromDates(record) {
+  if (!STATUS_VALUES.includes(record.status) || !isValidISODate(record.lastStatusUpdate)) {
+    return [];
+  }
+
+  if (isValidISODate(record.applicationDate)) {
+    if (record.status === 'applied') {
+      return [
+        { id: 1, date: record.applicationDate, status: 'applied', text: 'Submitted application.' },
+      ];
+    }
+
+    if (record.lastStatusUpdate !== record.applicationDate) {
+      return [
+        { id: 1, date: record.applicationDate, status: 'applied', text: 'Submitted application.' },
+        { id: 2, date: record.lastStatusUpdate, status: record.status, text: '' },
+      ];
+    }
+
+    return [
+      { id: 1, date: record.applicationDate, status: record.status, text: '' },
+    ];
+  }
+
+  return [
+    { id: 1, date: record.lastStatusUpdate, status: record.status, text: '' },
+  ];
 }
 
 function clampCompat(value) {
@@ -152,6 +208,16 @@ export function normalizeApplication(record) {
 
   if (!Array.isArray(normalized.preferredSkills)) {
     normalized.preferredSkills = [];
+  }
+
+  if (!Array.isArray(normalized.timeline)) {
+    normalized.timeline = [];
+  }
+
+  if (normalized.timeline.length === 0) {
+    normalized.timeline = synthesizeTimelineFromDates(normalized);
+  } else {
+    normalized.timeline = normalized.timeline.map((entry) => ({ ...entry }));
   }
 
   if (!Number.isInteger(normalized.salary) || normalized.salary <= 0) {
@@ -200,6 +266,18 @@ export function validateApplication(record) {
 
   if (!Array.isArray(validated.skills)) {
     validated.skills = [];
+  }
+
+  if (!Array.isArray(validated.timeline)) {
+    validated.timeline = [];
+  } else if (validated.timeline.some((entry) => (
+    !isPositiveInteger(entry.id)
+      || typeof entry.date !== 'string'
+      || !TIMELINE_DATE_PATTERN.test(entry.date)
+      || !STATUS_VALUES.includes(entry.status)
+      || typeof entry.text !== 'string'
+  ))) {
+    validated._corrupt = true;
   }
 
   if (typeof validated.fav !== 'boolean') {

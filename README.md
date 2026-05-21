@@ -8,6 +8,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
 - **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
 - **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
+- **Application Timeline** — detail overlays show a chronological Timeline with inline add, edit, delete, automatic status-change entries, and future-dated reminders
 - **Status workflow** — nine states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Rejected → Withdrawn → Ghosted)
 - **Quick filters & sort** — filter by Status, Salary range, Compatibility range, Company, Favorites, Shift, Work Setup, and Location; stack multiple filters with AND logic; sort by Job ID, Status, Compatibility, Salary, or Company; filter state persists across reloads
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
@@ -209,7 +210,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.11.1** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.12.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -245,6 +246,8 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 - [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) — local two-agent AI pipeline reference
 - [docs/features/](docs/features/) — feature briefs that seed Speckit specs
 - [docs/design/](docs/design/) — visual and UX design notes
+- [specs/025-application-timeline/](specs/025-application-timeline/) — Application Timeline specification package
+- [docs/design/application_timeline.md](docs/design/application_timeline.md) — Application Timeline interaction and visual design
 - [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
 - [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
 - [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup

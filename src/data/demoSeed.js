@@ -23,6 +23,112 @@ import { toISODate } from '../utils/date.js';
 // `server/seeds/` (which would cross the client/server boundary).
 // 23 entries, one per record in DEMO_RECORDS order. `null` for
 // `applicationDate` rows that have no applicationDate in the SQLite seed.
+const SOURCE_TIMELINES = [
+  [
+    { id: 1, date: '2026-04-10', status: 'applied', text: 'Submitted application through LinkedIn.' },
+    { id: 2, date: '2026-04-12', status: 'applied', text: 'Jane confirmed the profile is moving to hiring review.' },
+  ],
+  [
+    { id: 1, date: '2026-03-28', status: 'applied', text: 'Applied after Indeed recruiter outreach.' },
+    { id: 2, date: '2026-04-04', status: 'phone_screen', text: 'Recruiter screen covered backend scope and on-site expectations.' },
+    { id: 3, date: '2026-04-18', status: 'interview', text: 'Panel interview scheduled for next week.' },
+    { id: 4, date: '2026-04-30', status: 'interview', text: 'Follow-up reminder: send prep questions before the panel.' },
+  ],
+  [
+    { id: 1, date: '2026-03-15', status: 'applied', text: 'Referral submitted by Maria.' },
+    { id: 2, date: '2026-03-22', status: 'phone_screen', text: 'Recruiter screen went well; startup pace confirmed.' },
+    { id: 3, date: '2026-04-02', status: 'interview', text: 'Technical interview focused on product launch tradeoffs.' },
+    { id: 4, date: '2026-04-16', status: 'offer', text: 'Verbal offer received with May 1 decision deadline.' },
+    { id: 5, date: '2026-04-28', status: 'accepted', text: 'Acceptance call tentatively booked after compensation review.' },
+  ],
+  [
+    { id: 1, date: '2026-04-14', status: 'applied', text: 'Applied through company website.' },
+    { id: 2, date: '2026-04-20', status: 'phone_screen', text: 'HR call complete; waiting for technical screen invite.' },
+  ],
+  [
+    { id: 1, date: '2026-04-05', status: 'applied', text: 'Applied for ML role via LinkedIn.' },
+    { id: 2, date: '2026-04-12', status: 'phone_screen', text: 'Priya described recommendation-engine roadmap.' },
+    { id: 3, date: '2026-04-19', status: 'assessment', text: 'Take-home assessment assigned; due 2026-04-30.' },
+  ],
+  [],
+  [
+    { id: 1, date: '2026-03-10', status: 'applied', text: 'Applied as a platform backup option.' },
+    { id: 2, date: '2026-03-17', status: 'phone_screen', text: 'Recruiter asked about Java depth.' },
+    { id: 3, date: '2026-04-01', status: 'rejected', text: 'Rejected; role required more Java experience.' },
+  ],
+  [
+    { id: 1, date: '2026-03-05', status: 'applied', text: 'Submitted through the company careers site.' },
+    { id: 2, date: '2026-03-12', status: 'phone_screen', text: 'Alex confirmed fintech reliability scope.' },
+    { id: 3, date: '2026-03-22', status: 'interview', text: 'Onsite interview completed.' },
+    { id: 4, date: '2026-03-29', status: 'interview', text: 'Followed up after one week with no response.' },
+    { id: 5, date: '2026-04-05', status: 'ghosted', text: 'Marked ghosted after second follow-up and no response.' },
+  ],
+  [
+    { id: 1, date: '2026-03-20', status: 'applied', text: 'Referral submitted for React role.' },
+    { id: 2, date: '2026-04-23', status: 'withdrawn', text: 'Withdrew after Gamma Digital offer became stronger.' },
+  ],
+  [
+    { id: 1, date: '2026-04-08', status: 'applied', text: 'Exploratory management application submitted.' },
+  ],
+  [
+    { id: 1, date: '2026-04-02', status: 'applied', text: 'Submitted SRE application.' },
+    { id: 2, date: '2026-04-09', status: 'phone_screen', text: 'Recruiter outreach from Dana; incident-response fit discussed.' },
+    { id: 3, date: '2026-04-21', status: 'interview', text: 'Onsite scheduled for reliability and system design.' },
+    { id: 4, date: '2026-04-29', status: 'interview', text: 'Future onsite reminder: review incident postmortems.' },
+  ],
+  [
+    { id: 1, date: '2026-04-16', status: 'applied', text: 'Applied via AngelList.' },
+    { id: 2, date: '2026-04-24', status: 'phone_screen', text: 'Recruiter screen done; Swift depth is the stretch area.' },
+  ],
+  [
+    { id: 1, date: '2026-04-09', status: 'applied', text: 'Applied for data engineering role.' },
+    { id: 2, date: '2026-04-16', status: 'phone_screen', text: 'Omar explained SQL and Python assessment format.' },
+    { id: 3, date: '2026-04-22', status: 'assessment', text: 'Technical assessment opened; three-hour window.' },
+    { id: 4, date: '2026-04-28', status: 'assessment', text: 'Follow-up reminder: submit take-home before deadline.' },
+  ],
+  [
+    { id: 1, date: '2026-04-25', status: 'wishlisted', text: 'Wishlisted dream staff role for later review.' },
+  ],
+  [
+    { id: 1, date: '2026-04-17', status: 'applied', text: 'Applied as a backup enterprise Java option.' },
+  ],
+  [
+    { id: 1, date: '2026-03-18', status: 'applied', text: 'Applied despite embedded experience gap.' },
+    { id: 2, date: '2026-04-03', status: 'rejected', text: 'Rejected; C/C++ embedded depth was below requirement.' },
+  ],
+  [
+    { id: 1, date: '2026-03-25', status: 'applied', text: 'Referral application submitted.' },
+    { id: 2, date: '2026-04-10', status: 'withdrawn', text: 'Withdrew after salary and on-site details landed.' },
+  ],
+  [
+    { id: 1, date: '2026-03-12', status: 'applied', text: 'Applied for cloud architecture track.' },
+    { id: 2, date: '2026-03-21', status: 'phone_screen', text: 'Rachel reviewed AWS migration background.' },
+    { id: 3, date: '2026-04-04', status: 'interview', text: 'Architecture interview covered network segmentation.' },
+    { id: 4, date: '2026-04-20', status: 'offer', text: 'Offer received; useful for negotiation.' },
+  ],
+  [
+    { id: 1, date: '2026-03-22', status: 'applied', text: 'Applied through security careers page.' },
+    { id: 2, date: '2026-03-30', status: 'interview', text: 'Technical screen completed.' },
+    { id: 3, date: '2026-04-06', status: 'interview', text: 'Followed up once after no response.' },
+    { id: 4, date: '2026-04-10', status: 'ghosted', text: 'Marked ghosted after silence from Victor.' },
+  ],
+  [
+    { id: 1, date: '2026-04-18', status: 'applied', text: 'Applied through AngelList.' },
+    { id: 2, date: '2026-04-24', status: 'phone_screen', text: 'Nadia recruiter screen covered Series B pace.' },
+  ],
+  [
+    { id: 1, date: '2026-04-01', status: 'applied', text: 'Applied for client-facing solutions role.' },
+    { id: 2, date: '2026-04-11', status: 'phone_screen', text: 'Recruiter outreach clarified travel expectations.' },
+    { id: 3, date: '2026-04-19', status: 'interview', text: 'Technical discovery interview scheduled.' },
+  ],
+  [
+    { id: 1, date: '2026-04-21', status: 'applied', text: 'Applied to broaden the network engineering pipeline.' },
+  ],
+  [
+    { id: 1, date: '2026-04-26', status: 'wishlisted', text: 'Wishlisted recently posted frontend architecture role.' },
+  ],
+];
+
 const SOURCE_RECORDS = [
   {
     companyName: 'Acme Corp',
@@ -654,7 +760,14 @@ function shiftDates(records) {
   const offsetMs = todayMs - maxOriginalMs;
 
   return records.map((record, index) => {
-    const shifted = { ...record, id: index + 1 };
+    const shifted = {
+      ...record,
+      id: index + 1,
+      timeline: SOURCE_TIMELINES[index].map((entry) => ({
+        ...entry,
+        date: toISODate(new Date(parseISODate(entry.date).getTime() + offsetMs)),
+      })),
+    };
     shifted.lastStatusUpdate = toISODate(
       new Date(parseISODate(record.lastStatusUpdate).getTime() + offsetMs),
     );

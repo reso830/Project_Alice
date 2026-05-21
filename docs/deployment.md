@@ -36,9 +36,17 @@ via the Supabase dashboard's **SQL Editor** before deploying a v0.9.0+
 build to hosted mode. The block is idempotent (`CREATE TABLE IF NOT
 EXISTS` + `DROP POLICY IF EXISTS`) and safe to re-run.
 
+Feature **025-application-timeline** adds an additive `timeline jsonb`
+column and v2 of `claim_and_seed_starter()` so new hosted users receive
+starter applications with populated Timelines. Apply
+[`specs/025-application-timeline/quickstart.md`](../specs/025-application-timeline/quickstart.md)
+after the 019 schema block and before promoting a v0.12.0+ hosted
+deploy.
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
-probes against `applications`, `profile`, and `user_seed_state`. If the
+probes against `applications` (including `applications.timeline`),
+`profile`, and `user_seed_state`. If the
 migration has not been applied:
 - The server logs a descriptive error naming the missing column or
   table (e.g. `[hosted-schema] missing artifact: public.applications.user_id`).
@@ -142,6 +150,9 @@ ordered procedure and the pass/fail framing.
      `claim_and_seed_starter()` RPC.
    - [ ] The block uses `CREATE TABLE IF NOT EXISTS` /
      `DROP POLICY IF EXISTS` and is safe to re-run.
+   - [ ] For v0.12.0+ hosted deploys, apply the 025 Timeline migration
+     and starter-RPC v2 body from
+     [`specs/025-application-timeline/quickstart.md`](../specs/025-application-timeline/quickstart.md).
 
 3. **Install the allowlist trigger.**
    - [ ] Follow
