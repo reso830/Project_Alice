@@ -115,7 +115,11 @@ export function render() {
     createBrand(),
     rule,
     createSection('VERSION', [APP_VERSION, 'Built May 2026']),
-    createSection('STACK', ['Vanilla JS \u00b7 Vite', 'Vitest \u00b7 ESLint']),
+    createSection('STACK', [
+      'Vanilla JS \u00b7 Vite',
+      'Vercel \u00b7 Supabase',
+      'Vitest \u00b7 ESLint \u00b7 Speckit',
+    ]),
     createFeedback(),
     createLicense(),
     createText(

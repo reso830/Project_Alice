@@ -68,6 +68,27 @@ function createApplication(id, overrides = {}) {
 }
 
 describe('Tracker quick filter toolbar integration', () => {
+  it('shows application skeleton cards while the application list is loading', async () => {
+    const container = document.createElement('main');
+    let resolveApplications;
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockReturnValue(new Promise((resolve) => {
+      resolveApplications = resolve;
+    }));
+
+    const mountPromise = Tracker.mount(container);
+
+    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+    expect(container.querySelectorAll('.skeleton-card')).toHaveLength(3);
+    expect(container.querySelector('.loading-skeleton')?.getAttribute('aria-busy')).toBe('true');
+
+    resolveApplications([]);
+    await mountPromise;
+
+    expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
+  });
+
   it('renders a mobile FAB that uses the same add-application callback surface as the toolbar', async () => {
     const container = document.createElement('main');
 
@@ -150,6 +171,15 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(mainCss).toContain('--z-modal: 300;');
     expect(mainCss).toMatch(
       /\.modal-backdrop \{\r?\n  position: fixed;\r?\n  inset: 0;\r?\n  z-index: var\(--z-modal\);/,
+    );
+  });
+
+  it('disables skeleton shimmer when reduced motion is requested', () => {
+    expect(mainCss).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.skeleton-line,[\s\S]*animation: none !important;/,
+    );
+    expect(mainCss).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.skeleton-line \{[\s\S]*background: #ECE7DF !important;/,
     );
   });
 

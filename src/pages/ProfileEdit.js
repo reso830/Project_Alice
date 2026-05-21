@@ -100,7 +100,7 @@ function updateControlsState() {
   }
 }
 
-function createField(label, value = '', multiline = false, { required = false } = {}) {
+function createField(label, value = '', multiline = false, { required = false, placeholder = '' } = {}) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
   const input = document.createElement(multiline ? 'textarea' : 'input');
@@ -111,6 +111,7 @@ function createField(label, value = '', multiline = false, { required = false } 
   }
   input.className = 'edit-field__control';
   input.value = value ?? '';
+  input.placeholder = placeholder;
   if (multiline) {
     input.rows = 6;
   } else {
@@ -646,8 +647,11 @@ function buildCertificationsForm(formEl, initial = {}) {
   const name = createField('Certification Name', initial.name ?? '', false, { required: true });
   const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
   const certificateId = createField('Certificate ID', initial.certificateId ?? '');
-  const issuanceDate = createField('Issuance Date', initial.issuanceDate ?? '', false, { required: true });
-  const expiryDate = createField('Expiry Date', initial.expiryDate ?? '');
+  const issuanceDate = createField('Issuance Date', initial.issuanceDate ?? '', false, {
+    required: true,
+    placeholder: 'MM/YYYY',
+  });
+  const expiryDate = createField('Expiry Date', initial.expiryDate ?? '', false, { placeholder: 'MM/YYYY' });
   const dateRow = createElement('div', 'inline-entry-form__row inline-entry-form__row--two');
   const fields = { name, issuingBody, certificateId, issuanceDate, expiryDate };
   const snapshot = JSON.stringify(getFormData(fields));
@@ -719,7 +723,10 @@ function renderCertificationsCard(page) {
 function buildEducationForm(formEl, initial = {}) {
   const degreeMajor = createField('Degree & Major', initial.degreeMajor ?? '', false, { required: true });
   const university = createField('University', initial.university ?? '', false, { required: true });
-  const yearCompleted = createField('Year Completed', initial.yearCompleted ?? '', false, { required: true });
+  const yearCompleted = createField('Year Completed', initial.yearCompleted ?? '', false, {
+    required: true,
+    placeholder: 'YYYY',
+  });
   const fields = { degreeMajor, university, yearCompleted };
   const snapshot = JSON.stringify(getFormData(fields));
 
@@ -790,8 +797,14 @@ function buildExperienceForm(formEl, initial = {}) {
   const role = createField('Role', initial.role ?? '', false, { required: true });
   const company = createField('Company', initial.company ?? '', false, { required: true });
   const responsibilities = createField('Responsibilities', initial.responsibilities ?? '', true, { required: true });
-  const dateStarted = createField('Date Started', initial.dateStarted ?? '', false, { required: true });
-  const dateEnded = createField('Date Ended', initial.dateEnded ?? '', false, { required: true });
+  const dateStarted = createField('Date Started', initial.dateStarted ?? '', false, {
+    required: true,
+    placeholder: 'MM/YYYY',
+  });
+  const dateEnded = createField('Date Ended', initial.dateEnded ?? '', false, {
+    required: true,
+    placeholder: 'MM/YYYY',
+  });
   const currentWorkWrapper = createElement('label', 'edit-field');
   const currentWorkLabel = createElement('span', 'edit-field__label', 'Current Work');
   const currentWork = document.createElement('input');
@@ -969,7 +982,7 @@ function buildAwardsForm(formEl, initial = {}) {
   const awardName = createField('Award Name', initial.awardName ?? '', false, { required: true });
   const issuingBody = createField('Issuing Body', initial.issuingBody ?? '', false, { required: true });
   const details = createField('Details', initial.details ?? '', true);
-  const date = createField('Date', initial.date ?? '');
+  const date = createField('Date', initial.date ?? '', false, { placeholder: 'MM/YYYY' });
   const fields = { awardName, issuingBody, details, date };
   const snapshot = JSON.stringify(getFormData(fields));
 

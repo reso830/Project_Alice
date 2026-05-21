@@ -37,6 +37,27 @@ function getSubsection(container, label) {
 }
 
 describe('Profile page', () => {
+  it('shows profile skeleton sections while profile data is loading', async () => {
+    const container = document.createElement('main');
+    let resolveProfile;
+
+    api.getProfile.mockReturnValue(new Promise((resolve) => {
+      resolveProfile = resolve;
+    }));
+    api.getAll.mockResolvedValue([]);
+
+    const mountPromise = Profile.mount(container, { navigate: vi.fn() });
+
+    expect(container.querySelector('.loading-skeleton--profile')).not.toBeNull();
+    expect(container.querySelectorAll('.skeleton-line').length).toBeGreaterThan(3);
+    expect(container.querySelector('.loading-skeleton')?.getAttribute('aria-busy')).toBe('true');
+
+    resolveProfile(null);
+    await mountPromise;
+
+    expect(container.querySelector('.loading-skeleton--profile')).toBeNull();
+  });
+
   it('scopes desktop application stat chips to a two-column grid', () => {
     const css = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
 

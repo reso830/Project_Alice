@@ -1,4 +1,4 @@
-// Auth modal — design/welcome_page.md §4.6
+// Auth modal — docs/design/welcome_page.md §4.6
 //
 // Phase 17 restyle: drops the tab strip; adds a header row (40px Alice
 // mark + title + close), a footer block (submit lives in the form, then

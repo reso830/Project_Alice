@@ -1,5 +1,5 @@
 // Scene 3 — Profile donut (`SceneProfile`)
-// design/welcome_page.md §4.4
+// docs/design/welcome_page.md §4.4
 //
 // Flex column with generous default spacing; centered/tablet is compacted in CSS.
 // Top row: 4 stat chips. Bottom row: donut plus 2-column legend.

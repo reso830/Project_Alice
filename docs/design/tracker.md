@@ -270,7 +270,7 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 
 ### Detail Modal (Edit / Create)
 
-> Full spec: [`design/application_overlay.md`](application_overlay.md)
+> Full spec: [`docs/design/application_overlay.md`](application_overlay.md)
 
 - Overlay: `rgba(0,0,0,.55)` + `backdrop-filter: blur(4px)`; body scroll locked while open; `z-index: var(--z-modal)` (300)
 - Entrance: scale `0.97→1` + `translateY(8px→0)` + fade in, 200ms ease
@@ -313,7 +313,7 @@ The Top Bar's right-side cluster is the canonical surface for the signed-in user
 | Email | Identity readout | Truncates at 220px on desktop; hidden on mobile |
 | Sign-out button | Ends the session | Icon-only on mobile; icon + label on desktop |
 
-When signed out, the identity cluster is **not rendered** on the Tracker — unauthenticated visitors are routed to the Welcome page instead (see `design/welcome_page.md`), which is the sole sign-in surface. The Tracker chrome therefore only ever renders the cluster in its signed-in form.
+When signed out, the identity cluster is **not rendered** on the Tracker — unauthenticated visitors are routed to the Welcome page instead (see `docs/design/welcome_page.md`), which is the sole sign-in surface. The Tracker chrome therefore only ever renders the cluster in its signed-in form.
 
 The user's `email` is the only identity field shown in chrome. Avatar, display name, and account dropdown are deferred.
 
@@ -414,6 +414,6 @@ Mobile bottom-tab icons:
 | Field | Type | Notes |
 |---|---|---|
 | `email` | String | Displayed in top-bar identity cluster (desktop only); truncated at 220px via CSS `max-width` |
-| `signedIn` | Boolean | When `true`, the identity cluster renders (email + sign-out). When `false`, the cluster is **not rendered** — unauthenticated visitors never reach the Tracker; they're routed to the Welcome page (see `design/welcome_page.md`). The Tracker chrome has no signed-out "Sign in" affordance. |
+| `signedIn` | Boolean | When `true`, the identity cluster renders (email + sign-out). When `false`, the identity cluster is **not rendered** — unauthenticated visitors never reach the Tracker; they're routed to the Welcome page (see `docs/design/welcome_page.md`). The Tracker chrome has no signed-out "Sign in" affordance. |
 
 > Auth flow (sign-in, sign-up, password reset, gated routes) is owned by feature 018 (`specs/018-auth-user-access/spec.md`).

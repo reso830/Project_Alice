@@ -1,5 +1,5 @@
 // Scene 4 — Big logo (`SceneLogo`)
-// design/welcome_page.md §4.4
+// docs/design/welcome_page.md §4.4
 //
 // Alice_White.png floating with a 6s `scene-logo-float` ease-in-out loop and
 // randomized gold sparkle stars (2.4s `scene-sparkle` scale/fade loop,

@@ -989,7 +989,7 @@ function Run-CodexPrReview {
 
 switch ($Action) {
     "spec" {
-        if ([string]::IsNullOrWhiteSpace($FeatureBrief)) { throw "Feature brief path is required. Example: ./scripts/ai-flow.ps1 spec profile-page-improvements features/profile-page-improvements.md -DesignDoc design/profile_page.md" }
+        if ([string]::IsNullOrWhiteSpace($FeatureBrief)) { throw "Feature brief path is required. Example: ./scripts/ai-flow.ps1 spec profile-page-improvements docs/features/profile-page-improvements.md -DesignDoc docs/design/profile_page.md" }
         Initialize-FeatureContext -AllowMissingSpec
         Run-Claude -Prompt (Load-Prompt -TemplateName "claude-specify" -FeatureBrief $FeatureBrief -DesignDoc $DesignDoc) -LogFile (Join-Path $BootstrapLogDir "$FeatureName-01-claude-specify-$(Get-Date -Format "yyyyMMdd-HHmmss").log")
         Initialize-FeatureContext
