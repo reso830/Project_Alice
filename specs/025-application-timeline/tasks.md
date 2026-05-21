@@ -1814,7 +1814,7 @@ For the hosted path, point a Vercel preview at a Supabase project
 that has the additive migration AND the updated
 `claim_and_seed_starter()` body applied.
 
-### [ ] Task 11.1 — US1: Collapsed Timeline preview
+### [X] Task 11.1 — US1: Collapsed Timeline preview
 
 Walk the spec.md US1 Independent Test in the browser:
 
@@ -1829,7 +1829,7 @@ further interaction.
 
 ---
 
-### [ ] Task 11.2 — US2 + US5: Add a Timeline entry inline (incl. future-dated)
+### [X] Task 11.2 — US2 + US5: Add a Timeline entry inline (incl. future-dated)
 
 Walk the spec.md US2 Independent Test:
 
@@ -1845,7 +1845,7 @@ Pass criteria: spec US2 acceptance scenarios 1–4 pass.
 
 ---
 
-### [ ] Task 11.3 — US3: Auto-entry on status change
+### [X] Task 11.3 — US3: Auto-entry on status change
 
 Walk the spec.md US3 Independent Test:
 
@@ -1862,7 +1862,7 @@ Pass criteria: spec US3 acceptance scenarios 1–3 pass.
 
 ---
 
-### [ ] Task 11.4 — US4: Edit an existing entry inline
+### [X] Task 11.4 — US4: Edit an existing entry inline
 
 Walk the spec.md US4 Independent Test:
 
@@ -1876,7 +1876,7 @@ Pass criteria: spec US4 acceptance scenarios 1–3 pass.
 
 ---
 
-### [ ] Task 11.5 — US5: Future-dated entry persists across reload
+### [X] Task 11.5 — US5: Future-dated entry persists across reload
 
 Walk the spec.md US5 Independent Test (US5 implementation is folded
 into Phase 04; this smoke task verifies the user-visible
@@ -1891,7 +1891,7 @@ Pass criteria: spec US5 acceptance scenarios 1–2 pass.
 
 ---
 
-### [ ] Task 11.6 — US6: Delete entries
+### [X] Task 11.6 — US6: Delete entries
 
 Walk the spec.md US6 Independent Test:
 
@@ -1903,7 +1903,7 @@ Pass criteria: spec US6 acceptance scenarios 1–2 pass.
 
 ---
 
-### [ ] Task 11.7 — US7: Seeded data variety
+### [X] Task 11.7 — US7: Seeded data variety
 
 Walk the spec.md US7 Independent Tests across all three seed
 sources:
@@ -1921,7 +1921,7 @@ Pass criteria: spec US7 acceptance scenarios 1–3 pass.
 
 ---
 
-### [ ] Task 11.8 — `accepted` status audit (visual)
+### [X] Task 11.8 — `accepted` status audit (visual)
 
 Walk the surfaces listed in Task 02.1 in a real browser:
 
@@ -1942,7 +1942,7 @@ correct color tokens.
 
 ---
 
-### [ ] Task 11.9 — Keyboard-only walk
+### [X] Task 11.9 — Keyboard-only walk
 
 With the keyboard alone (no mouse / trackpad):
 
@@ -1959,7 +1959,7 @@ and operable without a mouse.
 
 ---
 
-### [ ] Task 11.10 — Mobile layout (≤ 640px)
+### [X] Task 11.10 — Mobile layout (≤ 640px)
 
 Open DevTools at ≤ 640px (e.g., 375×812 iPhone profile):
 
@@ -1974,7 +1974,7 @@ interactions work with touch / click.
 
 ---
 
-### [ ] Task 11.11 — Modal footer pinning under tall Timeline
+### [X] Task 11.11 — Modal footer pinning under tall Timeline
 
 In a desktop viewport (1280×800 or similar):
 
