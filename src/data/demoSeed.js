@@ -749,6 +749,17 @@ function parseISODate(isoString) {
   return new Date(year, month - 1, day);
 }
 
+function attachSourceTimelines(records) {
+  if (records.length !== SOURCE_TIMELINES.length) {
+    throw new Error('Demo seed records and timelines must stay aligned.');
+  }
+
+  return records.map((record, index) => ({
+    ...record,
+    timeline: deepClone(SOURCE_TIMELINES[index]),
+  }));
+}
+
 function shiftDates(records) {
   // The shift anchors the most recent `lastStatusUpdate` in the SQLite
   // seed to today, preserving the relative spacing between all rows.
@@ -763,7 +774,7 @@ function shiftDates(records) {
     const shifted = {
       ...record,
       id: index + 1,
-      timeline: SOURCE_TIMELINES[index].map((entry) => ({
+      timeline: record.timeline.map((entry) => ({
         ...entry,
         date: toISODate(new Date(parseISODate(entry.date).getTime() + offsetMs)),
       })),
@@ -782,7 +793,7 @@ function shiftDates(records) {
 
 export function buildDemoSeed() {
   return {
-    applications: shiftDates(deepClone(SOURCE_RECORDS)),
+    applications: shiftDates(attachSourceTimelines(deepClone(SOURCE_RECORDS))),
     profile: deepClone(SOURCE_PROFILE),
   };
 }

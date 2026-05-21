@@ -152,6 +152,19 @@ describe('createSchema', () => {
     }), 'timeline');
     expectFieldError(validPayload({ timeline: 'not-array' }), 'timeline');
   });
+
+  it('rejects duplicate timeline ids and overlong entry text', () => {
+    expectFieldError(validPayload({
+      timeline: [
+        { id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' },
+        { id: 1, date: '2026-05-22', status: 'interview', text: 'Interviewed.' },
+      ],
+    }), 'timeline');
+
+    expectFieldError(validPayload({
+      timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'x'.repeat(501) }],
+    }), 'timeline');
+  });
 });
 
 describe('updateSchema', () => {
@@ -240,5 +253,20 @@ describe('updateSchema', () => {
 
     expect(result.success).toBe(false);
     expect(toApiError(result.error).timeline).toEqual(expect.any(String));
+  });
+
+  it('rejects duplicate timeline ids and overlong text on update', () => {
+    for (const timeline of [
+      [
+        { id: 1, date: '2026-06-20', status: 'applied', text: 'Submitted.' },
+        { id: 1, date: '2026-06-21', status: 'interview', text: 'Interviewed.' },
+      ],
+      [{ id: 1, date: '2026-06-20', status: 'applied', text: 'x'.repeat(501) }],
+    ]) {
+      const result = updateSchema.safeParse({ timeline });
+
+      expect(result.success).toBe(false);
+      expect(toApiError(result.error).timeline).toEqual(expect.any(String));
+    }
   });
 });

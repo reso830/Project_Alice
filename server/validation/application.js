@@ -55,10 +55,13 @@ const timelineEntry = z.object({
     (value) => STATUS_VALUES.includes(value),
     `Timeline entry status must be one of: ${STATUS_VALUES.join(', ')}`,
   ),
-  text: z.string(),
+  text: z.string().max(500, 'Timeline entry text must be 500 characters or fewer'),
 });
 
-const timeline = z.array(timelineEntry).optional();
+const timeline = z.array(timelineEntry).refine(
+  (entries) => new Set(entries.map((entry) => entry.id)).size === entries.length,
+  'Timeline entry ids must be unique',
+).optional();
 
 const status = z.string({
   error: 'Status is required',

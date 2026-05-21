@@ -13,7 +13,7 @@ let _expanded = false;
 let _onChange = null;
 let _currentStatus = null;
 let _addDate = toISODate();
-let _addStatus = 'wishlisted';
+let _addStatus = null;
 let _addText = '';
 let _pickerBackdrop = null;
 let _pickerPanel = null;
@@ -545,7 +545,7 @@ export function render(draft, { currentStatus, onChange } = {}) {
   _draft = draft;
   _currentStatus = currentStatus;
   _onChange = onChange;
-  _addStatus = _addStatus || currentStatus || 'wishlisted';
+  _addStatus = currentStatus || 'wishlisted';
 
   const wrapper = document.createElement('div');
   wrapper.className = 'modal-field modal-field--full';

@@ -63,13 +63,13 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 |------|---------|
 | `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers |
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
-| `shared/constants.js` | `STATUS_VALUES` — 9 status strings shared between frontend and backend |
+| `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
 
 **Application fields (required):** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `responsibilities`
 
 **Application fields (optional):** `compat` (0–100), `skills[]`, `preferredSkills[]`, `fav` (starred), `jobPostingUrl`, `recruiter`, `salary`, `location`, `shift`, `workSetup`, `compatNotes`, `generalNotes`
 
-**Status values:** `wishlisted → applied → phone_screen → interview → assessment → offer → rejected / withdrawn / ghosted`
+**Status values:** `wishlisted → applied → phone_screen → interview → assessment → offer → accepted / rejected / withdrawn / ghosted`
 
 ---
 
@@ -79,7 +79,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 |------|---------|
 | `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only |
 | `api/index.js` | Vercel serverless entry — lazy-imports the seed middleware in hosted mode; passes `config` + dispatcher + seed middleware into `createApp` |
-| `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; three PostgREST sentinel probes against `applications`, `profile`, `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
+| `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; PostgREST sentinel probes against `applications` (including `applications.timeline`), `profile`, and `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
 | `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises) |
 | `server/routes/profile.js` | Profile route handlers — same `{ repos, requireAuth, seedHostedUserIfNeeded }` shape |
 | `server/routes/resume.js` | Resume parse handler — `{ requireAuth, seedHostedUserIfNeeded }`; doesn't consume repos but mounts seed so a hosted user's first action via resume upload still seeds |
