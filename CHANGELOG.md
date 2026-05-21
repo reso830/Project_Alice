@@ -38,6 +38,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   overlay. No data was removed.
   (025-application-timeline)
 
+### Fixed
+
+- Timeline normalization now preserves an explicit empty array
+  (`timeline: []`) instead of re-synthesizing entries on every read.
+  Previously, a user who deleted every Timeline entry and saved would
+  see the entries reappear after the modal received the server's
+  response. Synthesis now runs only when the `timeline` field is
+  absent from the input record.
+  (025-application-timeline)
+
 ## [0.11.1] — 2026-05-20
 
 > Documentation polish release — feature 022-deployment-polish-docs.

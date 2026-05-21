@@ -215,9 +215,10 @@ migration block in [quickstart.md](quickstart.md).
 
 ## 5. Read-time synthesis (legacy rows)
 
-When `normalizeApplication(record)` receives a record whose persisted
-`timeline` is `[]` (or missing), it returns a synthesized array
-derived from existing dates:
+When `normalizeApplication(record)` receives a record whose
+`timeline` field is **absent or non-array** (i.e. `record.timeline`
+is `undefined`, `null`, or any non-array value), it returns a
+synthesized array derived from existing dates:
 
 | Condition | Synthesized entries |
 |---|---|
@@ -226,10 +227,24 @@ derived from existing dates:
 | `applicationDate` present AND row.status !== 'applied' AND `lastStatusUpdate === applicationDate` | `[ { id:1, date: applicationDate, status: row.status, text: '' } ]` |
 | `applicationDate` missing | `[ { id:1, date: lastStatusUpdate, status: row.status, text: '' } ]` |
 
+When `record.timeline` is **an explicit array (including `[]`)**,
+the array is preserved as-is (deep-copied) and synthesis does NOT
+run. This is what lets a user delete every entry and save an empty
+timeline without normalization repopulating it on the next read.
+
+**Practical effect on legacy rows**: server adapters always return
+`timeline: parseJson(row.timeline, [])` (an array — empty or
+populated), so any record loaded from SQLite or Supabase preserves
+its persisted value. Synthesis therefore only fires for records
+that are constructed in-memory without ever round-tripping through
+the server (e.g., `normalizeApplication({})` in the create-mode
+draft). For pre-025 hosted rows (which the additive migration
+backfilled with `'[]'::jsonb`), the empty array now persists rather
+than synthesizing — accepted in spec-review note I2.
+
 Synthesis is display-only — the array is returned from `normalize`
 but never written through `toRow` unless the user explicitly Saves
-(in which case the draft they Save is what persists; synthesis only
-runs on read).
+(in which case the draft they Save is what persists).
 
 ---
 

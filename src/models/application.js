@@ -210,14 +210,13 @@ export function normalizeApplication(record) {
     normalized.preferredSkills = [];
   }
 
-  if (!Array.isArray(normalized.timeline)) {
-    normalized.timeline = [];
-  }
-
-  if (normalized.timeline.length === 0) {
-    normalized.timeline = synthesizeTimelineFromDates(normalized);
+  if (Array.isArray(record.timeline)) {
+    // Preserve the persisted array as-is (including an explicit empty
+    // array). Synthesis runs only when the field is absent so that a
+    // user who deletes every entry and saves keeps an empty timeline.
+    normalized.timeline = record.timeline.map((entry) => ({ ...entry }));
   } else {
-    normalized.timeline = normalized.timeline.map((entry) => ({ ...entry }));
+    normalized.timeline = synthesizeTimelineFromDates(normalized);
   }
 
   if (!Number.isInteger(normalized.salary) || normalized.salary <= 0) {

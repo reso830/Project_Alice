@@ -198,12 +198,23 @@ describe('normalizeApplication', () => {
     expect(record.timeline[0]).not.toBe(timeline[0]);
   });
 
-  it('synthesizes a timeline when the persisted timeline is empty', () => {
+  it('preserves an explicit empty timeline so deletions can persist', () => {
     const record = normalizeApplication(validRecord({
       applicationDate: '2026-05-01',
       lastStatusUpdate: '2026-05-10',
       status: 'interview',
       timeline: [],
+    }));
+
+    expect(record.timeline).toEqual([]);
+  });
+
+  it('synthesizes a timeline only when the field is missing from the input', () => {
+    const record = normalizeApplication(validRecord({
+      applicationDate: '2026-05-01',
+      lastStatusUpdate: '2026-05-10',
+      status: 'interview',
+      timeline: undefined,
     }));
 
     expect(record.timeline).toEqual([
