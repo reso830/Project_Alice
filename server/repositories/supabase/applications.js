@@ -22,7 +22,7 @@ function stripUserId(input) {
 // `JSON.stringify(...)` for skills/preferred_skills/metadata; Postgres
 // strict types reject those. This helper is the Supabase-side
 // translation; the SQLite adapter is unchanged.
-const JSONB_COLUMNS = ['skills', 'preferred_skills', 'metadata'];
+const JSONB_COLUMNS = ['skills', 'preferred_skills', 'metadata', 'timeline'];
 const BOOLEAN_COLUMNS = ['fav', 'archived'];
 
 function normalizeForPostgres(row) {
@@ -91,6 +91,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
       compat: 0,
       fav: 0,
       skills: JSON.stringify([]),
+      timeline: '[]',
       archived: 0,
       metadata: null,
       ...toRow(sanitized),

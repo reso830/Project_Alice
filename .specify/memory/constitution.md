@@ -1,4 +1,42 @@
 <!--
+Sync Impact Report (1.4.0 — 2026-05-21)
+Version change: 1.3.0 -> 1.4.0
+Reason: Amendment 1.4.0 — rescinds Amendment 1.0.1's removal of
+`application date` from the optional field set. The codebase, the
+spec template, the validation schema, and the seeds never carried
+the consolidation; the field has remained throughout as
+`applicationDate` (frontend) / `application_date` (DB column).
+Feature 025 (Application Timeline) depends on this field for its
+read-time synthesis of legacy rows whose `timeline` is empty.
+The two fields have distinct semantics: `applicationDate` is when
+the user submitted; `lastStatusUpdate` is when the row last
+advanced in status. The 1.0.1 removal language is formally
+withdrawn.
+Modified principles:
+- I. User-First Application Tracking — optional fields list now
+  explicitly includes `application date` again, alongside source
+  platform, job posting URL, salary, notes, follow-up action, and
+  follow-up date. No required-field change.
+Modified sections: none beyond Principle I.
+Templates requiring updates:
+- .specify/templates/spec-template.md — already lists "application
+  date" as optional at line 108 (template never tracked the 1.0.1
+  removal); no change required by 1.4.0. Pre-existing drift unrelated
+  to this amendment: line 106 still says "created date" required
+  field (Amendment 1.0.1 replaced with last_status_update) and
+  omits `responsibilities` required field (Amendment 1.2.0). Deferred.
+- .specify/templates/plan-template.md — no change required by 1.4.0.
+  Pre-existing drift unrelated to this amendment: missing
+  `responsibilities` required field from Amendment 1.2.0. Deferred.
+- .specify/templates/tasks-template.md — no change required.
+Follow-up TODOs (pre-existing, not introduced by 1.4.0):
+- Update spec-template.md line 106 to reflect Amendment 1.0.1
+  (last_status_update) and 1.2.0 (responsibilities required).
+- Update plan-template.md to add responsibilities to the required
+  field list per Amendment 1.2.0.
+
+---
+
 Sync Impact Report
 Version change: template -> 1.3.0 (current)
 Modified principles:
@@ -72,6 +110,32 @@ Templates updated: .specify/templates/tasks-template.md (Release Prep phase
 inserted between Polish and Browser Smoke Test); scripts/prompts/claude-tasks.md
 (Release Prep noted in Requirements)
 Follow-up TODOs: none
+
+Amendment 1.4.0 — 2026-05-21
+Reason: Rescinds Amendment 1.0.1's removal of `application date` from the
+optional field set. The 1.0.1 consolidation was never enforced — the codebase,
+spec template, validation schema, and seeds all retained `applicationDate` /
+`application_date` as an optional field throughout. The two fields have
+distinct semantics: `applicationDate` is when the user submitted the
+application (set once, optional); `lastStatusUpdate` is when the row last
+advanced in status (auto-bumped on every status change). Conflating them
+loses the "when did I apply" information. The drift was identified during
+spec review for feature 025 (Application Timeline), which depends on
+`applicationDate` for its read-time synthesis of default Timeline entries
+for legacy rows. This amendment formalizes the existing reality so future
+features can rely on `applicationDate` on solid constitutional ground.
+Modified principles:
+- I. User-First Application Tracking — restores `application date` to the
+  optional field list (alongside source platform, job posting URL, salary,
+  notes, follow-up action, follow-up date). No required-field change.
+Templates updated: none required (spec-template.md already lists
+"application date" as optional; it never tracked the 1.0.1 removal).
+Follow-up TODOs (pre-existing, not introduced by this amendment):
+- spec-template.md line 106 still references the pre-1.0.1 "created date"
+  required field and omits the post-1.2.0 `responsibilities` required
+  field — both deferred to a future template-sync amendment.
+- plan-template.md Constitution Check bullet (line 34) omits
+  `responsibilities` per 1.2.0 — also deferred.
 -->
 
 # Application Tracker Constitution
@@ -83,8 +147,10 @@ The system MUST help users track job applications clearly and quickly. Every job
 application record MUST include company name, job title, application status,
 a last_status_update date (set automatically on entry creation and on every status
 change), and responsibilities (the stated duties or role description from the job
-posting). Optional fields MAY include source platform, job posting URL, salary,
-notes, follow-up action, and follow-up date. Status values MUST be controlled,
+posting). Optional fields MAY include source platform, job posting URL,
+application date (when the user submitted the application; distinct from
+last_status_update, which tracks the most recent status change), salary, notes,
+follow-up action, and follow-up date. Status values MUST be controlled,
 consistent, and easy to filter.
 
 Rationale: The application exists to make a user's job search understandable at
@@ -192,4 +258,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.3.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-16
+**Version**: 1.4.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-21

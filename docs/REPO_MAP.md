@@ -43,6 +43,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/ConfirmDialog.js` | Reusable confirmation dialog (archive, discard) |
 | `src/components/Pagination.js` | 3-page sliding window UI |
 | `src/components/StatusDropdown.js` | Inline status change control |
+| `src/components/Timeline.js` | Application Timeline section for the detail modal — collapsed preview, expanded add/edit/delete rows, inline status picker, and status-change helper |
 | `src/components/RangeSlider.js` | Dual-handle range slider (salary, compat) |
 | `src/components/Toast.js` | User feedback notifications |
 | `src/components/Navbar.js` | Top navigation bar — sticky navy band (52px), brand cluster + page nav + identity cluster; email truncated via CSS `max-width` with full value in `title`; door-arrow sign-out button (icon-only at `≤ 639px`); subscribes to `authStore`; `destroy()` unsubscribes. In demo (feature 020) the identity cluster renders a "Demo mode" badge and an Exit demo button that calls `authStore.exitDemo()` |
@@ -60,15 +61,15 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` |
+| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers |
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
-| `shared/constants.js` | `STATUS_VALUES` — 9 status strings shared between frontend and backend |
+| `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
 
 **Application fields (required):** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `responsibilities`
 
 **Application fields (optional):** `compat` (0–100), `skills[]`, `preferredSkills[]`, `fav` (starred), `jobPostingUrl`, `recruiter`, `salary`, `location`, `shift`, `workSetup`, `compatNotes`, `generalNotes`
 
-**Status values:** `wishlisted → applied → phone_screen → interview → assessment → offer → rejected / withdrawn / ghosted`
+**Status values:** `wishlisted → applied → phone_screen → interview → assessment → offer → accepted / rejected / withdrawn / ghosted`
 
 ---
 
@@ -78,7 +79,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 |------|---------|
 | `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only |
 | `api/index.js` | Vercel serverless entry — lazy-imports the seed middleware in hosted mode; passes `config` + dispatcher + seed middleware into `createApp` |
-| `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; three PostgREST sentinel probes against `applications`, `profile`, `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
+| `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; PostgREST sentinel probes against `applications` (including `applications.timeline`), `profile`, and `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
 | `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises) |
 | `server/routes/profile.js` | Profile route handlers — same `{ repos, requireAuth, seedHostedUserIfNeeded }` shape |
 | `server/routes/resume.js` | Resume parse handler — `{ requireAuth, seedHostedUserIfNeeded }`; doesn't consume repos but mounts seed so a hosted user's first action via resume upload still seeds |
@@ -93,7 +94,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/repositories/supabase/profile.js` | `createSupabaseProfileRepository(client, userId)` — hosted adapter; `data` jsonb projection; one-row-per-user via `{ onConflict: 'user_id' }` upsert |
 | `server/db/applications.js` | SQL query layer for SQLite (re-exports `toRow`/`toRecord` from columns.js for backward compat with foundation.test.js) |
 | `server/db/profile.js` | SQL query layer for SQLite profile (`getProfile` / `saveProfile`) |
-| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate`, `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
+| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate`, `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`, including `timeline` JSON mapping. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
 | `server/db-seed.js` | Load 23 demo records (local SQLite only); imports `DEMO_RECORDS` from `server/seeds/applicationsData.js` |
@@ -134,8 +135,10 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | Path | Purpose |
 |------|---------|
 | `tests/models/` | Application field validation, status transitions |
+| `tests/models/timeline.test.js` | TimelineEntry model helper tests — id allocation, sorting, and legacy synthesis |
 | `tests/utils/` | filterSort, pagination, date utilities |
 | `tests/components/` | Component render / DOM behavior (jsdom) |
+| `tests/components/Timeline.test.js` | Timeline component DOM behavior — collapsed/expanded states, add/edit/delete, picker, and sorting interactions |
 | `tests/server/` | Route handlers, Zod validation, DB queries, `requireAuth` middleware, protected-routes wiring |
 | `tests/services/` | API client, supabase client, resume API, health API |
 | `tests/data/` | Auth store, legacy localStorage store |
@@ -188,6 +191,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/022-deployment-polish-docs/tasks.md` | Phased implementation tasks ledger |
 | `specs/022-deployment-polish-docs/research.md` | Clarification decisions D1–D6 with rejected alternatives |
 | `specs/022-deployment-polish-docs/checklists/plan-review.md` | Pre-implementation review gate |
+| `specs/025-application-timeline/` | Application Timeline feature spec package — timeline persistence, modal UI, seed updates, hosted migration, release prep, and smoke plan |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 

@@ -7,6 +7,47 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-21
+
+### Added
+
+- Application Timeline section in the detail overlay: collapsed preview,
+  inline add/edit/delete, future-dated entries, and automatic Timeline
+  entries when status changes.
+  (025-application-timeline)
+- Seeded Timeline content in the local SQLite DB seed, in-browser demo
+  seed, and hosted starter applications.
+  (025-application-timeline)
+
+### Changed
+
+- Replaced the visible *Last Updated* row in the application detail
+  overlay with the Timeline preview. The underlying `lastStatusUpdate`
+  field is still stored and bumped for status changes.
+  (025-application-timeline)
+- Modal max-height now clamps at 860px so tall Timelines scroll inside
+  the modal body while the header and footer remain pinned.
+  (025-application-timeline)
+- `claim_and_seed_starter()` RPC body updated to seed Timeline content
+  for new hosted users.
+  (025-application-timeline)
+
+### Removed
+
+- Removed the visible *Last Updated* row from the application detail
+  overlay. No data was removed.
+  (025-application-timeline)
+
+### Fixed
+
+- Timeline normalization now preserves an explicit empty array
+  (`timeline: []`) instead of re-synthesizing entries on every read.
+  Previously, a user who deleted every Timeline entry and saved would
+  see the entries reappear after the modal received the server's
+  response. Synthesis now runs only when the `timeline` field is
+  absent from the input record.
+  (025-application-timeline)
+
 ## [0.11.1] — 2026-05-20
 
 > Documentation polish release — feature 022-deployment-polish-docs.
@@ -567,7 +608,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/reso830/Project_Alice/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/reso830/Project_Alice/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/reso830/Project_Alice/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/reso830/Project_Alice/compare/v0.9.0...v0.10.0

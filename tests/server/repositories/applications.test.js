@@ -42,6 +42,7 @@ describe('SQLite applications repository', () => {
         responsibilities: 'Build product UI',
         lastStatusUpdate: expect.any(String),
         createdAt: expect.any(String),
+        timeline: [],
       });
       expect(repo.getById(record.id)).toEqual(record);
       expect(repo.getById(99999)).toBeNull();
@@ -58,6 +59,26 @@ describe('SQLite applications repository', () => {
         companyName: 'Globex',
       });
       expect(repo.update(99999, {})).toBeNull();
+    });
+  });
+
+  it('round-trips timeline through create and update', async () => {
+    await withApplicationsRepository((repo) => {
+      const initialTimeline = [
+        { id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' },
+      ];
+      const record = repo.create(validApplication({ timeline: initialTimeline }));
+
+      expect(repo.getById(record.id).timeline).toEqual(initialTimeline);
+
+      const nextTimeline = [
+        ...initialTimeline,
+        { id: 2, date: '2026-06-20', status: 'phone_screen', text: 'Callback scheduled.' },
+      ];
+      const updated = repo.update(record.id, { timeline: nextTimeline });
+
+      expect(updated.timeline).toEqual(nextTimeline);
+      expect(repo.getAll()[0].timeline).toEqual(nextTimeline);
     });
   });
 

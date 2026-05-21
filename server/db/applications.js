@@ -31,6 +31,7 @@ export function create(fields, targetDb = db) {
     compat: 0,
     fav: 0,
     skills: JSON.stringify([]),
+    timeline: '[]',
     archived: 0,
     metadata: null,
     ...toRow(fields),

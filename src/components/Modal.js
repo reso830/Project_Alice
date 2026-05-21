@@ -7,13 +7,13 @@ import {
 } from '../models/application.js';
 import * as api from '../services/api.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
-import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { validateUrl } from '../utils/validate.js';
 import { CompatBar } from './CompatBar.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { StatusDropdown } from './StatusDropdown.js';
+import { Timeline, appendStatusChangeTimelineEntry } from './Timeline.js';
 import { Toast } from './Toast.js';
 
 let _savedScrollY = 0;
@@ -181,22 +181,6 @@ function showTitleError(message) {
   error.className = 'modal-title-error';
   error.textContent = message;
   _titleRow?.append(error);
-}
-
-function createField(label, value, fullSpan = false, { preserveEmpty = false } = {}) {
-  const row = document.createElement('div');
-  const labelEl = document.createElement('span');
-  const valueEl = document.createElement('span');
-
-  row.className = fullSpan ? 'modal-field modal-field--full' : 'modal-field';
-  labelEl.className = 'modal-field__label';
-  valueEl.className = 'modal-field__value modal-field__display';
-  labelEl.textContent = label;
-  valueEl.textContent = preserveEmpty ? value : displayValue(value);
-
-  row.append(labelEl, valueEl);
-
-  return row;
 }
 
 function appendFieldLabel(labelEl, label, required) {
@@ -546,9 +530,6 @@ function renderTitle() {
 }
 
 function _renderBody() {
-  const statusDateField = createField('Last Updated', toDisplayDate(_draft.lastStatusUpdate));
-  statusDateField.dataset.modalField = 'last-status-update';
-
   _body.replaceChildren(
     makeInlineText({ label: 'Company', key: 'companyName', required: true }),
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
@@ -558,7 +539,7 @@ function _renderBody() {
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
     createCompatField(_draft.compat),
     makeInlineText({ label: 'Compat Notes', key: 'compatNotes', multiline: true }),
-    statusDateField,
+    Timeline.render(_draft, { currentStatus: _draft.status, onChange: _syncFooter }),
     makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
     makeChipEditor({ label: 'Required Skills', key: 'skills' }),
     makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills' }),
@@ -574,6 +555,7 @@ function copyApplication(application) {
     ...normalized,
     skills: [...(normalized.skills ?? [])],
     preferredSkills: [...(normalized.preferredSkills ?? [])],
+    timeline: (normalized.timeline ?? []).map((entry) => ({ ...entry })),
   };
 }
 
@@ -810,6 +792,7 @@ export function close() {
   _mode = 'edit';
   _onApplicationUpdate = null;
   _onApplicationCreate = null;
+  Timeline.reset();
 }
 
 export function open(application, {
@@ -879,8 +862,10 @@ export function open(application, {
     openDropdown(anchorEl, currentStatus, (newStatus) => {
       currentStatus = newStatus;
       _draft.status = newStatus;
+      appendStatusChangeTimelineEntry(_draft, newStatus);
       applyHeaderStatus(header, newStatus);
       updateStatusBadge(statusBadge, newStatus);
+      Timeline.refresh();
       _syncFooter();
     });
   }

@@ -80,6 +80,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       updated_at: '2026-05-01',
       archived: 0,
       metadata: null,
+      timeline: '[]',
     };
 
     const record = toRecord(sampleRow);
@@ -109,6 +110,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       'skills',
       'sourcePlatform',
       'status',
+      'timeline',
       'updatedAt',
       'workSetup',
     ]);
@@ -121,7 +123,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
     expect(toRow({ archived: false })).toEqual({ archived: 0 });
   });
 
-  it('toRow stringifies skills, preferredSkills, and metadata', () => {
+  it('toRow stringifies skills, preferredSkills, metadata, and timeline', () => {
     expect(toRow({ skills: ['js', 'ts'] })).toEqual({
       skills: JSON.stringify(['js', 'ts']),
     });
@@ -131,9 +133,14 @@ describe('toRecord / toRow round-trip via shared module', () => {
     expect(toRow({ metadata: { source: 'x' } })).toEqual({
       metadata: JSON.stringify({ source: 'x' }),
     });
+    expect(toRow({
+      timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }],
+    })).toEqual({
+      timeline: JSON.stringify([{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }]),
+    });
   });
 
-  it('toRecord parses JSON-stringified skills and metadata (SQLite shape)', () => {
+  it('toRecord parses JSON-stringified skills, metadata, and timeline (SQLite shape)', () => {
     const record = toRecord({
       id: 1,
       company_name: 'x',
@@ -144,14 +151,19 @@ describe('toRecord / toRow round-trip via shared module', () => {
       skills: '["js","ts"]',
       preferred_skills: '["storybook"]',
       metadata: '{"key":"value"}',
+      timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":"x"}]',
       archived: 0,
     });
     expect(record.skills).toEqual(['js', 'ts']);
     expect(record.preferredSkills).toEqual(['storybook']);
     expect(record.metadata).toEqual({ key: 'value' });
+    expect(record.timeline).toEqual([
+      { id: 1, date: '2026-05-21', status: 'applied', text: 'x' },
+    ]);
   });
 
   it('toRecord accepts pre-parsed objects for JSON fields (Postgres JSONB shape)', () => {
+    const timeline = [{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }];
     const record = toRecord({
       id: 1,
       company_name: 'x',
@@ -162,10 +174,32 @@ describe('toRecord / toRow round-trip via shared module', () => {
       skills: ['js', 'ts'],
       preferred_skills: ['storybook'],
       metadata: { key: 'value' },
+      timeline,
       archived: 0,
     });
     expect(record.skills).toEqual(['js', 'ts']);
     expect(record.preferredSkills).toEqual(['storybook']);
     expect(record.metadata).toEqual({ key: 'value' });
+    expect(record.timeline).toBe(timeline);
+  });
+
+  it('round-trips timeline entries by value', () => {
+    const timeline = [{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }];
+    const row = toRow({ timeline });
+    const record = toRecord({
+      id: 1,
+      company_name: 'x',
+      job_title: 'y',
+      status: 'applied',
+      compat: 0,
+      fav: 0,
+      skills: '[]',
+      preferred_skills: '[]',
+      metadata: null,
+      archived: 0,
+      ...row,
+    });
+
+    expect(record.timeline).toEqual(timeline);
   });
 });

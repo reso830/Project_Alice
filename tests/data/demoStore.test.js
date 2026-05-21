@@ -54,6 +54,20 @@ function uninstallStorageSpies() {
   delete globalThis.indexedDB;
 }
 
+function parseISODate(isoString) {
+  const [year, month, day] = isoString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function shiftSeedDate(isoString) {
+  const maxSourceDate = DEMO_RECORDS.reduce(
+    (acc, record) => (record.last_status_update > acc ? record.last_status_update : acc),
+    '',
+  );
+  const offsetMs = parseISODate(toISODate(new Date())).getTime() - parseISODate(maxSourceDate).getTime();
+  return toISODate(new Date(parseISODate(isoString).getTime() + offsetMs));
+}
+
 beforeEach(() => {
   ({
     setItemSpy: localStorageSpy,
@@ -92,6 +106,20 @@ describe('demoStore.loadSeed + parity with SQLite seed', () => {
       expect(apps[index].companyName).toBe(source.company_name);
       expect(apps[index].jobTitle).toBe(source.job_title);
       expect(apps[index].status).toBe(source.status);
+    });
+  });
+
+  it('mirrors SQLite seed Timeline entry counts and shifted dates by index', () => {
+    demoStore.loadSeed();
+    const apps = demoStore.getAll();
+
+    DEMO_RECORDS.forEach((source, index) => {
+      const sourceTimeline = JSON.parse(source.timeline);
+      expect(apps[index].timeline).toHaveLength(sourceTimeline.length);
+      expect(apps[index].timeline.map((entry) => entry.status))
+        .toEqual(sourceTimeline.map((entry) => entry.status));
+      expect(apps[index].timeline.map((entry) => entry.date))
+        .toEqual(sourceTimeline.map((entry) => shiftSeedDate(entry.date)));
     });
   });
 
@@ -234,6 +262,19 @@ describe('demoStore.update', () => {
     const updated = demoStore.update(2, { id: 9_999, notes: 'patch' });
     expect(updated.id).toBe(2);
     expect(demoStore.getById(9_999)).toBeUndefined();
+  });
+
+  it('accepts a Timeline array round-trip in updates', () => {
+    demoStore.loadSeed();
+    const timeline = [
+      { id: 1, date: toISODate(new Date()), status: 'applied', text: 'Manual demo note.' },
+      { id: 2, date: toISODate(new Date()), status: 'interview', text: '' },
+    ];
+
+    const updated = demoStore.update(1, { timeline });
+
+    expect(updated.timeline).toEqual(timeline);
+    expect(demoStore.getById(1).timeline).toEqual(timeline);
   });
 
   it('throws NOT_FOUND for an unknown id', () => {

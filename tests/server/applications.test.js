@@ -86,6 +86,7 @@ describe('applications API', () => {
         generalNotes: null,
         preferredSkills: [],
         metadata: null,
+        timeline: [],
       });
       expect(Number.isInteger(response.body.data.id)).toBe(true);
       expect(response.body.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -806,6 +807,28 @@ describe('applications API', () => {
           salary: expect.any(String),
         },
       });
+    });
+  });
+
+  it('round-trips future-dated timeline entries through PATCH and GET', async () => {
+    await withServer(async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload()),
+      });
+      const timeline = [
+        { id: 1, date: '2026-06-20', status: 'phone_screen', text: 'Recruiter callback.' },
+      ];
+
+      const patched = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ timeline }),
+      });
+      const fetched = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(patched.status).toBe(200);
+      expect(patched.body.data.timeline).toEqual(timeline);
+      expect(fetched.body.data.timeline).toEqual(timeline);
     });
   });
 });

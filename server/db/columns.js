@@ -32,6 +32,7 @@ export const FIELD_TO_COLUMN = {
   generalNotes: 'general_notes',
   preferredSkills: 'preferred_skills',
   metadata: 'metadata',
+  timeline: 'timeline',
   archived: 'archived',
 };
 
@@ -64,6 +65,7 @@ export const INSERTABLE_COLUMNS = [
   'updated_at',
   'archived',
   'metadata',
+  'timeline',
 ];
 
 export const UPDATABLE_COLUMNS = new Set(Object.values(FIELD_TO_COLUMN));
@@ -104,6 +106,7 @@ export const APPLICATION_COLUMNS_WITHOUT_USER_ID = [
   'general_notes',
   'preferred_skills',
   'metadata',
+  'timeline',
   'last_status_update',
   'created_at',
   'updated_at',
@@ -190,6 +193,7 @@ export function toRecord(row) {
     compatNotes: row.compat_notes,
     generalNotes: row.general_notes,
     preferredSkills: parseJson(row.preferred_skills, []),
+    timeline: parseJson(row.timeline, []),
     lastStatusUpdate: row.last_status_update,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -218,6 +222,8 @@ export function toRow(fields) {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'metadata') {
       row[column] = value != null ? JSON.stringify(value) : null;
+    } else if (field === 'timeline') {
+      row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'status') {
       row[column] = value || DEFAULT_STATUS;
     } else {

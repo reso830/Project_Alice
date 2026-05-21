@@ -14,6 +14,7 @@ const COLUMNS = [
   'notes', 'responsibilities', 'skills',
   'application_date', 'last_status_update', 'created_at', 'updated_at', 'archived',
   'location', 'shift', 'work_setup', 'compat_notes', 'general_notes', 'preferred_skills',
+  'timeline',
 ];
 
 export function seedApplications() {

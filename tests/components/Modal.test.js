@@ -103,6 +103,7 @@ async function flushPromises(count = 2) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   Modal.close();
   document.body.replaceChildren();
   vi.clearAllMocks();
@@ -437,7 +438,7 @@ describe('Modal', () => {
       'Compat Notes',
       'General Notes',
       'Preferred Skills',
-      'Last Updated',
+      'Timeline',
     ]) {
       expect(getFieldByLabel(label)).not.toBeUndefined();
     }
@@ -447,7 +448,7 @@ describe('Modal', () => {
     expect(document.querySelector('.compat-bar')).not.toBeNull();
     expect(getFieldByLabel('Compat Notes').querySelector('.modal-field__value').textContent).toBe('\u2014');
 
-    for (const label of ['Responsibilities', 'Required Skills', 'Preferred Skills', 'URL', 'General Notes']) {
+    for (const label of ['Timeline', 'Responsibilities', 'Required Skills', 'Preferred Skills', 'URL', 'General Notes']) {
       expect(getFieldByLabel(label).classList.contains('modal-field--full')).toBe(true);
     }
   });
@@ -464,16 +465,35 @@ describe('Modal', () => {
     expect(getFieldByLabel('URL').querySelector('.modal-field__required')).toBeNull();
   });
 
-  it('renders Last Updated as read-only text', () => {
+  it('renders Timeline section in the row-5 slot', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
-    Modal.open(application({ lastStatusUpdate: '2026-05-08' }));
+    Modal.open(application({
+      timeline: [
+        { id: 1, date: '2026-05-08', status: 'applied', text: 'Submitted.' },
+      ],
+    }));
 
-    const field = getFieldByLabel('Last Updated');
+    const field = getFieldByLabel('Timeline');
+    const fields = [...document.querySelectorAll('.modal-field')];
 
     expect(field).not.toBeUndefined();
-    expect(field.matches('button')).toBe(false);
-    expect(field.querySelector('input, select, textarea, button')).toBeNull();
+    expect(field.classList.contains('modal-field--full')).toBe(true);
+    expect(fields.indexOf(field)).toBe(8);
+    expect(document.querySelector('[data-modal-field="last-status-update"]')).toBeNull();
+    expect(field.querySelector('.tl-collapsed')).not.toBeNull();
+  });
+
+  it('clamps the modal panel height for tall Timeline content', () => {
+    expect(mainCss).toMatch(/\.modal-panel\s*\{[^}]*max-height:\s*min\(860px,\s*calc\(100vh - 64px\)\);/s);
+  });
+
+  it('reflows Timeline rows at the mobile breakpoint without hiding delete controls', () => {
+    expect(mainCss).toMatch(/@media \(max-width: 640px\)\s*\{[\s\S]*\.tl-row\s*\{[\s\S]*grid-template-columns:\s*16px 1fr auto;[\s\S]*grid-template-areas:\s*"node  date  del"\s*"line  badge \."\s*"line  text  text";/);
+    expect(mainCss).toMatch(/@media \(max-width: 640px\)\s*\{[\s\S]*\.tl-row \.tl-dash\s*\{\s*display:\s*none;\s*\}/);
+    expect(mainCss).toMatch(/@media \(max-width: 640px\)\s*\{[\s\S]*\.tl-del\s*\{\s*opacity:\s*1;\s*\}/);
+    expect(mainCss).toMatch(/@media \(max-width: 640px\)\s*\{[\s\S]*\.tl-row \.status-badge\s*\{[^}]*grid-area:\s*badge;[^}]*justify-self:\s*start;/);
+    expect(mainCss).toMatch(/@media \(max-width: 640px\)\s*\{[\s\S]*\.tl-row \.tl-del\s*\{[^}]*grid-area:\s*del;[^}]*justify-self:\s*end;/);
   });
 
   // Mobile bottom-sheet layout is CSS-only and is validated manually at 375px viewport.
@@ -664,13 +684,127 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-footer').hidden).toBe(false);
   });
 
-  it('saves the full draft, refreshes Last Updated, and hides the footer', async () => {
+  it('reveals the footer after adding a Timeline entry', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      timeline: [{ id: 1, date: '2026-05-08', status: 'applied', text: 'Submitted.' }],
+    }));
+    expect(document.querySelector('.modal-footer').hidden).toBe(true);
+
+    document.querySelector('.tl-collapsed').click();
+    document.querySelector('.tl-text-input').value = 'Recruiter replied.';
+    document.querySelector('.tl-text-input')
+      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(document.querySelector('.modal-footer').hidden).toBe(false);
+  });
+
+  it('appends an empty Timeline entry when status changes without bumping lastStatusUpdate client-side', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 21, 9, 0, 0));
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const originalLastStatusUpdate = '2026-05-01';
+    api.update.mockResolvedValue(application({
+      status: 'interview',
+      lastStatusUpdate: '2026-05-21',
+      timeline: [
+        { id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' },
+        { id: 2, date: '2026-05-21', status: 'interview', text: '' },
+      ],
+    }));
+
+    Modal.open(application({
+      status: 'applied',
+      lastStatusUpdate: originalLastStatusUpdate,
+      timeline: [{ id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' }],
+    }));
+    document.querySelector('.tl-collapsed').click();
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="interview"]').click();
+
+    expect(document.querySelector('.tl-row--entry .status-badge').textContent).toBe(STATUS_CONFIG.interview.label);
+    expect(document.querySelector('.tl-row--entry .tl-date-text').textContent).toBe('May 21');
+    expect(document.querySelector('.tl-row--entry .tl-text-line').textContent).toBe('\u2014');
+
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({
+      status: 'interview',
+      lastStatusUpdate: originalLastStatusUpdate,
+      timeline: [
+        { id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' },
+        { id: 2, date: '2026-05-21', status: 'interview', text: '' },
+      ],
+    }), expect.anything());
+  });
+
+  it('saves a status change even when the auto-entry is removed from the draft before save', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 21, 9, 0, 0));
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockImplementation(async (id, payload) => {
+      payload.timeline = payload.timeline.filter((entry) => entry.text !== '' || entry.status !== 'interview');
+      return application(payload);
+    });
+
+    Modal.open(application({
+      status: 'applied',
+      timeline: [{ id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' }],
+    }));
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="interview"]').click();
+
+    saveButton().click();
+    await flushPromises();
+
+    const savedPayload = api.update.mock.calls[0][1];
+    expect(savedPayload.status).toBe('interview');
+    expect(savedPayload.timeline).toEqual([
+      { id: 1, date: '2026-05-01', status: 'applied', text: 'Submitted.' },
+    ]);
+    expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.interview.label);
+  });
+
+  it('includes a create-mode auto-entry when status changes before Create', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 21, 9, 0, 0));
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.create.mockImplementation(async (payload) => application({ id: 42, ...payload }));
+
+    Modal.open(null, { mode: 'create' });
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="applied"]').click();
+    editTextField('Company', 'Globex');
+    document.querySelector('#modal-title').click();
+    const titleInput = document.querySelector('.modal-title-input');
+    titleInput.value = 'Product Engineer';
+    titleInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    editTextField('Responsibilities', 'Build product UI');
+
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'applied',
+      timeline: [
+        { id: 1, date: '2026-05-21', status: 'applied', text: '' },
+      ],
+    }));
+  });
+
+  it('saves the full draft and hides the footer', async () => {
     const onApplicationUpdate = vi.fn();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     api.update.mockResolvedValue({
       ...application(),
       companyName: 'Globex',
       lastStatusUpdate: '2026-05-09',
+      timeline: [
+        { id: 1, date: '2026-05-09', status: 'applied', text: 'Saved timeline.' },
+      ],
     });
 
     Modal.open(application(), { onApplicationUpdate });
@@ -687,7 +821,100 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-footer').hidden).toBe(true);
     expect(document.body.textContent).toContain('Saved.');
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyName: 'Globex' }));
-    expect(getFieldByLabel('Last Updated').querySelector('.modal-field__value').textContent).toBe('May 9');
+    expect(getFieldByLabel('Timeline').querySelector('.tl-text-line').textContent).toBe('Saved timeline.');
+  });
+
+  it('keeps Timeline expanded across save within one modal session', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue({
+      ...application(),
+      companyName: 'Globex',
+      timeline: [{ id: 1, date: '2026-05-09', status: 'applied', text: 'Saved timeline.' }],
+    });
+
+    Modal.open(application({
+      timeline: [{ id: 1, date: '2026-05-08', status: 'applied', text: 'Submitted.' }],
+    }));
+    document.querySelector('.tl-collapsed').click();
+    expect(document.querySelector('.tl-row--add')).not.toBeNull();
+
+    editTextField('Company', 'Globex');
+    saveButton().click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(document.querySelector('.tl-row--add')).not.toBeNull();
+  });
+
+  it('resets Timeline expansion after close and reopen', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const record = application({
+      timeline: [{ id: 1, date: '2026-05-08', status: 'applied', text: 'Submitted.' }],
+    });
+
+    Modal.open(record);
+    document.querySelector('.tl-collapsed').click();
+    expect(document.querySelector('.tl-row--add')).not.toBeNull();
+
+    Modal.close();
+    Modal.open(record);
+
+    expect(document.querySelector('.tl-collapsed')).not.toBeNull();
+    expect(document.querySelector('.tl-row--add')).toBeNull();
+  });
+
+  it('saves Timeline entry deletions in the full draft payload', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockImplementation(async (id, payload) => application(payload));
+
+    Modal.open(application({
+      timeline: [
+        { id: 1, date: '2026-05-20', status: 'applied', text: 'Submitted.' },
+        { id: 2, date: '2026-05-22', status: 'interview', text: 'Interview.' },
+      ],
+    }));
+
+    document.querySelector('.tl-collapsed').click();
+    document.querySelectorAll('.tl-row--entry')[0].querySelector('.tl-del').click();
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({
+      timeline: [
+        { id: 1, date: '2026-05-20', status: 'applied', text: 'Submitted.' },
+      ],
+    }), expect.anything());
+    expect([...document.querySelectorAll('.tl-row--entry .tl-text-line')].map((node) => node.textContent))
+      .toEqual(['Submitted.']);
+  });
+
+  it('restores a deleted Timeline entry after confirmed discard and reopen', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    ConfirmDialog.show.mockResolvedValue(true);
+    const record = application({
+      timeline: [
+        { id: 1, date: '2026-05-20', status: 'applied', text: 'Submitted.' },
+        { id: 2, date: '2026-05-22', status: 'interview', text: 'Interview.' },
+      ],
+    });
+
+    Modal.open(record);
+    document.querySelector('.tl-collapsed').click();
+    document.querySelectorAll('.tl-row--entry')[0].querySelector('.tl-del').click();
+
+    expect(ConfirmDialog.show).not.toHaveBeenCalled();
+    expect([...document.querySelectorAll('.tl-row--entry .tl-text-line')].map((node) => node.textContent))
+      .toEqual(['Submitted.']);
+    expect(document.querySelector('.modal-footer').hidden).toBe(false);
+
+    discardButton().click();
+    await flushPromises();
+    Modal.close();
+    Modal.open(record);
+    document.querySelector('.tl-collapsed').click();
+
+    expect([...document.querySelectorAll('.tl-row--entry .tl-text-line')].map((node) => node.textContent))
+      .toEqual(['Interview.', 'Submitted.']);
   });
 
   it('normalizes nullable API fields before saving an edited draft', async () => {
@@ -904,7 +1131,7 @@ describe('Modal', () => {
     expect(getFieldByLabel('Company').classList.contains('modal-field--editable')).toBe(true);
     expect(getFieldByLabel('Required Skills').classList.contains('modal-field--editable')).toBe(true);
     expect(getFieldByLabel('Compatibility').classList.contains('modal-field--editable')).toBe(false);
-    expect(getFieldByLabel('Last Updated').classList.contains('modal-field--editable')).toBe(false);
+    expect(getFieldByLabel('Timeline').classList.contains('modal-field--editable')).toBe(false);
   });
 
   it('saves dirty drafts with Ctrl+S and no-ops when clean', async () => {
