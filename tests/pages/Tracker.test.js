@@ -174,6 +174,15 @@ describe('Tracker quick filter toolbar integration', () => {
     );
   });
 
+  it('disables skeleton shimmer when reduced motion is requested', () => {
+    expect(mainCss).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.skeleton-line,[\s\S]*animation: none !important;/,
+    );
+    expect(mainCss).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.skeleton-line \{[\s\S]*background: #ECE7DF !important;/,
+    );
+  });
+
   it('preserves sort state across unmount and remount in the same session', async () => {
     const container = document.createElement('main');
     const sortState = { field: 'compat', direction: 'desc' };

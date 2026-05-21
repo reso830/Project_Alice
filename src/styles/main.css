@@ -4901,11 +4901,16 @@ textarea.modal-inline-control {
   .scene-logo__inner,
   .scene-logo__sparkle,
   .scene-pipeline__badge,
+  .skeleton-line,
   .scene-stack__card,
   .scene-stack__card--entering,
   .scene-profile__donut-segment {
     animation: none !important;
     transition: none !important;
+  }
+
+  .skeleton-line {
+    background: #ECE7DF !important;
   }
 
   .auth-overlay__panel,
