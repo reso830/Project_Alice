@@ -255,6 +255,30 @@ function renderFilterEmptyState() {
   return emptyState;
 }
 
+function renderApplicationSkeleton() {
+  const wrap = document.createElement('div');
+
+  wrap.className = 'loading-skeleton loading-skeleton--applications';
+  wrap.setAttribute('aria-busy', 'true');
+  wrap.setAttribute('aria-live', 'polite');
+  wrap.setAttribute('aria-label', 'Loading applications');
+
+  for (let index = 0; index < 3; index += 1) {
+    const card = document.createElement('div');
+
+    card.className = 'skeleton-card';
+    card.setAttribute('aria-hidden', 'true');
+    card.append(
+      Object.assign(document.createElement('span'), { className: 'skeleton-line skeleton-line--short' }),
+      Object.assign(document.createElement('span'), { className: 'skeleton-line skeleton-line--title' }),
+      Object.assign(document.createElement('span'), { className: 'skeleton-line' }),
+    );
+    wrap.append(card);
+  }
+
+  return wrap;
+}
+
 function renderPage({ moveFocus = false } = {}) {
   if (!_container || !_cardList) {
     return;
@@ -430,17 +454,19 @@ export async function mount(container) {
     onAddApplication,
   });
   const fab = Fab.render({ onClick: onFabAddApplication });
+  const skeleton = renderApplicationSkeleton();
 
   _toolbarEl = toolbar;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
-  _container.append(toolbar, fab);
+  _container.append(toolbar, fab, skeleton);
 
   try {
     _applications = await api.getAll();
     _filterState = syncDynamicSelections(_filterState, _applications);
     _salaryBounds = getSalaryBounds(_applications);
   } catch (error) {
+    skeleton.remove();
     toolbar.removeAttribute('aria-busy');
     toolbar.removeAttribute('aria-disabled');
 
@@ -464,6 +490,7 @@ export async function mount(container) {
 
   toolbar.removeAttribute('aria-busy');
   toolbar.removeAttribute('aria-disabled');
+  skeleton.remove();
   updateToolbar();
 
   if (_applications.length === 0) {

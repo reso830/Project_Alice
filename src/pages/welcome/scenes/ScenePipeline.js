@@ -1,5 +1,5 @@
 // Scene 2 — Pipeline animation (`ScenePipeline`)
-// design/welcome_page.md §4.4
+// docs/design/welcome_page.md §4.4
 //
 // Single straight preview card ("J024 · UX Engineer · Vertex AI", compat 94).
 // Status cycles applied → phone_screen → interview → assessment → offer every

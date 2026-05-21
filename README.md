@@ -185,6 +185,9 @@ src/
   models/         # Application and profile models, client-side validation
   styles/         # Global styles and design tokens
   utils/          # Pure utility functions (pagination, date, validation, sort, URL helpers)
+docs/
+  design/         # Visual design briefs and screen-level interaction notes
+  features/       # Lightweight feature briefs used as Speckit inputs
 specs/            # Specification, plan, and task documents per feature branch
 tests/
   server/         # Backend integration tests
@@ -216,15 +219,19 @@ This project uses the [Specify](https://github.com/anthropics/claude-code) speci
 
 A two-agent pipeline automates the full feature lifecycle via `scripts/ai-flow.ps1`. Claude owns specification and review; Codex owns requirements validation and implementation. Hard gates block forward progress at each stage.
 
+This orchestration flow is still under test and should be treated as experimental until it has proven reliable across multiple full feature cycles.
+
 ```powershell
 # Full pipeline for a new feature
-./scripts/ai-flow.ps1 spec <feature> <brief-path> [-DesignDoc <path>]
+./scripts/ai-flow.ps1 spec <feature> docs/features/<brief>.md [-DesignDoc docs/design/<design>.md]
 ./scripts/ai-flow.ps1 req-review <feature>
 ./scripts/ai-flow.ps1 implement <feature>
 ./scripts/ai-flow.ps1 check-next <feature>
 # ... repeat implement/check-next per phase ...
 ./scripts/ai-flow.ps1 create-pr <feature>
 ```
+
+CI runs `npm run test:ci`, writes JUnit output to `test-results/vitest/results.xml`, and uploads `test-results/` as a GitHub Actions artifact for each Node.js matrix job.
 
 See [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) for the full reference including all actions, gate system, log locations, and FAQ.
 
@@ -236,6 +243,8 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 - [docs/hosted-smoke-test.md](docs/hosted-smoke-test.md) — pre-promotion hosted smoke-test checklist (Given/When/Then; runs after a hosted deploy before promoting to production)
 - [docs/REPO_MAP.md](docs/REPO_MAP.md) — file/folder navigation map for AI-assisted work
 - [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) — local two-agent AI pipeline reference
+- [docs/features/](docs/features/) — feature briefs that seed Speckit specs
+- [docs/design/](docs/design/) — visual and UX design notes
 - [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
 - [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
 - [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup

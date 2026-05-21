@@ -1,4 +1,4 @@
-// Hero slideshow — design/welcome_page.md §4.4
+// Hero slideshow — docs/design/welcome_page.md §4.4
 //
 // Replaces the 6-screenshot rotation with a 4-scene cycler (stack → pipeline
 // → profile → logo). 5500ms per scene, 700ms cross-fade between layers, 4

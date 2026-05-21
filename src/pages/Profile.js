@@ -33,6 +33,29 @@ function createButton(label, className, onClick) {
   return button;
 }
 
+function createSkeletonLine(modifier = '') {
+  const line = createElement('span', `skeleton-line${modifier ? ` skeleton-line--${modifier}` : ''}`);
+
+  line.setAttribute('aria-hidden', 'true');
+  return line;
+}
+
+function renderProfileSkeleton(page) {
+  const wrap = createElement('div', 'loading-skeleton loading-skeleton--profile');
+  const hero = createElement('section', 'section-card skeleton-section');
+  const apps = createElement('section', 'section-card skeleton-section');
+  const profile = createElement('section', 'section-card skeleton-section');
+
+  wrap.setAttribute('aria-busy', 'true');
+  wrap.setAttribute('aria-live', 'polite');
+  wrap.setAttribute('aria-label', 'Loading profile');
+  hero.append(createSkeletonLine('title'), createSkeletonLine('medium'));
+  apps.append(createSkeletonLine('short'), createSkeletonLine(), createSkeletonLine('medium'));
+  profile.append(createSkeletonLine('short'), createSkeletonLine('title'), createSkeletonLine(), createSkeletonLine('medium'));
+  wrap.append(hero, apps, profile);
+  page.append(wrap);
+}
+
 function renderWelcome(page, profile) {
   const header = createElement('header', 'profile-hero');
   const heading = createElement('h1');
@@ -525,6 +548,7 @@ export async function mount(container, { navigate } = {}) {
 
   _container = container;
   _container.replaceChildren(page);
+  renderProfileSkeleton(page);
 
   const profilePromise = getProfile().catch(() => null);
   const applicationsPromise = getAll();

@@ -188,7 +188,8 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/022-deployment-polish-docs/tasks.md` | Phased implementation tasks ledger |
 | `specs/022-deployment-polish-docs/research.md` | Clarification decisions D1–D6 with rejected alternatives |
 | `specs/022-deployment-polish-docs/checklists/plan-review.md` | Pre-implementation review gate |
-| `design/welcome_page.md` | Visual specification for the welcome experience |
+| `docs/design/` | Visual specifications and screen-level interaction notes |
+| `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 
 ---
 
@@ -198,6 +199,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 |------|---------|
 | `docs/AI_WORKFLOW_GUIDE.md` | Local two-agent AI orchestration reference (Claude + Codex pipeline) |
 | `docs/deployment.md` | Operator-facing deployment guide — local + hosted modes, Supabase Setup Checklist, Environment Variable Checklist, Demo & Free-Tier Notes, Migration Clarification (consolidated in feature 022) |
+| `docs/design/welcome_page.md` | Visual specification for the welcome experience |
 | `docs/hosted-smoke-test.md` | Hosted smoke-test checklist — Given/When/Then verification flow run before promoting a deploy (feature 022) |
 | `docs/REPO_MAP.md` | This file — navigation shortcut for AI-assisted work |
 

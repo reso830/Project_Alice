@@ -1,5 +1,5 @@
 // Scene 1 — Tilted card stack (`SceneStack`)
-// design/welcome_page.md §4.4
+// docs/design/welcome_page.md §4.4
 //
 // `default` (diagonal/split/hero): 4 tilted preview cards, rotation -4°→+4°,
 // full-opacity stacked cards, 90ms stagger enter from

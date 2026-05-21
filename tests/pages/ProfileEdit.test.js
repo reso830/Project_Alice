@@ -293,6 +293,39 @@ describe('ProfileEdit page', () => {
     expect(document.querySelector('.entry-modal')).toBeTruthy();
   });
 
+  it('guides month-year entry fields with MM/YYYY placeholders', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const experience = openExperienceOverlay(container);
+
+    expect(getFieldInput(experience, 'Date Started').placeholder).toBe('MM/YYYY');
+    expect(getFieldInput(experience, 'Date Ended').placeholder).toBe('MM/YYYY');
+    getButton(experience, 'Cancel').click();
+
+    getHeaderAddButton(getCard(container, 'CERTIFICATIONS')).click();
+    const certification = document.querySelector('.entry-modal');
+
+    expect(getFieldInput(certification, 'Issuance Date').placeholder).toBe('MM/YYYY');
+    expect(getFieldInput(certification, 'Expiry Date').placeholder).toBe('MM/YYYY');
+  });
+
+  it('guides year-only education fields with a YYYY placeholder', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+    getHeaderAddButton(getCard(container, 'EDUCATION')).click();
+
+    const overlay = document.querySelector('.entry-modal');
+
+    expect(getFieldInput(overlay, 'Year Completed').placeholder).toBe('YYYY');
+  });
+
   it('committed entry appears in Experience section after overlay Save', async () => {
     const container = createAppShell();
 

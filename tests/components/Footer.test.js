@@ -60,6 +60,18 @@ describe('Footer', () => {
     expect(footer.textContent).toContain('Built May 2026');
   });
 
+  it('renders hosted deployment and workflow tools in the stack section', () => {
+    const footer = Footer.render();
+    const stackSection = [...footer.querySelectorAll('.footer__section')]
+      .find((section) => section.querySelector('.footer__label')?.textContent === 'STACK');
+
+    expect(stackSection?.textContent).toContain('Vanilla JS');
+    expect(stackSection?.textContent).toContain('Vite');
+    expect(stackSection?.textContent).toContain('Vercel');
+    expect(stackSection?.textContent).toContain('Supabase');
+    expect(stackSection?.textContent).toContain('Speckit');
+  });
+
   it('uses visual labels without adding footer headings', () => {
     const footer = Footer.render();
 

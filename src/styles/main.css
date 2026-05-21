@@ -238,6 +238,10 @@ body {
   font-size: 13px;
 }
 
+.edit-field__control::placeholder {
+  color: #9B9488;
+}
+
 textarea.edit-field__control {
   resize: vertical;
 }
@@ -2019,6 +2023,65 @@ button:focus-visible,
   display: grid;
   gap: 10px;
   padding: 18px 24px 32px;
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.loading-skeleton--applications {
+  padding: 18px 24px 32px;
+}
+
+.loading-skeleton--profile {
+  gap: 24px;
+}
+
+.skeleton-card,
+.skeleton-section {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.skeleton-line {
+  display: block;
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, #ECE7DF 0%, #F8F5EF 42%, #ECE7DF 84%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.25s ease-in-out infinite;
+}
+
+.skeleton-line--short {
+  width: 32%;
+}
+
+.skeleton-line--medium {
+  width: 62%;
+}
+
+.skeleton-line--title {
+  width: 78%;
+  height: 18px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
 }
 
 .card {

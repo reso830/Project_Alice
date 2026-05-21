@@ -163,7 +163,7 @@ Available placeholders: `{{FEATURE_NAME}}`, `{{FEATURE_ID}}`, `{{SPEC_DIR}}`, `{
 
 ```powershell
 # 1. Generate spec, plan, tasks, and architect review
-./scripts/ai-flow.ps1 spec my-feature features/my-feature-brief.md -DesignDoc design/my_feature.md
+./scripts/ai-flow.ps1 spec my-feature docs/features/my-feature-brief.md -DesignDoc docs/design/my_feature.md
 
 # 2. Review Claude's output in specs/###-my-feature/; fix anything needed
 
@@ -235,7 +235,7 @@ Make sure you ran `spec` first (Speckit creates the directory). If the directory
 Yes — pass `-SkipApproval`. All `Read-Host` gates are bypassed. Intended for automated pipelines.
 
 **Q: When should I use `-DesignDoc`?**
-When a design file exists (e.g., `design/pagination_footer.md`). It is injected into the specify and plan prompts so Claude can use it as implementation guidance. If it affects behavior or data model, Claude should update the Speckit artifacts before Codex implements.
+When a design file exists (e.g., `docs/design/pagination_footer.md`). It is injected into the specify and plan prompts so Claude can use it as implementation guidance. If it affects behavior or data model, Claude should update the Speckit artifacts before Codex implements.
 
 **Q: Claude or Codex exited with a non-zero code. What now?**
 The script throws immediately and prints the exit code and log path. Read the log, fix the underlying issue (bad prompt, missing file, auth problem), and re-run the same action.
