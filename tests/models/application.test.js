@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SHIFT_VALUES,
   STATUS_CONFIG,
+  STATUS_DISPLAY_PRIORITY,
   STATUS_VALUES,
   TERMINAL_STATES,
   TRANSITIONS,
+  applyStatusChange,
   WORK_SETUP_VALUES,
   getValidTransitions,
   isValidTransition,
@@ -279,6 +281,29 @@ describe('STATUS_CONFIG', () => {
   });
 });
 
+describe('STATUS_DISPLAY_PRIORITY', () => {
+  it('contains every status exactly once in display-priority order', () => {
+    expect(STATUS_DISPLAY_PRIORITY).toEqual([
+      'accepted',
+      'offer',
+      'interview',
+      'assessment',
+      'phone_screen',
+      'wishlisted',
+      'applied',
+      'rejected',
+      'withdrawn',
+      'ghosted',
+    ]);
+    expect(STATUS_DISPLAY_PRIORITY).toHaveLength(10);
+    expect(new Set(STATUS_DISPLAY_PRIORITY)).toEqual(new Set(STATUS_VALUES));
+  });
+
+  it('is frozen so consumers cannot mutate the shared ordering', () => {
+    expect(Object.isFrozen(STATUS_DISPLAY_PRIORITY)).toBe(true);
+  });
+});
+
 describe('TRANSITIONS and helpers', () => {
   it('defines one transition row for every status value', () => {
     expect(Object.keys(TRANSITIONS)).toEqual(STATUS_VALUES);
@@ -327,5 +352,77 @@ describe('TRANSITIONS and helpers', () => {
     expect([...TERMINAL_STATES]).toEqual(['accepted', 'rejected', 'withdrawn', 'ghosted']);
     expect(TERMINAL_STATES.has('offer')).toBe(false);
     expect(TERMINAL_STATES.has('interview')).toBe(false);
+  });
+});
+
+describe('applyStatusChange', () => {
+  it('returns a new application without mutating the input', () => {
+    const input = validRecord({
+      status: 'applied',
+      lastStatusUpdate: '2026-05-01',
+      timeline: [
+        { id: 1, date: '2026-05-01', status: 'applied', text: 'Applied.' },
+      ],
+    });
+
+    const result = applyStatusChange(input, 'ghosted', {
+      date: '2026-05-20',
+      text: 'Marked as ghosted after prolonged inactivity.',
+    });
+
+    expect(result).not.toBe(input);
+    expect(result.timeline).not.toBe(input.timeline);
+    expect(input.status).toBe('applied');
+    expect(input.lastStatusUpdate).toBe('2026-05-01');
+    expect(input.timeline).toEqual([
+      { id: 1, date: '2026-05-01', status: 'applied', text: 'Applied.' },
+    ]);
+  });
+
+  it('appends a timeline entry with max-plus-one id and bumps lastStatusUpdate', () => {
+    const result = applyStatusChange(validRecord({
+      timeline: [
+        { id: 2, date: '2026-05-02', status: 'phone_screen', text: '' },
+        { id: 5, date: '2026-05-08', status: 'interview', text: '' },
+      ],
+    }), 'ghosted', {
+      date: '2026-05-21',
+      text: 'Marked as ghosted after prolonged inactivity.',
+    });
+
+    expect(result.status).toBe('ghosted');
+    expect(result.lastStatusUpdate).toBe('2026-05-21');
+    expect(result.timeline).toEqual([
+      { id: 2, date: '2026-05-02', status: 'phone_screen', text: '' },
+      { id: 5, date: '2026-05-08', status: 'interview', text: '' },
+      {
+        id: 6,
+        date: '2026-05-21',
+        status: 'ghosted',
+        text: 'Marked as ghosted after prolonged inactivity.',
+      },
+    ]);
+  });
+
+  it('defaults text to an empty string and id to 1 for an empty timeline', () => {
+    const result = applyStatusChange(validRecord({ timeline: [] }), 'applied', {
+      date: '2026-05-21',
+    });
+
+    expect(result.timeline).toEqual([
+      { id: 1, date: '2026-05-21', status: 'applied', text: '' },
+    ]);
+  });
+
+  it('defaults date to today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 21));
+
+    const result = applyStatusChange(validRecord({ timeline: [] }), 'applied');
+
+    expect(result.lastStatusUpdate).toBe('2026-05-21');
+    expect(result.timeline[0].date).toBe('2026-05-21');
+
+    vi.useRealTimers();
   });
 });

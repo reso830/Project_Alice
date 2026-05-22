@@ -12,6 +12,19 @@ export const STATUS_VALUES = [
   'ghosted',
 ];
 
+export const STATUS_DISPLAY_PRIORITY = Object.freeze([
+  'accepted',
+  'offer',
+  'interview',
+  'assessment',
+  'phone_screen',
+  'wishlisted',
+  'applied',
+  'rejected',
+  'withdrawn',
+  'ghosted',
+]);
+
 export const SHIFT_VALUES = ['Day', 'Mid', 'Night', 'Flexible'];
 export const WORK_SETUP_VALUES = ['Remote', 'Hybrid', 'On-site', 'Field'];
 
@@ -143,6 +156,21 @@ export function sortTimelineEntries(timeline) {
     }
     return b.id - a.id;
   });
+}
+
+export function applyStatusChange(application, newStatus, options = {}) {
+  const date = options.date ?? toISODate();
+  const text = options.text ?? '';
+  const timeline = [...(application.timeline ?? [])];
+  const id = allocateTimelineEntryId(timeline);
+  timeline.push({ id, date, status: newStatus, text });
+
+  return {
+    ...application,
+    status: newStatus,
+    lastStatusUpdate: date,
+    timeline,
+  };
 }
 
 export function synthesizeTimelineFromDates(record) {

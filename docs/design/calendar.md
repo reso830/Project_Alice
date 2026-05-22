@@ -706,7 +706,7 @@ The `kind` field is what powers the action selection (Mark ghosted vs. open) and
 ## 14. Accessibility
 
 - All interactive surfaces are reachable by keyboard. Cells with activities are `role="button" tabIndex={0}`; chips are `role="button" tabIndex={0}`; pickers and popovers are focusable buttons inside a `role="dialog" aria-modal="true"` shell.
-- `aria-label` on cells: `"{Pretty date}, {N} activities"` when activities exist, otherwise no label (the day number is the visible text).
+- `aria-label` on cells: `"{Pretty date}, {N} activity/activities"` when activities exist, otherwise no label (the day number is the visible text).
 - `aria-label` on chips: `"{Status label}, N entries. Click to view."`
 - CW gutter cells: `aria-hidden="true"` — they're a navigational hint, not content; screen readers should skip them. The `CW` header label is also `aria-hidden="true"`.
 - Active page in the topbar nav: `aria-current="page"`.
