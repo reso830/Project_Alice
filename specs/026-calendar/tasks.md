@@ -1510,7 +1510,7 @@ Mounts via `mountAnchoredDropdown({
 
 ## Phase 07 — Page Orchestrator (US-8 Mark Ghosted; wires everything)
 
-### [ ] Task 07.1 — Rewrite `src/pages/Calendar.js` (mount + state + render)
+### [X] Task 07.1 — Rewrite `src/pages/Calendar.js` (mount + state + render)
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (REWRITE)
 
@@ -1633,7 +1633,7 @@ Unmount:
 
 ---
 
-### [ ] Task 07.2 — Mark Ghosted handler (US-8)
+### [X] Task 07.2 — Mark Ghosted handler (US-8)
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (extend)
 
@@ -1689,7 +1689,7 @@ Failure:
 
 ---
 
-### [ ] Task 07.3 — Dismiss handler (US-9)
+### [X] Task 07.3 — Dismiss handler (US-9)
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (extend)
 
@@ -1733,7 +1733,7 @@ No toast. The row exits silently per [docs/design/calendar.md §8](../../docs/de
 
 ---
 
-### [ ] Task 07.4 — Open Application Overlay handler
+### [X] Task 07.4 — Open Application Overlay handler
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (extend)
 
@@ -1785,7 +1785,7 @@ rows.
 
 ---
 
-### [ ] Task 07.5 — Greeting selection
+### [X] Task 07.5 — Greeting selection
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (extend)
 
@@ -1863,7 +1863,7 @@ Both helpers are called once at mount; their outputs are stored in
 
 ## Phase 08 — Styling
 
-### [ ] Task 08.1 — Add Calendar CSS block to `src/styles/main.css`
+### [X] Task 08.1 — Add Calendar CSS block to `src/styles/main.css`
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1954,20 +1954,23 @@ Section structure:
 /* Cells + chips */
 .cal-grid, .cal-cell, .cal-cell--out, .cal-cell--weekend,
 .cal-cell--today, .cal-cell--filter-hidden, .cal-num,
-.num-chip, .num-more { /* §6.8 */ }
+.num-chip-list, .num-chip, .num-more { /* §6.8 */ }
 
 /* Day popover */
 .day-pop, .day-pop-h, .day-pop__ttl, .day-pop__close,
 .day-pop-body, .day-row, .day-row__arrow, .day-pop-empty,
-.day-pop-foot, .cal-status-badge { /* §6.9 */ }
+.day-pop-foot, .day-pop-foot__hint, .day-pop-foot__link,
+.cal-status-badge { /* §6.9 */ }
 
 /* Pickers */
 .cal-picker, .cal-picker-h, .cal-picker-grid, .cal-picker-item,
 .cal-picker-item--current, .cal-picker-item--selected,
-.cal-picker-item--disabled, .cal-picker__lbl, .cal-picker__yr, .cal-picker__yr-nav { /* sections 6.10, 6.11 */ }
+.cal-picker-item--disabled, .cal-picker-nav, .cal-picker__lbl,
+.cal-picker__yr, .cal-picker__yr-nav { /* sections 6.10, 6.11 */ }
 
 /* Status filter dropdown */
-.filter-dd, .filter-dd-row, .none-glyph { /* section 6.12 */ }
+.filter-dd, .filter-dd-row, .filter-dd-check, .filter-dd-swatch,
+.filter-dd-label, .none-glyph { /* section 6.12 */ }
 
 /* Anchored dropdown / bottom sheet */
 .cal-dropdown, .cal-dropdown-backdrop, .cal-bottom-sheet, .bs-handle { /* section 6.13; z-index uses --z-dropdown / calc(var(--z-dropdown) - 1), below --z-toast */ }
@@ -2021,7 +2024,7 @@ Animations: `bsIn` keyframes for the bottom sheet entrance.
 
 ## Phase 09 — Seed Augmentation
 
-### [ ] Task 09.1 — Augment `src/data/demoSeed.js` for suggestion coverage
+### [X] Task 09.1 — Augment `src/data/demoSeed.js` for suggestion coverage
 
 **Target file**: [src/data/demoSeed.js](../../src/data/demoSeed.js)
 
@@ -2074,7 +2077,7 @@ changes to the SQLite seed.
 
 ---
 
-### [ ] Task 09.2 — Augment `server/seeds/applicationsData.js`
+### [X] Task 09.2 — Augment `server/seeds/applicationsData.js`
 
 **Target file**: [server/seeds/applicationsData.js](../../server/seeds/applicationsData.js)
 
@@ -2110,7 +2113,7 @@ ones; adopt the shift pattern for the 5 new records.
 
 ---
 
-### [ ] Task 09.3 — Update canonical `claim_and_seed_starter` RPC body
+### [X] Task 09.3 — Update canonical `claim_and_seed_starter` RPC body
 
 **Target file**: [docs/db/claim_and_seed_starter.md](../../docs/db/claim_and_seed_starter.md)
 
@@ -2150,7 +2153,7 @@ heading (the file already has a v2 from feature 025).
 
 ---
 
-### [ ] Task 09.4 — Add seed-coverage assertion
+### [X] Task 09.4 — Add seed-coverage assertion
 
 **Target file**: [tests/seed-data.test.js](../../tests/seed-data.test.js)
 
@@ -2207,7 +2210,7 @@ the existing parity helper, if any).
 
 ## Phase 10 — Release Prep (REQUIRED)
 
-### [ ] Task 10.1 — Version bump
+### [x] Task 10.1 — Version bump
 
 **Target files**: [package.json](../../package.json), [src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js)
 
@@ -2231,7 +2234,7 @@ the existing parity helper, if any).
 
 ---
 
-### [ ] Task 10.2 — CHANGELOG entry
+### [x] Task 10.2 — CHANGELOG entry
 
 **Target file**: [CHANGELOG.md](../../CHANGELOG.md)
 
@@ -2260,7 +2263,7 @@ Keep the entry concise. Style should match prior feature entries.
 
 ---
 
-### [ ] Task 10.3 — README updates
+### [x] Task 10.3 — README updates
 
 **Target file**: [README.md](../../README.md)
 
@@ -2281,7 +2284,7 @@ description.
 
 ---
 
-### [ ] Task 10.4 — Deployment doc update
+### [x] Task 10.4 — Deployment doc update
 
 **Target file**: [docs/deployment.md](../../docs/deployment.md)
 
@@ -2303,7 +2306,7 @@ for the RPC update operators must apply. Explain that:
 
 ---
 
-### [ ] Task 10.5 — REPO_MAP updates
+### [x] Task 10.5 — REPO_MAP updates
 
 **Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 
@@ -2337,7 +2340,7 @@ For the `src/models/application.js` entry, append a note about
 
 ---
 
-### [ ] Task 10.6 — Docs sanity check
+### [x] Task 10.6 — Docs sanity check
 
 **Target file**: (cross-cutting)
 

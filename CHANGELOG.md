@@ -7,6 +7,39 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-05-25
+
+### Added
+
+- **Calendar page** — new dedicated view alongside the Tracker and Profile pages.
+  (026-calendar)
+- Action Panel with Today, Suggested Actions, and Upcoming sections; count pills;
+  five rule-based suggestion kinds (follow-up, feedback, interview follow-up, offer
+  expiry, ghost flag).
+  (026-calendar)
+- Month Grid with always-6-week layout, ISO Monday-start, calendar-week gutter,
+  status-coloured numbered chips, +N overflow, out-of-month and weekend tints, and
+  today highlighting.
+  (026-calendar)
+- Status filter chip + dropdown; month/year navigation arrows; Month and Year
+  pickers; Today button; Day Popover (status-mode and all-mode).
+  (026-calendar)
+- Mark Ghosted action from suggestion rows — updates status + Timeline entry in one
+  step with a confirmation toast.
+  (026-calendar)
+- Local dismissal of suggestion rows; demo-mode dismissals stay in memory only
+  (never touch localStorage).
+  (026-calendar)
+- Calendar suggestion-coverage assertions added to `tests/seed-data.test.js`.
+  (026-calendar)
+
+> **Operator action required (hosted only):** apply the updated
+> `claim_and_seed_starter()` RPC body from
+> [`docs/db/claim_and_seed_starter.md`](docs/db/claim_and_seed_starter.md) (v3)
+> so new hosted users see a Calendar follow-up suggestion on day 1. Existing users
+> are unaffected.
+> See `specs/026-calendar/quickstart.md §4` for the full operator checklist.
+
 ## [0.12.0] — 2026-05-21
 
 ### Added
@@ -608,7 +641,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/reso830/Project_Alice/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/reso830/Project_Alice/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/reso830/Project_Alice/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/reso830/Project_Alice/compare/v0.10.0...v0.11.0

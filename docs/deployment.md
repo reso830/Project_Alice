@@ -43,6 +43,16 @@ starter applications with populated Timelines. Apply
 after the 019 schema block and before promoting a v0.12.0+ hosted
 deploy.
 
+Feature **026-calendar** adds no new Postgres schema but ships v3 of
+`claim_and_seed_starter()`. The v3 body enriches each starter
+application's Timeline with entries whose ages trigger Calendar
+Suggested Actions (follow-up, feedback, ghost-flag, offer-expiry) out
+of the box. Apply the v3 RPC body from
+[`docs/db/claim_and_seed_starter.md`](../docs/db/claim_and_seed_starter.md)
+after the 025 block and before promoting a v0.13.0+ hosted deploy. The
+RPC is idempotent — calling `CREATE OR REPLACE FUNCTION` with the v3
+body is safe to re-run against a project that already has v2.
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
 probes against `applications` (including `applications.timeline`),
@@ -153,6 +163,9 @@ ordered procedure and the pass/fail framing.
    - [ ] For v0.12.0+ hosted deploys, apply the 025 Timeline migration
      and starter-RPC v2 body from
      [`specs/025-application-timeline/quickstart.md`](../specs/025-application-timeline/quickstart.md).
+   - [ ] For v0.13.0+ hosted deploys, apply the 026 Calendar
+     starter-RPC v3 body from
+     [`docs/db/claim_and_seed_starter.md`](../docs/db/claim_and_seed_starter.md).
 
 3. **Install the allowlist trigger.**
    - [ ] Follow

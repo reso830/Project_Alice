@@ -10,7 +10,8 @@ inline for operator convenience, but they MUST link back here.
 | Version | Introduced by | Notes |
 |---|---|---|
 | v1 | [019-supabase-persistence](../../specs/019-supabase-persistence/spec.md) | Initial body — two starter rows, no Timeline. |
-| v2 (current) | [025-application-timeline](../../specs/025-application-timeline/spec.md) | Each starter row now carries a populated `timeline jsonb` array. |
+| v2 | [025-application-timeline](../../specs/025-application-timeline/spec.md) | Each starter row now carries a populated `timeline jsonb` array. |
+| v3 (current) | [026-calendar](../../specs/026-calendar/spec.md) | Starter timelines now trigger a day-one Calendar follow-up suggestion. |
 
 When a newer feature updates the RPC body, that feature MUST:
 
@@ -44,7 +45,13 @@ re-applying the RPC body does not re-seed already-seeded users.
 
 ---
 
-## 1. SQL body (v2)
+## v3 (feature 026)
+
+Feature 026 keeps the starter row count and top-level fields unchanged.
+Only the first starter row's timeline is adjusted so new hosted users see
+one Calendar follow-up suggestion on day 1.
+
+## 1. SQL body (v3)
 
 ```sql
 -- claim_and_seed_starter() RPC ----------------------------------------
@@ -57,10 +64,9 @@ re-applying the RPC body does not re-seed already-seeded users.
 -- the marker INSERT and any row INSERTs (one PL/pgSQL function body =
 -- one Postgres transaction).
 --
--- Each starter row now carries a populated `timeline jsonb` array
--- (added by 025) so new users land on a non-empty Timeline that
--- teaches the workflow: auto-status progression, manual note, and a
--- scheduled future follow-up.
+-- Each starter row carries a populated `timeline jsonb` array. The first
+-- starter row also has a latest applied entry old enough to trigger the
+-- Calendar follow-up suggestion on day 1 (feature 026).
 
 CREATE OR REPLACE FUNCTION public.claim_and_seed_starter()
 RETURNS boolean
@@ -80,8 +86,9 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Starter app 1: showcases auto-status progression + manual note +
-  -- a future-dated follow-up.
+  -- Starter app 1: showcases Timeline history + a Calendar follow-up
+  -- suggestion on day 1. Top-level fields are intentionally unchanged
+  -- from v2; only timeline JSON changed in v3.
   INSERT INTO public.applications (
     user_id, company_name, job_title, status,
     application_date, last_status_update,
@@ -105,15 +112,15 @@ BEGIN
       ),
       jsonb_build_object(
         'id',     2,
-        'date',   (now() - interval '7 days')::date::text,
+        'date',   (now() - interval '10 days')::date::text,
         'status', 'phone_screen',
         'text',   'Recruiter screen scheduled.'
       ),
       jsonb_build_object(
         'id',     3,
-        'date',   (now() + interval '4 days')::date::text,
-        'status', 'phone_screen',
-        'text',   'Follow-up call with Jane.'
+        'date',   (now() - interval '8 days')::date::text,
+        'status', 'applied',
+        'text',   'Jane confirmed the profile is moving to hiring review.'
       )
     )
   );
@@ -180,11 +187,12 @@ user needs to discover the feature:
 |---|---|---|
 | Auto-status progression entry | ✅ (id 2 — `phone_screen`) | ✅ (id 2 — `interview`) |
 | Manual note attached | ✅ (id 1 — referral note) | ✅ (id 3 — verbal offer note) |
-| Scheduled future follow-up | ✅ (id 3 — +4 days) | — |
+| Calendar day-one follow-up suggestion | ✅ (id 3 — latest `applied`, -8 days) | — |
 | `accepted` status entry | — | ✅ (id 4) |
 
-Any future revision of this RPC MUST preserve this coverage matrix
-unless feature 025's FR-034 is explicitly amended.
+Any future revision of this RPC MUST preserve this Timeline discovery
+coverage and the feature 026 day-one Calendar suggestion unless the
+corresponding feature requirement is explicitly amended.
 
 ---
 
@@ -203,7 +211,7 @@ WHERE  proname = 'claim_and_seed_starter';
 SELECT length(pg_get_functiondef(oid)) AS bytes
 FROM   pg_proc
 WHERE  proname = 'claim_and_seed_starter';
--- expect: > 1500 bytes (the v2 body is ~3 KiB)
+-- expect: > 1500 bytes (the v3 body is ~3 KiB)
 ```
 
 Then sign up a fresh hosted user via the running app and confirm both
