@@ -8,8 +8,8 @@
 - `tweaks-panel.jsx` — shared Tweaks UI
 
 **Related specs (read first):**
-- [`docs/design/tracker.md`](tracker.md) — chrome (topbar / footer), color tokens, status system
-- [`docs/design/application_timeline.md`](application_timeline.md) — the Timeline data model the Calendar projects from
+- [`design/tracker.md`](tracker.md) — chrome (topbar / footer), color tokens, status system
+- [`design/application_timeline.md`](application_timeline.md) — the Timeline data model the Calendar projects from
 
 ---
 
@@ -82,7 +82,7 @@ The Action Panel carries more practical day-to-day value than the grid; the grid
 
 ## 4. Design Tokens
 
-Uses tokens defined in [`docs/design/tracker.md`](tracker.md) (re-listed below for convenience).
+Uses tokens defined in [`design/tracker.md`](tracker.md) (re-listed below for convenience).
 
 | Token              | Value      | Calendar usage                                          |
 |--------------------|------------|---------------------------------------------------------|
@@ -122,7 +122,7 @@ Out-of-month cells (general): `#FAF7F1`.
 
 ## 5. Status System
 
-Reuses the canonical palette from [`docs/design/tracker.md § Status System`](tracker.md). The Calendar exposes statuses in:
+Reuses the canonical palette from [`design/tracker.md § Status System`](tracker.md). The Calendar exposes statuses in:
 
 - Cell **numbered chips** (background = `borderAccent`, text = badge text color)
 - Day popover **status badges** (full label pill, same colors)
@@ -135,7 +135,7 @@ Reuses the canonical palette from [`docs/design/tracker.md § Status System`](tr
 1. Accepted
 2. Offer
 3. Interview
-4. Technical Assessment
+4. Technical          (status key: assessment)
 5. Phone Screen
 6. Wishlisted
 7. Applied
@@ -145,6 +145,10 @@ Reuses the canonical palette from [`docs/design/tracker.md § Status System`](tr
 ```
 
 This drives **both** the in-cell chip order and the order in the filter dropdown. Sorting must be stable on this exact array.
+
+### Status label: "Technical" (was "Technical Assessment")
+
+The `assessment` status displays as **"Technical"** in every UI surface (chips, popover/panel rows, status badges, filter dropdown, Tracker badges, Tracker quick-filter). The full phrase "Technical Assessment" overflowed in narrow chips and Tracker cards and dominated visual space. The shorter label is the **global** copy — `STATUS_CONFIG.assessment.label` is the single source of truth and must read `"Technical"`. Do not maintain a separate "long" form.
 
 ---
 
@@ -159,11 +163,16 @@ Top of the Action Panel.
 - **Time-aware greeting** computed once at mount via `getTimeAwareGreeting()`:
   | Hour range | Pool                                                              |
   |------------|-------------------------------------------------------------------|
-  | 05–11      | "Good morning,", "Morning,", "Rise and shine,", "Bright and early," |
-  | 12–16      | "Good afternoon,", "Afternoon,", "Mid-day check-in,"              |
-  | 17–21      | "Good evening,", "Evening,", "Winding down,"                      |
-  | 22–04      | "Burning the midnight oil?", "Late night session,", "Night owl mode," |
-  Plus three neutral entries appended to every pool: "Here's what we have today,", "Today at a glance,", "Welcome back,". Final selection is uniform-random across the merged pool.
+  | 05–11      | "Good morning", "Morning", "Rise and shine", "Bright and early"   |
+  | 12–16      | "Good afternoon", "Afternoon", "Mid-day check-in"                 |
+  | 17–21      | "Good evening", "Evening", "Winding down"                         |
+  | 22–04      | "Burning the midnight oil?", "Late night session", "Night owl mode" |
+  Plus three neutral entries appended to every pool: "Here's what we have today", "Today at a glance", "Welcome back". Final selection is uniform-random across the merged pool. Entries are stored **without trailing punctuation** — the formatter adds the comma + name only when a name is available.
+
+- **Name injection.** The page orchestrator reads the user's display name from the active profile (hosted: Supabase user metadata; local: profile store; demo: the demo profile's name if one is set). The formatter then composes the headline:
+  - **With name**: `"{Greeting}, {Name}"` — e.g. `"Good morning, Alice"`. Question-form greetings ("Burning the midnight oil?") render as `"Burning the midnight oil, Alice?"` — comma + name inserted before the punctuation.
+  - **Without name** (no profile set, hosted user with no display name, demo with no name): `"{Greeting}"` — e.g. `"Good morning"`. **No trailing comma.** A bare comma reads as a typo to the user.
+  - This rule applies uniformly across hosted, local, and demo sessions.
 
 ### 6.2 Section Header (Today / Suggested Actions / Upcoming)
 
@@ -241,23 +250,55 @@ When a section has zero items, render `<EmptyState>` instead of the row list:
 
 The count pill in the section header is hidden when empty.
 
-### 6.6 Month Grid Header (`.grid-header`)
+### 6.6 Month Grid Header (`.cal-grid-header`)
 
-Flex row, wraps on narrow widths:
+Single flex row at every breakpoint (no wrap):
 
 ```
-[ ‹ ]   [ May ] [ 2026 ▾ ]   [ › ]    [Today*]    ←gap→    [Status: All ▾]
+[ ‹ ]  [ May ]  [ 2026 ]  [ › ]    [Today*]    ←gap→    [Filter icon*]
 ```
 
 - **Prev / Next month** (`.cal-nav-btn`): 30×30 square, border `--border`, hover ring `--indigo` + bg `--indigo-soft`. Disabled at `YEAR_MIN, Jan` (prev) and `YEAR_MAX, Dec` (next).
-- **Month name** (`button.yr` inside `.cal-title`): Sora 18/600 (mobile 16), padding `4px 8px`, hover bg `--indigo-soft`, color → `--indigo`. Click opens **Month Picker**.
-- **Year** (`button.yr` with `.yr` class): same control, Sora 18/500, color `--t3`. Click opens **Year Picker**.
-- **Caret** glyph (`IconChevDown` 9px) sits after the year only, color `--t3`.
-- **Today button** (`.today-btn`): conditional, visible **only when the viewed month is not the current month**. `padding: 6px 14px`, font 11/500 (mobile 10), border `--border`, hover ring `--indigo`. Clicking it returns the view to `TODAY.y, TODAY.m`.
-- **Status Filter chip** (`.filter-chip`): right-aligned via `.filter-area { margin-left: auto }`. Two states:
-  - Idle (`Status: All`) — neutral border + text.
-  - Active (`{Status}` + swatch dot) — border + text `--indigo`, bg `--indigo-dim`.
-  - When active, an adjacent **clear** button (`.filter-clear`) appears: 30×30 icon button, hover `--danger` ring + `--danger-bg`.
+- **Month name** (`button.cal-month-btn` inside `.cal-title`): **text-style trigger** — no border, transparent background, Sora 18/600 (mobile 16), `--t1` color, padding `4px 6px`. Hover: color → `--indigo` and a subtle `--indigo-soft` bg. Click opens **Month Picker**.
+- **Year** (`button.cal-year-btn`): same text-style treatment — no border, transparent bg, Sora 18/500 (mobile 16), `--t2` color, padding `4px 6px`. Hover: color → `--indigo`. Click opens **Year Picker**.
+- **No caret glyph** after the year. The hover affordance is enough; the chevron caret was added in error and read as a dropdown form control.
+- Month and Year are both **Sora** for visual consistency. Do not mix Sora + DM Mono in this control pair.
+- **Today button** (`.cal-today-btn`): conditional, visible **only when the viewed month is not the current month**. `padding: 6px 14px`, font Sora 11/500 (mobile 10), border `--border`, hover ring `--indigo`. Clicking it returns the view to `TODAY.y, TODAY.m`.
+- **Status Filter button** (`.cal-status-filter-btn`): mirrors the **Tracker quick-filter status button** (`QuickFiltersToolbar` status control). Same control across desktop and mobile:
+  - Idle: 30×30 icon button with a neutral funnel/filter SVG glyph, border `--border`, `--t3` color.
+  - Active: same 30×30 shape, but the glyph is replaced by an 8×8 round status swatch (`STATUS_CONFIG[status].borderAccent`); border + ring use `--indigo`.
+  - Hover/focus matches `.cal-nav-btn`.
+  - When active, an adjacent **clear** button (`.cal-filter-clear`) appears: 30×30 icon button, hover `--danger` ring + `--danger-bg`.
+  - Right-aligned via `.cal-filter-area { margin-left: auto }`.
+  - The old `.filter-chip` ("Status: All" / "Interview" text chip) is **removed** — the icon button is the only filter trigger now, on both desktop and mobile.
+
+### 6.6.1 Header layout — single row above 375px, controlled wrap below
+
+The header is a single row at every breakpoint **≥ 375px**:
+
+```
+[‹] [May] [2026] [›]   [Today*]                 ⟵ gap ⟶                 [Filter*]
+```
+
+- `[Today*]` is only present when the view is off the current month.
+- `[Filter*]` is the icon button described above (idle = funnel glyph; active = swatch).
+- The left cluster (`‹ Month Year ›`) is grouped tightly with 2px gaps; `[Today]` sits 12px to its right; `[Filter]` is pushed to the far right via `margin-left: auto`.
+- On mobile (<640px and ≥375px), font sizes drop (Sora 16 for month/year; Today 10/500) and gaps tighten to 4px in the left cluster, but the row **does not wrap**.
+
+#### Sub-breakpoint exception (<375px)
+
+At very narrow viewports — `iPhone SE` (320px), `Galaxy Z Fold 5` cover screen (~344px), and similar — the single-row constraint breaks down: with Today visible and a status filter selected, the Month/Year text overflows under the nav arrows. Below 375px the header switches to a **controlled two-row layout**:
+
+```
+Row 1:  [‹] [May] [2026] [›]
+Row 2:  [Today*]                    ⟵ gap ⟶                    [Filter*]
+```
+
+- Implementation: `.cal-grid-header { flex-wrap: wrap; }` activated only under the `@media (max-width: 374px)` query.
+- Row 1 always contains the **nav cluster** (`‹ Month Year ›`) and nothing else. To pin this, the nav cluster gets `flex: 1 1 100%` at <375px so it consumes the full first row.
+- Row 2 holds `[Today*]` (left) and `[Filter*]` (right, via `margin-left: auto` on the filter area). When both are present, they share the row; when only Filter is present, it floats right alone; when neither is present (current month, no active filter), Row 2 collapses to zero height.
+- This is the **only** breakpoint where the header wraps. Above 375px the single-row rule still applies — do not generalize the wrap pattern upward.
+- The previous 3-row mobile layout (nav · today · filter on separate lines) remains retired; the new two-row layout is narrower in scope (only <375px) and groups elements differently (nav alone vs. today+filter together).
 
 ### 6.7 Day-of-week Header (`.dow-row`)
 
@@ -372,6 +413,8 @@ Two modes:
 | `status` | Clicking a numbered chip | All activities for that day **filtered to that status**. Rows use `IdPill` on the left. |
 | `all`    | Clicking the date number OR the `+N` overflow chip | All activities for that day, grouped by status priority. Rows use the full `StatusBadge` on the left. |
 
+> **Status:** This whole §6.9 is **superseded by §17 (v2 Inline Day Details Panel)** on desktop and mobile. The popover is no longer the production day-detail surface. The structure below is retained as the historical v1 reference for the existing implementation in `src/components/calendar/DayPopover.js`; new work should follow §17.
+
 Structure:
 ```
 .day-pop  (width 360px desktop, 100% mobile bottom-sheet, max-height 460px desktop / 80vh mobile)
@@ -379,31 +422,31 @@ Structure:
 │   ├── .ttl    Sora 14/600 — e.g. "Tue, May 19 · Applied (5)"
 │   │   └── .count  --t3, weight 500 — the "(N)" portion
 │   └── .close  26×26, --bg bg, hover --border bg
-├── .day-pop-body  (scrolls; padding 6px 0)
-│   └── .day-row × N  (grid: auto | 1fr | auto = badge/id | body | arrow)
-│       Row click → opens Application Overlay (TBD wiring)
-│       hover bg --indigo-soft
-└── .day-pop-foot  (#FAFAF8 bg, top border)
-    "Row click → opens application"   "View in Tracker →"
+└── .day-pop-body  (scrolls; padding 6px 0)
+    └── .day-row × N  (grid: auto | 1fr | auto = badge/id | body | arrow)
+        Row click → opens Application Overlay
+        hover bg --indigo-soft
 ```
+
+The `.day-pop-foot` static-help footer ("Row click → opens application" / "View in Tracker →") is **removed**. The behavior is self-evident from the row hover state and arrow glyph; the footer added clutter without information.
 
 Title format:
 - Status mode: `{Pretty date} · {Status} (N)` — e.g. `Tue, May 19 · Applied (5)`
 - All mode:    `{Pretty date} · All activity (N)`
   Pretty date = `toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" })` → `Tue, May 19`.
 
-### 6.10 Month Picker (`.picker`)
+### 6.10 Month Picker (`.cal-picker`)
 
 ```
 width: 260px desktop, 100% (bottom sheet) mobile
 padding: 12px 14px
 ```
 
-Header (`.picker-h`):
-- Left: `.lbl` — "Jump to month" (DM Mono 10 uppercase)
-- Right: `.yr` — current year (DM Mono 11, `--t2`)
+Header (`.cal-picker-h`):
+- **No left label.** The "Jump to month" copy was removed — the grid of months is self-evident and the label only added vertical noise.
+- Right: `.cal-picker__yr` — current view year (Sora 13/500, `--t2`). Visually anchors the grid to a specific year context.
 
-Body (`.picker-grid`):
+Body (`.cal-picker-grid`):
 - 3-column grid of `.picker-item` buttons, one per month (Jan…Dec).
 - States:
   - default — DM Mono 11.5/500, `--t2`, transparent
@@ -412,13 +455,13 @@ Body (`.picker-grid`):
   - `--picker-item--selected` — the month currently being viewed, solid `--indigo` bg, white text, weight 600
 - Selecting a month updates `view.m`, **keeps the year**, and closes the picker.
 
-### 6.11 Year Picker (`.picker`)
+### 6.11 Year Picker (`.cal-picker`)
 
 Same shell as the month picker but the body shows **12 years at a time** with decade navigation.
 
-Header:
-- Left: `.lbl` — "Jump to year"
-- Right: `.yr-nav` — `[‹] {startYear} – {startYear+11} [›]`
+Header (`.cal-picker-h`):
+- **No left label.** The "Jump to year" copy was removed — same reason as §6.10.
+- Right: `.cal-picker__yr-nav` — `[‹] {startYear} – {startYear+11} [›]`. The `{startYear} – {startYear+11}` range text uses the **same typography as the year buttons in the grid below** — Sora 11.5/500, `--t2` — so the header range and grid options read as one continuous control. Do not use DM Mono here; mixing DM Mono in the range with Sora in the options was the source of the "messy" look.
 
 Range navigation buttons:
 - Each `22×22` icon button (`<` `>`), border `--border`, hover ring `--indigo`.
@@ -433,20 +476,53 @@ Body — `.picker-grid` of 12 years:
 
 Selecting a year updates `view.y`, **keeps the month**, and closes the picker.
 
-### 6.12 Status Filter Dropdown (`.filter-dd`)
+### 6.12 Status Filter Popup (shares Tracker's `QuickFiltersToolbar` status popup)
 
-Anchored to the filter chip with `align: "end"` (right-aligned). On mobile becomes a bottom sheet.
+> **Surface change in v0.13.2.** The Calendar's filter trigger no
+> longer opens a Calendar-specific `.filter-dd` dropdown. It opens
+> the **same status-filter popup the Tracker uses** via
+> `QuickFiltersToolbar` (see `design/tracker.md § Quick Filters`),
+> on **all breakpoints** — desktop, tablet, and mobile. One filter
+> chrome across both pages. The legacy `.filter-dd` family
+> (`.filter-dd`, `.filter-dd-row`, `.filter-dd-check`,
+> `.filter-dd-swatch`, `.filter-dd-label`, `.none-glyph`) is retired
+> from the Calendar's filter surface as part of this change.
 
-- Padding `6px`, min-width `196px`.
-- First row: **"All statuses"** with `.none-glyph` (an empty circle outline) and the `IconCheck` showing only when nothing is selected.
-- Following rows: one per status, in **priority order**. Each row:
-  ```
-  grid-template-columns: 14px auto 1fr
-                         check | swatch | label
-  ```
-  Swatch = 8×8 round, `background: STATUSES[k].bg`. (Ghosted's `#ced4da` swatch gets a 1px `--border` so it doesn't disappear on white.)
+#### Behavior
 
-Hover bg `--indigo-soft`. Active row uses `--indigo` for text + check.
+- Triggered by the `.cal-status-filter-btn` icon button (§6.6).
+  The button's `aria-expanded` reflects open/closed state and matches
+  the Tracker trigger's a11y pattern.
+- The popup chrome (header, scrollable option list, apply/clear
+  footer, focus-trap, Esc / backdrop close) is owned by the Tracker
+  filter popup component — the Calendar does **not** maintain a
+  parallel implementation. New visual or behavioral changes to the
+  filter popup must be made in the shared component, never branched.
+- Single-select semantics on the Calendar: the popup exposes the
+  same status list it shows on the Tracker, but the Calendar only
+  consumes one selection (the next `onSelect` value replaces the
+  previous one). "All statuses" maps to `filter: null`.
+- Status options render in `STATUS_DISPLAY_PRIORITY` order with the
+  Tracker-style swatch + label rows. The assessment status reads
+  **"Technical"** per §5.
+
+#### Implementation note
+
+If `QuickFiltersToolbar`'s status popup is currently embedded inside
+the Tracker page rather than a standalone shared module, the Phase
+14 implementation must extract it to a shared component (placement:
+`src/components/QuickFiltersStatusPopup.js` or similar) so both
+pages can mount the same surface. Style-prefix scoping for the
+extracted component continues to follow the Tracker's existing
+class family — do not invent a new `cal-` prefix for surfaces the
+Calendar inherits wholesale.
+
+#### Mobile
+
+No bottom-sheet variant. The Tracker popup's responsive form (which
+already adapts to narrow viewports) is the canonical mobile surface.
+This retires the `asBottomSheet: true` configuration the
+`StatusFilterDropdown` used in v0.13.1.
 
 ### 6.13 Anchored Dropdown (`<AnchoredDropdown>`)
 
@@ -476,7 +552,7 @@ Behavior:
 
 ### 6.14 Toast
 
-Reuses the toast pattern from [`docs/design/tracker.md § Toast`](tracker.md): pill at bottom-center, `--navy` bg, white text, green dot, 2200ms auto-dismiss. Used for action confirmations (e.g. "Marked #011 as Ghosted", "Open application #024 (overlay TBD)").
+Reuses the toast pattern from [`design/tracker.md § Toast`](tracker.md): pill at bottom-center, `--navy` bg, white text, green dot, 2200ms auto-dismiss. Used for action confirmations (e.g. "Marked #011 as Ghosted", "Open application #024 (overlay TBD)").
 
 ---
 
@@ -539,7 +615,7 @@ Prefer:
 | Surface | Trigger | Behavior |
 |---|---|---|
 | Action Panel row (any) | Click `open ↗` icon | Opens **Application Overlay** for that `id`. Row body itself is not clickable — only the action button. |
-| Suggestion row | Click `× dismiss` | Marks suggestion dismissed permanently; row exits with no toast (or quiet toast — TBD). |
+| Suggestion row | Click `× dismiss` | Marks suggestion dismissed permanently; row exits and a toast `"Suggestion dismissed"` fires (same toast component as Mark Ghosted, success variant). Closing this gap from v1 — without feedback the click felt swallowed. |
 | Suggestion row (Ghost flag) | Click `Mark ghosted` text button | Runs the Mark Ghosted action (§7). Toast: "Marked {ID} as Ghosted". |
 | Month grid cell (has activities) | Click anywhere in the cell, **but not on a chip** | Opens day-popover in `all` mode anchored to the cell. |
 | Month grid cell (zero activities) | Click | No-op (cursor stays `default`, no hover lift). |
@@ -562,7 +638,9 @@ Prefer:
 ### Filter behavior on the grid
 
 - When `statusFilter` is non-null, each cell's chip set is computed against the filtered activity list.
-- Cells where the day has *some* activities but **none** match the filter render `.cal-cell--filter-hidden` (35% opacity). They remain present so the layout is stable; they're just visually demoted.
+- Cells where the day has *some* activities but **none** match the filter render `.cal-cell--filter-hidden` (35% opacity).
+- **Cells with zero activities also render `.cal-cell--filter-hidden`** when a filter is active. Originally only "has activities but none match" cells were dimmed; in practice this left empty days at full opacity while filtered-out days were dim, which read as random. With the filter active, only days that match the filter are at full opacity — every other cell (empty or non-matching) is muted.
+- All cells remain present so the layout is stable; they're just visually demoted. Today, weekend, and out-of-month styling still apply underneath the dim.
 - The Action Panel is **not** affected by the grid filter — the filter only narrows the grid.
 
 ### Filter behavior on the day popover
@@ -613,8 +691,206 @@ Once dismissed, the rule that produced it is **suppressed forever** for that app
 - DOW labels drop to 9px.
 - Topbar pads to 14px.
 - Popovers and pickers all become **bottom sheets** (see §6.13).
+- **Grid header is a single row** at and above 375px — same control set as desktop (`‹ Month Year › [Today*] … [Filter*]`); compact spacing only. The previous 3-row mobile header (nav line · today line · status filter line) is retired (§6.6.1).
+- **Below 375px** (iPhone SE / Galaxy Z Fold 5 cover-screen class), the header wraps to **two rows**: nav cluster (`‹ Month Year ›`) on row 1, `[Today*]` + `[Filter*]` on row 2. See §6.6.1 sub-breakpoint exception for the precise rule.
 
-> **Open question:** On very narrow viewports, the Action Panel can be long. Per earlier wireframe discussion the intended pattern is a **collapsible summary bar** ("Today · 2 events · 3 suggestions · tap to expand") pinned at the top. This is **not yet implemented in v1** — the panel currently flows inline. Add this in v2 if the panel turns out to dominate the viewport.
+### 11.1 Action Panel collapse (`<1200px` — every stacked layout)
+
+When the Action Panel and Month Grid are stacked vertically (any viewport `<1200px` — narrow desktop, tablet portrait, mobile, folded phones), the Action Panel renders **collapsed by default**. The greeting and date stay anchored at the top; the Today / Suggested Actions / Upcoming sections fold into a single chip row that previews the counts. The full sections are one tap away.
+
+#### Activation
+
+- Active for **every stacked layout** at `<1200px`. The breakpoint is the same as the layout-stack breakpoint (§3) — no separate threshold.
+- At `≥1200px`, the side-by-side layout applies; the collapse UI is hidden via CSS and the full panel is always visible. No collapse / expand control is rendered.
+- Activation is viewport-driven, not container-driven. A `resize` listener (or `matchMedia`) gates rendering of the collapse UI.
+
+#### Default state
+
+- **Collapsed on every page render** at `<1200px`. Toggle state does NOT persist across reloads, route changes, or remount — held only in component state.
+- If the viewport crosses the breakpoint mid-session (resize from `≥1200px` → `<1200px`), the panel re-enters its collapsed default state. Crossing the other way leaves the side-by-side layout fully expanded as always.
+
+#### Collapsed state — anatomy
+
+The collapsed panel has exactly two regions:
+
+1. **Greeting toggle row** — the entire row is the expand affordance.
+2. **Chip row** — section previews, one chip per non-empty section. Replaced by italic caught-up text when every section is empty.
+
+##### Greeting toggle row (`.ap-greeting-btn`)
+
+A single `<button type="button">` wrapping the greeting block and a chevron icon. The whole row is the click target, including the date subline.
+
+```
+.ap-greeting-btn {
+  width: 100%;
+  display: flex; align-items: center; gap: 14px;
+  background: none; border: none;
+  padding: 8px 10px; margin: -8px -10px;       /* negative margin so the
+                                                  hover bg extends to the
+                                                  panel's inner edge */
+  text-align: left; font-family: inherit; color: inherit;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: background .14s ease;
+}
+.ap-greeting-btn:hover         { background: var(--bg); }
+.ap-greeting-btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
+```
+
+Children, in order:
+
+| Child | Class | Notes |
+|---|---|---|
+| Greeting + date block | `.ap-greeting-block` | `flex: 1; min-width: 0`. Holds `<h2 class="greeting-h">` and `<div class="greeting-sub">` from §6.1. `min-width: 0` is required so text wraps **inside this column** — long greetings (e.g. `"Good morning, Alexandra,"` with a long first name) must never flow under the chevron. |
+| Chevron icon | `.ap-chev` | `flex-shrink: 0; width: 32px; height: 32px; border-radius: 999px;` centered inline-flex. Color `--t3`. SVG down-chevron glyph. Hover: color `--indigo`, background `--indigo-soft`. |
+
+Chevron rotation:
+
+```
+.ap-greeting-btn .ap-chev               { transform: rotate(180deg); transition: transform .2s ease; }
+.ap-greeting-btn.is-collapsed .ap-chev  { transform: rotate(0deg); }
+```
+
+Default state has `.is-collapsed`; chevron points down (▾). Expanded removes the modifier; chevron points up (▴).
+
+##### Chip row (`.ap-chips`)
+
+Horizontal flex row of pills, one per non-empty section. Rendered only when `collapsed === true` AND at least one section has a non-zero count.
+
+```
+.ap-chips {
+  margin-top: 16px;
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.ap-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all .14s ease;
+}
+.ap-chip:hover { border-color: var(--indigo); background: var(--indigo-soft); }
+```
+
+Chip children:
+
+| Child | Class | Treatment |
+|---|---|---|
+| Section dot | `.dot` | 6×6 round colored marker. Color per section (table below). |
+| Section label | `.lbl` | Sora 12/500, `--t1`. One of `"Today"`, `"Suggested"`, `"Upcoming"`. |
+| Count badge | `.n` | DM Mono 10.5/600, `--indigo` text on `--indigo-dim` background, `padding: 2px 8px`, `border-radius: 999px`. |
+
+Section-specific modifiers and dot colors:
+
+| Section   | Modifier class      | Dot color  | Count source                                |
+|-----------|---------------------|------------|---------------------------------------------|
+| Today     | `.ap-chip.today`    | `#f9c74f`  | `today.length`                              |
+| Suggested | `.ap-chip.suggest`  | `#818CF8`  | `suggestions.length`                        |
+| Upcoming  | `.ap-chip.upcoming` | `#2EC4B6`  | `tomorrow.length + restOfWeek.length`       |
+
+Empty-chip rule: if a section's count is `0`, its chip is **omitted entirely** from the row. There is no zeroed-out variant. With one or two sections empty, the remaining chips wrap normally.
+
+##### All-empty fallback (`.ap-caughtup`)
+
+When all three counts are `0`, the chip row is replaced with a single line of italic text. Quiet by design — no glyph, no border, no pill.
+
+```
+.ap-caughtup {
+  margin-top: 16px;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--t3);
+  letter-spacing: .1px;
+  padding: 6px 2px;
+}
+```
+
+Copy: `You're all caught up!`. The greeting-row chevron is still active in this state; tapping expands to show the three empty-state sub-panels in full (§6.5).
+
+#### Expanded state — anatomy
+
+When `collapsed === false`:
+
+1. **Greeting toggle row** — same row, `.is-collapsed` removed, chevron rotated to point up.
+2. **Full section content** — Today, Suggested Actions, and Upcoming sections rendered exactly as in the desktop side-by-side layout (§6.1–§6.5). Section headers, count pills, row chrome, action buttons, sub-groups, and empty states are all unchanged.
+3. **Bottom collapse chip** — a second collapse affordance at the foot of the panel.
+
+The chip row and caught-up fallback are **never** rendered when expanded.
+
+##### Bottom collapse chip (`.ap-collapse-row` + `.ap-collapse-chip`)
+
+```
+.ap-collapse-row {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+  display: flex; justify-content: center;
+}
+.ap-collapse-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--t2);
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  letter-spacing: .2px;
+  cursor: pointer;
+  transition: all .14s ease;
+}
+.ap-collapse-chip:hover {
+  border-color: var(--indigo); color: var(--indigo); background: var(--indigo-soft);
+}
+```
+
+Content: up-chevron glyph (11×11) followed by the word `Collapse`. Triggers the same toggle as the greeting-row chevron. Renders only in expanded state.
+
+#### Interactions
+
+| Surface | Trigger | Behavior |
+|---|---|---|
+| `.ap-greeting-btn` | Click / Tap / `Enter` / `Space` | Toggle collapsed ↔ expanded. |
+| `.ap-chip` (any) | Click / Tap / `Enter` / `Space` | Expand the panel. Does not filter, scroll-into-view, or pre-focus the corresponding section — opening the panel is the disclosure that satisfies the user's intent. |
+| `.ap-collapse-chip` | Click / Tap / `Enter` / `Space` | Collapse the panel. |
+| `Esc` (focus inside expanded panel) | Press | Collapse the panel; return focus to `.ap-greeting-btn`. |
+| Viewport resize across the 1200px boundary | — | Crossing into `<1200px` re-enters collapsed default. Crossing into `≥1200px` reveals the always-expanded side-by-side layout. |
+
+#### Accessibility
+
+- `.ap-greeting-btn` carries `aria-expanded="true" | "false"` and `aria-controls={id-of-panel-body}`.
+- The chevron and dot glyphs are `aria-hidden="true"` (decorative).
+- The greeting headline retains `id="action-panel-heading"`; the panel `<section>` keeps `aria-labelledby="action-panel-heading"`.
+- Each chip carries an `aria-label` of the form `"Expand panel — {Section}, {N} {entry|entries}"`. The visible label/count is decorative for SR purposes; the `aria-label` is the canonical string.
+- The all-empty `.ap-caughtup` text is non-interactive plain text. The greeting-row toggle is the only interactive surface in that state.
+- Chevron rotation honours `prefers-reduced-motion: reduce` — the `transition` is wrapped in `@media (prefers-reduced-motion: no-preference)`. Reduced-motion users get an instant rotation.
+- `Esc` collapse behaviour returns focus to `.ap-greeting-btn` so keyboard users keep their place.
+
+#### Wiring
+
+- Owned by the existing `<ActionPanel>` component in `calendar-app-v2.jsx`. No new top-level component.
+- Local state: one boolean `collapsed` (default `true`) and one boolean `isStacked` (default computed from `window.innerWidth < 1200`, refreshed via a `resize` listener).
+- Render branches on `isStacked`:
+  - `isStacked === false` — return the original always-expanded layout (greeting + three sections). The collapse UI never mounts.
+  - `isStacked === true` — render `.ap-greeting-btn` at the top of the panel; below it, render either the chip row / caught-up text (collapsed) or the three sections + `.ap-collapse-row` (expanded).
+- No persistence. No localStorage. No URL hash. No SSR cookie.
+- Counts come straight from the existing data props (`TODAY_EVENTS`, `SUGGESTIONS`, `UPCOMING_TOMORROW`, `UPCOMING_WEEK`). The existing `*Empty` tweaks override them to `0` for review.
+- The greeting headline uses the user's first name only when a name is available (`"{Greeting}, {FirstName}"`); the name-injection convention from §6.1 still applies. Stress-test wrap behavior with long first names — `min-width: 0` on `.ap-greeting-block` is what keeps long wraps safe.
+
+#### Tweaks (additions to §12)
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `panelCollapsed` | boolean | `true` | At `<1200px`, forces the Action Panel into its collapsed state so the design can be reviewed without resizing. Inert at `≥1200px`. Composes with `todayEmpty` / `suggestionsEmpty` / `upcomingEmpty` — setting all four toggles previews the "You're all caught up!" fallback. |
+
+#### Constraints for agents
+
+- Do **not** absolute-position the chevron over the greeting. The greeting must wrap within its own flex column, never under the chevron. `.ap-greeting-block { flex: 1; min-width: 0 }` and `.ap-chev { flex-shrink: 0 }` are non-negotiable.
+- Do **not** persist the collapsed state across reloads. Every page load at `<1200px` starts collapsed by design.
+- Do **not** introduce a third collapse affordance (corner X, swipe-up, etc.). The top chevron + bottom Collapse chip cover keyboard, pointer, and touch.
+- Do **not** add per-status or per-application chips to `.ap-chips`. The chip row is a section summary, not a filter surface. Status filtering lives on the grid (§6.6 / §6.12).
+- Do **not** render the chip row, the caught-up text, or `.ap-collapse-row` at `≥1200px`. Those elements exist only inside the stacked layout.
 
 ---
 
@@ -706,7 +982,7 @@ The `kind` field is what powers the action selection (Mark ghosted vs. open) and
 ## 14. Accessibility
 
 - All interactive surfaces are reachable by keyboard. Cells with activities are `role="button" tabIndex={0}`; chips are `role="button" tabIndex={0}`; pickers and popovers are focusable buttons inside a `role="dialog" aria-modal="true"` shell.
-- `aria-label` on cells: `"{Pretty date}, {N} activity/activities"` when activities exist, otherwise no label (the day number is the visible text).
+- `aria-label` on cells: `"{Pretty date}, {N} activities"` when activities exist, otherwise no label (the day number is the visible text).
 - `aria-label` on chips: `"{Status label}, N entries. Click to view."`
 - CW gutter cells: `aria-hidden="true"` — they're a navigational hint, not content; screen readers should skip them. The `CW` header label is also `aria-hidden="true"`.
 - Active page in the topbar nav: `aria-current="page"`.
@@ -723,7 +999,6 @@ The `kind` field is what powers the action selection (Mark ghosted vs. open) and
 - **AI / LLM-driven suggestions** — explicitly not planned. Suggestions must remain deterministic.
 - **Attachment per timeline entry** — see `application_timeline.md § Open items`.
 - **Per-day note** — distinct from per-entry notes. Punted.
-- **Mobile collapsible summary bar** for the Action Panel (mentioned in §11).
 - **Filter URL persistence** — would let users share a "Calendar with Interview filter" link. Nice-to-have, not v1.
 
 ---
@@ -739,3 +1014,220 @@ The `kind` field is what powers the action selection (Mark ghosted vs. open) and
 - **Do** keep the `EDITMODE-BEGIN/END` JSON block valid (double-quoted keys/strings) — the host rewrites it on tweak changes.
 - Style objects: when adding new components, give them component-specific names (e.g. `dayPopStyles`) — never a bare `const styles = {}`.
 - **Application Overlay wiring** is the single biggest TODO. The current `onOpenApp(id)` handler fires a toast. Replace with `openApplicationOverlay(id, { focusTimeline: true })` once the overlay is mounted at the app shell level.
+
+---
+
+## 17. v2 — Inline Day Details Panel
+
+> **Status:** Implemented in `Calendar v2.html` + `calendar-app-v2.jsx`. v1 files (`Calendar.html` + `calendar-app.jsx`) remain untouched as the baseline so the two can be compared side-by-side.
+
+### 17.0 Why v2
+
+The v1 day popover (anchored on desktop, bottom-sheet on mobile) is a transient surface — it occludes the grid on desktop and forces the user out of context on mobile. v2 replaces that pattern with a **persistent inline details panel** stitched to the bottom of the calendar card. Selecting a date stays "sticky" — the panel updates in place. The user can keep the grid and the day's activity in view together.
+
+### 17.1 Sections superseded by v2
+
+These v1 sections are **replaced** when running on v2:
+
+| v1 section | v2 replacement |
+|---|---|
+| §6.9 — Day Popover | §17.4 — Day Details Panel |
+| §8 — interactions for cell / chip / `+N` / day-popover rows | §17.6 — Updated interactions |
+| §11 — "Popovers and pickers all become bottom sheets" (the day popover row) | §17.7 — Mobile is inline everywhere |
+| §12 — Tweaks table | §17.8 — adds `detailsVariant` and `preselectToday` |
+| §14 — chip aria-label "Click to view." | §17.9 — chips are no longer interactive |
+
+The Month Picker, Year Picker, Status Filter dropdown, `<AnchoredDropdown>` primitive, scrim/bottom-sheet behavior for those three remain **unchanged** from v1.
+
+### 17.2 Interaction model
+
+| Surface | v2 behavior |
+|---|---|
+| Day cell with any activity OR an empty day | Single click selects the date. The Details Panel below the grid updates. |
+| Day cell already selected | Click is a no-op. Selection persists; the only way to change it is to click a different cell. |
+| Out-of-month cell | Not selectable (cursor stays default, no click handler). |
+| Numbered chip (`.num-chip`) | **Non-interactive.** Purely visual. No `role`, no `tabIndex`, no `onClick`. `cursor: default`. Hover lift / shadow removed. Tooltip via `title` attribute preserved for status-name discovery. |
+| `+N` overflow chip (`.num-more`) | **Non-interactive.** Same treatment as `.num-chip`. The cell's own click still selects the date. |
+| Date selection | Stays in component state. No URL persistence, no localStorage. Defaults to `null` ("nothing selected") unless the `preselectToday` tweak is on, in which case the initial value is `isoKey(TODAY)`. |
+
+The popover state machine (`day-status` / `day-all` modes from v1) is removed entirely.
+
+### 17.3 Cell selection state — `.cal-cell--selected`
+
+New cell state, distinct from `--today`:
+
+```
+.cal-cell--selected {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(26,26,46,.08);
+}
+.cal-cell--selected.cal-cell--today {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 2px rgba(79,70,229,.18);
+}
+```
+
+Stacks with `--today` (today + selected = indigo ring instead of navy). Stacks with `--weekend` and `--out` (though `--out` is never selectable, so that combination shouldn't occur).
+
+### 17.4 Day Details Panel (`.details-panel`)
+
+Sits **inside the calendar card**, below the month grid, separated by a 1px solid border. Renders three top-level states:
+
+| State | Trigger | Shell class |
+|---|---|---|
+| **Prompt** — no date selected | `selectedDate === null` | `.details-panel .details-panel--prompt` (top border becomes dashed) |
+| **Empty day** — selected date has zero activities | `DAY_ACTIVITIES[selectedDate]` is missing or `[]` | `.details-panel` |
+| **Populated** — selected date has activities | one or more activity rows | `.details-panel` |
+
+#### Prompt state (no selection)
+
+```
+.dp-prompt    text-center, 26px 16px 18px padding, flex column gap 4px items-center
+  .dp-prompt-glyph     36×36 round, 1px dashed --border-2, --t4, centered "○"
+  .dp-prompt-h         Sora 13/500, --t2 — "Select a date"
+  .dp-prompt-sub       DM Mono 10.5, --t3 — "Tap any date to see activity"
+```
+
+Quiet. No CTA. Not a card — sits inline.
+
+#### Header (`.dp-header`) — populated & empty-day
+
+Flex row, baseline-aligned:
+
+- **Left** — `.dp-date` (Sora 15/600, `--t1`, letter-spacing -0.1px):
+  - `{MMM} {D}` only — e.g. `May 20`. No day-of-week prefix.
+  - If the selected date is today: append the `.is-today` pill (DM Mono 10/500, `--indigo` text on `--indigo-dim`, `2px 8px`, `border-radius: 999px`).
+- **Right** — `.dp-count`:
+  - Populated: `{N} entry` or `{N} entries` with the count in DM Mono `--t1` weight 600, rest in `--t3`.
+  - Empty day: literal text "No events" in `--t3`.
+
+#### Body (`.dp-body`) — populated only
+
+Scroll behavior:
+- **Desktop (≥ 640px):** `max-height: 320px; overflow-y: auto`. Thin styled scrollbar (`6px wide, --border-2 thumb`).
+- **Mobile (< 640px):** `max-height: none; overflow-y: visible`. The panel grows; the page scrolls.
+
+Body content depends on **variant** — see §17.5.
+
+#### Empty-day placeholder (`.dp-empty`)
+
+```
+.dp-empty       text-center, padding 28px 16px 22px
+.dp-empty-h     Sora 16/500, --t3, letter-spacing -0.1px — "No events"
+```
+
+No background, no border, no glyph, no sub-line. Just the words "No events" in a generous size. Differs deliberately from the v1 `.empty` block (which has a glyph + headline + sub-line and a `--bg` container).
+
+### 17.5 Layout variants
+
+Exposed via the `detailsVariant` tweak. All three share `.dp-header` and `.dp-body`; only the body rendering differs.
+
+#### Variant A — "Grouped" (default)
+
+Groups activities by status (priority order per §5). Each group is a section with a subheader followed by its rows.
+
+```
+.cal-dp-group
+├── .cal-dp-group-h                 flex, gap 10, padding 2 0
+│   ├── <StatusBadge>                full status pill (shared Tracker component)
+│   ├── .cal-dp-group-count         DM Mono 10.5, --t3 — "(N)"
+│   └── .cal-dp-group-dash          flex:1, top border 1px dashed --border
+└── .cal-dp-row.cal-dp-row--simple × N
+    ├── .cal-dp-row__body
+    │   ├── .cal-dp-row__job        Sora 12.5/500, --t1, ellipsis    — timeline entry title
+    │   └── .cal-dp-row__meta       DM Mono 10.5, --t3, ellipsis     — "{Company} · {Job title}"
+    │       └── .cal-dp-row__sep    --t4 color, 0 6px margin         — the "·" separator
+    └── .cal-dp-row__arrow          → glyph, --t4 (→ --indigo on row hover)
+```
+
+- The subheader uses the **full StatusBadge** (e.g. a solid `Interview` pill), not a swatch + label.
+- Rows in this variant do **not** show an `IdPill`. Grid template is `minmax(0, 1fr) auto` (`.cal-dp-row--simple` modifier).
+- Meta line is **`{Company} · {Job title}`** — mirrors the Action Panel `.cal-row__meta` pattern (§6.3) so the two surfaces feel cohesive. The application's company alone was ambiguous when a user had several roles at the same employer; the role disambiguates without forcing the ID pill back into the row. The separator uses the same `.cal-dp-row__sep` color treatment as the Action Panel's `.cal-row__sep`.
+- The `.cal-dp-row__meta` line truncates with ellipsis (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap`) when the combined string is wider than the row body.
+
+#### Variant B — "Flat"
+
+Flat sorted list. One row per activity, sorted by status priority. Status badge is the leading cell, so the row carries its own status identity.
+
+```
+.dp-row × N (default grid: auto | 1fr | auto)
+├── <StatusBadge>
+├── .body
+│   ├── .job        Sora 12.5/500, --t1
+│   └── .co         DM Mono 10.5, --t3 — "Company · #024"
+└── .arrow
+```
+
+The ID is appended to the meta line for traceability (since there's no grouping context).
+
+#### Variant C — "Summary"
+
+A condensed status-count strip at the top, followed by a flat list (identical to Variant B's row treatment, but with `IdPill` instead of `StatusBadge` since the strip already encodes status).
+
+```
+.dp-summary             flex wrap, gap 6, padding-bottom 14, dashed bottom border
+  .dp-summary-pill × N
+    .swatch             8×8 round, STATUSES[k].bg, 1px subtle border
+    .lbl                Sora 10.5, --t2 — status label
+    .n                  DM Mono 10.5/600, --t1 — count
+
+.dp-body
+  .dp-row × N
+    <IdPill>
+    .body
+      .job
+      .co               Company only
+    .arrow
+```
+
+The summary strip is **not** interactive — it's a quick visual census. Filtering by clicking a strip pill is **out of scope for v2**.
+
+### 17.6 Updated interactions (replaces §8 rows)
+
+| Surface | v2 behavior |
+|---|---|
+| Month grid cell (any in-month, with or without activity) | Click selects the date. Details Panel updates. No popover, no overlay. |
+| Month grid cell (already selected) | Click is a no-op. |
+| Month grid cell (out-of-month) | Click is a no-op. |
+| Numbered chip | Not interactive. Click events on chips bubble into the cell's selection handler (because there's no `stopPropagation` anymore). |
+| `+N` overflow chip | Not interactive. Same bubbling. |
+| Details Panel row | Click opens Application Overlay for that `id`. Row hover bg `--indigo-soft`. Keyboard: `Enter` triggers. |
+| Details Panel prompt / empty state | Non-interactive. |
+| Today button | Unchanged from v1 (jumps `view` to `TODAY.y, TODAY.m`). **Does not** auto-select today — the user still has to click the cell. |
+| Month / Year / Filter pickers | Unchanged from v1. Still use `<AnchoredDropdown>`, still become bottom sheets on mobile. |
+
+### 17.7 Mobile (< 640px) — inline everywhere
+
+The Details Panel is **inline at all viewports**. There is no bottom sheet for day details on mobile in v2.
+
+- Panel sits below the grid in the same `<section className="panel">` container, gets the same `18px 16px` panel padding.
+- `.dp-body` removes its `max-height` and `overflow` — the list grows naturally and the page scrolls. This is intentional: on a narrow viewport an internal-scroll region inside a page that already scrolls is a usability tax.
+- `.dp-header` margin-bottom reduces to 12px; `.dp-date` font-size drops to 14px.
+- The narrow `CW` column shrinks: `.dow-row` and `.cal-grid` switch their leading track from `28px` → `22px`; `.cw-cell` font 9px; `.dow-cw` 8.5px.
+- Month Picker, Year Picker, Status Filter — still bottom sheets on mobile (unchanged).
+
+### 17.8 Tweaks (additions to §12)
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `detailsVariant` | `"A" \| "B" \| "C"` | `"A"` | Switches the body layout of the Details Panel. Surfaced as a 3-up `TweakRadio` ("Grouped" / "Flat" / "Summary"). |
+| `preselectToday` | boolean | `false` | When true, the page mounts with `selectedDate = isoKey(TODAY)` so the panel is populated on first load. Otherwise mounts in the Prompt state. |
+
+The original v1 tweaks (`todayEmpty`, `suggestionsEmpty`, `upcomingEmpty`, `filterActive`, `offCurrentMonth`) carry over unchanged.
+
+### 17.9 Accessibility deltas (additions to §14)
+
+- Cells gain `aria-pressed={isSelected || undefined}` so screen readers announce selection state.
+- Cells are now always `role="button" tabIndex={0}` when in-month, even with zero activities (because they're all selectable in v2). The `aria-label` extends to `"{Pretty date}, no activity"` for empty days.
+- Numbered chips lose `role="button"` and `tabIndex` — they're decorative. `aria-label` simplifies to `"{Status label}, {N} entries"` (no "Click to view.").
+- Details Panel root gets `aria-live="polite"` so a screen reader announces "May 20, 3 entries" / "No events" when the selection changes.
+- Subheaders in Variant A use a visible `<StatusBadge>` — sufficient for visual users; status is still announced in the row order. Variant B announces the status badge on every row.
+
+### 17.10 Implementation notes for v2
+
+- **Single source of truth.** Keep `Calendar.html` + `calendar-app.jsx` (v1) as-is. v2 lives entirely in `Calendar v2.html` + `calendar-app-v2.jsx`. If/when v2 is promoted, copy `Calendar v2.html → Calendar.html` and `calendar-app-v2.jsx → calendar-app.jsx`, then delete the v2 files.
+- **No state migration needed** — `selectedDate` is session-local; `detailsVariant` and `preselectToday` are tweak defaults the host owns.
+- **Do not** re-introduce the day popover or bottom sheet for day details — that's the entire point of v2. If a use case appears that needs more space than the inline panel can give, route it through the Application Overlay instead.
+- **Do not** make the chips clickable again "as a shortcut" — it splits the click target on a 22×18 element and confuses the cell-is-the-target model. If status filtering on a chip click becomes desirable, surface it through the existing top-of-grid Status Filter, not by re-arming the chip.
+- **Do not** auto-scroll the Details Panel into view on selection. The cell-then-panel scan pattern is the design intent on desktop; an auto-scroll forces a vertical jump that defeats keeping both in view. (On mobile the panel is already below the grid in source order; native scrolling carries the user to it naturally if they tap a date near the bottom of the viewport.)
+- Style object naming: the v2 file uses no top-level style objects, but if you add one for the panel later, name it `dayDetailsStyles` — never `styles`.

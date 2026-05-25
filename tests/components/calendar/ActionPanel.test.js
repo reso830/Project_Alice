@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionPanel } from '../../../src/components/calendar/ActionPanel.js';
 
 function row(id, overrides = {}) {
@@ -40,6 +40,11 @@ function renderPanel(props = {}) {
   return host;
 }
 
+function setViewport(width) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  window.dispatchEvent(new Event('resize'));
+}
+
 function sectionLabels() {
   return [...document.querySelectorAll('.cal-section > .cal-section-h .cal-section__lbl')]
     .map((node) => node.textContent);
@@ -52,6 +57,129 @@ afterEach(() => {
 });
 
 describe('ActionPanel', () => {
+  beforeEach(() => {
+    setViewport(1200);
+  });
+
+  it('does not mount collapse UI in wide desktop layout', () => {
+    renderPanel({
+      today: [row(1), row(2)],
+      suggestions: [suggestion(3), suggestion(4), suggestion(5)],
+      upcoming: { tomorrow: [row(6)], restOfWeek: [] },
+    });
+
+    expect(document.querySelector('.ap-greeting-btn')).toBeNull();
+    expect(document.querySelector('.ap-chips')).toBeNull();
+    expect(document.querySelector('.ap-collapse-chip')).toBeNull();
+    expect(sectionLabels()).toEqual(['Today', 'Suggested Actions', 'Upcoming']);
+  });
+
+  it('renders collapsed greeting toggle and non-empty count chips in stacked layout', () => {
+    setViewport(1024);
+    renderPanel({
+      today: [row(1), row(2)],
+      suggestions: [suggestion(3), suggestion(4), suggestion(5)],
+      upcoming: { tomorrow: [row(6)], restOfWeek: [] },
+    });
+
+    const button = document.querySelector('.ap-greeting-btn');
+    const labels = [...document.querySelectorAll('.ap-chip .lbl')].map((node) => node.textContent);
+    const counts = [...document.querySelectorAll('.ap-chip .n')].map((node) => node.textContent);
+
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.classList).toContain('is-collapsed');
+    expect(document.querySelector('.ap-greeting-block .cal-greeting-h').textContent).toBe('Good morning,');
+    expect(labels).toEqual(['Today', 'Suggested', 'Upcoming']);
+    expect(counts).toEqual(['2', '3', '1']);
+    expect(document.querySelector('.ap-chip.today').getAttribute('aria-label'))
+      .toBe('Expand panel \u2014 Today, 2 entries');
+    expect(document.querySelector('.cal-section')).toBeNull();
+  });
+
+  it('omits zero-count chips and renders caught-up copy when all counts are zero', () => {
+    setViewport(1024);
+    renderPanel({
+      today: [row(1)],
+      suggestions: [],
+      upcoming: { tomorrow: [], restOfWeek: [] },
+    });
+
+    expect([...document.querySelectorAll('.ap-chip .lbl')].map((node) => node.textContent))
+      .toEqual(['Today']);
+
+    ActionPanel.render(document.body.firstElementChild, {
+      today: [],
+      suggestions: [],
+      upcoming: { tomorrow: [], restOfWeek: [] },
+      greeting: 'Hi',
+      dateLabel: 'Today',
+    });
+
+    expect(document.querySelector('.ap-chips')).toBeNull();
+    expect(document.querySelector('.ap-caughtup').textContent).toBe("You're all caught up!");
+  });
+
+  it('expands from greeting and chips, then collapses from bottom chip and Escape', () => {
+    setViewport(1024);
+    renderPanel();
+
+    let panel = document.querySelector('.cal-action-panel');
+    let button = document.querySelector('.ap-greeting-btn');
+
+    button.click();
+    panel = document.querySelector('.cal-action-panel');
+    button = document.querySelector('.ap-greeting-btn');
+    expect(panel.classList).toContain('cal-action-panel--expanded');
+    expect(button.classList).not.toContain('is-collapsed');
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(sectionLabels()).toEqual(['Today', 'Suggested Actions', 'Upcoming']);
+    expect(document.querySelector('.ap-collapse-chip')).not.toBeNull();
+    expect(document.querySelector('.ap-caughtup')).toBeNull();
+
+    document.querySelector('.ap-collapse-chip').click();
+    panel = document.querySelector('.cal-action-panel');
+    button = document.querySelector('.ap-greeting-btn');
+    expect(panel.classList).not.toContain('cal-action-panel--expanded');
+    expect(button.classList).toContain('is-collapsed');
+
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    panel = document.querySelector('.cal-action-panel');
+    expect(panel.classList).toContain('cal-action-panel--expanded');
+
+    const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    document.querySelector('.ap-collapse-chip').dispatchEvent(space);
+    panel = document.querySelector('.cal-action-panel');
+    expect(space.defaultPrevented).toBe(true);
+    expect(panel.classList).not.toContain('cal-action-panel--expanded');
+  });
+
+  it('chip activation expands and Escape returns focus to greeting button', () => {
+    setViewport(1024);
+    renderPanel({ today: [row(1)] });
+
+    document.querySelector('.ap-chip').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+    expect(document.querySelector('.cal-action-panel').classList).toContain('cal-action-panel--expanded');
+
+    document.querySelector('.cal-greeting-h')
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(document.querySelector('.cal-action-panel').classList).not.toContain('cal-action-panel--expanded');
+    expect(document.querySelector('.ap-greeting-btn').getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(document.querySelector('.ap-greeting-btn'));
+  });
+
+  it('resets to collapsed stacked state when resizing below 1200px', () => {
+    renderPanel({ today: [row(1)] });
+
+    expect(document.querySelector('.ap-greeting-btn')).toBeNull();
+
+    setViewport(1024);
+
+    expect(document.querySelector('.ap-greeting-btn')).not.toBeNull();
+    expect(document.querySelector('.cal-action-panel').classList)
+      .not.toContain('cal-action-panel--expanded');
+  });
+
   it('renders greeting, date label, and sections in order', () => {
     renderPanel({
       greeting: 'Welcome back,',
@@ -129,7 +257,7 @@ describe('ActionPanel', () => {
   it('renders padded IDs and company-role meta for activity rows', () => {
     renderPanel({ today: [row(24, { title: 'Offer call', company: 'Beta', role: 'Designer' })] });
 
-    expect(document.querySelector('.cal-id-pill').textContent).toBe('#024');
+    expect(document.querySelector('.cal-id-pill').textContent).toBe('024');
     expect(document.querySelector('.cal-row__title').textContent).toBe('Offer call');
     expect(document.querySelector('.cal-row__meta').textContent).toBe('Beta·Designer');
     expect(document.querySelector('.cal-row__sep').textContent).toBe('·');

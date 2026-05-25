@@ -68,11 +68,11 @@ describe('projectTimelineToCalendar', () => {
     ]);
 
     expect(projected['2026-05-21']).toEqual([
-      { id: 2, title: 'Applied', company: 'Beta', status: 'applied' },
-      { id: 2, title: 'Interview', company: 'Beta', status: 'interview' },
+      { id: 2, title: 'Applied', company: 'Beta', jobTitle: 'Frontend Engineer', status: 'applied' },
+      { id: 2, title: 'Interview', company: 'Beta', jobTitle: 'Frontend Engineer', status: 'interview' },
     ]);
     expect(projected['2026-05-22']).toEqual([
-      { id: 1, title: 'Offer', company: 'Acme', status: 'offer' },
+      { id: 1, title: 'Offer', company: 'Acme', jobTitle: 'Frontend Engineer', status: 'offer' },
     ]);
   });
 });
@@ -128,7 +128,7 @@ describe('upcomingRowsFor', () => {
       { id: 2, title: 'Call', company: 'Beta', role: 'Frontend Engineer' },
     ]);
     expect(rows.restOfWeek).toEqual([
-      { id: 1, title: 'Technical Assessment', company: 'Acme', role: 'Frontend Engineer' },
+      { id: 1, title: 'Technical', company: 'Acme', role: 'Frontend Engineer' },
       { id: 2, title: 'Panel', company: 'Beta', role: 'Frontend Engineer' },
     ]);
   });

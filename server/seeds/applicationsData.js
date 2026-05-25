@@ -82,7 +82,7 @@ const DEMO_TIMELINES = [
   timeline([
     { id: 1, date: '2026-04-05', status: 'applied', text: 'Applied for ML role via LinkedIn.' },
     { id: 2, date: '2026-04-12', status: 'phone_screen', text: 'Priya described recommendation-engine roadmap.' },
-    { id: 3, date: '2026-04-19', status: 'assessment', text: 'Take-home assessment assigned; due 2026-04-30.' },
+    { id: 3, date: '2026-04-18', status: 'assessment', text: 'Take-home assessment assigned; due 2026-04-30.' },
   ]),
   timeline([]),
   timeline([

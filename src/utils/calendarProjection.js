@@ -74,6 +74,7 @@ export function projectTimelineToCalendar(apps) {
         id: app.id,
         title: deriveActivityTitle(entry, app),
         company: app.companyName,
+        jobTitle: app.jobTitle,
         status: entry.status,
       });
     }

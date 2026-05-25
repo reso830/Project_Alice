@@ -1,4 +1,9 @@
 let _host = null;
+let _props = {};
+let _collapsed = true;
+let _isStacked = false;
+let _bodyIdSeed = 0;
+let _resizeAttached = false;
 
 const EMPTY_STATES = {
   today: {
@@ -23,7 +28,7 @@ function list(value) {
 }
 
 function padId(id) {
-  return `#${String(id).padStart(3, '0')}`;
+  return String(id).padStart(3, '0');
 }
 
 function parseISODate(value) {
@@ -74,11 +79,161 @@ function createText(className, text, tagName = 'span') {
   return node;
 }
 
+function isStackedViewport() {
+  return window.innerWidth < 1200;
+}
+
+function entryLabel(count) {
+  return `${count} ${count === 1 ? 'entry' : 'entries'}`;
+}
+
+function actionCounts(today, suggestions, upcoming) {
+  return {
+    today: today.length,
+    suggestions: suggestions.length,
+    upcoming: list(upcoming?.tomorrow).length + list(upcoming?.restOfWeek).length,
+  };
+}
+
+function allCountsEmpty(counts) {
+  return counts.today === 0 && counts.suggestions === 0 && counts.upcoming === 0;
+}
+
+function setExpanded(root, summary, expanded, options = {}) {
+  _collapsed = !expanded;
+  root.classList.toggle('cal-action-panel--expanded', expanded);
+  summary?.classList.toggle('is-collapsed', !expanded);
+  summary?.setAttribute('aria-expanded', String(expanded));
+
+  if (options.render) {
+    renderIntoHost();
+  }
+}
+
+function toggleExpanded(root, summary) {
+  setExpanded(root, summary, _collapsed, { render: true });
+}
+
+function handleToggleKeydown(event, root, summary) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+
+  event.preventDefault();
+  toggleExpanded(root, summary);
+}
+
+function createChevron() {
+  const chev = createText('ap-chev', '\u25be');
+  chev.setAttribute('aria-hidden', 'true');
+  return chev;
+}
+
+function createGreetingBlock(props) {
+  const block = document.createElement('div');
+  const heading = createText('cal-greeting-h', props.greeting ?? '', 'h2');
+
+  block.className = 'ap-greeting-block';
+  heading.id = 'action-panel-heading';
+  block.append(
+    heading,
+    createText('cal-greeting-sub', props.dateLabel ?? '', 'p'),
+  );
+  return block;
+}
+
+function createGreetingButton(root, bodyId, props) {
+  const button = document.createElement('button');
+
+  button.type = 'button';
+  button.className = _collapsed ? 'ap-greeting-btn is-collapsed' : 'ap-greeting-btn';
+  button.setAttribute('aria-expanded', String(!_collapsed));
+  button.setAttribute('aria-controls', bodyId);
+  button.append(createGreetingBlock(props), createChevron());
+  button.addEventListener('click', () => toggleExpanded(root, button));
+  button.addEventListener('keydown', (event) => handleToggleKeydown(event, root, button));
+
+  return button;
+}
+
+function createActionChip(root, label, count, modifier) {
+  const chip = document.createElement('button');
+  const dot = createText('dot', '');
+  const labelNode = createText('lbl', label);
+  const countNode = createText('n', String(count));
+
+  chip.type = 'button';
+  chip.className = `ap-chip ${modifier}`;
+  chip.setAttribute('aria-label', `Expand panel \u2014 ${label}, ${entryLabel(count)}`);
+  dot.setAttribute('aria-hidden', 'true');
+  labelNode.setAttribute('aria-hidden', 'true');
+  countNode.setAttribute('aria-hidden', 'true');
+  chip.append(dot, labelNode, countNode);
+  chip.addEventListener('click', () => setExpanded(root, root.querySelector('.ap-greeting-btn'), true, { render: true }));
+  chip.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    setExpanded(root, root.querySelector('.ap-greeting-btn'), true, { render: true });
+  });
+
+  return chip;
+}
+
+function createCollapsedPreview(root, counts) {
+  if (allCountsEmpty(counts)) {
+    return createText('ap-caughtup', "You're all caught up!", 'p');
+  }
+
+  const chips = document.createElement('div');
+  chips.className = 'ap-chips';
+
+  if (counts.today > 0) {
+    chips.append(createActionChip(root, 'Today', counts.today, 'today'));
+  }
+
+  if (counts.suggestions > 0) {
+    chips.append(createActionChip(root, 'Suggested', counts.suggestions, 'suggest'));
+  }
+
+  if (counts.upcoming > 0) {
+    chips.append(createActionChip(root, 'Upcoming', counts.upcoming, 'upcoming'));
+  }
+
+  return chips;
+}
+
+function createCollapseRow(root) {
+  const row = document.createElement('div');
+  const chip = document.createElement('button');
+
+  row.className = 'ap-collapse-row';
+  chip.type = 'button';
+  chip.className = 'ap-collapse-chip';
+  chip.textContent = '\u2303 Collapse';
+  chip.addEventListener('click', () => setExpanded(root, root.querySelector('.ap-greeting-btn'), false, { render: true }));
+  chip.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    setExpanded(root, root.querySelector('.ap-greeting-btn'), false, { render: true });
+  });
+  row.append(chip);
+  return row;
+}
+
 function createGreeting(props) {
   const header = document.createElement('header');
+  const heading = createText('cal-greeting-h', props.greeting ?? '', 'h2');
+
   header.className = 'cal-greeting';
+  heading.id = 'action-panel-heading';
   header.append(
-    createText('cal-greeting-h', props.greeting ?? '', 'h2'),
+    heading,
     createText('cal-greeting-sub', props.dateLabel ?? '', 'p'),
   );
   return header;
@@ -230,13 +385,10 @@ function createFlatRows(rows, props, options) {
 function createUpcomingGroup(label, rows, props) {
   const group = document.createElement('div');
   const header = document.createElement('div');
-  const dash = document.createElement('span');
 
   group.className = 'upc-group';
   header.className = 'upc-group-h';
-  dash.className = 'cal-dash';
-  dash.setAttribute('aria-hidden', 'true');
-  header.append(createText('cal-section__lbl', label), dash);
+  header.append(createText('cal-section__lbl', label));
   group.append(header);
   group.append(...createFlatRows(rows, props));
 
@@ -260,35 +412,134 @@ function createUpcomingSection(props, upcoming) {
   return createSection('Upcoming', count, 'upcoming', children);
 }
 
-function render(container, props = {}) {
-  destroy();
-
-  _host = container;
-  _host.replaceChildren();
-
-  const today = list(props.today);
-  const suggestions = list(props.suggestions);
-  const upcoming = props.upcoming ?? {};
-  const root = document.createElement('div');
-
-  root.className = 'cal-action-panel action-panel';
-  root.append(
-    createGreeting(props),
+function appendSections(body, props, today, suggestions, upcoming) {
+  body.append(
     createSection('Today', today.length, 'today', createFlatRows(today, props)),
     createSection('Suggested Actions', suggestions.length, 'suggestions', createFlatRows(suggestions, props, {
       suggestion: true,
     })),
     createUpcomingSection(props, upcoming),
   );
+}
+
+function renderIntoHost() {
+  if (!_host) {
+    return;
+  }
+
+  _host.replaceChildren();
+
+  const today = list(_props.today);
+  const suggestions = list(_props.suggestions);
+  const upcoming = _props.upcoming ?? {};
+  const counts = actionCounts(today, suggestions, upcoming);
+  const root = document.createElement('div');
+  const body = document.createElement('div');
+  const bodyId = `cal-action-panel-body-${_bodyIdSeed += 1}`;
+
+  root.className = _isStacked && !_collapsed
+    ? 'cal-action-panel action-panel cal-action-panel--expanded'
+    : 'cal-action-panel action-panel';
+  root.setAttribute('aria-labelledby', 'action-panel-heading');
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !root.classList.contains('cal-action-panel--expanded')) {
+      return;
+    }
+
+    const button = root.querySelector('.ap-greeting-btn');
+    setExpanded(root, button, false, { render: true });
+    document.querySelector('.ap-greeting-btn')?.focus();
+  });
+
+  if (!_isStacked) {
+    root.append(
+      createGreeting(_props),
+      createSection('Today', today.length, 'today', createFlatRows(today, _props)),
+      createSection('Suggested Actions', suggestions.length, 'suggestions', createFlatRows(suggestions, _props, {
+        suggestion: true,
+      })),
+      createUpcomingSection(_props, upcoming),
+    );
+    _host.append(root);
+    return;
+  }
+
+  body.className = 'cal-action-panel__body';
+  body.id = bodyId;
+  body.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !root.classList.contains('cal-action-panel--expanded')) {
+      return;
+    }
+
+    const button = root.querySelector('.ap-greeting-btn');
+    setExpanded(root, button, false, { render: true });
+    document.querySelector('.ap-greeting-btn')?.focus();
+  });
+
+  root.append(createGreetingButton(root, bodyId, _props));
+
+  if (_collapsed) {
+    root.append(createCollapsedPreview(root, counts));
+  } else {
+    appendSections(body, _props, today, suggestions, upcoming);
+    body.append(createCollapseRow(root));
+    root.append(body);
+  }
 
   _host.append(root);
 }
 
+function handleResize() {
+  const nextStacked = isStackedViewport();
+  if (nextStacked === _isStacked) {
+    return;
+  }
+
+  _isStacked = nextStacked;
+  if (_isStacked) {
+    _collapsed = true;
+  }
+  renderIntoHost();
+}
+
+function attachResize() {
+  if (_resizeAttached) {
+    return;
+  }
+
+  window.addEventListener('resize', handleResize);
+  _resizeAttached = true;
+}
+
+function detachResize() {
+  if (!_resizeAttached) {
+    return;
+  }
+
+  window.removeEventListener('resize', handleResize);
+  _resizeAttached = false;
+}
+
+function render(container, props = {}) {
+  destroy();
+
+  _host = container;
+  _props = { ...props };
+  _collapsed = true;
+  _isStacked = isStackedViewport();
+  attachResize();
+  renderIntoHost();
+}
+
 function destroy() {
+  detachResize();
   if (_host) {
     _host.replaceChildren();
   }
   _host = null;
+  _props = {};
+  _collapsed = true;
+  _isStacked = false;
 }
 
 export const ActionPanel = { render, destroy };

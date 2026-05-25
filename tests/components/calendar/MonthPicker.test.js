@@ -62,7 +62,8 @@ describe('MonthPicker', () => {
     ]);
     expect(buttons[4].classList).toContain('cal-picker-item--current');
     expect(buttons[7].classList).toContain('cal-picker-item--selected');
-    expect(document.querySelector('.cal-picker__lbl').textContent).toBe('Jump to month');
+    expect(document.querySelector('.cal-picker__lbl')).toBeNull();
+    expect(document.body.textContent).not.toContain('Jump to month');
     expect(document.querySelector('.cal-picker__yr').textContent).toBe('2026');
   });
 
@@ -97,6 +98,8 @@ describe('MonthPicker', () => {
 
     const wrapper = document.querySelector('.cal-dropdown');
     expect(wrapper.getAttribute('aria-label')).toBe('Month picker');
+    expect(wrapper.parentElement).toBe(document.querySelector('button'));
+    expect(wrapper.style.position).toBe('absolute');
     expect(document.querySelector('.cal-bottom-sheet')).toBeNull();
     expect(document.querySelector('.cal-dropdown-backdrop').style.background).toBe('transparent');
   });

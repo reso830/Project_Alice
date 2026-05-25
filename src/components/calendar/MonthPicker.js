@@ -19,15 +19,11 @@ function createHeader(viewYear) {
   const header = document.createElement('div');
   header.className = 'cal-picker-h';
 
-  const label = document.createElement('span');
-  label.className = 'cal-picker__lbl';
-  label.textContent = 'Jump to month';
-
   const year = document.createElement('span');
   year.className = 'cal-picker__yr';
   year.textContent = String(viewYear);
 
-  header.append(label, year);
+  header.append(year);
   return header;
 }
 
@@ -77,6 +73,7 @@ function open(props) {
     asBottomSheet: true,
     scrim: false,
     ariaLabel: 'Month picker',
+    localAnchor: true,
     onClose: props.onClose,
   });
 }

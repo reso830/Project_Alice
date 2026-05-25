@@ -83,6 +83,7 @@ describe('mountAnchoredDropdown', () => {
     expect(wrapper.getAttribute('role')).toBe('dialog');
     expect(wrapper.getAttribute('aria-modal')).toBe('true');
     expect(wrapper.getAttribute('aria-label')).toBe('Calendar dialog');
+    expect(wrapper.style.position).toBe('fixed');
     expect(wrapper.style.top).toBe('76px');
     expect(wrapper.style.left).toBe('100px');
     expect(wrapper.style.zIndex).toBe('var(--z-dropdown)');
@@ -162,6 +163,24 @@ describe('mountAnchoredDropdown', () => {
     expect(document.querySelector('.cal-dropdown').style.left).toBe('240px');
   });
 
+  it('uses the anchor left edge for start alignment when the anchor is offset from the viewport', () => {
+    mountAnchoredDropdown({
+      anchorEl: createAnchor({
+        left: 240,
+        right: 300,
+        top: 40,
+        bottom: 70,
+        width: 60,
+        height: 30,
+      }),
+      contentEl: createContent(),
+      align: 'start',
+      onClose: vi.fn(),
+    });
+
+    expect(document.querySelector('.cal-dropdown').style.left).toBe('240px');
+  });
+
   it('flips above when the dropdown would overflow the viewport bottom', () => {
     mountAnchoredDropdown({
       anchorEl: createAnchor({
@@ -215,5 +234,32 @@ describe('mountAnchoredDropdown', () => {
     window.dispatchEvent(new Event('resize'));
 
     expect(document.querySelector('.cal-dropdown').style.left).toBe('760px');
+  });
+
+  it('can anchor locally under the trigger instead of using viewport math', () => {
+    const anchor = createAnchor({
+      left: 240,
+      right: 300,
+      top: 40,
+      bottom: 70,
+      width: 60,
+      height: 30,
+    });
+    const mounted = mountAnchoredDropdown({
+      anchorEl: anchor,
+      contentEl: createContent(),
+      localAnchor: true,
+      onClose: vi.fn(),
+    });
+
+    const wrapper = document.querySelector('.cal-dropdown');
+    expect(wrapper.parentElement).toBe(anchor);
+    expect(anchor.style.position).toBe('relative');
+    expect(wrapper.style.position).toBe('absolute');
+    expect(wrapper.style.top).toBe('calc(100% + 6px)');
+    expect(wrapper.style.left).toBe('0px');
+
+    mounted.unmount();
+    expect(anchor.style.position).toBe('');
   });
 });

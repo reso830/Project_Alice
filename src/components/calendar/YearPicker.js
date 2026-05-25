@@ -39,10 +39,6 @@ function renderPicker(picker, props, start) {
   const header = document.createElement('div');
   header.className = 'cal-picker-h';
 
-  const label = document.createElement('span');
-  label.className = 'cal-picker__lbl';
-  label.textContent = 'Jump to year';
-
   const nav = document.createElement('div');
   nav.className = 'cal-picker__yr-nav';
 
@@ -50,13 +46,14 @@ function renderPicker(picker, props, start) {
     renderPicker(picker, props, clamp(start - 12, YEAR_MIN, YEAR_MAX - 11));
   });
   const range = document.createElement('span');
+  range.className = 'cal-picker__yr-range';
   range.textContent = `${start} - ${start + 11}`;
   const next = createNavButton('Next year range', '>', start + 12 > YEAR_MAX, () => {
     renderPicker(picker, props, clamp(start + 12, YEAR_MIN, YEAR_MAX - 11));
   });
 
   nav.append(prev, range, next);
-  header.append(label, nav);
+  header.append(nav);
 
   const grid = document.createElement('div');
   grid.className = 'cal-picker-grid';
@@ -109,6 +106,7 @@ function open(props) {
     asBottomSheet: true,
     scrim: false,
     ariaLabel: 'Year picker',
+    localAnchor: true,
     onClose: props.onClose,
   });
 }

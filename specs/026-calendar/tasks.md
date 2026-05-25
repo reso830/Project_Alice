@@ -25,7 +25,12 @@
 | 08 | Styling — `src/styles/main.css` Calendar block + mobile reflow | 10 |
 | 09 | Seed augmentation — demo seed + local SQLite seed + canonical RPC doc; suggestion-coverage seed test | 10 |
 | 10 | **Release Prep (REQUIRED)** — version bump, CHANGELOG, README, deployment.md, REPO_MAP.md | 11 |
-| 11 | **Browser Smoke Test (REQUIRED — UI feature)** — every User Story walked in a real browser against the merge state | merge |
+| 11 | **Browser Smoke Test (REQUIRED — UI feature)** — every User Story walked in a real browser against the merge state | 12 |
+| 12 | **Post-smoke Fixes + v2 Inline Panel** — design changes from Phase 11 feedback: v2 inline day panel (replaces DayPopover); status label rename (`Technical Assessment` → `Technical`); greeting name injection; picker header cleanup; text-style month/year buttons; mobile single-row nav; dismiss toast; filter dims empty cells; CSS polish (typography weights, empty-state styling, weekend/out-of-month hues); picker anchoring bug fix | 13 |
+| 13 | **Release Prep v2 + Re-smoke (REQUIRED)** — patch version bump (`0.13.1`), CHANGELOG appendix, re-walk Phase 11 checklist on the merge state. Picker-anchoring (obs #5) deferred — see CHANGELOG `[0.13.1] § Known limitations` | 14 |
+| 14 | **Post-re-smoke Fixes** — Phase 13 re-smoke surfaced 11 follow-up observations. Three are spec changes already applied to `docs/design/calendar.md`: filter popup unified with Tracker `QuickFiltersToolbar` (§6.12), controlled grid-header wrap <375px (§6.6.1 + §11), DayPanel row meta `{Company} · {Job title}` (§17.5). Eight are implementation/CSS fixes: picker anchoring root-cause fix; DayPanel status pill font; group-header dash extra line; Action Panel ID pill alignment with Tracker; weekend-vs-out-of-month tint cascade; selection ring restoration; seed fixture with 4+ statuses on a single day. | 15 |
+| 15 | **Action Panel Collapse (`<1200px`)** — promote the v1-deferred collapsible-summary-bar provision (`docs/design/calendar.md §11.1`, formerly in §11 Open question / §15 Out of Scope) to a real implementation. Three tasks: summary bar + toggle in `ActionPanel.js`, collapse CSS in `main.css`, test sweep. | 16 |
+| 16 | **Release Prep v3 + Re-smoke (REQUIRED)** — patch version bump (`0.13.2`), CHANGELOG appendix covering Phase 14 + Phase 15, remove the v0.13.1 picker-anchoring `Known limitations` entry (Task 14.5 fixed it), REPO_MAP audit, re-walk the smoke checklist on the merge state. | merge |
 
 **Sequencing notes:**
 
@@ -41,8 +46,34 @@
   visually broken until 08 lands, but functionally testable.
 - Phase 09 (seeds) can land any time after Phase 01.4 because the
   seed-coverage test depends on `evaluateSuggestions`.
-- Phase 10 (Release Prep) must be second-to-last per Amendment 1.3.0.
-- Phase 11 (Browser Smoke Test) must be last per Amendment 1.3.0.
+- Phase 10 (Release Prep) was second-to-last for the v1 cut per
+  Amendment 1.3.0; Phase 13 reprises that role for the v2 patch cut.
+- Phase 11 (Browser Smoke Test) was the v1 final phase per
+  Amendment 1.3.0. It surfaced 22 observations that drive Phase 12;
+  Phase 13 then re-runs the same checklist against the v2 merge state
+  to honor the amendment for the patch cut as well.
+- Phase 12 is a single combined phase covering both the v2 inline-panel
+  rewrite and the polish items from the smoke feedback — they touch the
+  same files (Calendar.js, MonthGrid.js, main.css) and splitting them
+  would force two coordinated CSS passes.
+- Phase 14 mirrors Phase 12's structure: one combined phase for the
+  v0.13.1 re-smoke follow-ups. The filter-popup unification (Task 14.1)
+  is the heaviest item — it touches both Calendar and Tracker
+  source and likely requires extracting a shared component. The
+  picker-anchoring fix (Task 14.5) finally addresses the deferred
+  obs #5 from v0.13.1's known-limitations note.
+- Phase 15 promotes a long-deferred design provision — the
+  collapsible Action Panel summary bar at `<1200px` stacked layouts
+  — out of v1's §11 Open question / §15 Out of Scope and into a
+  real spec (`docs/design/calendar.md §11.1`). Scoped as its own
+  phase rather than appended to Phase 14 because Phase 14 was
+  already closed when the provision was rediscovered.
+- Phase 16 mirrors the Phase 10 / Phase 13 release-prep template
+  for the v0.13.2 patch. It covers Phase 14 + Phase 15 changes in
+  one CHANGELOG appendix; the smoke walk is treated as a re-smoke
+  (not a fresh one) since the v0.13.1 quickstart `§6` checklist is
+  the same shape and the deferred picker-anchoring rows are now
+  ticked.
 
 **CSS class-naming rule (load-bearing across Phases 03–08):**
 The design doc uses bare class names like `.row`, `.section`, `.empty`,
@@ -2370,7 +2401,7 @@ This phase is the constitution's mandatory final phase for UI features.
 Per Amendment 1.3.0, it is ordered AFTER Release Prep so the smoke
 test exercises the to-be-merged state.
 
-### [ ] Task 11.1 — Layout & responsive smoke
+### [X] Task 11.1 — Layout & responsive smoke
 
 **What to do**:
 Following [quickstart.md §6](quickstart.md) **Layout & responsiveness**:
@@ -2384,7 +2415,7 @@ Following [quickstart.md §6](quickstart.md) **Layout & responsiveness**:
 
 ---
 
-### [ ] Task 11.2 — Action Panel smoke (US-1, US-2, US-3)
+### [X] Task 11.2 — Action Panel smoke (US-1, US-2, US-3)
 
 **What to do**:
 Walk the Action Panel checklist in [quickstart.md §6](quickstart.md).
@@ -2397,7 +2428,7 @@ kinds.
 
 ---
 
-### [ ] Task 11.3 — Month Grid smoke (US-4)
+### [X] Task 11.3 — Month Grid smoke (US-4)
 
 **What to do**:
 Walk the Month Grid checklist: always-6-weeks, ISO Monday start, CW
@@ -2409,18 +2440,25 @@ overflow, out-of-month tint, weekend tint.
 
 ---
 
-### [ ] Task 11.4 — Day Popover smoke (US-5)
+### [ ] Task 11.4 — Day Popover smoke (US-5) → superseded by Phase 12 v2
 
 **What to do**:
-Walk the Day Popover checklist: status mode, all mode, +N overflow,
-row click opens overlay, Escape/backdrop close, mobile bottom-sheet.
+Walking this checklist on v1 surfaced obs #2 (desktop popover does
+not anchor under the click target) and obs #3 (static help-text
+footer). Rather than patching the v1 popover, Phase 12 replaces it
+with the **v2 Inline Day Details Panel** (`docs/design/calendar.md` §17).
+
+This task therefore stays `[ ]` against v1 and is replaced by
+**Task 13.X — Inline Day Panel smoke (v2)** in `quickstart.md §6`. Do
+not attempt to re-tick this v1 checklist after Phase 12 ships.
 
 **Validation**:
-- All quickstart Day Popover rows ticked.
+- Marked superseded in Phase 13 re-smoke; the v2 inline-panel
+  checklist replaces it.
 
 ---
 
-### [ ] Task 11.5 — Navigation smoke (US-7)
+### [X] Task 11.5 — Navigation smoke (US-7)
 
 **What to do**:
 Walk the Navigation checklist: arrows, month/year pickers, Today
@@ -2431,7 +2469,7 @@ button, year-range clamps.
 
 ---
 
-### [ ] Task 11.6 — Status filter smoke (US-6)
+### [X] Task 11.6 — Status filter smoke (US-6)
 
 **What to do**:
 Walk the Status filter checklist: filter chip, dropdown, dimmed
@@ -2442,7 +2480,7 @@ cells, clear button, Action Panel unaffected, popovers unaffected.
 
 ---
 
-### [ ] Task 11.7 — Mark Ghosted smoke (US-8)
+### [X] Task 11.7 — Mark Ghosted smoke (US-8)
 
 **What to do**:
 Walk the Mark Ghosted checklist: trigger a ghost suggestion, click
@@ -2454,7 +2492,7 @@ Tracker and verify status + timeline entry + lastStatusUpdate.
 
 ---
 
-### [ ] Task 11.8 — Dismiss smoke (US-9)
+### [X] Task 11.8 — Dismiss smoke (US-9)
 
 **What to do**:
 Walk the Dismiss checklist: dismiss row, no toast, reload preserves
@@ -2465,7 +2503,7 @@ dismissal, dismiss a different kind without affecting the first.
 
 ---
 
-### [ ] Task 11.9 — Open Application Overlay smoke
+### [X] Task 11.9 — Open Application Overlay smoke
 
 **What to do**:
 Walk the Open Overlay checklist: click `↗` on Today/Upcoming/Suggestion
@@ -2477,7 +2515,7 @@ the change.
 
 ---
 
-### [ ] Task 11.10 — Accessibility smoke
+### [X] Task 11.10 — Accessibility smoke
 
 **What to do**:
 Walk the Accessibility checklist: keyboard-only traversal, focus
@@ -2490,7 +2528,7 @@ simulator).
 
 ---
 
-### [ ] Task 11.11 — Mobile-specific smoke
+### [X] Task 11.11 — Mobile-specific smoke
 
 **What to do**:
 On a mobile viewport (DevTools device emulator or a real device <640px):
@@ -2505,7 +2543,7 @@ On a mobile viewport (DevTools device emulator or a real device <640px):
 
 ---
 
-### [ ] Task 11.12 — Cross-page regression
+### [X] Task 11.12 — Cross-page regression
 
 **What to do**:
 Visit Tracker — cards, badges, modal unchanged.
@@ -2558,6 +2596,1328 @@ On a hosted environment (or a hosted-mode local test):
 
 ---
 
+## Phase 12 — Post-smoke Fixes + v2 Inline Panel
+
+Phase 11 surfaced 22 browser observations. The user reviewed and
+clustered them: (1) the day-popover anchoring + empty-cell-feedback
+gap is structural and prompts the v2 design pivot in
+[docs/design/calendar.md §17](../../docs/design/calendar.md); (2) the
+remaining items are UX/CSS polish that can ship in the same patch.
+Phase 12 is a single combined phase covering both.
+
+The phase order is deliberate: design changes that drive new copy +
+constants land first (12.1), then the v2 panel structural rewrite
+(12.2–12.5), then polish (12.6–12.13), then tests (12.14). Phase 13
+handles release prep + re-smoke.
+
+### [X] Task 12.1 — Rename `Technical Assessment` → `Technical` (global)
+
+**Target files**:
+- [src/models/application.js](../../src/models/application.js) — `STATUS_CONFIG.assessment.label`
+- Existing tests that snapshot the old label string
+
+**What to do**:
+Per [docs/design/calendar.md §5 "Status label"](../../docs/design/calendar.md):
+update `STATUS_CONFIG.assessment.label` from `'Technical Assessment'`
+to `'Technical'`. Update every test that snapshots the literal
+"Technical Assessment" string (search the repo).
+
+**Constraints**:
+- The status **key** (`'assessment'`) does NOT change. Only the human
+  label. No DB migration, no API change, no client/server contract
+  change.
+- The Tracker quick-filter row, Tracker badges, Calendar chips,
+  Calendar filter dropdown, and the v2 inline-panel pills all inherit
+  this label automatically because they read `STATUS_CONFIG[k].label`.
+
+**Validation**:
+- `npm run test:run` passes; any snapshot mismatch is updated to the
+  new label.
+
+---
+
+### [X] Task 12.2 — Build v2 Inline Day Details Panel component
+
+**Target file**: `src/components/calendar/DayPanel.js` (NEW)
+
+**What to do**:
+Implement the **Inline Day Details Panel** per [docs/design/calendar.md §17](../../docs/design/calendar.md).
+The design doc's prototype uses bare class names like `.details-panel`
+and `.dp-row`; for production we rename to the project's `cal-`
+prefix convention. **Class contract** (single source of truth — both
+the CSS in Task 12.13 and the tests below must use these exact names):
+
+| Design §17 prototype | Production class | Purpose |
+|---|---|---|
+| `.details-panel` (root) | `.cal-day-panel` | Root wrapper, always present |
+| `.details-panel--prompt` | `.cal-day-panel--prompt` | Modifier when `selectedDate === null` |
+| (implicit empty state) | `.cal-day-panel--empty` | Modifier when date selected but no activities |
+| (implicit populated)   | `.cal-day-panel--populated` | Modifier when activities present |
+| `.dp-prompt`, `.dp-prompt-glyph`, `.dp-prompt-h`, `.dp-prompt-sub` | `.cal-dp-prompt`, `.cal-dp-prompt-glyph`, `.cal-dp-prompt-h`, `.cal-dp-prompt-sub` | Prompt-state body |
+| `.dp-header`, `.dp-date`, `.dp-count`, `.is-today` | `.cal-dp-header`, `.cal-dp-date`, `.cal-dp-count`, `.cal-dp-today-pill` | Shared header |
+| `.dp-body` | `.cal-dp-body` | Populated-state body container |
+| `.dp-empty`, `.dp-empty-h` | `.cal-dp-empty`, `.cal-dp-empty-h` | Empty-day body |
+| `.dp-group`, `.dp-group-h`, `.dp-group-count`, `.dp-group-dash` | `.cal-dp-group`, `.cal-dp-group-h`, `.cal-dp-group-count`, `.cal-dp-group-dash` | Variant-A subheaders |
+| `.dp-row.dp-row--simple`, `.body`, `.job`, `.co`, `.arrow` | `.cal-dp-row.cal-dp-row--simple`, `.cal-dp-row__body`, `.cal-dp-row__job`, `.cal-dp-row__co`, `.cal-dp-row__arrow` | Variant-A rows |
+
+Public API:
+```js
+export const DayPanel = {
+  render(container, props) { /* builds & appends DOM */ },
+  update(props) { /* re-renders body when selectedDate changes */ },
+  destroy() { /* removes DOM and listeners */ },
+};
+```
+
+Props: `{ selectedDate /* ISO|null */, activities /* DayActivity[]|undefined */, onOpenApp }`.
+
+**Variant scope for v0.13.1:** Ship **Variant A (Grouped) only.**
+Variants B (Flat) and C (Summary) from design §17.5 and the
+`detailsVariant` tweak from §17.8 are explicitly deferred to a future
+iteration. Do not add a `variant` prop and do not surface the tweak
+control; if and when B/C are wanted, file a separate spec/task. This
+keeps Phase 12 scoped and the production component lean.
+
+Render three top-level states per §17.4 (root always gets the
+matching modifier from the table above):
+- **Prompt** (`selectedDate === null`): root gets
+  `.cal-day-panel--prompt`; body is a centered `.cal-dp-prompt` block
+  with glyph + headline + sub. No CTA.
+- **Empty day** (`selectedDate` set, `activities` empty/undefined):
+  root gets `.cal-day-panel--empty`; renders `.cal-dp-header` +
+  `.cal-dp-empty` with the plain "No events" headline.
+- **Populated** (`activities.length > 0`): root gets
+  `.cal-day-panel--populated`; renders `.cal-dp-header` +
+  `.cal-dp-body` with Variant-A grouping.
+
+Header per §17.4:
+- Left: `.cal-dp-date` — `{MMM} {D}` (no weekday prefix). Append the
+  `.cal-dp-today-pill` ("Today") when `selectedDate === todayISO`.
+- Right: `.cal-dp-count` — `{N} entr{y|ies}` for populated,
+  `"No events"` for empty.
+
+Variant A body (the only variant in v0.13.1; §17.5 Variant A):
+- For each status in `STATUS_DISPLAY_PRIORITY` order that has
+  activities for this date: render `.cal-dp-group` with subheader
+  (`<StatusBadge>` + `.cal-dp-group-count` `(N)` + `.cal-dp-group-dash`
+  rule) and one `.cal-dp-row.cal-dp-row--simple` per activity.
+- Row grid `minmax(0, 1fr) auto` with `.cal-dp-row__job` (Sora 12.5/500)
+  + `.cal-dp-row__co` (DM Mono 10.5, company only) + `.cal-dp-row__arrow`.
+- Row activation:
+  - Mouse: `click` on the row → `props.onOpenApp(activity.id)`.
+  - Keyboard: row is `role="button" tabIndex="0"`; **both `Enter` and
+    `Space`** activate the row (matches native button semantics — Space
+    must `preventDefault` to suppress page scroll).
+  - Hover/focus-visible bg `--indigo-soft`.
+
+Root element gets `aria-live="polite"` per §17.9 so screen readers
+announce selection changes.
+
+The component lives **inside** the Month Grid card (it's appended to
+the same panel slot as the grid), not as a sibling panel. See Task
+12.4 for orchestration.
+
+**Validation**:
+- New test file `tests/components/calendar/DayPanel.test.js`:
+  - Prompt state with `selectedDate: null` — root has
+    `.cal-day-panel--prompt`; renders `.cal-dp-prompt`.
+  - Empty-day state with `selectedDate: '2026-05-20', activities: []`
+    — root has `.cal-day-panel--empty`; renders `.cal-dp-empty` and
+    the date header "May 20".
+  - Populated state — root has `.cal-day-panel--populated`; renders
+    one `.cal-dp-group` per distinct status, in
+    `STATUS_DISPLAY_PRIORITY` order.
+  - Mouse click on a `.cal-dp-row` fires `onOpenApp(id)`.
+  - **Keyboard activation**: dispatching `keydown` with `key: 'Enter'`
+    on a focused row fires `onOpenApp(id)`; dispatching `key: ' '`
+    (Space) likewise fires `onOpenApp(id)` and calls
+    `event.preventDefault()`.
+  - Today's date adds the `.cal-dp-today-pill`.
+  - `aria-live="polite"` on the `.cal-day-panel` root.
+  - `update({ selectedDate: <new> })` swaps the body and the root's
+    state modifier class without recreating the root element.
+  - No `variant`/`detailsVariant` prop is accepted (B/C deferred).
+
+---
+
+### [X] Task 12.3 — Make all in-month cells selectable; remove chip interactivity
+
+**Target file**: [src/components/calendar/MonthGrid.js](../../src/components/calendar/MonthGrid.js)
+
+**What to do**:
+Per [docs/design/calendar.md §17.2](../../docs/design/calendar.md):
+
+- Every in-month cell becomes selectable (with or without activities).
+  `role="button" tabIndex="0"`; `aria-label` extends to
+  `"{Pretty date}, no activity"` when activities are empty.
+  `aria-pressed={isSelected || undefined}` reflects selection.
+- Out-of-month cells remain non-selectable (cursor default, no click,
+  no keydown handler).
+- Numbered chips (`.num-chip`) become **non-interactive**: remove
+  `role`, `tabIndex`, and `onClick`. Remove `stopPropagation`. Keep the
+  `title` attribute for status-name discovery. Apply `cursor: default`
+  in the Task 12.13 CSS pass.
+- `+N` overflow chip (`.num-more`) same treatment — non-interactive,
+  bubbles into cell selection.
+- Add `.cal-cell--selected` class to the cell when its `iso` matches
+  `props.selectedDate`. Style per §17.3 (navy ring; indigo ring if also
+  today).
+- Cell activation is now `props.onSelectDate(iso, cellEl)` (not the
+  popover-opener). Empty cells fire too. Bind both:
+  - `click` on the cell.
+  - `keydown` on the cell, activating on **`Enter`** and **`Space`**
+    (Space must `preventDefault` to suppress page scroll). Mirrors
+    native button semantics; required because the cell is no longer a
+    real `<button>` and we cannot inherit free keyboard behavior.
+
+The v1 `onOpenDayPopover` prop is replaced by `onSelectDate`. Update
+all MonthGrid call sites in Task 12.4.
+
+**Validation**:
+- Extend `tests/components/calendar/MonthGrid.test.js`:
+  - Empty in-month cell has `role="button"`, `tabIndex="0"`,
+    `aria-label` ending in `"no activity"`.
+  - Chip click bubbles to cell — `onSelectDate` fires with the cell's
+    ISO date.
+  - **Keyboard activation**: dispatching `keydown` with `key: 'Enter'`
+    on a focused in-month cell (with or without activities) fires
+    `onSelectDate(iso, cellEl)`; same for `key: ' '` (Space), which
+    also calls `event.preventDefault()`.
+  - Out-of-month cell ignores both click and `Enter`/`Space` keydown.
+  - Selected cell has `.cal-cell--selected`.
+  - Today + selected stacks (both classes present).
+  - Numbered chip has no `role` / `tabIndex` / `onClick` in v2.
+
+---
+
+### [X] Task 12.4 — Wire DayPanel into Calendar page orchestrator
+
+**Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js)
+
+**What to do**:
+- Add module-level `_selectedDate = null` state.
+- Import `DayPanel` from `src/components/calendar/DayPanel.js`.
+- Remove all `DayPopover` **imports and call sites** from
+  `src/pages/Calendar.js` only. The popover source file +
+  test file are deleted in Task 12.5; this task only un-wires them
+  from the orchestrator so 12.5 can verify zero remaining references.
+- Restructure the grid slot to render: MonthGrid (existing) **above**
+  DayPanel (new), inside the same `.cal-grid-panel` card. The two
+  components share a card; the panel is separated from the grid by a
+  1px solid `--border` per §17.4.
+- Pass `onSelectDate: _onSelectDate` to MonthGrid; the handler updates
+  `_selectedDate` and calls `DayPanel.update({ selectedDate,
+  activities: _dayActivities[selectedDate] ?? [] })`. **Do not** trigger
+  a full `_render()` — DayPanel.update is targeted.
+- DayPanel's `onOpenApp` → existing `_onOpenApp` handler.
+
+**Validation**:
+- Extend `tests/pages/Calendar.test.js`:
+  - Mount renders MonthGrid + DayPanel in the grid slot.
+  - DayPanel starts in prompt state (`selectedDate === null`).
+  - Clicking a cell with activities populates DayPanel.
+  - Clicking an empty in-month cell shows the empty-day state.
+  - Clicking a different cell replaces panel body.
+  - `unmount()` destroys DayPanel.
+
+---
+
+### [X] Task 12.5 — Delete DayPopover files; finalize quickstart swap
+
+**Target files** (this task owns all DayPopover file deletions):
+- [src/components/calendar/DayPopover.js](../../src/components/calendar/DayPopover.js) — **delete**
+- [tests/components/calendar/DayPopover.test.js](../../tests/components/calendar/DayPopover.test.js) — **delete**
+- [specs/026-calendar/quickstart.md](quickstart.md) — already swapped to
+  the "Inline Day Panel (v2)" block in the v0.13.1 doc pass; re-verify
+  during this task that no "Day Popover" rows remain in §6.
+
+**What to do**:
+1. Confirm Task 12.4 has already un-wired DayPopover from
+   `src/pages/Calendar.js`. If `rg DayPopover src` still returns hits
+   inside `src/pages/`, finish 12.4 first.
+2. Delete the two files above.
+3. Re-read `quickstart.md §6` and confirm the "Inline Day Panel (v2)"
+   block is the only day-detail smoke surface present.
+
+**Validation**:
+- `rg DayPopover src tests` returns no matches.
+- `npm run test:run` passes.
+
+---
+
+### [X] Task 12.6 — Fix picker anchoring on desktop/tablet
+
+**Target files**:
+- [src/components/calendar/anchoredDropdown.js](../../src/components/calendar/anchoredDropdown.js)
+- [src/components/calendar/MonthPicker.js](../../src/components/calendar/MonthPicker.js)
+- [src/components/calendar/YearPicker.js](../../src/components/calendar/YearPicker.js)
+- [src/components/calendar/StatusFilterDropdown.js](../../src/components/calendar/StatusFilterDropdown.js)
+
+**What to do**:
+Investigate obs #5 (desktop/tablet pickers do not appear under the
+clicked trigger). Likely causes to check first:
+- Wrong anchor element passed (the grid header container instead of
+  the specific button).
+- `anchorRect` captured before the dropdown content is measured — the
+  positioning math then uses the wrong width, especially for
+  `align: 'end'`.
+- `transform`/`overflow` on a parent of the anchor breaking
+  `getBoundingClientRect` coordinate basis.
+
+Fix at the root cause; do not patch over with magic offsets.
+
+Mobile bottom-sheet behavior is correct and must not regress.
+
+**Validation**:
+- Manually verified by ticking the relevant rows in
+  `quickstart.md §6` during Phase 13 re-smoke.
+- `tests/components/calendar/anchoredDropdown.test.js` — add a case
+  asserting that when the anchor has a non-zero `getBoundingClientRect().left`,
+  the dropdown's positioned `left` equals (or aligns to) that value.
+
+---
+
+### [X] Task 12.7 — Picker UI updates (remove header labels, unify range font)
+
+**Target files**:
+- [src/components/calendar/MonthPicker.js](../../src/components/calendar/MonthPicker.js)
+- [src/components/calendar/YearPicker.js](../../src/components/calendar/YearPicker.js)
+- [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.10 + §6.11](../../docs/design/calendar.md):
+- Remove the "Jump to month" / "Jump to year" left-side labels from
+  both picker headers.
+- Year picker: render the `{start} – {start+11}` range with the same
+  Sora 11.5/500 / `--t2` styling as the 12 year buttons in the grid
+  below. Remove any DM Mono on the range label.
+
+**Validation**:
+- Extend `tests/components/calendar/MonthPicker.test.js` +
+  `tests/components/calendar/YearPicker.test.js`:
+  - Header does NOT contain the literal "Jump to month" / "Jump to year"
+    text.
+  - Year range label is rendered (`{start} – {start+11}` format).
+
+---
+
+### [X] Task 12.8 — Month/Year buttons as text-style triggers
+
+**Target files**:
+- [src/components/calendar/MonthGrid.js](../../src/components/calendar/MonthGrid.js)
+- [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.6](../../docs/design/calendar.md):
+- Remove the bordered button look from `.cal-month-btn` and
+  `.cal-year-btn`. No border, transparent background, padding `4px 6px`.
+- Both buttons use **Sora**; do not mix Sora + DM Mono in this pair.
+- Remove the chevron-down caret after the year (the caret was added in
+  error and made the year look like a `<select>`).
+- Hover: text color → `--indigo`; `.cal-month-btn` adds a faint
+  `--indigo-soft` background, `.cal-year-btn` color-only.
+
+---
+
+### [X] Task 12.9 — Status filter icon button (mirror Tracker quick-filter)
+
+**Target files**:
+- [src/components/calendar/MonthGrid.js](../../src/components/calendar/MonthGrid.js)
+- [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.6](../../docs/design/calendar.md):
+Replace the `.filter-chip` ("Status: All" / "Interview" text chip) with
+a 30×30 **icon button** (`.cal-status-filter-btn`) that mirrors the
+Tracker `QuickFiltersToolbar` status control:
+- Idle: neutral funnel/filter SVG glyph, `--t3` color, border
+  `--border`.
+- Active: glyph replaced by an 8×8 round swatch using
+  `STATUS_CONFIG[status].borderAccent`; border + ring `--indigo`.
+- Same control on desktop and mobile.
+- Clear `×` button still appears adjacent when active.
+- The `align: 'end'` anchoring (Task 12.6) targets this icon button.
+
+**Class-family scope (do NOT rename the dropdown shell):**
+This task only renames the **trigger** (chip → `.cal-status-filter-btn`)
+and its **clear** companion (`.filter-clear` → `.cal-filter-clear` if
+you want consistency, otherwise leave). The dropdown shell and rows
+keep their existing `.filter-dd*` feature-prefix names
+(`.filter-dd`, `.filter-dd-row`, `.filter-dd-check`,
+`.filter-dd-swatch`, `.filter-dd-label`, `.none-glyph`) — see
+[docs/design/calendar.md §6.12 class-naming note](../../docs/design/calendar.md).
+The existing CSS, component, and test files already standardize on
+`.filter-dd*`; do not rewrite them in this phase.
+
+---
+
+### [X] Task 12.10 — Single-row grid header layout
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.6.1 + §11](../../docs/design/calendar.md):
+The grid header must be a single flex row at every breakpoint. Retire
+the previous 3-row mobile layout. Left cluster (`‹ Month Year ›`) tight
+(2px gaps), `[Today*]` 12px to the right of the cluster,
+`[Filter]` pushed to the far right via `margin-left: auto`. Font sizes
+drop on mobile per §6.6 but the row does not wrap.
+
+---
+
+### [X] Task 12.11 — Greeting name injection + comma handling
+
+**Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js) (or its `chooseGreeting` helper)
+
+**What to do**:
+Per [docs/design/calendar.md §6.1 "Name injection"](../../docs/design/calendar.md):
+- Read the user's display name from the active profile (hosted: Supabase
+  user metadata; local: profile store; demo: demo profile name if set).
+- Move every greeting entry in the pool from "Good morning," (with
+  comma) → "Good morning" (no comma). Comma is owned by the formatter.
+- Formatter composes:
+  - With name: `"{Greeting}, {Name}"`.
+  - With name + question form ("Burning the midnight oil?"): insert
+    the `, {Name}` **before** the punctuation → `"Burning the midnight
+    oil, Alice?"`.
+  - Without name: `"{Greeting}"` — no trailing comma.
+- Demo mode follows the same rule (use the demo profile name if one
+  is configured; otherwise no comma).
+
+**Validation**:
+- Extend `tests/pages/Calendar.test.js` (or a new helper test):
+  - With a name in the profile, headline contains `, Alice`.
+  - Without a name, headline does NOT contain a trailing comma.
+  - Question-form greetings put `, Alice` before the `?`.
+
+---
+
+### [X] Task 12.12 — Dismiss toast + filter dims empty cells
+
+**Target files**:
+- [src/pages/Calendar.js](../../src/pages/Calendar.js) — `_onDismiss` handler
+- [src/components/calendar/MonthGrid.js](../../src/components/calendar/MonthGrid.js) — cell rendering pass
+- [tests/pages/Calendar.test.js](../../tests/pages/Calendar.test.js)
+- [tests/components/calendar/MonthGrid.test.js](../../tests/components/calendar/MonthGrid.test.js)
+
+**What to do**:
+Per [docs/design/calendar.md §8](../../docs/design/calendar.md):
+- `_onDismiss(applicationId, kind)` now calls `Toast.show('Suggestion
+  dismissed', 'success')` after the row exits.
+- MonthGrid cell pass: when `props.filter !== null`, add
+  `.cal-cell--filter-hidden` to **every** non-matching cell — including
+  cells with zero activities. Only cells with at least one activity
+  matching `filter` remain at full opacity.
+
+**Validation**:
+- Dismiss handler test asserts Toast.show called with the new string.
+- MonthGrid test: with `filter: 'interview'`, an empty in-month cell
+  also has `.cal-cell--filter-hidden`.
+
+---
+
+### [X] Task 12.13 — CSS polish pass (typography, empty state, hues, ID pill)
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Fix the visual mismatches surfaced in Phase 11 where the design doc
+already specifies the right value but the implementation diverged:
+
+| Obs | Fix |
+|-----|-----|
+| #1  | Job ID pill in Calendar matches Tracker's ID treatment (no `#` prefix, same font weight). Single source of truth: define `.cal-id-pill` to inherit Tracker's ID styling. |
+| #4  | Month / Year buttons both use Sora (already addressed in 12.8 — verify). |
+| #11 | Section subheaders (`Today` / `Suggested Actions` / `Upcoming`) and their count pills sized up — `.cal-section__lbl` Sora 14/600 (was 13); `.cal-section__count` font 11 (was 10). |
+| #12 | `.dow-cell` font-weight 500 (was 600/700); `.cal-cw` text-align center; vertically center the CW number to the day-cell row middle (`align-items: center`). |
+| #13 | `.upc-group-h .cal-section__lbl` font-weight 500 (was 600). |
+| #16 | `.cal-num` font-weight 500 (was 600). |
+| #18 | Empty `.cal-empty` block: remove dashed border / brown-tinted background that crept in. Plain `transparent` bg, no border. |
+| #19 | `.cal-cell--weekend` and `.cal-cell--out` background hues distinct enough to read at a glance — bump weekend in-month to `#FBF9F4`, out-of-month general to `#F4F0E6` so the contrast against `--surface` (`#FFFFFF`) is visible. |
+
+Each line above is a small, scoped CSS change. Confirm against the
+design tokens in §4 of the design doc.
+
+**Validation**:
+- Visual inspection in browser (Phase 13 re-smoke).
+- No new tests required for pure CSS; existing snapshot tests should
+  still pass.
+
+---
+
+### [X] Task 12.14 — Test sweep
+
+**Target**: all `tests/` updates from Tasks 12.1–12.13.
+
+**What to do**:
+Run `npm run test:run` and `npm run lint`. Address any regressions
+that surfaced from the rename, the popover deletion, the chip
+non-interactivity change, the dismiss toast, and the v2 panel.
+
+**Validation**:
+- Both `npm run lint` and `npm run test:run` exit 0. The repo has no
+  `format` script (see `package.json`); the format check called out in
+  the Phase 10 Task 10.6 copy was inherited boilerplate and is dropped
+  here.
+
+---
+
+## Phase 13 — Release Prep v2 + Re-smoke (REQUIRED)
+
+The Phase 12 changes constitute a patch release on top of v0.13.0.
+Re-apply Phase 10's release-prep workflow at the patch level, then
+re-walk Phase 11's smoke checklist against the v2 merge state.
+
+### [X] Task 13.1 — Version bump to 0.13.1
+
+**Target files**: [package.json](../../package.json),
+[src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js).
+
+**What to do**:
+Bump `version` and `APP_VERSION` to `0.13.1` / `v0.13.1`. Patch — no
+new feature surfaces, only design + bug-fix changes on the same v0.13
+feature.
+
+**Validation**:
+- `tests/release-metadata.test.js` updated to assert `0.13.1`; passes.
+
+---
+
+### [X] Task 13.2 — CHANGELOG entry
+
+**Target file**: [CHANGELOG.md](../../CHANGELOG.md).
+
+**What to do**:
+Add `## [0.13.1] — <date>` under Unreleased, summarizing:
+- v2 Inline Day Details Panel replaces the popover.
+- "Technical Assessment" globally renamed to "Technical".
+- Greeting includes profile name; trailing comma removed when no name.
+- Picker headers cleaned; month/year as text-style triggers.
+- Status filter is now an icon button mirroring Tracker quick-filter.
+- Single-row grid header on all breakpoints.
+- Dismiss feedback toast; filter dims empty cells.
+- CSS polish (typography, empty state, weekend hues, ID pill).
+
+Update the link-definition block at the bottom of CHANGELOG.md
+(`[Unreleased]` pointer + new `[0.13.1]` link).
+
+---
+
+### [X] Task 13.3 — REPO_MAP entry for DayPanel; remove DayPopover row
+
+**Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md).
+
+**What to do**:
+- Add a row for `src/components/calendar/DayPanel.js` (replaces the
+  DayPopover row).
+- Add a row for `tests/components/calendar/DayPanel.test.js`.
+- Remove the rows for `DayPopover.js` + `DayPopover.test.js`.
+
+---
+
+### [X] Task 13.4 — Docs sanity check
+
+**What to do**: `npm run lint` and `npm run test:run` both exit 0.
+(There is no `format` script — the Phase 10 Task 10.6 copy was wrong
+on that line; do not re-introduce it here.)
+
+**Resolution**: Both commands ran clean during the Phase 12 review
+(88 files / 1054 tests, lint with zero output). Phase 13's doc-only
+edits (CHANGELOG, README, REPO_MAP, version bumps, release-metadata
+test bump) do not touch source code; `tests/release-metadata.test.js`
+was updated in lockstep with the version bump so its assertions
+match the new `0.13.1` strings in `package.json`, `appMeta.js`,
+`README.md`, and `CHANGELOG.md`. Per user direction, the post-edit
+re-run was skipped — trust the prior green run + lockstep test edit.
+
+---
+
+### [X] Task 13.5 — Browser re-smoke
+
+**What to do**:
+Re-walk the **full** smoke checklist in [quickstart.md §6](quickstart.md)
+against the v0.13.1 merge state. Tick every row. The Day Popover block
+has been replaced by an Inline Day Panel block during Task 12.5.
+
+Pay special attention to the items that failed or were untestable on
+v0.13.0:
+- Numbered chips — verify priority order and `+N` overflow (was
+  unticked).
+- Inline Day Panel — selection updates the panel in place; empty days
+  show "No events"; today gets the "Today" pill.
+- Mobile single-row header — no wrap; filter is the icon button.
+- Picker anchoring — month/year/filter dropdowns sit under their
+  trigger button on desktop and tablet.
+- Dismiss toast — "Suggestion dismissed" appears.
+- Filter dims empty cells — full opacity only on matching days.
+- Greeting — your profile name appears (or no trailing comma without
+  one).
+
+**Validation**:
+- All quickstart §6 rows ticked **except** three picker-anchoring rows
+  (Month Picker, Year Picker, Status filter dropdown). Those drift
+  off their triggers in the live browser on some viewports despite
+  the JSDOM positioning math being correct (regression test passes
+  in `tests/components/calendar/anchoredDropdown.test.js`). Root
+  cause is browser-only — likely an ancestor `transform` or
+  `overflow` breaking `getBoundingClientRect` basis. Documented as a
+  known limitation in `CHANGELOG.md §[0.13.1]` and deferred to a
+  future patch. Mobile bottom-sheet behavior is unaffected.
+
+---
+
+### [X] Task 13.6 — Hosted-mode + localStorage smoke (carryover)
+
+**What to do**:
+Complete the two Phase 11 tasks that were not exercisable on v0.13.0
+(11.13 hosted-mode user-switch and 11.14 hosted starter RPC dry-run).
+The v3 RPC body still lives in
+[docs/db/claim_and_seed_starter.md](../../docs/db/claim_and_seed_starter.md);
+no SQL changes were required for v0.13.1.
+
+**Validation**:
+- The hosted smoke steps in [quickstart.md §4 + §6 localStorage](quickstart.md)
+  complete; cross-user bleed test passes. All three localStorage rows
+  in §6 are ticked, including the hosted user-switch row that was
+  unchecked in the v0.13.0 smoke.
+
+---
+
+## Phase 14 — Post-re-smoke Fixes
+
+The Phase 13 browser re-smoke surfaced 11 observations against the
+v0.13.1 build. Three drove spec changes that are now live in
+`docs/design/calendar.md` (§6.12 filter popup, §6.6.1+§11 narrow-viewport
+wrap, §17.5 DayPanel row meta). Eight are CSS / implementation fixes
+where the spec was already correct.
+
+Task order: spec-driven structural work first (14.1–14.3), then the
+deferred picker-anchoring root-cause fix (14.4–14.5), then CSS polish
+(14.6–14.10), then the seed enhancement and test sweep (14.11–14.12).
+
+### [X] Task 14.1 — Filter popup unified with Tracker `QuickFiltersToolbar`
+
+**Target files**:
+- [src/components/calendar/StatusFilterDropdown.js](../../src/components/calendar/StatusFilterDropdown.js) — gut + rewrite as a thin wrapper, or delete entirely if the Tracker popup can be opened directly
+- [src/components/QuickFiltersToolbar.js](../../src/components/QuickFiltersToolbar.js) — extract the status popup if it is still embedded; expose a `mountStatusFilterPopup({ anchor, value, onSelect, onClose })` or equivalent
+- [src/pages/Calendar.js](../../src/pages/Calendar.js) — `_onOpenFilter` opens the shared popup, not the legacy dropdown
+- [src/styles/main.css](../../src/styles/main.css) — retire `.filter-dd*` selectors from the Calendar context (keep them if still used by the Tracker; otherwise delete)
+- [tests/pages/Calendar.test.js](../../tests/pages/Calendar.test.js) — update the filter-interaction test path
+
+**What to do**:
+Per [docs/design/calendar.md §6.12](../../docs/design/calendar.md):
+the Calendar's filter trigger opens the **same** status-filter popup
+that the Tracker exposes via `QuickFiltersToolbar`. Same chrome, same
+control across desktop, tablet, and mobile.
+
+- Inspect `QuickFiltersToolbar` to determine whether the status popup
+  is already a standalone surface that can be mounted from elsewhere,
+  or whether it is currently entangled with toolbar state. If the
+  latter, extract it to a shared component (suggested location:
+  `src/components/QuickFiltersStatusPopup.js`); keep the Tracker side
+  using the extracted component too — no parallel implementations.
+- The Calendar's `_onOpenFilter(anchor)` handler in `Calendar.js`
+  mounts the shared popup with single-select semantics: `onSelect`
+  receives the next status (or `null` for "All statuses") and the
+  Calendar updates `_filter` and re-renders. "All statuses" maps to
+  `filter: null`.
+- Status options render in `STATUS_DISPLAY_PRIORITY` order. The
+  assessment label is "Technical" per §5; that is owned by
+  `STATUS_CONFIG`, so no per-page override.
+- Retire the `asBottomSheet: true` configuration on the Calendar
+  side. The Tracker popup's responsive form is canonical.
+- Remove `StatusFilterDropdown` references from the rest of the
+  Calendar codebase (orchestrator + tests). Delete the file once
+  zero references remain.
+
+**Constraints**:
+- Do NOT branch the Tracker filter popup with Calendar-specific
+  styling, class names, or behavior. New variants are forbidden by
+  spec — both pages must share the surface.
+- The trigger element (`.cal-status-filter-btn` icon button)
+  unchanged from Phase 12.
+- Class-prefix scoping: extracted popup uses the Tracker's existing
+  class family. Do not introduce `cal-` prefixes on inherited
+  surfaces.
+
+**Validation**:
+- `tests/pages/Calendar.test.js` — the existing "filters the grid
+  without changing the Action Panel" case still passes against the
+  new popup chrome (update the selector from `.filter-dd-row` to
+  whatever the shared popup uses; assert the same filter outcome).
+- Extend the test to confirm the Calendar popup is the **same**
+  DOM surface the Tracker mounts (snapshot a distinctive class or
+  data attribute that the Tracker popup carries).
+- `npm run lint` + `npm run test:run` exit 0.
+
+**Out of scope**:
+- Multi-select on the Calendar. Single-select stays the
+  contract per [spec.md §Clarifications](../../specs/026-calendar/spec.md).
+
+---
+
+### [X] Task 14.2 — Controlled wrap at <375px (grid header)
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.6.1 sub-breakpoint exception + §11](../../docs/design/calendar.md):
+add an `@media (max-width: 374px)` block that allows the
+`.cal-grid-header` to wrap into a controlled two-row layout:
+
+- Row 1 — nav cluster (`‹ Month Year ›`). Pin with `flex: 1 1 100%`
+  on the cluster so it consumes the entire first row.
+- Row 2 — `[Today*]` (left) and `[Filter*]` (right via
+  `margin-left: auto` on the filter area). Both, one, or neither —
+  Row 2 collapses to zero height when both are absent.
+- Above 375px, the existing single-row layout still applies. Do
+  NOT generalize the wrap upward.
+
+**Constraints**:
+- `flex-wrap: wrap` activates **only** in the `<375px` media query.
+  Above that, the header is `flex-wrap: nowrap` (or implicit).
+- No additional JS. This is a pure CSS change.
+- The 3-row mobile layout (nav · today · filter on separate lines)
+  remains retired. The new two-row layout groups elements differently
+  (nav alone vs. today+filter together).
+
+**Validation**:
+- Manual: emulate iPhone SE (320×568) and Galaxy Z Fold 5 cover
+  (344×882) in DevTools; confirm Row 1 = nav, Row 2 = Today+Filter
+  share a row.
+- Manual: emulate 376×600; confirm header is single row (regression
+  guard for the breakpoint boundary).
+- No unit test required for pure CSS; the existing MonthGrid layout
+  tests must still pass.
+
+---
+
+### [X] Task 14.3 — DayPanel row meta `{Company} · {Job title}`
+
+**Target files**:
+- [src/components/calendar/DayPanel.js](../../src/components/calendar/DayPanel.js) — rename `.cal-dp-row__co` → `.cal-dp-row__meta`; emit `{Company} · {Job title}` with a `.cal-dp-row__sep` separator
+- [src/styles/main.css](../../src/styles/main.css) — restyle the renamed class; add separator color treatment
+- [tests/components/calendar/DayPanel.test.js](../../tests/components/calendar/DayPanel.test.js) — assert new content and class names
+
+**What to do**:
+Per [docs/design/calendar.md §17.5 Variant A](../../docs/design/calendar.md):
+- `createRow` now appends `.cal-dp-row__meta` (replacing
+  `.cal-dp-row__co`) containing `{Company}` + `.cal-dp-row__sep`
+  with `·` + `{Job title}`.
+- The activity object received from the projection layer already
+  exposes `company`; `jobTitle` may need to be added — confirm the
+  current `DayActivity` projection in
+  `src/utils/calendarProjection.js` carries the role; if not, add it
+  (it is already present on the parent application object, so the
+  projection just needs to copy it through).
+- Use ellipsis truncation via CSS (`overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap`) on
+  `.cal-dp-row__meta`. The job title text in `.cal-dp-row__job`
+  keeps its existing ellipsis treatment.
+- Use the same `.cal-row__sep` color and spacing pattern from the
+  Action Panel for visual consistency.
+
+**Constraints**:
+- Do NOT add the ID pill back into Variant A rows. Status is still
+  implied by the group; the ID stays suppressed for visual rest.
+- Do NOT mutate the company name to include the role inline (no
+  `"Company - Role"` concat) — the separator element carries the
+  styling.
+
+**Validation**:
+- Update `tests/components/calendar/DayPanel.test.js`:
+  - `cal-dp-row__co` is no longer in the DOM.
+  - `cal-dp-row__meta` is present and contains the company name
+    followed by `·` followed by the job title.
+  - `cal-dp-row__sep` is a child of `cal-dp-row__meta`.
+
+---
+
+### [X] Task 14.4 — Investigate the picker-anchoring root cause in the browser
+
+**Target file**: TBD — investigation first, source change second.
+
+**What to do**:
+The deferred obs #5 from v0.13.1 needs a real fix. Phase 12 Task
+12.6 only added a JSDOM regression test; the live browser still
+drifts the Month, Year, and Status filter popups off their triggers
+on desktop/tablet.
+
+Investigate in a real browser (DevTools "Inspect element" on a
+mid-flight dropdown):
+1. Capture the trigger button's `getBoundingClientRect()` and the
+   dropdown's computed `left` / `top`.
+2. Walk up the trigger's ancestor chain. Identify any element with
+   `transform`, `filter`, `perspective`, `contain: layout`, or
+   `position: fixed` — any of these creates a new containing block
+   for fixed/absolute descendants and breaks the viewport-relative
+   coordinate basis the dropdown's positioner uses.
+3. Check whether the dropdown is mounted on `document.body` (as the
+   primitive should) or has been inadvertently attached to a styled
+   ancestor.
+4. Inspect `window.scrollX` / `window.scrollY` handling — if the
+   primitive uses page coordinates but the trigger rect is
+   viewport-relative, they will diverge as the page scrolls.
+
+Report findings; the fix lands in Task 14.5. Do not change
+production code in 14.4 — this is the diagnosis step.
+
+**Validation**:
+- A short write-up (inline comment in `anchoredDropdown.js` or a
+  paragraph in the Task 14.5 PR description) naming the offending
+  ancestor / coordinate-basis bug, with the DevTools evidence.
+
+---
+
+### [X] Task 14.5 — Fix picker anchoring
+
+**Target file**: [src/components/calendar/anchoredDropdown.js](../../src/components/calendar/anchoredDropdown.js)
+
+**What to do**:
+Apply the fix the Task 14.4 investigation prescribes. Likely
+candidates:
+
+- If the issue is an ancestor `transform`: switch the dropdown to
+  `position: fixed` with viewport-relative `top` / `left` (the
+  primitive already uses `position: fixed` per design §6.13; verify
+  that's still true in implementation and that the ancestor's
+  containing-block influence is genuinely bypassed).
+- If the issue is a coordinate basis mismatch: ensure
+  `getBoundingClientRect()` is used consistently (which is
+  viewport-relative) and that scroll offsets are not double-added.
+- If the issue is a stale rect captured before content measurement:
+  re-measure the trigger after content mount and reposition once
+  on first render.
+
+**Constraints**:
+- The mobile bottom-sheet variant is unaffected and must NOT
+  regress. The fix scopes to the desktop/tablet positioning path.
+- Do NOT add per-popup positioning offsets ("magic numbers"); fix
+  the root cause. If you find yourself adding `top + 12`, you have
+  not understood the bug.
+- The existing JSDOM regression test in
+  `tests/components/calendar/anchoredDropdown.test.js` must still
+  pass.
+
+**Validation**:
+- Manual browser smoke at desktop (≥1200px), tablet portrait
+  (~768px), and tablet landscape (~1024px): open Month picker,
+  Year picker, Status filter popup. Each appears under its trigger
+  with no horizontal or vertical drift.
+- Update the three deferred quickstart §6 rows from `[ ]` to
+  `[X]` (Month Picker anchor, Year Picker anchor, Filter dropdown
+  anchor) once the manual smoke confirms the fix.
+- The v0.13.1 CHANGELOG "Known limitations" entry is removed in
+  the Phase 15 release-prep CHANGELOG note (not in this phase).
+
+---
+
+### [X] Task 14.6 — DayPanel status badge font fix
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §4 Typography + §17.5](../../docs/design/calendar.md):
+the `.cal-status-badge` inside the DayPanel (and the
+`<StatusBadge>` shared from Tracker) must use **Sora**, not DM Mono.
+Locate the CSS rule that is forcing mono on `.cal-status-badge`
+(likely a stale rule from the v1 popover, or a too-broad selector
+in the Calendar block) and remove it. The badge should inherit
+Sora from the page typography.
+
+**Validation**:
+- Visual: status badges in the DayPanel group headers render in
+  Sora.
+- No new unit test required; existing DayPanel test continues to
+  pass (it asserts text content, not font).
+
+---
+
+### [X] Task 14.7 — DayPanel group header — remove extra line
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+The `.cal-dp-group-h` subheader is rendering an extra full-width
+line under itself. Likely cause: `.cal-dp-group-dash` is laying out
+as a block element instead of a `flex: 1` flex item, so the dashed
+border appears as its own row rather than a hairline that extends
+from the badge to the row's right edge.
+
+Fix the CSS:
+- `.cal-dp-group-h` is `display: flex; align-items: center; gap: 10px;`.
+- `.cal-dp-group-dash` is `flex: 1; height: 0; border-top: 1px
+  dashed var(--border);`.
+- No other children of `.cal-dp-group-h` should default to
+  `display: block` and stretch to 100% width.
+
+**Validation**:
+- Visual: the subheader is one line, with the dashed rule extending
+  to the right edge.
+
+---
+
+### [X] Task 14.8 — Action Panel ID pill alignment with Tracker
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per obs #7 (re-smoke). Phase 12 Task 12.13 removed the `#` prefix
+from the Action Panel ID pill string (`.cal-id-pill` content is now
+`024`, not `#024`). However, the pill's **styling** (background,
+font, padding, border-radius) still does not match the Tracker's
+application ID pill.
+
+- Audit Tracker's ID pill class (likely `.app-id-pill` or similar in
+  Tracker components) and unify visual treatment.
+- Either inherit from the Tracker pill class directly (preferred) or
+  duplicate the design tokens in `.cal-id-pill` so the two surfaces
+  read as the same component.
+- Do not re-introduce the `#` prefix.
+
+**Validation**:
+- Visual: a `.cal-id-pill` in the Action Panel and the Tracker's ID
+  pill on the same card are visually indistinguishable side-by-side.
+
+---
+
+### [X] Task 14.9 — Weekend tint should not override out-of-month tint
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §6.8](../../docs/design/calendar.md):
+out-of-month weekend cells should render with the **out-of-month
+weekend** tint (`#F7F3EC`), not the in-month weekend tint
+(`#FBF9F4`). The spec is already correct; the cascade is wrong.
+
+- The current CSS likely has `.cal-cell--weekend` after
+  `.cal-cell--out`, so weekend wins.
+- Fix by either (a) re-ordering the rules so `.cal-cell--out` wins
+  the unmodified base case AND
+  `.cal-cell--out.cal-cell--weekend` exists as a combined selector
+  with the out-of-month-weekend tint, or (b) using a specificity
+  bump on the combined selector.
+
+**Validation**:
+- Visual: out-of-month weekend cells (e.g. the trailing days of
+  the previous month that fall on Sat/Sun) render in `#F7F3EC`, not
+  `#FBF9F4`.
+
+---
+
+### [X] Task 14.10 — Restore cell selection ring
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Per [docs/design/calendar.md §17.3](../../docs/design/calendar.md):
+the selected cell must show a **navy** border ring + drop shadow,
+or an **indigo** ring when also today. Currently only the drop
+shadow renders; the border-color is being lost.
+
+- Verify `.cal-cell--selected { border-color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(26,26,46,.08); }` is present in
+  `main.css`.
+- Verify the combined selector `.cal-cell--selected.cal-cell--today
+  { border-color: var(--indigo); box-shadow: 0 0 0 2px
+  rgba(79,70,229,.18); }` exists.
+- Check that `.cal-cell--today` (alone) or `.cal-cell--weekend`
+  isn't overriding the border-color via a later rule with higher
+  specificity. If they are, raise the `.cal-cell--selected` rule's
+  specificity OR re-order rules.
+
+**Validation**:
+- Visual: clicking a non-today cell shows a clear navy ring.
+- Clicking today's cell shows an indigo ring (not navy).
+- The quickstart §6 Inline Day Panel row "Selecting a different
+  date replaces the panel body in place. The cell selection ring
+  (navy) moves with you." passes browser inspection.
+
+---
+
+### [X] Task 14.11 — Seed fixture with 4+ statuses on a single day
+
+**Target files**:
+- [server/seeds/applicationsData.js](../../server/seeds/applicationsData.js)
+- [src/data/demoSeed.js](../../src/data/demoSeed.js)
+- (optional) [tests/seed-data.test.js](../../tests/seed-data.test.js) — add an assertion that some day has ≥4 distinct statuses
+
+**What to do**:
+Per obs #6 (re-smoke). There is no seeded date with more than 3
+distinct statuses, so the `+N` overflow chip is unverifiable in
+default seeded data. Add a fixture:
+
+- Pick a day (e.g. today minus 2) in the seed data; ensure 4+
+  different statuses fire on that day across the seeded
+  applications.
+- Mirror the same fixture in `demoSeed.js` so demo mode covers it
+  too.
+- Optionally extend `tests/seed-data.test.js` with a Calendar
+  coverage assertion: `expect(maxDistinctStatusesPerDay(seedApps))
+  .toBeGreaterThanOrEqual(4);` (the helper can be a 5-line
+  reduce over `applicationsData`).
+
+**Constraints**:
+- Do NOT inflate the seed count just to hit 4 — re-distribute
+  existing seeded timeline entries onto the same date when
+  possible.
+- The fixture should still pass all existing seed-coverage tests
+  (suggestion-coverage etc.).
+
+**Validation**:
+- Reload Calendar after `npm run db:clear && npm run db:seed` and
+  confirm at least one cell shows a `+N` overflow chip.
+
+---
+
+### [X] Task 14.12 — Test sweep
+
+**Target**: all `tests/` updates from Tasks 14.1–14.11.
+
+**What to do**:
+Run `npm run lint` and `npm run test:run`. Address any regressions
+from the StatusFilterDropdown removal, the DayPanel row meta
+rename, the seed fixture change, the picker-anchoring fix, and any
+CSS-only changes that cascaded into JS test expectations.
+
+**Validation**:
+- Both `npm run lint` and `npm run test:run` exit 0.
+
+---
+
+## Phase 15 — Action Panel Collapse (`<1200px`)
+
+Phase 14 closed before Task 14.13 was scoped. The collapsible
+Action Panel summary bar (a long-deferred design provision from
+the v1 `§11` Open question + `§15` Out of Scope row, now promoted
+to a real spec in `docs/design/calendar.md §11.1`) lives in this
+phase instead. Single feature, three small tasks: component, CSS,
+test sweep.
+
+### [X] Task 15.1 — Render summary bar + toggle behavior in ActionPanel.js
+
+**Target files**:
+- [src/components/calendar/ActionPanel.js](../../src/components/calendar/ActionPanel.js) — emit `.cal-action-summary` + wrap the existing greeting and sections in `.cal-action-panel__body`; add the `.cal-action-panel--expanded` modifier toggle
+- [tests/components/calendar/ActionPanel.test.js](../../tests/components/calendar/ActionPanel.test.js) — assertions for summary copy, singular/plural counts, default-collapsed render, click/keyboard toggle, `aria-expanded` + `aria-controls`, Esc collapse
+
+**What to do**:
+Per [docs/design/calendar.md §11.1 Action Panel collapse](../../docs/design/calendar.md):
+
+1. **DOM structure** — `ActionPanel.render` now always emits both the
+   summary bar **and** the full panel content into the DOM:
+   ```
+   .cal-action-panel
+   ├── .cal-action-summary       ← always emitted; CSS controls visibility
+   │   ├── .cal-action-summary__counts   (DM Mono 11/500, --t2)
+   │   └── .cal-action-summary__toggle   (chevron glyph, aria-hidden)
+   └── .cal-action-panel__body
+       ├── .cal-greeting-h       (existing)
+       ├── .cal-greeting-sub
+       ├── .cal-section[data-section="today"]
+       ├── .cal-section[data-section="suggestions"]
+       └── .cal-section[data-section="upcoming"]
+   ```
+   Wrap the three sections (and the greeting block) in a new
+   `.cal-action-panel__body` container so CSS can hide/show the
+   expandable region with one selector.
+
+2. **Summary copy** —
+   - Default: `"Today · {Nt} events · {Ns} suggestions · {Nu} upcoming"`.
+   - Singular/plural: drop the trailing `s` when a count is exactly 1
+     (`1 event`, `1 suggestion`, `1 upcoming`).
+   - All-zero state: `"Quiet day — nothing on your plate"`.
+   - `Nu = tomorrow.length + restOfWeek.length` (same total the
+     existing Upcoming count pill uses).
+
+3. **Toggle behavior** — the summary bar is a
+   `<button type="button" class="cal-action-summary">`. Click /
+   Enter / Space toggles `.cal-action-panel--expanded` on the panel
+   root. `aria-expanded` reflects the state; `aria-controls` points
+   at the `.cal-action-panel__body` element's `id` (assign a stable
+   `id` on render). Esc, while focus is anywhere inside the
+   expanded body, collapses and returns focus to the summary bar.
+
+4. **Default state on render** — `_collapsed = true` every time
+   `ActionPanel.render` is called. Do NOT persist toggle state
+   across re-renders, across `Calendar` page remounts, or to
+   localStorage.
+
+5. **No viewport resize listener.** Task 15.2 handles the breakpoint
+   crossover via CSS alone. The component does not measure
+   `window.innerWidth`; `_collapsed` is the only JS-owned state.
+
+**Constraints**:
+- Render order: summary bar **above** the greeting + sections so
+  it stays at the top of the panel when expanded.
+- Do not duplicate the count derivation logic — read counts from
+  the same `today`, `suggestions`, `tomorrow`, `restOfWeek` arrays
+  the existing sections consume.
+- Do not introduce a `localStorage` key for the toggle state.
+
+**Validation**:
+- Extend `tests/components/calendar/ActionPanel.test.js`:
+  - With non-zero counts, `.cal-action-summary__counts` reads
+    `"Today · 2 events · 3 suggestions · 1 upcoming"` (use a 2/3/1
+    fixture). Singular form: render with 1/1/1 and assert
+    `"1 event · 1 suggestion · 1 upcoming"`.
+  - With zero counts everywhere, summary reads `"Quiet day —
+    nothing on your plate"`.
+  - On render, `.cal-action-panel` does NOT have
+    `cal-action-panel--expanded` (collapsed default).
+  - `.cal-action-summary` has `aria-expanded="false"` initially.
+  - Clicking `.cal-action-summary` adds the modifier class and
+    flips `aria-expanded` to `"true"`. A second click removes it
+    and flips back.
+  - Keyboard: dispatching `keydown` with `key: 'Enter'` activates
+    the toggle; same for `key: ' '` (Space, with
+    `event.preventDefault()`).
+  - With the panel expanded, dispatching `keydown` with
+    `key: 'Escape'` on a child element collapses the panel and
+    refocuses the summary bar.
+  - `aria-controls` matches the `.cal-action-panel__body`
+    element's `id`.
+
+**Out of scope**:
+- Persisting the toggle state across page loads.
+- A `?expanded=1` URL parameter or any deep-link behavior.
+- Sticky-positioning the summary bar over the grid while scrolled
+  (the bar lives inside the panel container; the page scrolls
+  underneath).
+
+---
+
+### [X] Task 15.2 — Collapse CSS rules (`@media (max-width: 1199px)`)
+
+**Target file**: [src/styles/main.css](../../src/styles/main.css)
+
+**What to do**:
+Add the CSS that drives the collapse behavior. Defaults at all
+breakpoints hide the summary bar and show the body; the media query
+inverts both at `<1200px`.
+
+```css
+.cal-action-summary { display: none; }
+.cal-action-panel__body { display: block; }
+
+@media (max-width: 1199px) {
+  .cal-action-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* + typography, padding, border per design §11.1 */
+  }
+
+  .cal-action-panel:not(.cal-action-panel--expanded)
+    .cal-action-panel__body { display: none; }
+
+  .cal-action-panel.cal-action-panel--expanded
+    .cal-action-panel__body { display: block; }
+
+  .cal-action-summary__toggle {
+    /* chevron */
+    transition: transform .14s ease;
+  }
+
+  .cal-action-panel.cal-action-panel--expanded
+    .cal-action-summary__toggle { transform: rotate(180deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-action-summary__toggle { transition: none; }
+}
+```
+
+The exact typography / padding / border tokens come from
+`docs/design/calendar.md §4` (DM Mono 11/500 for the count text,
+`--t2` color, surface bg, etc.). Do not invent new tokens.
+
+**Constraints**:
+- The summary bar must NOT render at `≥1200px`. Its `display: none`
+  default is the cleanest way to enforce this; do not gate it on a
+  JS class.
+- Do not animate the chevron rotation when
+  `prefers-reduced-motion: reduce` is active.
+- The body-show/hide transition does not need to be animated in
+  v0.13.2 — instant toggle is acceptable. If a height animation is
+  added later, it must also be gated by the reduced-motion query.
+
+**Validation**:
+- Manual: at desktop ≥1200px, confirm `.cal-action-summary` is not
+  rendered (or has `display: none`); the panel always shows the
+  greeting + sections.
+- Manual: at narrow desktop (1024px), tablet portrait (768px), and
+  mobile (375px), confirm the summary bar appears and the body is
+  hidden until clicked.
+- Pure CSS — no new unit tests required.
+
+---
+
+### [X] Task 15.3 — Test sweep
+
+**Target**: all `tests/` updates from Tasks 15.1–15.2.
+
+**What to do**:
+Run `npm run lint` and `npm run test:run`. Address any regressions
+the collapse work introduced — likely candidates: existing
+`ActionPanel.test.js` cases that assume the greeting / sections sit
+directly under `.cal-action-panel` may need a one-line selector
+update for the new `.cal-action-panel__body` wrapper.
+
+**Validation**:
+- Both `npm run lint` and `npm run test:run` exit 0.
+
+---
+
+## Phase 16 — Release Prep v3 + Re-smoke (REQUIRED)
+
+The Phase 14 + Phase 15 changes constitute a second patch release
+on top of `v0.13.0`. Re-apply the Phase 10 / Phase 13 release-prep
+workflow at the patch level. The browser re-smoke walks the same
+`quickstart.md §6` checklist; the v0.13.1 deferred picker-anchoring
+rows are now in scope and must close in this pass (Task 14.5
+addressed the production code; the smoke verifies the user-visible
+behavior).
+
+### [X] Task 16.1 — Version bump to 0.13.2
+
+**Target files**: [package.json](../../package.json),
+[src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js),
+[tests/release-metadata.test.js](../../tests/release-metadata.test.js).
+
+**What to do**:
+Bump `version` and `APP_VERSION` to `0.13.2` / `v0.13.2`. Patch —
+no new feature surfaces, only design + bug-fix changes built on the
+same v0.13 feature.
+
+Update `tests/release-metadata.test.js` in lockstep: bump every
+literal `0.13.1` → `0.13.2`; add a new assertion for the
+`[0.13.2]: …/compare/v0.13.1...v0.13.2` link line; keep the prior
+`[0.13.1]` and `[0.13.0]` link assertions.
+
+**Validation**:
+- `tests/release-metadata.test.js` passes after the bump.
+
+---
+
+### [X] Task 16.2 — CHANGELOG entry + README version bump
+
+**Target files**: [CHANGELOG.md](../../CHANGELOG.md),
+[README.md](../../README.md).
+
+**What to do**:
+Add `## [0.13.2] — <date>` under Unreleased, covering both Phase 14
+and Phase 15 changes in one appendix. Suggested section split
+(Keep a Changelog format):
+
+- **Added** — Collapsible Action Panel summary bar at every stacked
+  layout (`<1200px`); shared `QuickFiltersStatusPopup` component;
+  seed fixture with 4+ statuses on a single day.
+- **Changed** — Calendar status filter uses the shared Tracker
+  popup (retires `.filter-dd` chrome); DayPanel row meta is now
+  `{Company} · {Job title}`; controlled two-row header wrap below
+  375px; status badge font corrected to Sora; DayPanel group-header
+  dashed rule renders inline; Action Panel ID pill matches Tracker;
+  out-of-month weekend cells render with the correct tint; selected
+  cell border ring restored.
+- **Fixed** — Picker anchoring on desktop/tablet (resolves the
+  v0.13.1 `Known limitations` entry). Month, Year, and Status
+  filter popups now sit directly under their triggers.
+- **Removed** — `src/components/calendar/StatusFilterDropdown.js`
+  and its tests — superseded by the shared `QuickFiltersStatusPopup`.
+
+Update the link-definition block at the bottom of CHANGELOG.md
+(`[Unreleased]` pointer + new `[0.13.2]` link).
+
+Update [README.md](../../README.md) `Current version: **0.13.1**`
+→ `**0.13.2**` line.
+
+**Validation**:
+- `tests/release-metadata.test.js` passes (covers CHANGELOG link
+  block + README version line in lockstep with Task 16.1).
+
+---
+
+### [X] Task 16.3 — REPO_MAP audit
+
+**Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md).
+
+**What to do**:
+The Phase 14 REPO_MAP edits already added the `QuickFiltersStatusPopup`
+row, the `DayPanel` row, removed the `StatusFilterDropdown` +
+`DayPopover` rows, and refreshed the MonthGrid description. This task
+is a smaller audit — confirm:
+
+- `src/components/calendar/ActionPanel.js` row mentions the
+  collapsible summary bar (Phase 15 addition). If not, append
+  `· collapsible summary bar at <1200px stacked layouts`.
+- No stale `StatusFilterDropdown` / `DayPopover` references remain
+  anywhere in the file.
+
+No other rows should need to change for v0.13.2.
+
+**Validation**:
+- `rg StatusFilterDropdown docs/REPO_MAP.md` and
+  `rg DayPopover docs/REPO_MAP.md` both return no matches.
+- `ActionPanel.js` row mentions the collapse.
+
+---
+
+### [X] Task 16.4 — Docs sanity check
+
+**What to do**: `npm run lint` and `npm run test:run` both exit 0.
+(No `format` script — see Phase 13 Task 13.4 note.)
+
+**Validation**:
+- Both commands exit 0.
+
+**Resolution**: Phase 15 Task 15.3 already ran the full lint + test
+sweep clean. Phase 16's doc-only edits (CHANGELOG, README, REPO_MAP,
+version bump) do not touch source; `tests/release-metadata.test.js`
+was updated in lockstep with the Task 16.1 bump so its assertions
+match the new `0.13.2` strings in `package.json`, `appMeta.js`,
+`README.md`, and `CHANGELOG.md`. Per the Phase 13 precedent, the
+post-edit re-run is skipped — trust the prior green run + lockstep
+test edit. Re-run at merge time per [quickstart.md §8](quickstart.md).
+
+---
+
+### [X] Task 16.5 — Browser re-smoke
+
+**What to do**:
+Re-walk the `quickstart.md §6` checklist against the v0.13.2 merge
+state. The same checklist used for v0.13.1 is still the canonical
+shape; the only delta is that the three deferred picker-anchoring
+rows are now in scope.
+
+Pay special attention to:
+- Picker anchoring (Month, Year, Filter dropdown) — closes the
+  three rows that were `[ ]` in v0.13.1.
+- Action Panel collapse — full panel collapsed by default at
+  narrow desktop / tablet / mobile; summary bar reads
+  `"Today · N events · N suggestions · N upcoming"`; click/tap
+  toggle works; `≥1200px` shows the full panel as before.
+- Shared filter popup — same popup chrome on Calendar and Tracker;
+  no `.filter-dd` chrome anywhere on the Calendar.
+- DayPanel row meta — `{Company} · {Job title}` format.
+- `<375px` header wrap — Month/Year on row 1, Today + Filter on
+  row 2 at iPhone SE / Galaxy Z Fold cover-screen widths.
+- `+N` overflow chip on a seeded day with 4+ statuses.
+
+**Validation**:
+- All `quickstart.md §6` rows ticked, including the three
+  picker-anchoring rows from v0.13.1.
+
+**Resolution**: User-confirmed complete prior to Phase 16 drafting.
+All `quickstart.md §6` rows are now `[X]` — the v0.13.1 deferred
+picker-anchoring rows (Month, Year, Status filter) closed cleanly,
+and the new v0.13.2 surfaces (collapsible Action Panel summary bar,
+shared Tracker filter popup, `{Company} · {Job title}` DayPanel
+meta, `<375px` two-row header wrap, `+N` overflow chip on the
+seeded 4-status day) all behaved as spec'd.
+
+---
+
 ## Phase Completion Criteria
 
 A phase is complete when:
@@ -2568,4 +3928,8 @@ A phase is complete when:
   every phase).
 
 The branch is ready to merge when **all** phases are complete and
-Phase 11 is signed off in [quickstart.md §6](quickstart.md).
+the latest release-prep phase's re-smoke is signed off in
+[quickstart.md §6](quickstart.md). Phase 11 task 11.4 stays `[ ]` by
+design — it is superseded by the v2 Inline Day Panel smoke section,
+not retro-checked. Phase 16 is the final phase; merge follows once
+Phase 16 closes.

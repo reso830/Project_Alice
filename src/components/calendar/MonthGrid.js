@@ -57,6 +57,27 @@ function createButton(className, label, text, onClick) {
   return button;
 }
 
+function createSvgIcon(pathData) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  path.setAttribute('d', pathData);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.append(path);
+
+  return svg;
+}
+
 function createNavButton(label, text, disabled, onClick) {
   const button = createButton('cal-nav-btn', label, text, onClick);
   button.disabled = disabled;
@@ -69,13 +90,13 @@ function createTitle(props) {
     'cal-month-btn',
     'Open month picker',
     MONTH_LABELS[props.viewMonth] ?? '',
-    () => props.onOpenMonthPicker?.(monthButton),
+    () => props.onOpenMonthPicker?.(title),
   );
   const yearButton = createButton(
     'cal-year-btn',
     'Open year picker',
-    `${props.viewYear} \u25be`,
-    () => props.onOpenYearPicker?.(yearButton),
+    `${props.viewYear}`,
+    () => props.onOpenYearPicker?.(title),
   );
 
   title.className = 'cal-title';
@@ -83,33 +104,41 @@ function createTitle(props) {
   return title;
 }
 
-function createFilterChip(props) {
+function createFilterButton(props) {
   const area = document.createElement('div');
-  const chip = document.createElement('button');
+  const button = document.createElement('button');
 
-  area.className = 'filter-area';
-  chip.type = 'button';
-  chip.className = props.filter ? 'filter-chip filter-chip--active' : 'filter-chip';
-  chip.setAttribute('aria-label', 'Open status filter');
-  chip.addEventListener('click', () => props.onOpenFilter?.(chip));
+  area.className = 'cal-filter-area';
+  button.type = 'button';
+  button.className = props.filter
+    ? 'cal-status-filter-btn cal-status-filter-btn--active'
+    : 'cal-status-filter-btn';
+  button.setAttribute('aria-label', props.filter
+    ? `Open status filter, ${STATUS_CONFIG[props.filter]?.label ?? props.filter} selected`
+    : 'Open status filter');
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    props.onOpenFilter?.(button);
+  });
 
   if (props.filter) {
     const config = STATUS_CONFIG[props.filter] ?? STATUS_CONFIG.wishlisted;
     const swatch = document.createElement('span');
-    swatch.className = 'filter-chip__swatch';
+    swatch.className = 'cal-status-filter-btn__swatch';
+    swatch.setAttribute('aria-hidden', 'true');
     swatch.style.backgroundColor = config.borderAccent;
-    chip.append(swatch, document.createTextNode(config.label));
+    button.append(swatch);
 
-    const clear = createButton('filter-clear', 'Clear status filter', '\u00d7', (event) => {
+    const clear = createButton('cal-filter-clear', 'Clear status filter', '\u00d7', (event) => {
       event.stopPropagation();
       props.onClearFilter?.();
     });
-    area.append(chip, clear);
+    area.append(button, clear);
     return area;
   }
 
-  chip.textContent = 'Status: All';
-  area.append(chip);
+  area.append(button);
+  button.append(createSvgIcon('M4 5h16l-6 7v5l-4 2v-7L4 5Z'));
   return area;
 }
 
@@ -129,14 +158,16 @@ function createHeader(props) {
     header.append(createButton('cal-today-btn', 'Jump to current month', 'Today', () => props.onJumpToToday?.()));
   }
 
-  header.append(createFilterChip(props));
+  header.append(createFilterButton(props));
   return header;
 }
 
 function createDowRow() {
   const row = document.createElement('div');
+  const cw = createText('dow-cell dow-cell--cw', 'CW');
   row.className = 'dow-row';
-  row.append(createText('dow-cell dow-cell--cw', 'CW'));
+  cw.setAttribute('aria-hidden', 'true');
+  row.append(cw);
   for (const label of DOW_LABELS) {
     row.append(createText('dow-cell', label));
   }
@@ -170,48 +201,32 @@ function groupedActivities(activities) {
     }));
 }
 
-function openAll(props, iso, anchor) {
-  props.onOpenDayPopover?.('all', iso, null, anchor);
+function selectDate(props, iso, anchor) {
+  props.onSelectDate?.(iso, anchor);
 }
 
-function openStatus(props, iso, status, anchor) {
-  props.onOpenDayPopover?.('status', iso, status, anchor);
-}
-
-function createChip(group, cell, props) {
+function createChip(group, cell) {
   const config = STATUS_CONFIG[group.status] ?? STATUS_CONFIG.wishlisted;
   const count = group.activities.length;
   const label = `${count} ${config.label} ${count === 1 ? 'activity' : 'activities'} on ${cell.iso}`;
-  const chip = document.createElement('button');
+  const chip = document.createElement('span');
 
-  chip.type = 'button';
   chip.className = 'num-chip';
   chip.textContent = String(count);
   chip.title = label;
-  chip.setAttribute('aria-label', label);
   chip.style.backgroundColor = config.borderAccent;
   chip.style.color = config.badgeText;
-  chip.addEventListener('click', (event) => {
-    event.stopPropagation();
-    openStatus(props, cell.iso, group.status, chip);
-  });
 
   return chip;
 }
 
-function createOverflowChip(count, cell, props) {
-  const chip = document.createElement('button');
+function createOverflowChip(count, cell) {
+  const chip = document.createElement('span');
   const label = `${count} more ${count === 1 ? 'status' : 'statuses'} on ${cell.iso}`;
 
-  chip.type = 'button';
   chip.className = 'num-more';
   chip.textContent = `+${count}`;
   chip.title = label;
-  chip.setAttribute('aria-label', label);
-  chip.addEventListener('click', (event) => {
-    event.stopPropagation();
-    openAll(props, cell.iso, chip);
-  });
 
   return chip;
 }
@@ -223,11 +238,11 @@ function createChipList(cell, props, visibleActivities) {
   chipList.className = 'num-chip-list';
 
   for (const group of groups.slice(0, MAX_VISIBLE_CHIPS)) {
-    chipList.append(createChip(group, cell, props));
+    chipList.append(createChip(group, cell));
   }
 
   if (groups.length > MAX_VISIBLE_CHIPS) {
-    chipList.append(createOverflowChip(groups.length - MAX_VISIBLE_CHIPS, cell, props));
+    chipList.append(createOverflowChip(groups.length - MAX_VISIBLE_CHIPS, cell));
   }
 
   return chipList;
@@ -235,7 +250,7 @@ function createChipList(cell, props, visibleActivities) {
 
 function createDayCell(cell, props) {
   const { all, visible } = activitiesFor(cell, props);
-  const isFilteredHidden = props.filter && all.length > 0 && visible.length === 0;
+  const isFilteredHidden = Boolean(props.filter) && visible.length === 0;
   const chipActivities = isFilteredHidden ? all : visible;
   const day = document.createElement('div');
   const classNames = ['cal-cell'];
@@ -252,6 +267,9 @@ function createDayCell(cell, props) {
   if (all.length > 0) {
     classNames.push('cal-cell--has-activities');
   }
+  if (cell.iso === props.selectedDate) {
+    classNames.push('cal-cell--selected');
+  }
   if (isFilteredHidden) {
     classNames.push('cal-cell--filter-hidden');
   }
@@ -260,17 +278,25 @@ function createDayCell(cell, props) {
   day.dataset.iso = cell.iso;
   day.append(createText('cal-num', String(cell.day)));
 
-  if (all.length > 0) {
+  if (cell.isCurrentMonth) {
     day.setAttribute('role', 'button');
     day.tabIndex = 0;
-    day.setAttribute('aria-label', `${cell.iso}, ${all.length} ${all.length === 1 ? 'activity' : 'activities'}`);
-    day.addEventListener('click', () => openAll(props, cell.iso, day));
+    day.setAttribute('aria-label', all.length > 0
+      ? `${cell.iso}, ${all.length} ${all.length === 1 ? 'activity' : 'activities'}`
+      : `${cell.iso}, no activity`);
+    if (cell.iso === props.selectedDate) {
+      day.setAttribute('aria-pressed', 'true');
+    }
+    day.addEventListener('click', () => selectDate(props, cell.iso, day));
     day.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        openAll(props, cell.iso, day);
+        selectDate(props, cell.iso, day);
       }
     });
+  }
+
+  if (all.length > 0) {
     day.append(createChipList(cell, props, chipActivities));
   }
 
@@ -283,7 +309,8 @@ function createCalendarGrid(props) {
 
   for (const week of weeksInMonthGrid(props.viewYear, props.viewMonth)) {
     const cw = createText('cal-cw', String(week[0].isoWeek));
-    cw.title = `Week ${week[0].isoWeek}`;
+    cw.title = `Week ${week[0].isoWeek}, ${week[0].iso.slice(0, 4)}`;
+    cw.setAttribute('aria-hidden', 'true');
     grid.append(cw);
 
     for (const cell of week) {

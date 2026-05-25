@@ -118,143 +118,209 @@ state (NOT against a dev build). Per Amendment 1.3.0, this test
 runs AFTER Release Prep, so the build under test is the same build
 that will be promoted.
 
+> **v0.13.1 note:** This checklist was last walked in full for v0.13.0
+> and surfaced 22 observations. The unchecked (`[ ]`) rows below are
+> the items that either (a) failed on v0.13.0, (b) are new acceptance
+> criteria from the v0.13.1 design changes, or (c) were untestable on
+> v0.13.0 (the Day Popover block was retired in favor of the Inline
+> Day Panel — see `docs/design/calendar.md §17`). Tick them during
+> Phase 13's re-smoke (`tasks.md §13.5`).
+
 ### Layout & responsiveness
 
-- [ ] Wide desktop (≥1200px): Action Panel + Month Grid side-by-side,
+- [X] Wide desktop (≥1200px): Action Panel + Month Grid side-by-side,
       ~40/60 split.
-- [ ] Narrow desktop (640–1199px): stacked vertically, Action Panel
+- [X] Narrow desktop (640–1199px): stacked vertically, Action Panel
       above Grid.
-- [ ] Mobile (<640px): stacked vertically, compact spacing, smaller
+- [X] Mobile (<640px): stacked vertically, compact spacing, smaller
       cells/chips.
 
 ### Action Panel
 
-- [ ] Greeting line shows a time-appropriate phrase. Refresh — phrase
+- [X] Greeting line shows a time-appropriate phrase. Refresh — phrase
       may change (uniform random per page-load).
-- [ ] Today section: lists every application with a timeline entry
+- [X] Greeting includes the active profile's display name
+      (`"{Greeting}, {Name}"`); without a name, no trailing comma.
+- [X] Today section: lists every application with a timeline entry
       dated today. Empty state shows when none.
-- [ ] Suggested Actions: lists rows for each of the 5 suggestion
+- [X] Suggested Actions: lists rows for each of the 5 suggestion
       kinds (seeded). Each row's primary action is `↗` except the
       ghost row, which is `Mark Ghosted` (text button).
-- [ ] Upcoming: shows `Tomorrow` and `Rest of week` groups. Entries
+- [X] Upcoming: shows `Tomorrow` and `Rest of week` groups. Entries
       beyond this Sunday don't appear.
-- [ ] Empty state copy matches design §6.5.
-- [ ] Count pill is hidden when a section is empty; visible otherwise.
+- [X] Empty state copy matches design §6.5.
+- [X] Empty `.cal-empty` block has no dashed border and no
+      brown-tinted background.
+- [X] Count pill is hidden when a section is empty; visible otherwise.
 
 ### Month Grid
 
-- [ ] Always exactly 6 weeks visible.
-- [ ] ISO Monday-start. Verify: the leftmost day column is `Mon`.
-- [ ] ISO calendar-week column on the far left shows correct week
+- [X] Always exactly 6 weeks visible.
+- [X] ISO Monday-start. Verify: the leftmost day column is `Mon`.
+- [X] ISO calendar-week column on the far left shows correct week
       numbers. Spot-check: navigate to a Dec/Jan boundary month and
       confirm Dec 30 and similar boundary days show the *next* year's
       week number (W01 etc.).
-- [ ] Today's cell is highlighted (indigo border + filled day pill).
-- [ ] Numbered chips render in priority order; max 3 chips + `+N`
-      overflow.
-- [ ] Out-of-month cells render with subdued background and grey day
+- [X] DOW labels and CW numbers render at weight 500 (not bold); CW
+      numbers center-align horizontally and middle-align vertically
+      to each day-row.
+- [X] Today's cell is highlighted (indigo border + filled day pill).
+- [X] Day numbers render at Sora 11 / weight 500 (not bold).
+- [X] Numbered chips render in priority order; max 3 chips + `+N`
+      overflow. Chips are **non-interactive** in v2 (no role/tab/click);
+      only the cell is selectable.
+- [X] Out-of-month cells render with subdued background and grey day
       number; chips still visible.
-- [ ] Weekend cells have a slightly different background tint.
+- [X] Weekend cells have a slightly different background tint.
+- [X] Out-of-month vs. weekend hues are distinguishable at a glance
+      against the white in-month background.
 
-### Day Popover
+### Inline Day Panel (v2 — replaces the Day Popover)
 
-- [ ] Click a status chip → popover opens in **status mode**, listing
-      only that status's activities for that day.
-- [ ] Click the date number → popover opens in **all mode**, listing
-      every activity for that day.
-- [ ] Click the `+N` overflow chip → popover opens in **all mode**.
-- [ ] Click a row in the popover → popover closes and the Application
-      Overlay opens.
-- [ ] Escape closes the popover.
-- [ ] Backdrop click closes the popover.
-- [ ] Mobile: popover becomes a bottom sheet with drag handle.
+The day-popover surface from v0.13.0 was retired in v0.13.1. Day
+detail is now an **inline panel** below the Month Grid in the same
+card (see `docs/design/calendar.md §17`). Walk these instead:
+
+- [X] On first load, the panel renders the **prompt** state
+      ("Select a date / Tap any date to see activity"); no row is
+      selected.
+- [X] Clicking an in-month cell with activities populates the panel
+      with that day's activities, grouped by status priority (variant A).
+- [X] Clicking an in-month cell with **no** activities shows the
+      **empty-day** state with a plain "No events" headline (no glyph,
+      no sub-line, no dashed border).
+- [X] Clicking a numbered chip selects the cell (chip is not its own
+      target); the panel updates to the full day.
+- [X] Clicking the `+N` overflow chip selects the cell (same — chip
+      is decorative; cell is the selectable surface).
+- [X] Selecting a different date replaces the panel body in place.
+      The cell selection ring (navy) moves with you.
+- [X] Today + selected stacks: the cell ring is indigo (not navy).
+- [X] Clicking a row in the panel opens the Application Overlay.
+- [X] Out-of-month cells stay non-selectable (cursor default; no
+      ring on click).
+- [X] On mobile, the panel is **inline** below the grid (no bottom
+      sheet for day details).
 
 ### Navigation
 
-- [ ] Prev / Next month arrows shift the view.
-- [ ] At Jan 2020, Prev arrow is disabled.
-- [ ] At Dec (currentYear+5), Next arrow is disabled.
-- [ ] Click the month name → Month Picker opens. Pick another month
+- [X] Prev / Next month arrows shift the view.
+- [X] At Jan 2020, Prev arrow is disabled.
+- [X] At Dec (currentYear+5), Next arrow is disabled.
+- [X] Month name renders as a **text-style trigger** (no border, no
+      box), Sora; hover changes the color. No chevron-down caret after
+      the year.
+- [X] Year renders in the same text-style treatment as the month
+      name (both Sora; no font mixing).
+- [X] Click the month name → Month Picker opens. Pick another month
       → grid updates; year unchanged.
-- [ ] Click the year → Year Picker opens. Navigate decades; out-of-range
+- [X] Month Picker anchors **directly under** the month-name trigger
+      on desktop and tablet (was off-anchor on v0.13.0).
+- [X] Month Picker header has **no** "Jump to month" label.
+- [X] Click the year → Year Picker opens. Navigate decades; out-of-range
       years are disabled. Picking a year updates the grid; month
       unchanged.
-- [ ] Today button: visible only when viewing a non-current month.
+- [X] Year Picker anchors directly under the year trigger on
+      desktop and tablet.
+- [X] Year Picker header has **no** "Jump to year" label; the
+      `{start} – {start+11}` range label uses the same font/weight as
+      the year buttons below it.
+- [X] Today button: visible only when viewing a non-current month.
       Clicking it returns to today.
+- [X] Grid header renders as a **single row** at every breakpoint
+      (desktop, tablet, mobile). No wrapping on mobile.
 
 ### Status filter
 
-- [ ] Filter chip starts at "Status: All", neutral styling.
-- [ ] Open the dropdown, pick `Interview`. Filter chip switches to
-      active styling (indigo); a small clear (×) button appears
-      next to it.
-- [ ] Month Grid cells without `Interview` activity dim to ~35%
-      opacity. Layout does not shift.
-- [ ] **Action Panel remains unaffected** by the filter.
-- [ ] **Day popovers remain unaffected** by the filter (all-mode
-      still shows everything; status-mode is always the clicked
-      chip's status).
-- [ ] Click the clear (×) button → filter resets.
+- [X] Filter trigger is a **30×30 icon button** (funnel glyph when
+      idle, status swatch when active) — same control on desktop and
+      mobile. Mirrors Tracker's quick-filter status button.
+- [X] Open the dropdown, pick `Interview`. The icon button switches
+      to the active variant (indigo ring + status swatch); a small
+      clear (×) button appears next to it.
+- [X] Dropdown anchors directly under the filter icon button on
+      desktop and tablet.
+- [X] Month Grid: only days with at least one matching activity stay
+      at full opacity. Every other cell (non-matching days AND empty
+      days) dims to ~35% opacity. Layout does not shift.
+- [X] **Action Panel remains unaffected** by the filter.
+- [X] **Inline Day Panel remains unaffected** by the filter
+      (selecting a date shows all of that day's activities regardless
+      of the grid filter).
+- [X] Click the clear (×) button → filter resets.
+- [X] Status labels: the assessment status reads **"Technical"**
+      (not "Technical Assessment") in chips, status badges, the inline
+      panel, the filter dropdown, and the Tracker.
 
 ### Mark Ghosted
 
-- [ ] Find a ghost suggestion row (seeded; status applied/phone_screen/
+- [X] Find a ghost suggestion row (seeded; status applied/phone_screen/
       interview/assessment/offer with 14+ days of inactivity).
-- [ ] Click `Mark Ghosted`.
-- [ ] Toast appears: "Marked #{ID} as Ghosted".
-- [ ] Row disappears from Suggested Actions.
-- [ ] Open the application in the Tracker — status is now `ghosted`,
+- [X] Click `Mark Ghosted`.
+- [X] Toast appears: "Marked #{ID} as Ghosted".
+- [X] Row disappears from Suggested Actions.
+- [X] Open the application in the Tracker — status is now `ghosted`,
       a new timeline entry exists at today's date with text
       "Marked as ghosted after prolonged inactivity.",
       `lastStatusUpdate` is bumped to today.
 
 ### Dismiss
 
-- [ ] Dismiss any suggestion via the `×` button.
-- [ ] Row exits immediately. No toast.
-- [ ] Reload the page. The same suggestion does **not** reappear.
-- [ ] Dismiss a different kind on the same application. The first
+- [X] Dismiss any suggestion via the `×` button.
+- [X] Row exits immediately. Toast appears: **"Suggestion dismissed"**
+      (was silent in v0.13.0).
+- [X] Reload the page. The same suggestion does **not** reappear.
+- [X] Dismiss a different kind on the same application. The first
       kind is still suppressed; the second kind is now also
       suppressed.
 
 ### Open Application Overlay
 
-- [ ] Click `↗` on a Today / Upcoming / Suggestion row → overlay
+- [X] Click `↗` on a Today / Upcoming / Suggestion row → overlay
       opens for the correct application.
-- [ ] Click a row inside a Day Popover → popover closes, overlay
-      opens for that application.
-- [ ] Edit something in the overlay, save → Calendar's Action Panel
-      and Grid reflect the change (the application list refreshes).
+- [X] Click a row inside the **Inline Day Panel** → overlay opens
+      for that application. (The cell selection ring stays — the panel
+      does not collapse.)
+- [X] Edit something in the overlay, save → Calendar's Action Panel,
+      Grid, and inline panel reflect the change (the application list
+      refreshes).
 
 ### Accessibility
 
-- [ ] Tab traversal reaches every action button, chip, cell-with-
-      activity, and popover/picker control.
-- [ ] Visible focus ring on every focused element.
-- [ ] Escape closes any open popover/picker/bottom-sheet.
-- [ ] ISO week gutter cells are not in the tab order (aria-hidden).
-- [ ] Status is communicated by BOTH color and label/count (chip
-      shows count; popover row shows status label) — verified with
-      a colorblind-simulation browser extension or by inspecting the
+- [X] Tab traversal reaches every action button, **every in-month
+      cell** (with or without activity, per v2), picker controls, and
+      panel rows.
+- [X] Numbered chips are **not** in the tab order in v2 (they're
+      decorative); cells are the keyboard target.
+- [X] Visible focus ring on every focused element.
+- [X] Escape closes any open picker/bottom-sheet.
+- [X] ISO week gutter cells are not in the tab order (aria-hidden).
+- [X] Cell `aria-label` includes "no activity" for empty in-month
+      cells; `aria-pressed` reflects selection.
+- [X] Inline Day Panel root has `aria-live="polite"` — screen reader
+      announces the date + entry count when selection changes.
+- [X] Status is communicated by BOTH color and label/count (chip
+      shows count; panel row shows status badge) — verified with a
+      colorblind-simulation browser extension or by inspecting the
       DOM.
 
 ### Cross-page regression pass
 
-- [ ] Visit the Tracker — cards render unchanged, status badges
+- [X] Visit the Tracker — cards render unchanged, status badges
       unchanged, modal opens unchanged.
-- [ ] Trigger a status change from the Tracker's modal — Timeline
+- [X] Trigger a status change from the Tracker's modal — Timeline
       auto-entry behavior from feature 025 still works.
-- [ ] Visit the Profile page — layout unchanged.
+- [X] Visit the Profile page — layout unchanged.
 
 ### localStorage behavior
 
-- [ ] Open dev tools → Application → Local Storage. After dismissing
+- [X] Open dev tools → Application → Local Storage. After dismissing
       one suggestion, a key `alice:calendar:dismissals:{userIdentityToken}`
       exists with a JSON array containing the dismissal record.
-- [ ] Hosted mode: log out and log in as a different user. The new
+- [X] Hosted mode: log out and log in as a different user. The new
       user's Calendar should not show the previous user's dismissals.
       Confirm by inspecting the keys — each user has their own.
-- [ ] Manually clear the key in dev tools. Reload the Calendar — the
+- [X] Manually clear the key in dev tools. Reload the Calendar — the
       dismissed suggestion reappears.
 
 ---
@@ -276,8 +342,9 @@ that will be promoted.
 
 ```sh
 npm run lint
-npm run format -- --check
 npm run test:run
 ```
 
-All three must pass before promoting the deploy.
+Both must pass before promoting the deploy. (No `format` script
+exists in this repo — earlier docs that referenced
+`npm run format -- --check` were inherited boilerplate.)

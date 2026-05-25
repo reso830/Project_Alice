@@ -37,7 +37,9 @@ function positionDropdown(anchorEl, wrapper, align) {
     top = anchorRect.top - dropdown.height - ANCHOR_GAP;
   }
 
-  wrapper.style.position = 'absolute';
+  // Anchor rects are viewport-relative; fixed positioning keeps that coordinate
+  // basis stable when the Calendar page has transformed or positioned ancestors.
+  wrapper.style.position = 'fixed';
   wrapper.style.top = `${Math.max(VIEWPORT_MARGIN, top)}px`;
   wrapper.style.left = `${left}px`;
 }
@@ -50,6 +52,13 @@ function applyBottomSheetStyles(wrapper) {
   wrapper.style.borderRadius = '14px 14px 0 0';
   wrapper.style.maxHeight = '80vh';
   wrapper.style.animation = 'bsIn .22s cubic-bezier(.2,.7,.3,1.05)';
+}
+
+function applyLocalAnchorStyles(anchorEl, wrapper, align) {
+  wrapper.style.position = 'absolute';
+  wrapper.style.top = `calc(100% + ${ANCHOR_GAP}px)`;
+  wrapper.style.right = align === 'end' ? '0px' : '';
+  wrapper.style.left = align === 'end' ? '' : '0px';
 }
 
 function createBackdrop(scrim, bottomSheet) {
@@ -75,11 +84,14 @@ export function mountAnchoredDropdown({
   asBottomSheet = false,
   scrim = false,
   ariaLabel = 'Calendar dialog',
+  localAnchor = false,
   onClose,
 }) {
   const bottomSheet = isBottomSheetMode(asBottomSheet);
+  const useLocalAnchor = localAnchor && !bottomSheet;
   const backdrop = createBackdrop(scrim, bottomSheet);
   const wrapper = document.createElement('div');
+  const originalAnchorPosition = anchorEl?.style.position ?? '';
   let active = true;
 
   wrapper.className = bottomSheet ? 'cal-bottom-sheet' : 'cal-dropdown';
@@ -94,7 +106,17 @@ export function mountAnchoredDropdown({
   }
 
   wrapper.append(contentEl);
-  document.body.append(backdrop, wrapper);
+  document.body.append(backdrop);
+
+  if (useLocalAnchor) {
+    if (!/^(absolute|fixed|relative|sticky)$/.test(window.getComputedStyle(anchorEl).position)) {
+      anchorEl.style.position = 'relative';
+    }
+    applyLocalAnchorStyles(anchorEl, wrapper, align);
+    anchorEl.append(wrapper);
+  } else {
+    document.body.append(wrapper);
+  }
 
   function cleanupListeners() {
     document.removeEventListener('keydown', handleKeydown);
@@ -125,12 +147,12 @@ export function mountAnchoredDropdown({
   }
 
   function handleResize() {
-    if (!bottomSheet) {
+    if (!bottomSheet && !useLocalAnchor) {
       positionDropdown(anchorEl, wrapper, align);
     }
   }
 
-  if (!bottomSheet) {
+  if (!bottomSheet && !useLocalAnchor) {
     positionDropdown(anchorEl, wrapper, align);
   }
 
@@ -144,6 +166,9 @@ export function mountAnchoredDropdown({
       cleanupListeners();
       backdrop.remove();
       wrapper.remove();
+      if (useLocalAnchor) {
+        anchorEl.style.position = originalAnchorPosition;
+      }
     },
   };
 }

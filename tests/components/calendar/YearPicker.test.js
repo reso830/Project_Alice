@@ -62,8 +62,10 @@ describe('YearPicker', () => {
     expect(years).toHaveLength(12);
     expect(years[0]).toBe(YEAR_MIN);
     expect(years.at(-1)).toBe(Math.min(YEAR_MIN + 11, YEAR_MAX));
-    expect(document.querySelector('.cal-picker__lbl').textContent).toBe('Jump to year');
+    expect(document.querySelector('.cal-picker__lbl')).toBeNull();
+    expect(document.body.textContent).not.toContain('Jump to year');
     expect(document.querySelector('.cal-picker__yr-nav').textContent).toContain(`${YEAR_MIN}`);
+    expect(document.querySelector('.cal-picker__yr-range').textContent).toBe(`${YEAR_MIN} - ${YEAR_MIN + 11}`);
   });
 
   it('disables range navigation at the year boundaries', () => {
@@ -109,6 +111,8 @@ describe('YearPicker', () => {
 
     const wrapper = document.querySelector('.cal-dropdown');
     expect(wrapper.getAttribute('aria-label')).toBe('Year picker');
+    expect(wrapper.parentElement).toBe(document.querySelector('button'));
+    expect(wrapper.style.position).toBe('absolute');
     expect(document.querySelector('.cal-bottom-sheet')).toBeNull();
     expect(document.querySelector('.cal-dropdown-backdrop').style.background).toBe('transparent');
   });

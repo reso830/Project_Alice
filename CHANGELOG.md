@@ -7,6 +7,89 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.2] — 2026-05-25
+
+Calendar v3 patch — Phase 13 re-smoke follow-ups plus the long-deferred collapsible Action Panel summary bar. Same feature surface as v0.13.0; no API or schema changes.
+
+### Added
+
+- **Collapsible Action Panel summary bar** at every stacked layout (`<1200px` — narrow desktop, tablet portrait, mobile). The full panel collapses by default into a single-row summary (`"Today · N events · N suggestions · N upcoming"` or `"Quiet day — nothing on your plate"` when all sections are empty); tap, click, Enter, or Space toggles. Esc collapses from inside the expanded panel. Returns the calendar grid to the top of the viewport at narrow widths instead of pushing it below several hundred pixels of stacked content.
+  (026-calendar §11.1)
+- **Shared `QuickFiltersStatusPopup` component.** Tracker and Calendar now mount the same status-filter popup across every breakpoint; one chrome, one behavior, no parallel implementations.
+  (026-calendar §6.12)
+- Local SQLite + demo seeds now include at least one day with 4+ distinct statuses so the `+N` overflow chip on month grid cells is exercisable out of the box.
+  (026-calendar)
+
+### Changed
+
+- Calendar status filter retired the `.filter-dd` dropdown chrome. The filter icon button now opens the shared Tracker popup with single-select semantics on the Calendar side.
+  (026-calendar)
+- Inline Day Panel row meta is now `{Company} · {Job title}` (was Company only) — mirrors the Action Panel meta pattern (`§6.3` separator treatment) so the two surfaces feel cohesive.
+  (026-calendar §17.5)
+- Month grid header allows a controlled two-row wrap below 375px (iPhone SE / Galaxy Z Fold cover-screen class): nav cluster on row 1, `[Today*] [Filter*]` on row 2. Above 375px the single-row rule still holds.
+  (026-calendar §6.6.1 + §11)
+- Calendar status badge inside the Inline Day Panel switched from DM Mono to Sora — matches the page typography per `§4`.
+  (026-calendar)
+- DayPanel group-header dashed rule renders as an inline hairline next to the status badge instead of an unintended full extra row.
+  (026-calendar)
+- Action Panel ID pill now matches the Tracker ID pill treatment (font / padding / radius unified).
+  (026-calendar)
+- Out-of-month weekend cells render with the out-of-month weekend tint (`#F7F3EC`) instead of the in-month weekend tint that was previously winning the cascade.
+  (026-calendar §6.8)
+- Selected cell border ring restored — navy ring by default, indigo when the selected cell is also today.
+  (026-calendar §17.3)
+
+### Fixed
+
+- **Picker anchoring on desktop / tablet.** Resolves the `[0.13.1] § Known limitations` entry. Month, Year, and Status filter popups now sit directly under their trigger buttons on every viewport above mobile bottom-sheet widths.
+
+### Removed
+
+- `src/components/calendar/StatusFilterDropdown.js` and its tests — superseded by the shared `QuickFiltersStatusPopup`. No remaining call sites.
+  (026-calendar)
+
+## [0.13.1] — 2026-05-25
+
+Calendar v2 patch — design polish + inline Day Details Panel pivot driven by the v0.13.0 browser smoke. Same feature surface; no API or schema changes.
+
+### Added
+
+- **Inline Day Details Panel** below the Month Grid. Selecting a date keeps both the grid and the day's activity in view; replaces the previous popover for both desktop and mobile.
+  (026-calendar §17)
+- "Suggestion dismissed" toast on the Action Panel dismiss button — earlier the row exited silently.
+  (026-calendar)
+- Profile-name injection in the greeting (`"Good morning, Alice"` when a profile is set; no trailing comma otherwise).
+  (026-calendar)
+- Status filter is now a 30×30 icon button (funnel glyph idle, status swatch when active) mirroring the Tracker quick-filter control; same on desktop and mobile.
+  (026-calendar)
+
+### Changed
+
+- Renamed the `assessment` status display label `Technical Assessment` → `Technical` globally. The status key is unchanged; no migration required. Affects Calendar chips, Tracker badges, filter dropdowns, and all status pill surfaces.
+  (026-calendar)
+- Month Grid cells are now keyboard-selectable whether or not they have activity (`Enter` / `Space` activate); numbered chips and `+N` overflow chips became decorative (no `role`, no tab stop). Day-detail interaction routes through the cell, not the chip.
+  (026-calendar)
+- Month and Year buttons in the grid header now render as text-style triggers (no border, no `▾` caret) and stay on a single row at every breakpoint, including mobile (retired the prior 3-row mobile header).
+  (026-calendar)
+- Status filter now dims **all** non-matching cells — including empty days — so the matching set is the only thing at full opacity.
+  (026-calendar)
+- Picker headers dropped the "Jump to month" / "Jump to year" labels; the Year picker's range header now uses the same Sora weight as the year buttons (no font mixing).
+  (026-calendar)
+- CW gutter cells gained `aria-hidden="true"` and a `Week N, {year}` tooltip so screen readers skip them while sighted users still get the year context at boundary weeks.
+  (026-calendar)
+- CSS polish: section subheaders/count pills sized up; DOW labels, CW numbers, day numbers, and the "Rest of week" label switched to weight 500 (no longer bold); `.cal-empty` lost its dashed border + brown tint; weekend / out-of-month hues distinguishable against the in-month white. Calendar ID pill matches the Tracker's ID treatment.
+  (026-calendar)
+
+### Removed
+
+- `src/components/calendar/DayPopover.js` and its tests — superseded by the Inline Day Details Panel. No remaining call sites.
+  (026-calendar)
+
+### Known limitations
+
+- **Picker anchoring on desktop/tablet (obs #5 carryover).** Month, Year, and Status filter dropdowns can still drift off their trigger in the live browser on some viewports. JSDOM positioning math is correct (regression test added in `tests/components/calendar/anchoredDropdown.test.js`), so the cause is browser-only (likely ancestor `transform` or `overflow`). Tracked for a future patch; mobile bottom-sheet behavior is unaffected.
+  - _Resolved in [0.13.2](#0132--2026-05-25)._
+
 ## [0.13.0] — 2026-05-25
 
 ### Added
@@ -641,7 +724,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2
+[0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/reso830/Project_Alice/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/reso830/Project_Alice/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/reso830/Project_Alice/compare/v0.11.0...v0.11.1

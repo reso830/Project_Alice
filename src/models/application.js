@@ -54,7 +54,7 @@ export const STATUS_CONFIG = {
     borderAccent: '#f9c74f',
   },
   assessment: {
-    label: 'Technical Assessment',
+    label: 'Technical',
     badgeBg: '#e0aaff',
     badgeText: '#212529',
     borderAccent: '#e0aaff',

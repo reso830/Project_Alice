@@ -4,10 +4,10 @@ import { Toast } from '../components/Toast.js';
 import { Modal } from '../components/Modal.js';
 import { ActionPanel } from '../components/calendar/ActionPanel.js';
 import { MonthGrid } from '../components/calendar/MonthGrid.js';
+import { DayPanel } from '../components/calendar/DayPanel.js';
 import { MonthPicker } from '../components/calendar/MonthPicker.js';
 import { YearPicker } from '../components/calendar/YearPicker.js';
-import { StatusFilterDropdown } from '../components/calendar/StatusFilterDropdown.js';
-import { DayPopover } from '../components/calendar/DayPopover.js';
+import { mountStatusFilterPopup } from '../components/QuickFiltersStatusPopup.js';
 import {
   projectTimelineToCalendar,
   todayRowsFor,
@@ -20,13 +20,13 @@ import { applyStatusChange } from '../models/application.js';
 import { toISODate } from '../utils/date.js';
 
 const POOLS = {
-  morning: ['Good morning,', 'Morning,', 'Rise and shine,', 'Bright and early,'],
-  afternoon: ['Good afternoon,', 'Afternoon,', 'Mid-day check-in,'],
-  evening: ['Good evening,', 'Evening,', 'Winding down,'],
-  lateNight: ['Burning the midnight oil?', 'Late night session,', 'Night owl mode,'],
+  morning: ['Good morning', 'Morning', 'Rise and shine', 'Bright and early'],
+  afternoon: ['Good afternoon', 'Afternoon', 'Mid-day check-in'],
+  evening: ['Good evening', 'Evening', 'Winding down'],
+  lateNight: ['Burning the midnight oil?', 'Late night session', 'Night owl mode'],
 };
 
-const NEUTRAL = ['Here\'s what we have today,', 'Today at a glance,', 'Welcome back,'];
+const NEUTRAL = ['Here\'s what we have today', 'Today at a glance', 'Welcome back'];
 
 let _container = null;
 let _panelSlot = null;
@@ -38,7 +38,10 @@ let _filter = null;
 let _greeting = '';
 let _dateLabel = '';
 let _dismissals = [];
+let _selectedDate = null;
+let _dayActivities = {};
 let _activeOverlay = null;
+let _statusFilterPopup = null;
 let _mountId = 0;
 
 export function chooseGreeting(date, randomFn = Math.random) {
@@ -59,6 +62,19 @@ export function chooseGreeting(date, randomFn = Math.random) {
   return merged[Math.floor(randomFn() * merged.length)];
 }
 
+export function formatGreeting(greeting, name = '') {
+  const cleanName = String(name ?? '').trim();
+  if (!cleanName) {
+    return greeting;
+  }
+
+  if (/[?!]$/.test(greeting)) {
+    return `${greeting.slice(0, -1)}, ${cleanName}${greeting.at(-1)}`;
+  }
+
+  return `${greeting}, ${cleanName}`;
+}
+
 export function formatDateLabel(date) {
   const day = date.toLocaleDateString('en-US', { weekday: 'short' });
   const rest = date.toLocaleDateString('en-US', {
@@ -70,10 +86,10 @@ export function formatDateLabel(date) {
 }
 
 function closeOverlays() {
-  DayPopover.close();
   MonthPicker.close();
   YearPicker.close();
-  StatusFilterDropdown.close();
+  _statusFilterPopup?.close();
+  _statusFilterPopup = null;
   _activeOverlay = null;
 }
 
@@ -118,6 +134,16 @@ function currentAuthState() {
   return authStore.getAuthState();
 }
 
+function profileName(profile, authState = currentAuthState()) {
+  const profileFirst = String(profile?.firstName ?? '').trim();
+  if (profileFirst) {
+    return profileFirst;
+  }
+
+  const meta = authState?.user?.user_metadata ?? authState?.user?.userMetadata ?? {};
+  return String(meta.firstName ?? meta.first_name ?? meta.name ?? meta.full_name ?? '').trim().split(/\s+/)[0] ?? '';
+}
+
 function isCurrentMount(mountId) {
   return _container !== null && _mountId === mountId;
 }
@@ -143,7 +169,7 @@ function _render() {
   }
 
   const todayISO = toISODate();
-  const dayActivities = projectTimelineToCalendar(_applications);
+  _dayActivities = projectTimelineToCalendar(_applications);
   const today = todayRowsFor(_applications, todayISO);
   const upcoming = upcomingRowsFor(_applications, todayISO);
   const suggestions = evaluateSuggestions(_applications, todayISO, _dismissals);
@@ -163,8 +189,9 @@ function _render() {
   MonthGrid.render(_gridSlot, {
     viewYear: _viewYear,
     viewMonth: _viewMonth,
-    dayActivities,
+    dayActivities: _dayActivities,
     filter: _filter,
+    selectedDate: _selectedDate,
     onNavigatePrev: () => monthDelta(-1),
     onNavigateNext: () => monthDelta(1),
     onJumpToToday: () => {
@@ -179,8 +206,36 @@ function _render() {
       _filter = null;
       _render();
     },
-    onOpenDayPopover: _onOpenDayPopover,
+    onSelectDate: _onSelectDate,
   });
+
+  DayPanel.render(_gridSlot, {
+    selectedDate: _selectedDate,
+    activities: _selectedDate ? (_dayActivities[_selectedDate] ?? []) : [],
+    todayISO,
+    onOpenApp: _onOpenApp,
+  });
+}
+
+function syncSelectedCell() {
+  if (!_gridSlot) {
+    return;
+  }
+
+  for (const node of _gridSlot.querySelectorAll('.cal-cell--selected')) {
+    node.classList.remove('cal-cell--selected');
+    node.removeAttribute('aria-pressed');
+  }
+
+  if (!_selectedDate) {
+    return;
+  }
+
+  const selected = _gridSlot.querySelector(`.cal-cell[data-iso="${_selectedDate}"]`);
+  if (selected?.getAttribute('role') === 'button') {
+    selected.classList.add('cal-cell--selected');
+    selected.setAttribute('aria-pressed', 'true');
+  }
 }
 
 function _onOpenMonthPicker(anchor) {
@@ -227,41 +282,27 @@ function _onOpenFilter(anchor) {
     return;
   }
 
-  StatusFilterDropdown.open({
+  _statusFilterPopup = mountStatusFilterPopup({
     anchor,
-    filter: _filter,
+    value: _filter,
     onSelect: (status) => {
       _filter = status;
       _render();
     },
     onClose: () => {
-      StatusFilterDropdown.close();
+      _statusFilterPopup = null;
       _activeOverlay = null;
     },
   });
 }
 
-function _onOpenDayPopover(mode, date, status, anchor) {
-  if (!toggleOverlay('day')) {
-    return;
-  }
-
-  const all = projectTimelineToCalendar(_applications)[date] ?? [];
-  const activities = mode === 'status'
-    ? all.filter((activity) => activity.status === status)
-    : all;
-
-  DayPopover.open({
-    mode,
-    date,
-    status,
-    activities,
-    anchor,
-    onOpenApp: _onOpenApp,
-    onClose: () => {
-      DayPopover.close();
-      _activeOverlay = null;
-    },
+function _onSelectDate(selectedDate) {
+  _selectedDate = selectedDate;
+  syncSelectedCell();
+  DayPanel.update({
+    selectedDate,
+    activities: _dayActivities[selectedDate] ?? [],
+    todayISO: toISODate(),
   });
 }
 
@@ -301,11 +342,12 @@ function _onDismiss(applicationId, kind) {
   dismissals.add(authState, applicationId, kind);
   _dismissals = dismissals.load(authState);
   _render();
+  Toast.show('Suggestion dismissed', 'success');
 }
 
 async function _onOpenApp(applicationId) {
   const mountId = _mountId;
-  DayPopover.close();
+  closeOverlays();
   _activeOverlay = null;
 
   let application;
@@ -344,14 +386,21 @@ export async function mount(container) {
   _viewYear = today.getFullYear();
   _viewMonth = today.getMonth();
   _filter = null;
+  _selectedDate = null;
   _greeting = chooseGreeting(today);
   _dateLabel = formatDateLabel(today);
   _dismissals = [];
+  _dayActivities = {};
   _container.replaceChildren();
   createShell();
 
   try {
-    _applications = await api.getAll();
+    const [applications, profile] = await Promise.all([
+      api.getAll(),
+      api.getProfile().catch(() => null),
+    ]);
+    _applications = applications;
+    _greeting = formatGreeting(_greeting, profileName(profile));
     _dismissals = dismissals.load(currentAuthState());
   } catch {
     _applications = [];
@@ -366,6 +415,7 @@ export function unmount() {
   _mountId += 1;
   ActionPanel.destroy();
   MonthGrid.destroy();
+  DayPanel.destroy();
   closeOverlays();
 
   if (_container) {
@@ -380,6 +430,9 @@ export function unmount() {
   _greeting = '';
   _dateLabel = '';
   _dismissals = [];
+  _selectedDate = null;
+  _dayActivities = {};
+  _statusFilterPopup = null;
   _activeOverlay = null;
 }
 

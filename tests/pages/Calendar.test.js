@@ -8,6 +8,7 @@ const authStateRef = vi.hoisted(() => ({
 vi.mock('../../src/services/api.js', () => ({
   getAll: vi.fn(),
   getById: vi.fn(),
+  getProfile: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -30,7 +31,7 @@ import * as api from '../../src/services/api.js';
 import { Modal } from '../../src/components/Modal.js';
 import { Toast } from '../../src/components/Toast.js';
 import * as dismissals from '../../src/utils/calendarDismissals.js';
-import { Calendar, chooseGreeting } from '../../src/pages/Calendar.js';
+import { Calendar, chooseGreeting, formatGreeting } from '../../src/pages/Calendar.js';
 import { formatDateLabel } from '../../src/pages/Calendar.js';
 
 function app(id, overrides = {}) {
@@ -51,6 +52,10 @@ function mountHost() {
   const host = document.createElement('main');
   document.body.append(host);
   return host;
+}
+
+function setViewport(width) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
 }
 
 function fixtureApps() {
@@ -75,14 +80,17 @@ function fixtureApps() {
 async function mountWith(apps = fixtureApps()) {
   const host = mountHost();
   api.getAll.mockResolvedValue(apps);
+  api.getProfile.mockResolvedValue(null);
   await Calendar.mount(host);
   return host;
 }
 
 beforeEach(() => {
+  setViewport(1200);
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 4, 21, 9));
   authStateRef.value = { status: 'local-mode', user: null, accessToken: null };
+  api.getProfile.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -97,10 +105,16 @@ afterEach(() => {
 
 describe('chooseGreeting', () => {
   it('selects from the time-window pool with deterministic random values', () => {
-    expect(chooseGreeting(new Date(2026, 4, 21, 8), () => 0)).toBe('Good morning,');
-    expect(chooseGreeting(new Date(2026, 4, 21, 14), () => 0)).toBe('Good afternoon,');
+    expect(chooseGreeting(new Date(2026, 4, 21, 8), () => 0)).toBe('Good morning');
+    expect(chooseGreeting(new Date(2026, 4, 21, 14), () => 0)).toBe('Good afternoon');
     expect(chooseGreeting(new Date(2026, 4, 21, 23), () => 0)).toBe('Burning the midnight oil?');
-    expect(chooseGreeting(new Date(2026, 4, 21, 4), () => 0.999)).toBe('Welcome back,');
+    expect(chooseGreeting(new Date(2026, 4, 21, 4), () => 0.999)).toBe('Welcome back');
+  });
+
+  it('formats greetings with names and punctuation owned by the formatter', () => {
+    expect(formatGreeting('Good morning', 'Alice')).toBe('Good morning, Alice');
+    expect(formatGreeting('Good morning', '')).toBe('Good morning');
+    expect(formatGreeting('Burning the midnight oil?', 'Alice')).toBe('Burning the midnight oil, Alice?');
   });
 });
 
@@ -149,7 +163,7 @@ describe('Calendar page', () => {
 
     expect(Toast.show).toHaveBeenCalledWith('Could not load calendar', 'failure');
     expect(host.textContent).toContain('Quiet day');
-    expect(host.textContent).toContain('Status: All');
+    expect(host.querySelector('.cal-status-filter-btn')).not.toBeNull();
   });
 
   it('updates view state from nav arrows and month picker selection', async () => {
@@ -169,12 +183,13 @@ describe('Calendar page', () => {
   it('filters the grid without changing the Action Panel', async () => {
     const host = await mountWith();
 
-    host.querySelector('.filter-chip').click();
-    [...document.querySelectorAll('.filter-dd-row')]
-      .find((row) => row.dataset.status === 'interview')
+    host.querySelector('.cal-status-filter-btn').click();
+    expect(document.querySelector('.filter-panel').dataset.surface).toBe('quick-status-filter');
+    [...document.querySelectorAll('.filter-panel__option')]
+      .find((row) => row.dataset.value === 'interview')
       .click();
 
-    expect(host.querySelector('.filter-chip').textContent).toBe('Interview');
+    expect(host.querySelector('.cal-status-filter-btn__swatch')).not.toBeNull();
     expect(host.querySelector('.cal-cell--filter-hidden')).not.toBeNull();
     expect(host.textContent).toContain('Today interview');
   });
@@ -215,7 +230,7 @@ describe('Calendar page', () => {
     expect(host.textContent).toContain('No updates for 14 days. Mark as Ghosted?');
   });
 
-  it('dismisses suggestions locally without a toast and persists suppression across remount', async () => {
+  it('dismisses suggestions locally with a toast and persists suppression across remount', async () => {
     const setItem = vi.spyOn(window.Storage.prototype, 'setItem');
     const host = await mountWith();
 
@@ -225,7 +240,7 @@ describe('Calendar page', () => {
       'alice:calendar:dismissals:local',
       expect.stringContaining('"appId":2'),
     );
-    expect(Toast.show).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith('Suggestion dismissed', 'success');
     expect(host.textContent).not.toContain('No updates for 14 days. Mark as Ghosted?');
 
     Calendar.unmount();
@@ -279,6 +294,45 @@ describe('Calendar page', () => {
     expect(host.textContent).not.toContain('Today interview');
   });
 
+  it('mounts the inline day panel and updates it from selected cells', async () => {
+    const host = await mountWith();
+
+    expect(host.querySelector('.cal-month-grid')).not.toBeNull();
+    expect(host.querySelector('.cal-day-panel')).not.toBeNull();
+    expect(host.querySelector('.cal-day-panel').classList).toContain('cal-day-panel--prompt');
+
+    host.querySelector('.cal-cell[data-iso="2026-05-21"]').click();
+    expect(host.querySelector('.cal-day-panel').classList).toContain('cal-day-panel--populated');
+    expect(host.querySelector('.cal-dp-row__job').textContent).toBe('Today interview');
+    expect(host.querySelector('.cal-cell[data-iso="2026-05-21"]').classList).toContain('cal-cell--selected');
+    expect(host.querySelector('.cal-cell[data-iso="2026-05-21"]').getAttribute('aria-pressed')).toBe('true');
+
+    host.querySelector('.cal-cell[data-iso="2026-05-20"]').click();
+    expect(host.querySelector('.cal-day-panel').classList).toContain('cal-day-panel--empty');
+    expect(host.querySelector('.cal-dp-empty').textContent).toContain('No events');
+    expect(host.querySelector('.cal-cell[data-iso="2026-05-20"]').classList).toContain('cal-cell--selected');
+    expect(host.querySelector('.cal-cell[data-iso="2026-05-21"]').classList).not.toContain('cal-cell--selected');
+  });
+
+  it('injects the profile first name into the greeting when available', async () => {
+    api.getProfile.mockResolvedValue({ firstName: 'Alice', lastName: 'Rivera' });
+    const host = mountHost();
+    api.getAll.mockResolvedValue([]);
+
+    await Calendar.mount(host);
+
+    expect(host.querySelector('.cal-greeting-h').textContent).toContain(', Alice');
+  });
+
+  it('still renders the calendar if profile loading fails', async () => {
+    api.getProfile.mockRejectedValue(new Error('profile unavailable'));
+    const host = await mountWith([]);
+
+    expect(host.querySelector('.cal-action-panel')).not.toBeNull();
+    expect(host.querySelector('.cal-greeting-h').textContent).not.toMatch(/,\s*$/);
+    expect(Toast.show).not.toHaveBeenCalledWith('Could not load calendar', 'failure');
+  });
+
   it('shows a failure toast when application overlay fetch fails', async () => {
     const host = await mountWith();
     api.getById.mockRejectedValue(new Error('nope'));
@@ -322,5 +376,6 @@ describe('Calendar page', () => {
 
     expect(host.children).toHaveLength(0);
     expect(document.querySelector('.cal-picker')).toBeNull();
+    expect(document.querySelector('.cal-day-panel')).toBeNull();
   });
 });

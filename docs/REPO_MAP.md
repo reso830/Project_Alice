@@ -15,7 +15,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | Path | Purpose |
 |------|---------|
 | `src/pages/Tracker.js` | Main page — card grid, filters, sort, pagination, modal wiring |
-| `src/pages/Calendar.js` | Calendar page — month-grid view of all Timeline activity; mounts MonthGrid, ActionPanel, MonthPicker, YearPicker, StatusFilterDropdown; manages nav state and status filter |
+| `src/pages/Calendar.js` | Calendar page — month-grid view of all Timeline activity; mounts MonthGrid, ActionPanel, MonthPicker, YearPicker, and the shared QuickFiltersStatusPopup; manages nav state and status filter |
 | `src/pages/Profile.js` | User profile screen |
 | `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays. In demo (feature 020) the resume-import slot renders an inline `.profile-edit__resume-demo-note` ("Resume import is available after signing in.") instead of mounting `ResumeImport` |
 | `src/pages/ConfigError.js` | Operator-facing fallback when hosted runtime detects missing Vite env vars |
@@ -54,12 +54,12 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/CompatBar.js` | Compatibility score visual bar |
 | `src/components/DonutChart.js` | SVG donut chart with per-segment hover tooltips (Profile page) |
 | `src/components/StackedBar.js` | Horizontal proportional bar for mobile stats (Profile page) |
-| `src/components/calendar/MonthGrid.js` | Month-grid calendar — 7-column layout with day cells showing timeline event dots; keyboard nav, day-cell click → DayPopover |
-| `src/components/calendar/ActionPanel.js` | Calendar right-panel — Today section, Suggested Actions (5 rule-based kinds), Upcoming section; Mark Ghosted from suggestion rows; local dismissals |
-| `src/components/calendar/DayPopover.js` | Day detail popover — lists all timeline entries for a selected day; mounts via `mountAnchoredDropdown` |
+| `src/components/calendar/MonthGrid.js` | Month-grid calendar — 7-column layout with day cells showing timeline event dots; keyboard-selectable cells (Enter/Space); chips decorative; cell selection drives the inline DayPanel below the grid |
+| `src/components/calendar/ActionPanel.js` | Calendar right-panel — Today section, Suggested Actions (5 rule-based kinds), Upcoming section; Mark Ghosted from suggestion rows; local dismissals (with "Suggestion dismissed" toast); collapsible summary bar at `<1200px` stacked layouts |
+| `src/components/calendar/DayPanel.js` | Inline Day Details Panel (v2) — sits below the Month Grid in the same card; renders prompt/empty/populated state for the selected date; replaces the retired DayPopover |
 | `src/components/calendar/MonthPicker.js` | Month picker dropdown — 12-month grid anchored to the nav chevron |
 | `src/components/calendar/YearPicker.js` | Year picker dropdown — scrollable year list anchored to the nav chevron |
-| `src/components/calendar/StatusFilterDropdown.js` | Status filter dropdown for the Calendar page — multi-select checklist of status values |
+| `src/components/QuickFiltersStatusPopup.js` | Shared status filter popup used by Tracker quick filters and Calendar status filtering |
 | `src/components/calendar/anchoredDropdown.js` | `mountAnchoredDropdown({ anchorEl, contentEl, align, asBottomSheet, scrim, ariaLabel, onClose })` — shared primitive; handles positioning, outside-click/Esc dismiss, `bsIn` animation for bottom-sheet mode |
 
 ---
@@ -159,13 +159,13 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `tests/components/calendar/MonthGrid.test.js` | MonthGrid DOM — day cells, event dots, keyboard nav, filter-hidden cells |
 | `tests/components/calendar/MonthPicker.test.js` | MonthPicker DOM — 12-month grid, current-month highlight, selection |
 | `tests/components/calendar/YearPicker.test.js` | YearPicker DOM — year list, current-year highlight, selection |
-| `tests/components/calendar/StatusFilterDropdown.test.js` | StatusFilterDropdown DOM — multi-select checklist, apply/clear |
-| `tests/components/calendar/DayPopover.test.js` | DayPopover DOM — day entry list, empty state |
+| `tests/components/QuickFiltersStatusPopup.test.js` | Shared status popup DOM — Tracker-compatible surface, status ordering, Calendar single-select mount behavior |
+| `tests/components/calendar/DayPanel.test.js` | DayPanel DOM — prompt/empty/populated states, status priority grouping, mouse + keyboard (Enter/Space) row activation, root identity preserved across updates, deferred variant-prop guard |
 | `tests/server/` | Route handlers, Zod validation, DB queries, `requireAuth` middleware, protected-routes wiring |
 | `tests/services/` | API client, supabase client, resume API, health API |
 | `tests/data/` | Auth store, legacy localStorage store |
 | `tests/pages/` | Page-level integration (Tracker, Profile, ProfileEdit, ConfigError) |
-| `tests/pages/Calendar.test.js` | Calendar page integration — month nav, status filter, popover, ActionPanel wiring |
+| `tests/pages/Calendar.test.js` | Calendar page integration — month nav, status filter, inline DayPanel selection, ActionPanel wiring, greeting name injection, dismiss toast |
 | `tests/seed-data.test.js` | Cross-validates demo seed and SQLite seed — parity checks + Calendar suggestion coverage (all 5 kinds exercised with date-shifted records) |
 | `tests/build/` | Vite build-time env-var assertion |
 | `tests/main.test.js` | `bootstrap()` + runtime handshake → ConfigError wiring |

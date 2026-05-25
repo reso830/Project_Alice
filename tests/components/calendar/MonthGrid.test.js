@@ -29,7 +29,7 @@ function defaultProps(overrides = {}) {
     onOpenYearPicker: vi.fn(),
     onOpenFilter: vi.fn(),
     onClearFilter: vi.fn(),
-    onOpenDayPopover: vi.fn(),
+    onSelectDate: vi.fn(),
     ...overrides,
   };
 }
@@ -64,21 +64,23 @@ describe('MonthGrid', () => {
 
     expect(document.querySelector('.cal-grid-header')).not.toBeNull();
     expect(document.querySelector('.cal-month-btn').textContent).toBe('May');
-    expect(document.querySelector('.cal-year-btn').textContent).toContain('2026');
-    expect(document.querySelector('.filter-chip').textContent).toBe('Status: All');
+    expect(document.querySelector('.cal-year-btn').textContent).toBe('2026');
+    expect(document.querySelector('.cal-status-filter-btn')).not.toBeNull();
+    expect(document.querySelector('.cal-status-filter-btn svg.icon')).not.toBeNull();
+    expect(document.querySelector('.filter-chip')).toBeNull();
     expect(document.querySelector('.cal-today-btn')).toBeNull();
 
     document.querySelector('[aria-label="Previous month"]').click();
     document.querySelector('[aria-label="Next month"]').click();
     document.querySelector('.cal-month-btn').click();
     document.querySelector('.cal-year-btn').click();
-    document.querySelector('.filter-chip').click();
+    document.querySelector('.cal-status-filter-btn').click();
 
     expect(props.onNavigatePrev).toHaveBeenCalledTimes(1);
     expect(props.onNavigateNext).toHaveBeenCalledTimes(1);
-    expect(props.onOpenMonthPicker).toHaveBeenCalledWith(document.querySelector('.cal-month-btn'));
-    expect(props.onOpenYearPicker).toHaveBeenCalledWith(document.querySelector('.cal-year-btn'));
-    expect(props.onOpenFilter).toHaveBeenCalledWith(document.querySelector('.filter-chip'));
+    expect(props.onOpenMonthPicker).toHaveBeenCalledWith(document.querySelector('.cal-title'));
+    expect(props.onOpenYearPicker).toHaveBeenCalledWith(document.querySelector('.cal-title'));
+    expect(props.onOpenFilter).toHaveBeenCalledWith(document.querySelector('.cal-status-filter-btn'));
   });
 
   it('shows Today only away from the current month and clamps edge navigation', () => {
@@ -100,6 +102,9 @@ describe('MonthGrid', () => {
     expect([...document.querySelectorAll('.dow-cell')].map((node) => node.textContent))
       .toEqual(['CW', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
     expect(document.querySelectorAll('.cal-cw')).toHaveLength(6);
+    expect(document.querySelector('.dow-cell--cw').getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelector('.cal-cw').getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelector('.cal-cw').title).toMatch(/^Week \d+, 2026$/);
     expect(document.querySelectorAll('.cal-cell')).toHaveLength(42);
     expect(document.querySelector('.cal-grid').children).toHaveLength(48);
     expect(cell('2026-04-27')).not.toBeNull();
@@ -108,7 +113,7 @@ describe('MonthGrid', () => {
     expect(cell('2026-05-21').classList).toContain('cal-cell--today');
   });
 
-  it('opens all-mode popover when a populated cell is clicked or keyboard-activated', () => {
+  it('selects a populated cell when clicked or keyboard-activated', () => {
     const { props } = renderGrid({
       dayActivities: {
         '2026-05-21': [activity('interview', 4)],
@@ -116,22 +121,30 @@ describe('MonthGrid', () => {
     });
 
     cell('2026-05-21').click();
-    expect(props.onOpenDayPopover).toHaveBeenCalledWith('all', '2026-05-21', null, cell('2026-05-21'));
+    expect(props.onSelectDate).toHaveBeenCalledWith('2026-05-21', cell('2026-05-21'));
 
     cell('2026-05-21').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    expect(props.onOpenDayPopover).toHaveBeenCalledTimes(2);
+    expect(props.onSelectDate).toHaveBeenCalledTimes(2);
 
-    cell('2026-05-21').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    expect(props.onOpenDayPopover).toHaveBeenCalledTimes(3);
+    const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    cell('2026-05-21').dispatchEvent(space);
+    expect(props.onSelectDate).toHaveBeenCalledTimes(3);
+    expect(space.defaultPrevented).toBe(true);
   });
 
-  it('leaves empty cells inert', () => {
+  it('makes empty in-month cells selectable and leaves out-of-month cells inert', () => {
     const { props } = renderGrid();
 
     cell('2026-05-21').click();
+    expect(cell('2026-05-21').getAttribute('role')).toBe('button');
+    expect(cell('2026-05-21').tabIndex).toBe(0);
+    expect(cell('2026-05-21').getAttribute('aria-label')).toContain('no activity');
+    expect(props.onSelectDate).toHaveBeenCalledWith('2026-05-21', cell('2026-05-21'));
 
-    expect(cell('2026-05-21').getAttribute('role')).toBeNull();
-    expect(props.onOpenDayPopover).not.toHaveBeenCalled();
+    cell('2026-04-27').click();
+    cell('2026-04-27').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(cell('2026-04-27').getAttribute('role')).toBeNull();
+    expect(props.onSelectDate).toHaveBeenCalledTimes(1);
   });
 
   it('renders status chips in display priority order with overflow', () => {
@@ -148,7 +161,7 @@ describe('MonthGrid', () => {
     });
 
     const chips = [...cell('2026-05-21').querySelectorAll('.num-chip')];
-    const statuses = chips.map((chip) => chip.getAttribute('aria-label').match(/\d+ (.+) activit/)[1]);
+    const statuses = chips.map((chip) => chip.title.match(/\d+ (.+) activit/)[1]);
 
     expect(chips).toHaveLength(3);
     expect(chips.map((chip) => chip.textContent)).toEqual(['1', '2', '1']);
@@ -166,7 +179,7 @@ describe('MonthGrid', () => {
     });
 
     const chipLabels = [...cell('2026-05-21').querySelectorAll('.num-chip')]
-      .map((chip) => chip.getAttribute('aria-label'));
+      .map((chip) => chip.title);
 
     expect(chipLabels).toEqual(
       STATUS_DISPLAY_PRIORITY.slice(0, 3)
@@ -174,7 +187,7 @@ describe('MonthGrid', () => {
     );
   });
 
-  it('opens status-mode from a chip without also opening all-mode', () => {
+  it('keeps chips decorative and lets chip clicks select the cell', () => {
     const { props } = renderGrid({
       dayActivities: {
         '2026-05-21': [activity('interview', 1)],
@@ -184,11 +197,14 @@ describe('MonthGrid', () => {
 
     chip.click();
 
-    expect(props.onOpenDayPopover).toHaveBeenCalledTimes(1);
-    expect(props.onOpenDayPopover).toHaveBeenCalledWith('status', '2026-05-21', 'interview', chip);
+    expect(chip.tagName).toBe('SPAN');
+    expect(chip.getAttribute('role')).toBeNull();
+    expect(chip.getAttribute('tabIndex')).toBeNull();
+    expect(props.onSelectDate).toHaveBeenCalledTimes(1);
+    expect(props.onSelectDate).toHaveBeenCalledWith('2026-05-21', cell('2026-05-21'));
   });
 
-  it('opens all-mode from the overflow chip without also opening the cell handler', () => {
+  it('keeps the overflow chip decorative and lets it select the cell', () => {
     const { props } = renderGrid({
       dayActivities: {
         '2026-05-21': [
@@ -203,8 +219,8 @@ describe('MonthGrid', () => {
 
     overflow.click();
 
-    expect(props.onOpenDayPopover).toHaveBeenCalledTimes(1);
-    expect(props.onOpenDayPopover).toHaveBeenCalledWith('all', '2026-05-21', null, overflow);
+    expect(overflow.tagName).toBe('SPAN');
+    expect(props.onSelectDate).toHaveBeenCalledWith('2026-05-21', cell('2026-05-21'));
   });
 
   it('applies the status filter to chips and shows the clear control', () => {
@@ -216,19 +232,28 @@ describe('MonthGrid', () => {
       },
     });
 
-    expect(document.querySelector('.filter-chip').textContent).toBe('Interview');
+    expect(document.querySelector('.cal-status-filter-btn__swatch')).not.toBeNull();
     expect(cell('2026-05-21').querySelectorAll('.num-chip')).toHaveLength(1);
     expect(cell('2026-05-21').querySelector('.num-chip').textContent).toBe('2');
     expect(cell('2026-05-22').classList).toContain('cal-cell--filter-hidden');
+    expect(cell('2026-05-23').classList).toContain('cal-cell--filter-hidden');
     expect([...cell('2026-05-22').querySelectorAll('.num-chip')].map((chip) => chip.textContent))
       .toEqual(['1']);
     expect(cell('2026-05-22').getAttribute('role')).toBe('button');
 
     cell('2026-05-22').click();
-    expect(props.onOpenDayPopover).toHaveBeenCalledWith('all', '2026-05-22', null, cell('2026-05-22'));
+    expect(props.onSelectDate).toHaveBeenCalledWith('2026-05-22', cell('2026-05-22'));
 
-    document.querySelector('.filter-clear').click();
+    document.querySelector('.cal-filter-clear').click();
     expect(props.onClearFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the selected cell with aria-pressed and selected class', () => {
+    renderGrid({ selectedDate: '2026-05-21' });
+
+    expect(cell('2026-05-21').classList).toContain('cal-cell--selected');
+    expect(cell('2026-05-21').classList).toContain('cal-cell--today');
+    expect(cell('2026-05-21').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('destroy clears the current container', () => {

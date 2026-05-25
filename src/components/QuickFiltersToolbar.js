@@ -1,4 +1,4 @@
-import { SHIFT_VALUES, STATUS_CONFIG, WORK_SETUP_VALUES } from '../models/application.js';
+import { SHIFT_VALUES, WORK_SETUP_VALUES } from '../models/application.js';
 import {
   DEFAULT_SORT_STATE,
   SALARY_STEP,
@@ -9,6 +9,7 @@ import {
   isAnyFilterActive,
 } from '../utils/filterSort.js';
 import { FilterPanel } from './FilterPanel.js';
+import { renderStatusFilterPanel } from './QuickFiltersStatusPopup.js';
 import { RangeSlider } from './RangeSlider.js';
 import { SortPanel } from './SortPanel.js';
 
@@ -182,15 +183,9 @@ function openPanel(type, button, panel) {
 }
 
 function renderStatusPanel() {
-  return FilterPanel.render({
-    title: 'Status',
+  return renderStatusFilterPanel({
     options: getAvailableStatuses(_allApps, _filterState),
     selected: _filterState.statuses,
-    getLabel: (status) => STATUS_CONFIG[status]?.label ?? status,
-    getDot: (status) => {
-      const config = STATUS_CONFIG[status];
-      return config ? config.borderAccent : null;
-    },
     onChange: (statuses) => {
       _callbacks.onFilterChange?.({ ..._filterState, statuses });
     },
