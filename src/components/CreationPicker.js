@@ -16,6 +16,11 @@ function getFocusableElements(root) {
     .filter((el) => !el.disabled && el.offsetParent !== null);
 }
 
+function _modalCallbacks(callbacks = {}) {
+  const { onApplicationCreate, onApplicationUpdate, onArchiveSuccess } = callbacks;
+  return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess };
+}
+
 function _showErrorState(savedText, callbacks) {
   const content = _panel.querySelector('.creation-picker-content');
 
@@ -39,7 +44,7 @@ function _showErrorState(savedText, callbacks) {
   manualBtn.textContent = 'Enter manually';
   manualBtn.addEventListener('click', () => {
     close();
-    Modal.open(null, { mode: 'create', ...callbacks });
+    Modal.open(null, { mode: 'create', ..._modalCallbacks(callbacks) });
   });
 
   actions.append(retryBtn, manualBtn);
@@ -76,7 +81,7 @@ function _runParser(textarea, processBtn, loading) {
 
   const callbacks = _callbacks;
   close();
-  Modal.open(null, { mode: 'create', prefill: parsed, ...callbacks });
+  Modal.open(null, { mode: 'create', prefill: parsed, ..._modalCallbacks(callbacks) });
 }
 
 function _showPasteStep(initialValue = '') {
@@ -176,7 +181,7 @@ function _showSelectionScreen() {
     onClick: () => {
       const callbacks = _callbacks;
       close();
-      Modal.open(null, { mode: 'create', ...callbacks });
+      Modal.open(null, { mode: 'create', ..._modalCallbacks(callbacks) });
     },
   });
 
@@ -198,7 +203,7 @@ export function close() {
 }
 
 /**
- * @param {{ onApplicationCreate: Function, onApplicationUpdate: Function, onArchiveSuccess: Function }} callbacks
+ * @param {{ onApplicationCreate?: Function, onApplicationUpdate?: Function, onArchiveSuccess?: Function }} [callbacks]
  */
 export function open(callbacks) {
   close();
