@@ -203,7 +203,7 @@ export function close() {
 }
 
 /**
- * @param {{ onApplicationCreate: Function, onApplicationUpdate: Function, onArchiveSuccess: Function }} callbacks
+ * @param {{ onApplicationCreate?: Function, onApplicationUpdate?: Function, onArchiveSuccess?: Function }} [callbacks]
  */
 export function open(callbacks) {
   close();
