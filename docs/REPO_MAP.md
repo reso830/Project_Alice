@@ -94,14 +94,15 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/auth/seedHostedUser.js` | `seedHostedUserIfNeeded(req, res, next)` — async middleware; calls `client.rpc('claim_and_seed_starter')`; the RPC atomically claims the per-user seed marker and inserts 2 starter applications in one Postgres transaction (idempotent, race-safe, deletion-survivable per FR-014) |
 | `server/repositories/index.js` | `createRepositories(config)` returns uniform `{ forRequest(req) }` across `local` and `hosted` runtimes. Hosted lazy-imports the Supabase modules; local never loads `@supabase/supabase-js` |
 | `server/repositories/middleware.js` | `attachRepos(dispatcher)` — Express middleware factory that sets `req.repos = dispatcher.forRequest(req)`; mounted after `requireAuth` in every protected router |
-| `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter |
+| `server/middleware/requestDate.js` | `resolveRequestDate(req)` — derives the user's local `YYYY-MM-DD` from the `X-Client-Date` request header (regex-validated); falls back to UTC `currentDate()` when the header is missing/malformed (#43) |
+| `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter. `create/update/archive` accept an optional `now` (YYYY-MM-DD) which the router supplies via `resolveRequestDate(req)` to stamp audit columns in the user's local timezone (#43) |
 | `server/repositories/profile.js` | `createSqliteProfileRepository(db)` — local SQLite adapter |
 | `server/repositories/supabase/client.js` | `createSupabaseClientForRequest(req)` — per-request anon-key Supabase client initialized with the caller's JWT; never reads `SUPABASE_SERVICE_ROLE_KEY` |
 | `server/repositories/supabase/applications.js` | `createSupabaseApplicationsRepository(client, userId)` — hosted adapter. RLS-scoped reads/writes via PostgREST; `normalizeForPostgres()` helper coerces SQLite-shaped int booleans + JSON strings to Postgres `bool`/`jsonb` before any write |
 | `server/repositories/supabase/profile.js` | `createSupabaseProfileRepository(client, userId)` — hosted adapter; `data` jsonb projection; one-row-per-user via `{ onConflict: 'user_id' }` upsert |
 | `server/db/applications.js` | SQL query layer for SQLite (re-exports `toRow`/`toRecord` from columns.js for backward compat with foundation.test.js) |
 | `server/db/profile.js` | SQL query layer for SQLite profile (`getProfile` / `saveProfile`) |
-| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate`, `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`, including `timeline` JSON mapping. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
+| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate` (UTC fallback, see #43), `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`, including `timeline` JSON mapping. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
 | `server/db.js` | SQLite connection and schema creation |
 | `server/validation/application.js` | Zod schemas for request validation |
 | `server/db-seed.js` | Load 23 demo records (local SQLite only); imports `DEMO_RECORDS` from `server/seeds/applicationsData.js` |

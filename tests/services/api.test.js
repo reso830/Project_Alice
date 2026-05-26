@@ -192,6 +192,36 @@ describe('api service', () => {
       expect(headers.Authorization).toBe('Bearer abc');
     });
 
+    it('attaches X-Client-Date alongside Authorization (#43 — client TZ stamping)', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue('abc');
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: null }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await request('GET', '/api/applications');
+
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers.Authorization).toBe('Bearer abc');
+      expect(headers['X-Client-Date']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('attaches X-Client-Date even when no auth token is present', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue(null);
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: null }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await request('GET', '/api/applications');
+
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers).not.toHaveProperty('Authorization');
+      expect(headers['X-Client-Date']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
     it('surfaces 401 responses as UNAUTHORIZED error envelopes', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: false,

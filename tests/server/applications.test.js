@@ -21,11 +21,14 @@ async function withServer(test) {
 
 async function request(baseUrl, path, options = {}) {
   const response = await globalThis.fetch(`${baseUrl}${path}`, {
+    ...options,
+    // Headers must come after the options spread; otherwise `...options`
+    // would clobber the merged Content-Type when a caller passes a
+    // custom `headers` map (e.g. X-Client-Date tests).
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers ?? {}),
     },
-    ...options,
   });
 
   return {
@@ -829,6 +832,113 @@ describe('applications API', () => {
       expect(patched.status).toBe(200);
       expect(patched.body.data.timeline).toEqual(timeline);
       expect(fetched.body.data.timeline).toEqual(timeline);
+    });
+  });
+
+  // Issue #43 — the client's local "today" (X-Client-Date header) must be
+  // threaded all the way through routes → repo wrapper → SQLite repo, and
+  // persisted into the audit columns. Without the wrapper-layer
+  // forwarding fix, the SQLite path would silently ignore the header and
+  // fall back to UTC currentDate().
+  describe('X-Client-Date header (#43)', () => {
+    it('POST stamps createdAt/updatedAt/lastStatusUpdate with the supplied X-Client-Date', async () => {
+      await withServer(async (baseUrl) => {
+        const response = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          headers: { 'X-Client-Date': '2030-01-15' },
+          body: JSON.stringify(validApplicationPayload()),
+        });
+
+        expect(response.status).toBe(201);
+        expect(response.body.data.createdAt).toBe('2030-01-15');
+        expect(response.body.data.updatedAt).toBe('2030-01-15');
+        expect(response.body.data.lastStatusUpdate).toBe('2030-01-15');
+      });
+    });
+
+    it('PATCH stamps updatedAt with the supplied X-Client-Date', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          headers: { 'X-Client-Date': '2030-01-15' },
+          body: JSON.stringify(validApplicationPayload()),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          headers: { 'X-Client-Date': '2030-02-20' },
+          body: JSON.stringify({ notes: 'updated' }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updatedAt).toBe('2030-02-20');
+        // createdAt and lastStatusUpdate stay at the create-time stamp.
+        expect(response.body.data.createdAt).toBe('2030-01-15');
+        expect(response.body.data.lastStatusUpdate).toBe('2030-01-15');
+      });
+    });
+
+    it('PATCH with a status change stamps lastStatusUpdate with the supplied X-Client-Date', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          headers: { 'X-Client-Date': '2030-01-15' },
+          body: JSON.stringify(validApplicationPayload({ status: 'applied' })),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+          method: 'PATCH',
+          headers: { 'X-Client-Date': '2030-02-20' },
+          body: JSON.stringify({ status: 'interview' }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updatedAt).toBe('2030-02-20');
+        expect(response.body.data.lastStatusUpdate).toBe('2030-02-20');
+      });
+    });
+
+    it('POST /:id/archive stamps updatedAt with the supplied X-Client-Date', async () => {
+      await withServer(async (baseUrl) => {
+        const created = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          headers: { 'X-Client-Date': '2030-01-15' },
+          body: JSON.stringify(validApplicationPayload()),
+        });
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+          method: 'POST',
+          headers: { 'X-Client-Date': '2030-03-10' },
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updatedAt).toBe('2030-03-10');
+      });
+    });
+
+    it('falls back to UTC currentDate() when X-Client-Date is missing', async () => {
+      await withServer(async (baseUrl) => {
+        const response = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          body: JSON.stringify(validApplicationPayload()),
+        });
+
+        expect(response.status).toBe(201);
+        // UTC fallback always matches today's UTC date prefix.
+        const expected = new Date().toISOString().slice(0, 10);
+        expect(response.body.data.createdAt).toBe(expected);
+      });
+    });
+
+    it('rejects a malformed X-Client-Date by falling back to UTC currentDate()', async () => {
+      await withServer(async (baseUrl) => {
+        const response = await request(baseUrl, '/api/applications', {
+          method: 'POST',
+          headers: { 'X-Client-Date': 'not-a-date' },
+          body: JSON.stringify(validApplicationPayload()),
+        });
+
+        expect(response.status).toBe(201);
+        const expected = new Date().toISOString().slice(0, 10);
+        expect(response.body.data.createdAt).toBe(expected);
+      });
     });
   });
 });

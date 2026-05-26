@@ -25,7 +25,7 @@ export function getAll(targetDb = db) {
     .map(toRecord);
 }
 
-export function create(fields, targetDb = db) {
+export function create(fields, targetDb = db, now = currentDate()) {
   const row = {
     status: DEFAULT_STATUS,
     compat: 0,
@@ -36,7 +36,6 @@ export function create(fields, targetDb = db) {
     metadata: null,
     ...toRow(fields),
   };
-  const now = currentDate();
   row.created_at = now;
   row.updated_at = now;
   row.last_status_update = now;
@@ -52,7 +51,7 @@ export function create(fields, targetDb = db) {
   return getById(Number(info.lastInsertRowid), targetDb);
 }
 
-export function update(id, fields, targetDb = db) {
+export function update(id, fields, targetDb = db, now = currentDate()) {
   const current = getById(id, targetDb);
   if (!current) {
     return null;
@@ -60,10 +59,11 @@ export function update(id, fields, targetDb = db) {
 
   const row = toRow(fields);
   if (Object.keys(row).length === 0) {
+    // No-op contract: no translatable fields → return current without
+    // writing updated_at. Mirrors the Supabase adapter behavior.
     return current;
   }
 
-  const now = currentDate();
   row.updated_at = now;
 
   if (Object.hasOwn(fields, 'status') && fields.status !== current.status) {
@@ -84,7 +84,7 @@ export function update(id, fields, targetDb = db) {
   return getById(id, targetDb);
 }
 
-export function archive(id, targetDb = db) {
+export function archive(id, targetDb = db, now = currentDate()) {
   const current = getById(id, targetDb);
   if (!current) {
     return null;
@@ -94,7 +94,7 @@ export function archive(id, targetDb = db) {
     UPDATE applications
     SET archived = 1, fav = 0, updated_at = @updated_at
     WHERE id = @id
-  `).run({ id, updated_at: currentDate() });
+  `).run({ id, updated_at: now });
 
   return getById(id, targetDb);
 }
