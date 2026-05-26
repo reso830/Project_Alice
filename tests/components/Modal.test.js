@@ -684,6 +684,62 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-footer').hidden).toBe(false);
   });
 
+  it('reverts header chrome and status badge after confirmed discard', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    ConfirmDialog.show.mockResolvedValue(true);
+
+    Modal.open(application({ status: 'applied' }));
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="interview"]').click();
+
+    const header = document.querySelector('.modal-header');
+    const badge = document.querySelector('#modal-status-badge');
+
+    expect(header.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.interview.borderAccent));
+    expect(badge.textContent).toBe(STATUS_CONFIG.interview.label);
+
+    discardButton().click();
+    await flushPromises();
+
+    expect(header.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.borderAccent));
+    expect(header.style.color).toBe(hexToRgb(STATUS_CONFIG.applied.badgeText));
+    expect(badge.textContent).toBe(STATUS_CONFIG.applied.label);
+    expect(badge.style.backgroundColor).toBe(hexToRgb(STATUS_CONFIG.applied.badgeBg));
+  });
+
+  it('seeds the status dropdown from the original status after discard', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    ConfirmDialog.show.mockResolvedValue(true);
+
+    Modal.open(application({ status: 'applied' }));
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="interview"]').click();
+    discardButton().click();
+    await flushPromises();
+
+    document.querySelector('.modal-quick-action--status').click();
+
+    expect(document.querySelector('.status-dropdown [data-status="phone_screen"]')).not.toBeNull();
+  });
+
+  it('does not prompt a second confirmation when closing after discard', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    ConfirmDialog.show.mockResolvedValue(true);
+
+    Modal.open(application({ status: 'applied' }));
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="interview"]').click();
+    discardButton().click();
+    await flushPromises();
+
+    ConfirmDialog.show.mockClear();
+    closeButton().click();
+    await flushPromises();
+
+    expect(ConfirmDialog.show).not.toHaveBeenCalled();
+    expect(modalBackdrop()).toBeNull();
+  });
+
   it('reveals the footer after adding a Timeline entry', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

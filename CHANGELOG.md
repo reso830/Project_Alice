@@ -7,6 +7,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.3] — 2026-05-26
+
 ### Changed
 
 - `createApp({ repositories })` now throws a clear `'createApp: repositories is required'` error when called bare, instead of letting the destructure surface a cryptic `TypeError`. Carried over from the PR #23 self-review (INFO).
@@ -15,6 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Audit timestamps (`createdAt`, `updatedAt`, `lastStatusUpdate`) now reflect the user's **local** timezone at the moment of the write rather than the server's timezone. The client sends its local `YYYY-MM-DD` in a new `X-Client-Date` request header; the server validates it and threads the value through routes → repository wrappers → SQLite/Supabase adapters. Direct API consumers (curl, scripts) that omit the header fall back to UTC, which also unifies SQLite-mode and hosted-mode behavior. Closes [#43](https://github.com/reso830/Project_Alice/issues/43).
+- Application overlay now reverts the header background, status badge, and the dropdown's seeded status when a user discards an unsaved status change. Previously the underlying draft was restored but the header chrome and the `currentStatus` closure used by the status dropdown remained stuck on the rejected status, so the overlay looked "stuck" on the new status until reopened. Closes [#35](https://github.com/reso830/Project_Alice/issues/35).
 
 ## [0.13.2] — 2026-05-25
 
@@ -733,7 +736,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.3...HEAD
+[0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/reso830/Project_Alice/compare/v0.12.0...v0.13.0
