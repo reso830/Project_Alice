@@ -167,6 +167,16 @@ describe('api/index.js (Vercel entry) — hosted-mode integration', () => {
     );
     expect(createSupabaseClientForRequest).toHaveBeenCalled();
 
+    // Ordering proof: the req passed to the client factory already
+    // carries `req.user` from the requireAuth mock. This pins the
+    // middleware sequence end-to-end — requireAuth ran first (populated
+    // req.user), attachRepos forwarded the SAME req to the dispatcher,
+    // and the dispatcher passed it to the client factory. A regression
+    // that reorders these (e.g. mounting attachRepos before requireAuth)
+    // would make `req.user` undefined here.
+    const firstReq = createSupabaseClientForRequest.mock.calls[0][0];
+    expect(firstReq?.user?.id).toBe('test-user');
+
     // Adapter actually ran against the fake client — proves the
     // `applications` table chain was issued (not short-circuited by an
     // earlier middleware error).
