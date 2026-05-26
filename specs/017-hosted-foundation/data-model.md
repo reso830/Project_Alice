@@ -94,7 +94,7 @@ export async function createRepositories(config) { ... }
 
 // For test use: construct SQLite repositories from an in-memory db instance.
 // Synchronous — the caller provides db, so no lazy import is needed.
-export function createTestRepositories(db) { ... }
+export function createSqliteRepositories(db) { ... }
 ```
 
 ---

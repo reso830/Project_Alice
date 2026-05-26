@@ -379,7 +379,7 @@ refactor can't silently demote the endpoint to anonymous access.
    ```js
    async function withHostedServer(test) {
      const db = makeMemoryDb();
-     const repositories = await createTestRepositories(db);
+     const repositories = await createSqliteRepositories(db);
      const requireAuth = (_req, res, _next) => res.status(401).json({
        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
      });

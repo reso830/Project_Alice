@@ -249,7 +249,7 @@ export function createSqliteProfileRepository(db) {
 
 **What to do**:
 
-Create the factory with three exports: `createRepositories`, `createTestRepositories`,
+Create the factory with three exports: `createRepositories`, `createSqliteRepositories`,
 and the `HostedRepositoryNotImplementedError` class.
 
 ```js
@@ -308,7 +308,7 @@ export async function createRepositories(config) {
  * For use in tests only — accepts an in-memory db instance.
  * @param {import('better-sqlite3').Database} db
  */
-export function createTestRepositories(db) {
+export function createSqliteRepositories(db) {
   return {
     applications: createSqliteApplicationsRepository(db),
     profile:      createSqliteProfileRepository(db),
@@ -321,14 +321,14 @@ export function createTestRepositories(db) {
   default db; `initSchema` is called on first local use
 - `await createRepositories({ isHosted: true })` → stub repositories; every method throws
   `HostedRepositoryNotImplementedError`
-- `createTestRepositories(inMemoryDb)` → SQLite repositories backed by the given db
+- `createSqliteRepositories(inMemoryDb)` → SQLite repositories backed by the given db
 
 **Constraints**:
 - Hosted stubs must implement all five application methods (`getAll`, `getById`,
   `create`, `update`, `archive`) and both profile methods (`get`, `upsert`).
 - `HostedRepositoryNotImplementedError` must extend `Error` with `name` set to the
   class name, so it can be identified in tests via `error.name`.
-- `createTestRepositories` must not call `initSchema` — the caller is responsible for
+- `createSqliteRepositories` must not call `initSchema` — the caller is responsible for
   schema initialization in test setup.
 
 **Validation**: Tests in Task 02.4.
@@ -346,7 +346,7 @@ export function createTestRepositories(db) {
 
 Each test file uses an in-memory SQLite database (same pattern as
 `tests/server/applications.test.js`): `new Database(':memory:')` → `initSchema(db)` →
-`createTestRepositories(db)`.
+`createSqliteRepositories(db)`.
 
 **`applications.test.js`** — SQLite adapter conformance:
 
@@ -518,21 +518,21 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [X] Task 03.4 [US1] — Update `tests/server/applications.test.js` to use `createTestRepositories`
+### [X] Task 03.4 [US1] — Update `tests/server/applications.test.js` to use `createSqliteRepositories`
 
 **Target file**: `tests/server/applications.test.js`
 
 **What to do**:
 
-1. Add `createTestRepositories` to the imports from the repositories module:
+1. Add `createSqliteRepositories` to the imports from the repositories module:
    ```js
-   import { createTestRepositories } from '../../server/repositories/index.js';
+   import { createSqliteRepositories } from '../../server/repositories/index.js';
    ```
 
 2. In the test setup (the `beforeEach` or top-level setup that calls `createApp`),
    replace `createApp({ db })` with:
    ```js
-   const repositories = createTestRepositories(db);
+   const repositories = createSqliteRepositories(db);
    app = createApp({ repositories });
    ```
 
@@ -549,12 +549,12 @@ implementation source changes from direct db calls to repository calls.
 
 ---
 
-### [X] Task 03.5 [US1] — Update `tests/server/profile.test.js` to use `createTestRepositories`
+### [X] Task 03.5 [US1] — Update `tests/server/profile.test.js` to use `createSqliteRepositories`
 
 **Target file**: `tests/server/profile.test.js`
 
-**What to do**: Same pattern as Task 03.4 — add `createTestRepositories` import,
-replace `createApp({ db })` with `createApp({ repositories: createTestRepositories(db) })`.
+**What to do**: Same pattern as Task 03.4 — add `createSqliteRepositories` import,
+replace `createApp({ db })` with `createApp({ repositories: createSqliteRepositories(db) })`.
 
 **Validation**: `npm test -- tests/server/profile.test.js` must pass in full.
 
@@ -800,8 +800,8 @@ Run after all phases are complete.
 
 | Test file | What to verify |
 |-----------|----------------|
-| `tests/server/applications.test.js` | Setup passes `createTestRepositories(db)` (Task 03.4) |
-| `tests/server/profile.test.js` | Setup passes `createTestRepositories(db)` (Task 03.5) |
+| `tests/server/applications.test.js` | Setup passes `createSqliteRepositories(db)` (Task 03.4) |
+| `tests/server/profile.test.js` | Setup passes `createSqliteRepositories(db)` (Task 03.5) |
 | `tests/server/config.test.js` | All 9 config scenarios pass (Task 01.2) |
 | `tests/server/repositories/` | All three adapter/stub test files pass (Task 02.4) |
 

@@ -117,7 +117,7 @@ repository layer is local-only. Feature 019 implements the Supabase layer.
 
 **Existing tests fail after the `{ db }` → `{ repositories }` change**
 → Tests that call `createApp({ db })` need to be updated to pass
-`createTestRepositories(db)` from `server/repositories/index.js`. See the test
+`createSqliteRepositories(db)` from `server/repositories/index.js`. See the test
 migration notes in `tasks.md`.
 
 **`SUPABASE_SERVICE_ROLE_KEY` appears in the Vite bundle**

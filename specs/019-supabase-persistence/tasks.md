@@ -461,7 +461,7 @@ export async function createRepositories(config) {
   // Local mode (default).
   const { db, initSchema } = await import('../db.js');
   initSchema(db);
-  const sqlite = await createTestRepositories(db);
+  const sqlite = await createSqliteRepositories(db);
   return { forRequest(_req) { return sqlite; } };
 }
 ```
@@ -983,7 +983,7 @@ optional-injection idiom.
 >
 > - **`tests/server/applications.test.js`, `profile.test.js`, `resume.test.js`,
 >   `routes-protected.test.js`** — added `wrapAsDispatcher(repos)` around the
->   `createTestRepositories(db)` injection. Pure factory-signature update for
+>   `createSqliteRepositories(db)` injection. Pure factory-signature update for
 >   the new uniform `{ forRequest(req) }` dispatcher contract (Phase 05 /
 >   contracts/api.md §1.1). Existing assertions unchanged.
 >
