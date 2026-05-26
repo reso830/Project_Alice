@@ -6401,6 +6401,10 @@ textarea.modal-inline-control {
   .cal-action-panel {
     gap: 0;
   }
+
+  .cal-action-panel.cal-action-panel--expanded {
+    gap: 16px;
+  }
 }
 
 @media (max-width: 639px) {

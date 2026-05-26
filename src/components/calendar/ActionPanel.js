@@ -1,9 +1,9 @@
+const BODY_ID = 'cal-action-panel-body';
+
 let _host = null;
 let _props = {};
 let _collapsed = true;
 let _isStacked = false;
-let _bodyIdSeed = 0;
-let _resizeAttached = false;
 
 const EMPTY_STATES = {
   today: {
@@ -129,16 +129,16 @@ function createChevron() {
   return chev;
 }
 
+function createGreetingNodes(props) {
+  const heading = createText('cal-greeting-h', props.greeting ?? '', 'h2');
+  heading.id = 'action-panel-heading';
+  return [heading, createText('cal-greeting-sub', props.dateLabel ?? '', 'p')];
+}
+
 function createGreetingBlock(props) {
   const block = document.createElement('div');
-  const heading = createText('cal-greeting-h', props.greeting ?? '', 'h2');
-
   block.className = 'ap-greeting-block';
-  heading.id = 'action-panel-heading';
-  block.append(
-    heading,
-    createText('cal-greeting-sub', props.dateLabel ?? '', 'p'),
-  );
+  block.append(...createGreetingNodes(props));
   return block;
 }
 
@@ -228,14 +228,8 @@ function createCollapseRow(root) {
 
 function createGreeting(props) {
   const header = document.createElement('header');
-  const heading = createText('cal-greeting-h', props.greeting ?? '', 'h2');
-
   header.className = 'cal-greeting';
-  heading.id = 'action-panel-heading';
-  header.append(
-    heading,
-    createText('cal-greeting-sub', props.dateLabel ?? '', 'p'),
-  );
+  header.append(...createGreetingNodes(props));
   return header;
 }
 
@@ -422,21 +416,8 @@ function appendSections(body, props, today, suggestions, upcoming) {
   );
 }
 
-function renderIntoHost() {
-  if (!_host) {
-    return;
-  }
-
-  _host.replaceChildren();
-
-  const today = list(_props.today);
-  const suggestions = list(_props.suggestions);
-  const upcoming = _props.upcoming ?? {};
-  const counts = actionCounts(today, suggestions, upcoming);
+function createPanelRoot() {
   const root = document.createElement('div');
-  const body = document.createElement('div');
-  const bodyId = `cal-action-panel-body-${_bodyIdSeed += 1}`;
-
   root.className = _isStacked && !_collapsed
     ? 'cal-action-panel action-panel cal-action-panel--expanded'
     : 'cal-action-panel action-panel';
@@ -450,34 +431,50 @@ function renderIntoHost() {
     setExpanded(root, button, false, { render: true });
     document.querySelector('.ap-greeting-btn')?.focus();
   });
+  return root;
+}
 
-  if (!_isStacked) {
-    root.append(
-      createGreeting(_props),
-      createSection('Today', today.length, 'today', createFlatRows(today, _props)),
-      createSection('Suggested Actions', suggestions.length, 'suggestions', createFlatRows(suggestions, _props, {
-        suggestion: true,
-      })),
-      createUpcomingSection(_props, upcoming),
-    );
-    _host.append(root);
-    return;
-  }
+function renderNonStacked(root, props, today, suggestions, upcoming) {
+  root.append(createGreeting(props));
+  appendSections(root, props, today, suggestions, upcoming);
+}
 
+function renderStacked(root, props, today, suggestions, upcoming, counts) {
+  const body = document.createElement('div');
   body.className = 'cal-action-panel__body';
-  body.id = bodyId;
+  body.id = BODY_ID;
 
-  root.append(createGreetingButton(root, bodyId, _props));
+  root.append(createGreetingButton(root, BODY_ID, props));
 
   if (_collapsed) {
     root.append(createCollapsedPreview(root, counts));
     body.hidden = true;
   } else {
-    appendSections(body, _props, today, suggestions, upcoming);
+    appendSections(body, props, today, suggestions, upcoming);
     body.append(createCollapseRow(root));
   }
 
   root.append(body);
+}
+
+function renderIntoHost() {
+  if (!_host) {
+    return;
+  }
+
+  _host.replaceChildren();
+
+  const today = list(_props.today);
+  const suggestions = list(_props.suggestions);
+  const upcoming = _props.upcoming ?? {};
+  const counts = actionCounts(today, suggestions, upcoming);
+  const root = createPanelRoot();
+
+  if (_isStacked) {
+    renderStacked(root, _props, today, suggestions, upcoming, counts);
+  } else {
+    renderNonStacked(root, _props, today, suggestions, upcoming);
+  }
 
   _host.append(root);
 }
@@ -495,24 +492,6 @@ function handleResize() {
   renderIntoHost();
 }
 
-function attachResize() {
-  if (_resizeAttached) {
-    return;
-  }
-
-  window.addEventListener('resize', handleResize);
-  _resizeAttached = true;
-}
-
-function detachResize() {
-  if (!_resizeAttached) {
-    return;
-  }
-
-  window.removeEventListener('resize', handleResize);
-  _resizeAttached = false;
-}
-
 function render(container, props = {}) {
   destroy();
 
@@ -520,12 +499,12 @@ function render(container, props = {}) {
   _props = { ...props };
   _collapsed = true;
   _isStacked = isStackedViewport();
-  attachResize();
+  window.addEventListener('resize', handleResize);
   renderIntoHost();
 }
 
 function destroy() {
-  detachResize();
+  window.removeEventListener('resize', handleResize);
   if (_host) {
     _host.replaceChildren();
   }
