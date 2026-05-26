@@ -15,6 +15,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Audit timestamps (`createdAt`, `updatedAt`, `lastStatusUpdate`) now reflect the user's **local** timezone at the moment of the write rather than the server's timezone. The client sends its local `YYYY-MM-DD` in a new `X-Client-Date` request header; the server validates it and threads the value through routes → repository wrappers → SQLite/Supabase adapters. Direct API consumers (curl, scripts) that omit the header fall back to UTC, which also unifies SQLite-mode and hosted-mode behavior. Closes [#43](https://github.com/reso830/Project_Alice/issues/43).
+- Application overlay now reverts the header background, status badge, and the dropdown's seeded status when a user discards an unsaved status change. Previously the underlying draft was restored but the header chrome and the `currentStatus` closure used by the status dropdown remained stuck on the rejected status, so the overlay looked "stuck" on the new status until reopened. Closes [#35](https://github.com/reso830/Project_Alice/issues/35).
 
 ## [0.13.2] — 2026-05-25
 

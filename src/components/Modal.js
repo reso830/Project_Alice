@@ -28,6 +28,9 @@ let _saveButton = null;
 let _idPill = null;
 let _archiveButton = null;
 let _quickActions = null;
+let _header = null;
+let _statusBadge = null;
+let _resetStatusChrome = null;
 let _mode = 'edit';
 let _saveController = null;
 let _onApplicationUpdate = null;
@@ -738,6 +741,7 @@ async function _attemptDiscardDraft() {
 
   _draft = copyApplication(_original);
   clearInlineErrors();
+  _resetStatusChrome?.();
   renderTitle();
   _renderBody();
   _syncFooter();
@@ -789,6 +793,9 @@ export function close() {
   _idPill = null;
   _archiveButton = null;
   _quickActions = null;
+  _header = null;
+  _statusBadge = null;
+  _resetStatusChrome = null;
   _mode = 'edit';
   _onApplicationUpdate = null;
   _onApplicationCreate = null;
@@ -853,6 +860,13 @@ export function open(application, {
   const isTerminal = TERMINAL_STATES.has(currentStatus);
   let currentFavorite = _draft.fav === true;
   const statusBadge = createStatusBadge(_draft.status, { id: 'modal-status-badge' });
+  _header = header;
+  _statusBadge = statusBadge;
+  _resetStatusChrome = () => {
+    currentStatus = _draft.status;
+    applyHeaderStatus(_header, _draft.status);
+    updateStatusBadge(_statusBadge, _draft.status);
+  };
 
   function openStatusDropdown(anchorEl) {
     if (_mode === 'edit' && TERMINAL_STATES.has(_draft.status)) return;
