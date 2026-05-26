@@ -38,6 +38,24 @@ describe('resolveRequestDate', () => {
     expect(resolveRequestDate(makeReq('2030-06-15T00:00:00Z'))).toBe(currentDate());
   });
 
+  it('falls back to currentDate() when the header is shape-valid but an impossible calendar date (PR #46 review)', () => {
+    // Shape matches /^\d{4}-\d{2}-\d{2}$/ but the date cannot exist —
+    // round-trip parse must reject. Otherwise SQLite would persist
+    // garbage text into the audit columns and Supabase `date` columns
+    // would reject the write and 500 the request.
+    expect(resolveRequestDate(makeReq('2030-13-40'))).toBe(currentDate());
+    expect(resolveRequestDate(makeReq('2030-02-30'))).toBe(currentDate());
+    expect(resolveRequestDate(makeReq('2030-00-15'))).toBe(currentDate());
+    expect(resolveRequestDate(makeReq('2030-06-00'))).toBe(currentDate());
+    expect(resolveRequestDate(makeReq('2030-99-99'))).toBe(currentDate());
+    // Non-leap-year Feb 29 is also impossible.
+    expect(resolveRequestDate(makeReq('2030-02-29'))).toBe(currentDate());
+  });
+
+  it('accepts a real leap-day Feb 29 in a leap year', () => {
+    expect(resolveRequestDate(makeReq('2028-02-29'))).toBe('2028-02-29');
+  });
+
   it('tolerates a request object without a get() method', () => {
     // Defensive: some tests pass plain objects; do not throw.
     expect(resolveRequestDate({})).toBe(currentDate());

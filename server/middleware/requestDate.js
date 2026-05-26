@@ -1,3 +1,4 @@
+import { isValidISODate } from '../../shared/util/date.js';
 import { currentDate } from '../db/columns.js';
 
 // Issue #43 — derive "today" from the client's local timezone rather than
@@ -6,16 +7,14 @@ import { currentDate } from '../db/columns.js';
 // the repository as the `now` arg so audit columns (created_at,
 // updated_at, last_status_update) reflect the user's wall-clock day.
 //
-// Strict regex validation prevents a malformed/malicious header from
-// writing arbitrary strings into date columns. Anything that does not
-// parse falls back to the UTC `currentDate()` — the same fallback used
-// when the header is missing entirely (curl, tests, scripts).
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+// `isValidISODate` does a round-trip parse, so impossible dates like
+// `2030-13-40` or `2030-02-30` fall back to UTC. Without that, SQLite
+// would persist garbage strings into date columns and Supabase `date`
+// columns would reject the write and turn it into a 500.
 
 export function resolveRequestDate(req) {
   const header = typeof req?.get === 'function' ? req.get('X-Client-Date') : undefined;
-  if (typeof header === 'string' && ISO_DATE.test(header)) {
+  if (isValidISODate(header)) {
     return header;
   }
   return currentDate();

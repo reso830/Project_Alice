@@ -71,6 +71,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers · `applyStatusChange(app, status, options)` · `STATUS_DISPLAY_PRIORITY` · `TERMINAL_STATES` |
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
 | `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
+| `shared/util/date.js` | `isValidISODate(value)` — round-trip parse that rejects impossible dates like `2030-02-30`. Re-exported by `src/utils/date.js` for the client (form/timeline) and imported by `server/middleware/requestDate.js` for server-side `X-Client-Date` validation (#43) |
 
 **Application fields (required):** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `responsibilities`
 
