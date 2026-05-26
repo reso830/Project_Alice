@@ -162,6 +162,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `tests/components/QuickFiltersStatusPopup.test.js` | Shared status popup DOM — Tracker-compatible surface, status ordering, Calendar single-select mount behavior |
 | `tests/components/calendar/DayPanel.test.js` | DayPanel DOM — prompt/empty/populated states, status priority grouping, mouse + keyboard (Enter/Space) row activation, root identity preserved across updates, deferred variant-prop guard |
 | `tests/server/` | Route handlers, Zod validation, DB queries, `requireAuth` middleware, protected-routes wiring |
+| `tests/server/api-entry.test.js` | Hosted-mode integration boot of `api/index.js` (Vercel entry) — exercises `assertHostedSchema` wiring, dynamic seed-middleware import, dispatcher construction, and `GET /api/applications` end-to-end against a mocked Supabase client (closes the CI gap left by the cold-start subprocess test) |
 | `tests/services/` | API client, supabase client, resume API, health API |
 | `tests/data/` | Auth store, legacy localStorage store |
 | `tests/pages/` | Page-level integration (Tracker, Profile, ProfileEdit, ConfigError) |
