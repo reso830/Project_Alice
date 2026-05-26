@@ -12,6 +12,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `createApp({ repositories })` now throws a clear `'createApp: repositories is required'` error when called bare, instead of letting the destructure surface a cryptic `TypeError`. Carried over from the PR #23 self-review (INFO).
 - `docs/REPO_MAP.md` row descriptions for the 019 and 020 spec packages now reflect the actual artifact contents (plan scope, contract scope, quickstart scope). Carried over from the PR #30 self-review (INFO).
 
+### Fixed
+
+- Audit timestamps (`createdAt`, `updatedAt`, `lastStatusUpdate`) now reflect the user's **local** timezone at the moment of the write rather than the server's timezone. The client sends its local `YYYY-MM-DD` in a new `X-Client-Date` request header; the server validates it and threads the value through routes → repository wrappers → SQLite/Supabase adapters. Direct API consumers (curl, scripts) that omit the header fall back to UTC, which also unifies SQLite-mode and hosted-mode behavior. Closes [#43](https://github.com/reso830/Project_Alice/issues/43).
+
 ## [0.13.2] — 2026-05-25
 
 Calendar v3 patch — Phase 13 re-smoke follow-ups plus the long-deferred collapsible Action Panel summary bar. Same feature surface as v0.13.0; no API or schema changes.

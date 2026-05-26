@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   APPLICATION_COLUMNS_WITHOUT_USER_ID,
+  currentDate,
   FIELD_TO_COLUMN,
   toRecord,
   toRow,
@@ -181,6 +182,29 @@ describe('toRecord / toRow round-trip via shared module', () => {
     expect(record.preferredSkills).toEqual(['storybook']);
     expect(record.metadata).toEqual({ key: 'value' });
     expect(record.timeline).toBe(timeline);
+  });
+
+  it('currentDate() returns a UTC YYYY-MM-DD string (#43 — fallback when X-Client-Date is absent)', () => {
+    // Pick a UTC instant where a local timezone east of UTC would have
+    // already crossed into the next calendar day, and a TZ west of UTC
+    // would still be on the previous day. The function MUST return the
+    // UTC date regardless of process TZ — that is the documented fallback
+    // contract that the X-Client-Date header overrides.
+    const utc = new Date('2030-06-15T23:30:00Z');
+    expect(utc.toISOString().slice(0, 10)).toBe('2030-06-15');
+    // Sanity-check on the helper itself; behavior is intentionally UTC.
+    expect(currentDate(utc)).toBe('2030-06-15');
+  });
+
+  it('currentDate() accepts an optional Date and matches its ISO date prefix', () => {
+    const cases = [
+      new Date('2026-01-01T00:00:01Z'),
+      new Date('2026-12-31T23:59:59Z'),
+      new Date('2030-06-15T12:00:00Z'),
+    ];
+    for (const d of cases) {
+      expect(currentDate(d)).toBe(d.toISOString().slice(0, 10));
+    }
   });
 
   it('round-trips timeline entries by value', () => {

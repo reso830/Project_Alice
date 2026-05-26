@@ -455,6 +455,74 @@ describe('createSupabaseApplicationsRepository', () => {
     });
   });
 
+  // Issue #43 — caller-supplied `now` must be persisted into audit columns
+  // so they reflect the user's local "today" from X-Client-Date instead of
+  // the server's UTC fallback.
+  describe('caller-supplied `now` (#43)', () => {
+    it('create() persists the supplied `now` into created_at, updated_at, last_status_update', async () => {
+      const { client, calls } = makeClient({ data: { id: 1 }, error: null });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.create({ companyName: 'X', jobTitle: 'Y' }, '2030-01-15');
+
+      const row = callsOf(calls, 'insert')[0].args[0];
+      expect(row.created_at).toBe('2030-01-15');
+      expect(row.updated_at).toBe('2030-01-15');
+      expect(row.last_status_update).toBe('2030-01-15');
+    });
+
+    it('update() persists the supplied `now` into updated_at', async () => {
+      const { client, calls } = makeClient({
+        data: { id: 1, company_name: 'X', job_title: 'Y', status: 'applied' },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.update(1, { notes: 'updated' }, '2030-02-20');
+
+      const row = callsOf(calls, 'update')[0].args[0];
+      expect(row.updated_at).toBe('2030-02-20');
+    });
+
+    it('update() persists the supplied `now` into last_status_update on a status change', async () => {
+      const getterChain = makeChainMock({
+        data: { id: 1, status: 'applied', company_name: 'X', job_title: 'Y' },
+        error: null,
+      });
+      const updaterChain = makeChainMock({
+        data: { id: 1, status: 'interview' },
+        error: null,
+      });
+      let fromCallCount = 0;
+      const client = {
+        from: vi.fn(() => {
+          fromCallCount += 1;
+          return fromCallCount === 1 ? getterChain.chain : updaterChain.chain;
+        }),
+      };
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.update(1, { status: 'interview' }, '2030-02-20');
+
+      const row = callsOf(updaterChain.calls, 'update')[0].args[0];
+      expect(row.updated_at).toBe('2030-02-20');
+      expect(row.last_status_update).toBe('2030-02-20');
+    });
+
+    it('archive() persists the supplied `now` into updated_at', async () => {
+      const { client, calls } = makeClient({
+        data: { id: 1, archived: true, fav: false },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.archive(1, '2030-03-10');
+
+      const row = callsOf(calls, 'update')[0].args[0];
+      expect(row.updated_at).toBe('2030-03-10');
+    });
+  });
+
   describe('response shape invariants (FR-017)', () => {
     it('user_id is never exposed in any method output', async () => {
       const sampleRow = {

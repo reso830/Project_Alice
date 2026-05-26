@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { isValidTransition, TERMINAL_STATES } from '../../shared/constants.js';
+import { resolveRequestDate } from '../middleware/requestDate.js';
 import { attachRepos } from '../repositories/middleware.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
@@ -79,7 +80,7 @@ export function createApplicationsRouter({
         });
       }
 
-      const record = await req.repos.applications.create(result.data);
+      const record = await req.repos.applications.create(result.data, resolveRequestDate(req));
       return res.status(201).json({ data: record });
     } catch (error) {
       return next(error);
@@ -158,7 +159,7 @@ export function createApplicationsRouter({
         }
       }
 
-      const record = await req.repos.applications.update(id, result.data);
+      const record = await req.repos.applications.update(id, result.data, resolveRequestDate(req));
       if (!record) {
         return sendNotFound(res);
       }
@@ -176,7 +177,7 @@ export function createApplicationsRouter({
         return sendInvalidId(res);
       }
 
-      const record = await req.repos.applications.archive(id);
+      const record = await req.repos.applications.archive(id, resolveRequestDate(req));
       if (!record) {
         return sendNotFound(res);
       }

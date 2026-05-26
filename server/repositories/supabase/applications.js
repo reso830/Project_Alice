@@ -84,7 +84,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
     return (data ?? []).map(toRecord);
   }
 
-  async function create(fields) {
+  async function create(fields, now = currentDate()) {
     const sanitized = stripUserId(fields);
     const row = {
       status: DEFAULT_STATUS,
@@ -96,7 +96,6 @@ export function createSupabaseApplicationsRepository(client, userId) {
       metadata: null,
       ...toRow(sanitized),
     };
-    const now = currentDate();
     row.created_at = now;
     row.updated_at = now;
     row.last_status_update = now;
@@ -111,7 +110,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
     return toRecord(data);
   }
 
-  async function update(id, fields) {
+  async function update(id, fields, now = currentDate()) {
     const sanitized = stripUserId(fields);
     const row = toRow(sanitized);
 
@@ -121,7 +120,6 @@ export function createSupabaseApplicationsRepository(client, userId) {
       return getById(id);
     }
 
-    const now = currentDate();
     row.updated_at = now;
 
     if (Object.hasOwn(sanitized, 'status')) {
@@ -143,7 +141,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
     return data ? toRecord(data) : null;
   }
 
-  async function archive(id) {
+  async function archive(id, now = currentDate()) {
     // SQLite's archive() sets archived=1 AND fav=0 in one statement; mirror
     // that exactly. Calling update({ archived: true }) would also work via
     // toRow's archived→fav side effect, but the explicit form here keeps
@@ -151,7 +149,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
     // update(). Native booleans here because the Postgres columns are bool.
     const { data, error } = await client
       .from('applications')
-      .update({ archived: true, fav: false, updated_at: currentDate() })
+      .update({ archived: true, fav: false, updated_at: now })
       .eq('id', id)
       .eq('user_id', userId)
       .select(SELECT_PROJECTION)

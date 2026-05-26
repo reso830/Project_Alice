@@ -1,12 +1,20 @@
 import { DEMO_STATUS, getAccessToken, getAuthState } from '../data/authStore.js';
 import * as demoStore from '../data/demoStore.js';
+import { toISODate } from '../utils/date.js';
 
 const NETWORK_ERROR_MESSAGE = 'Cannot connect to the backend — is the server running?';
 
 export async function request(method, path, body, { signal } = {}) {
   let response;
 
-  const headers = { 'Content-Type': 'application/json' };
+  // X-Client-Date carries the user's *local* YYYY-MM-DD. The server uses
+  // it to stamp audit columns (created_at, updated_at, last_status_update)
+  // in the user's wall-clock timezone instead of the deploy region's UTC.
+  // See server/middleware/requestDate.js and issue #43.
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Client-Date': toISODate(),
+  };
   const token = getAccessToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;

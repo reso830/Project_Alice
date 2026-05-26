@@ -234,7 +234,12 @@ export function toRow(fields) {
   }, {});
 }
 
-export function currentDate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Server-side fallback for "today" when the client did not send
+// `X-Client-Date` (e.g. direct curl/test/script callers, or the seed RPC).
+// UTC is the canonical fallback so SQLite and hosted modes agree on the
+// fallback value regardless of the function's deploy region. Routes
+// override this per-request with the user's local date via
+// `resolveRequestDate(req)`. See issue #43.
+export function currentDate(d = new Date()) {
+  return d.toISOString().slice(0, 10);
 }

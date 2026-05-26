@@ -95,4 +95,45 @@ describe('SQLite applications repository', () => {
       expect(repo.archive(99999)).toBeNull();
     });
   });
+
+  // Issue #43 — wrapper must forward the caller-supplied `now` so audit
+  // timestamps reflect the request's local timezone, not the server's UTC
+  // fallback.
+
+  it('create() persists the supplied `now` into createdAt/updatedAt/lastStatusUpdate', async () => {
+    await withApplicationsRepository((repo) => {
+      const record = repo.create(validApplication(), '2030-01-15');
+      expect(record.createdAt).toBe('2030-01-15');
+      expect(record.updatedAt).toBe('2030-01-15');
+      expect(record.lastStatusUpdate).toBe('2030-01-15');
+    });
+  });
+
+  it('update() persists the supplied `now` into updatedAt (and lastStatusUpdate on status change)', async () => {
+    await withApplicationsRepository((repo) => {
+      const record = repo.create(validApplication(), '2030-01-15');
+      const updated = repo.update(record.id, { status: 'interview' }, '2030-02-20');
+      expect(updated.updatedAt).toBe('2030-02-20');
+      expect(updated.lastStatusUpdate).toBe('2030-02-20');
+      // createdAt is immutable.
+      expect(updated.createdAt).toBe('2030-01-15');
+    });
+  });
+
+  it('update() preserves the no-op contract: no fields → no updatedAt write', async () => {
+    await withApplicationsRepository((repo) => {
+      const record = repo.create(validApplication(), '2030-01-15');
+      const result = repo.update(record.id, {}, '2030-02-20');
+      // Returns the current record unchanged; updatedAt stays at create time.
+      expect(result.updatedAt).toBe('2030-01-15');
+    });
+  });
+
+  it('archive() persists the supplied `now` into updatedAt', async () => {
+    await withApplicationsRepository((repo) => {
+      const record = repo.create(validApplication(), '2030-01-15');
+      const archived = repo.archive(record.id, '2030-03-10');
+      expect(archived.updatedAt).toBe('2030-03-10');
+    });
+  });
 });
