@@ -137,7 +137,11 @@ export function render(activePage) {
   brandText.className = 'topbar-brand-text';
   brandText.textContent = 'Project Alice';
 
-  brand.append(brandMark, brandText);
+  const brandTextShort = document.createElement('span');
+  brandTextShort.className = 'topbar-brand-text--short';
+  brandTextShort.textContent = 'Alice';
+
+  brand.append(brandMark, brandText, brandTextShort);
 
   const pageNav = document.createElement('nav');
   pageNav.className = 'topbar-nav';

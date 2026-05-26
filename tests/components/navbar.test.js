@@ -44,6 +44,7 @@ describe('Navbar — top bar structure (Phase 13)', () => {
     expect(topbar.querySelector('.topbar-brand')).not.toBeNull();
     expect(topbar.querySelector('.topbar-brand-mark')).not.toBeNull();
     expect(topbar.querySelector('.topbar-brand-text')?.textContent).toBe('Project Alice');
+    expect(topbar.querySelector('.topbar-brand-text--short')?.textContent).toBe('Alice');
     expect(topbar.querySelector('.topbar-nav')).not.toBeNull();
     expect(topbar.querySelector('.topbar-identity')).not.toBeNull();
   });

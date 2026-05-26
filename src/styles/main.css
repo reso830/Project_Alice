@@ -1452,12 +1452,17 @@ button:focus-visible,
   object-fit: contain;
 }
 
-.topbar-brand-text {
+.topbar-brand-text,
+.topbar-brand-text--short {
   color: var(--on-navy-fg);
   font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -.3px;
+}
+
+.topbar-brand-text--short {
+  display: none;
 }
 
 .topbar-nav {
@@ -3345,11 +3350,15 @@ textarea.modal-inline-control {
 
 }
 
-/* Fold-narrow — Phase 13: hide the wordmark below 380px so the 38px logo mark +
-   sign-out icon can still fit comfortably on the smallest realistic phone width. */
+/* Fold-narrow — Phase 13: swap the full "Project Alice" wordmark for a short
+   "Alice" label below 380px so the brand keeps its identity beside the 38px logo
+   mark and sign-out icon on the smallest realistic phone width. */
 @media (max-width: 379px) {
   .topbar-brand-text {
     display: none;
+  }
+  .topbar-brand-text--short {
+    display: inline;
   }
 }
 
