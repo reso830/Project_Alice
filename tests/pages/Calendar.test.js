@@ -366,6 +366,35 @@ describe('Calendar page', () => {
     expect(Toast.show).not.toHaveBeenCalledWith('Application details failed to load', 'failure');
   });
 
+  it('drops state writes and the failure toast when unmounted mid-mount', async () => {
+    const host = mountHost();
+    let resolveApps;
+    let rejectApps;
+    api.getAll
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveApps = resolve;
+      }))
+      .mockImplementationOnce(() => new Promise((_, reject) => {
+        rejectApps = reject;
+      }));
+    api.getProfile.mockResolvedValue(null);
+
+    const successPending = Calendar.mount(host);
+    Calendar.unmount();
+    resolveApps(fixtureApps());
+    await successPending;
+
+    expect(host.children).toHaveLength(0);
+    expect(host.querySelector('.cal-action-panel')).toBeNull();
+
+    const failurePending = Calendar.mount(host);
+    Calendar.unmount();
+    rejectApps(new Error('late failure'));
+    await failurePending;
+
+    expect(Toast.show).not.toHaveBeenCalledWith('Could not load calendar', 'failure');
+  });
+
   it('unmount clears the container and component singletons', async () => {
     const host = await mountWith();
 

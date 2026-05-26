@@ -94,6 +94,12 @@ describe('ActionPanel', () => {
     expect(document.querySelector('.ap-chip.today').getAttribute('aria-label'))
       .toBe('Expand panel \u2014 Today, 2 entries');
     expect(document.querySelector('.cal-section')).toBeNull();
+
+    const bodyId = button.getAttribute('aria-controls');
+    const body = document.getElementById(bodyId);
+    expect(body).not.toBeNull();
+    expect(body.classList).toContain('cal-action-panel__body');
+    expect(body.hidden).toBe(true);
   });
 
   it('omits zero-count chips and renders caught-up copy when all counts are zero', () => {

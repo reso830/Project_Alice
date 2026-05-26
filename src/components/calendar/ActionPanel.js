@@ -480,11 +480,13 @@ function renderIntoHost() {
 
   if (_collapsed) {
     root.append(createCollapsedPreview(root, counts));
+    body.hidden = true;
   } else {
     appendSections(body, _props, today, suggestions, upcoming);
     body.append(createCollapseRow(root));
-    root.append(body);
   }
+
+  root.append(body);
 
   _host.append(root);
 }

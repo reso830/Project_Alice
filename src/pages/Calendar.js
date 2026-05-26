@@ -382,6 +382,7 @@ export async function mount(container) {
   const today = new Date();
   _container = container;
   _mountId += 1;
+  const mountId = _mountId;
   _applications = [];
   _viewYear = today.getFullYear();
   _viewMonth = today.getMonth();
@@ -399,13 +400,23 @@ export async function mount(container) {
       api.getAll(),
       api.getProfile().catch(() => null),
     ]);
+    if (!isCurrentMount(mountId)) {
+      return;
+    }
     _applications = applications;
     _greeting = formatGreeting(_greeting, profileName(profile));
     _dismissals = dismissals.load(currentAuthState());
   } catch {
+    if (!isCurrentMount(mountId)) {
+      return;
+    }
     _applications = [];
     _dismissals = [];
     Toast.show('Could not load calendar', 'failure');
+  }
+
+  if (!isCurrentMount(mountId)) {
+    return;
   }
 
   _render();
