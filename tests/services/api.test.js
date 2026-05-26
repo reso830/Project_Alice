@@ -7,6 +7,7 @@ import {
   getProfile,
   request,
   saveProfile,
+  unarchive,
   update,
 } from '../../src/services/api.js';
 import * as authStore from '../../src/data/authStore.js';
@@ -87,6 +88,27 @@ describe('api service', () => {
     }));
   });
 
+  it('requests archived list responses with the archived view query', async () => {
+    const records = [{
+      id: 1,
+      companyName: 'Archived Co',
+      jobTitle: 'Past Role',
+      status: 'rejected',
+      archived: true,
+      archivedDate: '2026-05-26',
+    }];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: records }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getAll({ view: 'archived' })).resolves.toEqual(records);
+    expect(fetchMock).toHaveBeenCalledWith('/api/applications?view=archived', expect.objectContaining({
+      method: 'GET',
+    }));
+  });
+
   it('returns data from archive responses', async () => {
     const record = {
       id: 1,
@@ -103,6 +125,27 @@ describe('api service', () => {
 
     await expect(archive(1)).resolves.toEqual(record);
     expect(fetchMock).toHaveBeenCalledWith('/api/applications/1/archive', expect.objectContaining({
+      method: 'POST',
+    }));
+  });
+
+  it('returns data from unarchive responses', async () => {
+    const record = {
+      id: 1,
+      companyName: 'Acme Corp',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+      archived: false,
+      archivedDate: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: record }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(unarchive(1)).resolves.toEqual(record);
+    expect(fetchMock).toHaveBeenCalledWith('/api/applications/1/unarchive', expect.objectContaining({
       method: 'POST',
     }));
   });

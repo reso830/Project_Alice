@@ -175,6 +175,7 @@ describe('updateSchema', () => {
   it('strips client-managed fields silently', () => {
     expect(updateSchema.parse({
       id: 1,
+      archivedDate: '2099-01-01',
       createdAt: '2026-04-20',
       status: 'interview',
     })).toEqual({ status: 'interview' });

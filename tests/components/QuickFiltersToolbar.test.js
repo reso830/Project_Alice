@@ -52,6 +52,7 @@ function renderToolbar(overrides = {}) {
     onSortChange: vi.fn(),
     onClearAll: vi.fn(),
     onAddApplication: vi.fn(),
+    onViewChange: vi.fn(),
     ...overrides,
   };
   const toolbar = QuickFiltersToolbar.render(options);
@@ -92,7 +93,7 @@ describe('QuickFiltersToolbar', () => {
   it('renders the default label, count, and inactive filter buttons', () => {
     const { toolbar } = renderToolbar();
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe(`Applications ${apps.length}`);
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toContain('Applications');
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe(String(apps.length));
     expect(toolbar.querySelector('.toolbar__controls')).not.toBeNull();
     expect(toolbar.classList.contains('subheader')).toBe(true);
@@ -127,6 +128,88 @@ describe('QuickFiltersToolbar', () => {
     expect(toolbar.querySelector('.erase-btn')).toBeNull();
   });
 
+  it('opens the view popup and selects the archived view', () => {
+    const onViewChange = vi.fn();
+    const { toolbar } = renderToolbar({
+      onViewChange,
+      currentView: 'active',
+      viewCounts: { activeCount: 8, archivedCount: 5 },
+    });
+
+    toolbar.querySelector('.app-title-trigger')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(document.querySelector('.view-popup')).not.toBeNull();
+    expect([...document.querySelectorAll('.view-popup__option-label')]
+      .map((node) => node.textContent)).toEqual(['Applications', 'Archived']);
+    expect([...document.querySelectorAll('.view-popup__count')]
+      .map((node) => node.textContent)).toEqual(['8', '5']);
+
+    [...document.querySelectorAll('.view-popup__option')]
+      .find((button) => button.textContent.includes('Archived'))
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(onViewChange).toHaveBeenCalledWith('archived');
+    expect(document.querySelector('.view-popup')).toBeNull();
+  });
+
+  it('uses unfiltered popup counts while the chip uses the filtered current-view count', () => {
+    const { toolbar } = renderToolbar({
+      currentView: 'archived',
+      filteredCount: 1,
+      totalCount: 5,
+      viewCounts: { activeCount: 8, archivedCount: 5 },
+      filterState: { ...DEFAULT_FILTER_STATE, statuses: ['interview'] },
+    });
+
+    expect(toolbar.querySelector('.app-title-trigger')?.textContent).toContain('Archived');
+    expect(toolbar.querySelector('.count-badge')?.textContent).toBe('1');
+
+    toolbar.querySelector('.app-title-trigger')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect([...document.querySelectorAll('.view-popup__count')]
+      .map((node) => node.textContent)).toEqual(['8', '5']);
+  });
+
+  it('refreshes view popup counts when count props change', () => {
+    const { toolbar } = renderToolbar({
+      viewCounts: { activeCount: 8, archivedCount: 5 },
+    });
+
+    toolbar.querySelector('.app-title-trigger')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    expect([...document.querySelectorAll('.view-popup__count')]
+      .map((node) => node.textContent)).toEqual(['8', '5']);
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: apps.length,
+      filterState: DEFAULT_FILTER_STATE,
+      sortState: DEFAULT_SORT_STATE,
+      viewCounts: { activeCount: 7, archivedCount: 6 },
+    });
+
+    expect([...document.querySelectorAll('.view-popup__count')]
+      .map((node) => node.textContent)).toEqual(['7', '6']);
+  });
+
+  it('closes the view popup on Escape and outside click', () => {
+    const { toolbar } = renderToolbar();
+    const trigger = toolbar.querySelector('.app-title-trigger');
+
+    trigger.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    expect(document.querySelector('.view-popup')).not.toBeNull();
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.querySelector('.view-popup')).toBeNull();
+
+    trigger.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    expect(document.querySelector('.view-popup')).not.toBeNull();
+    document.body.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    expect(document.querySelector('.view-popup')).toBeNull();
+  });
+
   it('renders the new filter buttons after the existing filters', () => {
     const { toolbar } = renderToolbar();
 
@@ -154,7 +237,7 @@ describe('QuickFiltersToolbar', () => {
       sortState: DEFAULT_SORT_STATE,
     });
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results 1');
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toContain('Applications');
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe('1');
     expect(toolbar.querySelector('[aria-label="Filter by Status"]')?.getAttribute('aria-pressed'))
       .toBe('true');
@@ -560,7 +643,7 @@ describe('QuickFiltersToolbar', () => {
       sortState: DEFAULT_SORT_STATE,
     });
 
-    expect(toolbar.querySelector('.toolbar__label')?.textContent).toBe('Results 0');
+    expect(toolbar.querySelector('.toolbar__label')?.textContent).toContain('Applications');
     expect(toolbar.querySelector('.count-badge')?.textContent).toBe('0');
     expect(toolbar.querySelector('.erase-btn')).not.toBeNull();
   });

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../src/services/api.js', () => ({
   archive: vi.fn(),
   create: vi.fn(),
+  unarchive: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -1351,15 +1352,16 @@ describe('Modal', () => {
     expect(document.querySelector('#modal-status-badge').textContent).toBe(STATUS_CONFIG.applied.label);
   });
 
-  it('archives only after confirmation and reports the updated record', async () => {
+  it('archives only after confirmation and preserves favorite state in the updated record', async () => {
     const onArchiveSuccess = vi.fn();
+    const favorited = application({ fav: true });
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     ConfirmDialog.show
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
-    api.archive.mockResolvedValue({ ...application(), archived: true, fav: false });
+    api.archive.mockResolvedValue({ ...favorited, archived: true, fav: true });
 
-    Modal.open(application(), { onArchiveSuccess });
+    Modal.open(favorited, { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
     await Promise.resolve();
 
@@ -1371,8 +1373,85 @@ describe('Modal', () => {
     await Promise.resolve();
 
     expect(api.archive).toHaveBeenCalledWith(1);
-    expect(onArchiveSuccess).toHaveBeenCalledWith(expect.objectContaining({ archived: true }));
+    expect(onArchiveSuccess).toHaveBeenCalledWith(expect.objectContaining({ archived: true, fav: true }));
     expect(document.querySelector('.modal-backdrop')).toBeNull();
+  });
+
+  it('opens archived rows in read-only archived mode', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      archived: true,
+      archivedDate: '2026-05-01',
+      jobPostingUrl: 'https://example.com/job',
+      skills: ['JavaScript'],
+      preferredSkills: ['React'],
+    }));
+
+    const actions = [...document.querySelectorAll('.modal-quick-action')];
+
+    expect(document.querySelector('.archived-stamp')?.textContent).toBe('Archived');
+    expect(actions).toHaveLength(2);
+    expect(actions[0].classList.contains('modal-quick-action--unarchive')).toBe(true);
+    expect(actions[1].classList.contains('modal-quick-action--close')).toBe(true);
+    expect(document.querySelector('.modal-quick-action--favorite')).toBeNull();
+    expect(document.querySelector('.modal-quick-action--status')).toBeNull();
+    expect(document.querySelector('.modal-quick-action--archive')).toBeNull();
+    expect(document.querySelector('.modal-footer')).toBeNull();
+    expect(document.querySelector('#modal-status-badge').getAttribute('role')).toBeNull();
+
+    document.querySelector('#modal-status-badge').click();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+
+    getFieldByLabel('Company').click();
+    getFieldByLabel('Salary').click();
+    getFieldByLabel('Responsibilities').click();
+    expect(document.querySelector('.modal-inline-control')).toBeNull();
+    expect(document.querySelector('.skill-tag__remove')).toBeNull();
+    expect(document.querySelector('.modal-chip-input')).toBeNull();
+  });
+
+  it('closes archived mode immediately from Escape and backdrop without discard confirmation', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ archived: true }));
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(modalBackdrop()).toBeNull();
+
+    Modal.open(application({ archived: true }));
+    modalBackdrop().dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    expect(modalBackdrop()).toBeNull();
+    expect(ConfirmDialog.show).not.toHaveBeenCalled();
+  });
+
+  it('unarchives from archived mode, calls callback, and closes', async () => {
+    const onUnarchiveSuccess = vi.fn();
+    const archived = application({ archived: true, archivedDate: '2026-05-01' });
+    const restored = { ...archived, archived: false, archivedDate: null };
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.unarchive.mockResolvedValue(restored);
+
+    Modal.open(archived, { onUnarchiveSuccess });
+    document.querySelector('.modal-quick-action--unarchive').click();
+    await flushPromises();
+
+    expect(api.unarchive).toHaveBeenCalledWith(1);
+    expect(onUnarchiveSuccess).toHaveBeenCalledWith(restored);
+    expect(modalBackdrop()).toBeNull();
+  });
+
+  it('does not save archived mode on Cmd+S', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ archived: true }));
+    document.dispatchEvent(new window.KeyboardEvent('keydown', {
+      key: 's',
+      metaKey: true,
+      bubbles: true,
+    }));
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(modalBackdrop()).not.toBeNull();
   });
 
   it('keeps the overlay open and shows an error when archive fails', async () => {

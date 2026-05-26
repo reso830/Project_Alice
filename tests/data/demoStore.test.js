@@ -190,8 +190,8 @@ describe('demoStore.create', () => {
       responsibilities: 'Demo write coverage.',
       skills: ['Vitest'],
     });
-    expect(created.id).toBe(24);
-    expect(demoStore.getAll()[0].id).toBe(24);
+    expect(created.id).toBe(26);
+    expect(demoStore.getAll()[0].id).toBe(26);
     expect(demoStore.getAll()[0].companyName).toBe('New Co');
     expect(demoStore.getAll()).toHaveLength(24);
   });
@@ -292,23 +292,86 @@ describe('demoStore.update', () => {
 // --- archive ----------------------------------------------------------------
 
 describe('demoStore.archive', () => {
-  it('removes the row and returns the pre-removal copy', () => {
+  it('keeps the row in the store while moving it out of the active list', () => {
+    demoStore.loadSeed();
+    const initialTotal = demoStore.getAll().length + demoStore.getAllArchived().length;
+    const before = demoStore.getById(1);
+    const archived = demoStore.archive(1, '2030-03-10');
+
+    expect(archived.id).toBe(1);
+    expect(archived.archived).toBe(true);
+    expect(archived.archivedDate).toBe('2030-03-10');
+    expect(archived.fav).toBe(before.fav);
+    expect(demoStore.getById(1)).toMatchObject({
+      id: 1,
+      archived: true,
+      archivedDate: '2030-03-10',
+    });
+    expect(demoStore.getAll().some((row) => row.id === 1)).toBe(false);
+    expect(demoStore.getAllArchived().some((row) => row.id === 1)).toBe(true);
+    expect(demoStore.getAll()).toHaveLength(22);
+    expect(demoStore.getAll().length + demoStore.getAllArchived().length).toBe(initialTotal);
+  });
+
+  it('sets archivedDate to today by default', () => {
     demoStore.loadSeed();
     const archived = demoStore.archive(1);
-    expect(archived.id).toBe(1);
-    expect(demoStore.getById(1)).toBeUndefined();
-    expect(demoStore.getAll()).toHaveLength(22);
+
+    expect(archived.archivedDate).toBe(toISODate(new Date()));
+  });
+
+  it('preserves the first archivedDate on repeated archive calls', () => {
+    demoStore.loadSeed();
+    const first = demoStore.archive(1, '2030-03-10');
+    const second = demoStore.archive(1, '2030-04-20');
+
+    expect(first.archivedDate).toBe('2030-03-10');
+    expect(second.archivedDate).toBe('2030-03-10');
+  });
+
+  it('unarchive flips the row active again and preserves the rest of the record', () => {
+    demoStore.loadSeed();
+    const before = demoStore.getById(1);
+    demoStore.archive(1, '2030-03-10');
+
+    const restored = demoStore.unarchive(1);
+
+    expect(restored).toMatchObject({
+      ...before,
+      archived: false,
+      archivedDate: null,
+    });
+    expect(demoStore.getAll().some((row) => row.id === 1)).toBe(true);
+    expect(demoStore.getAllArchived().some((row) => row.id === 1)).toBe(false);
+  });
+
+  it('round-trips a favorited row through archive and unarchive', () => {
+    demoStore.loadSeed();
+    const favorite = demoStore.getAll().find((row) => row.fav === true);
+
+    const archived = demoStore.archive(favorite.id, '2030-03-10');
+    const restored = demoStore.unarchive(favorite.id);
+
+    expect(archived.fav).toBe(true);
+    expect(restored.fav).toBe(true);
   });
 
   it('throws NOT_FOUND for an unknown id', () => {
     demoStore.loadSeed();
-    let captured;
+    let archiveError;
+    let unarchiveError;
     try {
       demoStore.archive(9_999);
     } catch (error) {
-      captured = error;
+      archiveError = error;
     }
-    expect(captured?.code).toBe('NOT_FOUND');
+    try {
+      demoStore.unarchive(9_999);
+    } catch (error) {
+      unarchiveError = error;
+    }
+    expect(archiveError?.code).toBe('NOT_FOUND');
+    expect(unarchiveError?.code).toBe('NOT_FOUND');
   });
 });
 

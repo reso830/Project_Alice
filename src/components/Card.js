@@ -3,6 +3,7 @@ import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import * as api from '../services/api.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
@@ -83,14 +84,20 @@ export function render(application, callbacks = {}) {
     'card-btn--archive',
     createArchiveIcon(),
   );
+  const unarchiveButton = createActionButton(
+    'card-btn--unarchive',
+    createSvgIcon('M3 12a9 9 0 0 0 15 6.7M3 12H1m2 0 3 3m-3-3 3-3M21 12A9 9 0 0 0 6 5.3'),
+  );
 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
   starButton.setAttribute('aria-label', 'Star application');
   archiveButton.setAttribute('aria-label', 'Archive application permanently from active list');
+  unarchiveButton.setAttribute('aria-label', 'Unarchive application');
+  unarchiveButton.title = 'Unarchive';
 
-  card.className = 'card';
+  card.className = application.archived === true ? 'card card-archived' : 'card';
   card.dataset.id = application.id;
   card.tabIndex = 0;
   card.setAttribute(
@@ -114,7 +121,9 @@ export function render(application, callbacks = {}) {
   idPill.textContent = application.id;
 
   date.className = 'date';
-  date.textContent = toDisplayDate(application.lastStatusUpdate);
+  date.textContent = application.archived === true
+    ? `Archived ${toDisplayDate(application.archivedDate ?? application.lastStatusUpdate)}`
+    : toDisplayDate(application.lastStatusUpdate);
 
   jobTitle.className = 'position';
   jobTitle.textContent = displayValue(application.jobTitle);
@@ -166,6 +175,15 @@ export function render(application, callbacks = {}) {
   archiveButton.addEventListener('click', (event) => {
     stopAction(event, () => callbacks.onArchive?.(application.id));
   });
+  unarchiveButton.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    try {
+      const updated = await api.unarchive(application.id);
+      callbacks.onUnarchiveSuccess?.(updated);
+    } catch (error) {
+      callbacks.onError?.(error);
+    }
+  });
 
   card.addEventListener('click', (event) => {
     if (!event.target.closest('.card-btn')) {
@@ -184,8 +202,19 @@ export function render(application, callbacks = {}) {
     }
   });
 
-  rowOneMeta.append(idPill, createStatusBadge(application.status), date);
-  rowOneActions.append(editButton, statusButton, copyButton, starButton, archiveButton);
+  rowOneMeta.append(idPill, createStatusBadge(application.status));
+  if (application.archived === true) {
+    const stamp = document.createElement('span');
+    stamp.className = 'card-archived-stamp';
+    stamp.textContent = 'Archived';
+    rowOneMeta.append(stamp);
+  }
+  rowOneMeta.append(date);
+  if (application.archived === true) {
+    rowOneActions.append(unarchiveButton);
+  } else {
+    rowOneActions.append(editButton, statusButton, copyButton, starButton, archiveButton);
+  }
   rowOne.append(rowOneMeta, rowOneActions);
   rowTwoText.append(jobTitle, company);
   rowTwo.append(rowTwoText, CompatBar.render(application.compat));

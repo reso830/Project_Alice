@@ -1,12 +1,15 @@
 // Demo seed fixture for the portfolio demo (feature 020). Mirrors the
-// 23 records in `server/seeds/applicationsData.js#DEMO_RECORDS` and the
-// `server/seeds/profileData.js#DEMO_PROFILE` persona, translated from
-// SQLite storage shape to the frontend shape consumed by `src/pages/*`.
+// 23 active records in `server/seeds/applicationsData.js#DEMO_RECORDS`,
+// plus two client-only archived rows used by the archive-view demo, and
+// the `server/seeds/profileData.js#DEMO_PROFILE` persona. Records are
+// translated from SQLite storage shape to the frontend shape consumed by
+// `src/pages/*`.
 //
 // Parity rule: when the SQLite seed data changes, mirror the change here
 // in the same PR. `tests/data/demoStore.test.js` enforces parity by
 // asserting `(companyName, jobTitle, status)` triples align by index
-// with `DEMO_RECORDS` and that `getProfile()` deep-equals `DEMO_PROFILE`.
+// with `DEMO_RECORDS` for the active list and that `getProfile()`
+// deep-equals `DEMO_PROFILE`.
 //
 // Dates: the SQLite seed uses hard-coded calendar dates that drift into
 // the past over time. This fixture preserves the **relative spacing**
@@ -126,6 +129,14 @@ const SOURCE_TIMELINES = [
   ],
   [
     { id: 1, date: '2026-04-26', status: 'wishlisted', text: 'Wishlisted recently posted frontend architecture role.' },
+  ],
+  [
+    { id: 1, date: '2026-02-20', status: 'applied', text: 'Applied to archived favorite demo role.' },
+    { id: 2, date: '2026-03-01', status: 'assessment', text: 'Archived favorite row: assessment stayed open before archiving.' },
+  ],
+  [
+    { id: 1, date: '2026-02-28', status: 'applied', text: 'Applied to archived terminal demo role.' },
+    { id: 2, date: '2026-03-10', status: 'rejected', text: 'Archived terminal row: rejected before the record was archived.' },
   ],
 ];
 
@@ -635,6 +646,56 @@ const SOURCE_RECORDS = [
     compatNotes: 'Interesting frontend architecture scope.',
     generalNotes: null,
     preferredSkills: ['Webpack', 'Module federation'],
+  },
+  // Archived demo coverage: favorite non-terminal row for restore/fav preservation.
+  {
+    companyName: 'Archive Labs',
+    jobTitle: 'Design Systems Engineer',
+    status: 'assessment',
+    compat: 81,
+    fav: true,
+    salary: 132000,
+    sourcePlatform: 'LinkedIn',
+    jobPostingUrl: 'https://jobs.example.com/archive-labs-ds',
+    recruiter: 'Mina Brooks',
+    notes: 'Archived after the assessment window moved behind a stronger pipeline.',
+    responsibilities: 'Maintain a production component library while coordinating accessibility fixes, token migrations, and release notes across product teams.',
+    skills: ['React', 'Design systems', 'Accessibility', 'CSS'],
+    applicationDate: '2026-02-20',
+    lastStatusUpdate: '2026-03-01',
+    location: null,
+    shift: 'Day',
+    workSetup: 'Remote',
+    compatNotes: 'Strong design-system overlap.',
+    generalNotes: null,
+    preferredSkills: ['Figma', 'Storybook'],
+    archived: true,
+    archivedDate: '2026-04-15',
+  },
+  // Archived demo coverage: terminal non-favorite row for restore edge cases.
+  {
+    companyName: 'Beacon Robotics',
+    jobTitle: 'Robotics QA Engineer',
+    status: 'rejected',
+    compat: 46,
+    fav: false,
+    salary: 98000,
+    sourcePlatform: 'Company website',
+    jobPostingUrl: 'https://jobs.example.com/beacon-robotics-qa',
+    recruiter: 'Owen Malik',
+    notes: 'Archived after a polite rejection clarified the role needed heavier hardware QA depth.',
+    responsibilities: 'Validate robotic picking workflows by writing browser dashboards, test plans, and incident summaries for hardware and software partners.',
+    skills: ['JavaScript', 'QA', 'Robotics', 'Test planning'],
+    applicationDate: '2026-02-28',
+    lastStatusUpdate: '2026-03-10',
+    location: 'Austin, TX',
+    shift: 'Mid',
+    workSetup: 'Hybrid',
+    compatNotes: null,
+    generalNotes: null,
+    preferredSkills: ['Playwright', 'Hardware QA'],
+    archived: true,
+    archivedDate: '2026-04-20',
   },
 ];
 

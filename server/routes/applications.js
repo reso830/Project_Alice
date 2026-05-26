@@ -89,7 +89,11 @@ export function createApplicationsRouter({
 
   router.get('/', async (req, res, next) => {
     try {
-      return res.status(200).json({ data: await req.repos.applications.getAll() });
+      const view = req.query.view === 'archived' ? 'archived' : 'active';
+      const data = view === 'archived'
+        ? await req.repos.applications.getAllArchived()
+        : await req.repos.applications.getAll();
+      return res.status(200).json({ data });
     } catch (error) {
       return next(error);
     }
@@ -178,6 +182,24 @@ export function createApplicationsRouter({
       }
 
       const record = await req.repos.applications.archive(id, resolveRequestDate(req));
+      if (!record) {
+        return sendNotFound(res);
+      }
+
+      return res.status(200).json({ data: record });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post('/:id/unarchive', async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id);
+      if (id === null) {
+        return sendInvalidId(res);
+      }
+
+      const record = await req.repos.applications.unarchive(id, resolveRequestDate(req));
       if (!record) {
         return sendNotFound(res);
       }

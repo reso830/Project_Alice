@@ -15,9 +15,12 @@ import { SortPanel } from './SortPanel.js';
 
 let _allApps = [];
 let _toolbarEl = null;
-let _labelEl = null;
 let _countEl = null;
 let _actionsEl = null;
+let _addButton = null;
+let _viewChip = null;
+let _viewTrigger = null;
+let _viewPopup = null;
 let _statusButton = null;
 let _salaryButton = null;
 let _compatButton = null;
@@ -36,6 +39,9 @@ let _filterState = null;
 let _sortState = null;
 let _salaryBounds = null;
 let _callbacks = {};
+let _currentView = 'active';
+let _viewCounts = { activeCount: 0, archivedCount: 0 };
+let _showAddButton = true;
 
 const SALARY_FILTER_MIN = 50000;
 const SALARY_FILTER_MAX = 250000;
@@ -85,21 +91,20 @@ function getActiveFilterCount(filterState) {
 }
 
 function updateLabel(totalCount, filteredCount, filterState) {
-  const active = isAnyFilterActive(filterState);
-
-  if (_labelEl) {
-    _labelEl.textContent = active ? 'Results' : 'Applications';
-    _labelEl.append(' ', _countEl);
-  }
+  const label = _currentView === 'archived' ? 'Archived' : 'Applications';
 
   if (_countEl) {
-    _countEl.textContent = String(active ? filteredCount : totalCount);
+    _countEl.textContent = String(isAnyFilterActive(filterState) ? filteredCount : totalCount);
   }
+
+  _viewTrigger?.querySelector('.app-title-trigger__label')?.replaceChildren(label);
+  _viewTrigger?.setAttribute('aria-label', `Switch application view, current view ${label}`);
 }
 
 function handleDocumentKeydown(event) {
   if (event.key === 'Escape') {
     closePanel({ restoreFocus: true });
+    closeViewPopup({ restoreFocus: true });
   }
 }
 
@@ -111,6 +116,15 @@ function handleDocumentClick(event) {
     && document.contains(event.target)
   ) {
     closePanel();
+  }
+
+  if (
+    _viewPopup
+    && !_viewPopup.contains(event.target)
+    && !_viewChip?.contains(event.target)
+    && document.contains(event.target)
+  ) {
+    closeViewPopup();
   }
 }
 
@@ -136,6 +150,23 @@ function closePanel({ restoreFocus = false } = {}) {
 
   if (restoreFocus) {
     button?.focus();
+  }
+}
+
+function closeViewPopup({ restoreFocus = false } = {}) {
+  const trigger = _viewTrigger;
+  const hadPopup = Boolean(_viewPopup);
+
+  _viewPopup?.remove();
+  _viewPopup = null;
+  _viewChip?.classList.remove('view-chip--open');
+  _viewTrigger?.setAttribute('aria-expanded', 'false');
+  if (!_openPanel) {
+    detachPanelListeners();
+  }
+
+  if (restoreFocus && hadPopup) {
+    trigger?.focus();
   }
 }
 
@@ -173,6 +204,7 @@ function openPanel(type, button, panel) {
   }
 
   closePanel();
+  closeViewPopup();
   _openPanelType = type;
   _openButton = button;
   _openPanel = panel;
@@ -180,6 +212,98 @@ function openPanel(type, button, panel) {
   document.body.append(panel);
   positionPanel(button, panel);
   attachPanelListeners();
+}
+
+function renderViewOption(view, label, count) {
+  const option = document.createElement('button');
+  const dot = document.createElement('span');
+  const labelEl = document.createElement('span');
+  const countEl = document.createElement('span');
+
+  option.type = 'button';
+  option.className = 'view-popup__option';
+  option.dataset.view = view;
+  option.setAttribute('role', 'menuitemradio');
+  option.setAttribute('aria-checked', String(_currentView === view));
+  if (_currentView === view) {
+    option.classList.add('view-popup__option--selected');
+  }
+  dot.className = 'view-popup__dot';
+  labelEl.className = 'view-popup__option-label';
+  labelEl.textContent = label;
+  countEl.className = 'view-popup__count';
+  countEl.textContent = String(count);
+
+  option.append(dot, labelEl, countEl);
+  option.addEventListener('click', () => {
+    closeViewPopup();
+    _callbacks.onViewChange?.(view);
+  });
+
+  return option;
+}
+
+function renderViewPopup() {
+  const popup = document.createElement('div');
+  const header = document.createElement('div');
+
+  popup.className = 'view-popup';
+  popup.setAttribute('role', 'menu');
+  header.className = 'view-popup__header';
+  header.textContent = 'View';
+  popup.append(
+    header,
+    renderViewOption('active', 'Applications', _viewCounts.activeCount),
+    renderViewOption('archived', 'Archived', _viewCounts.archivedCount),
+  );
+  return popup;
+}
+
+function openViewPopup() {
+  if (_viewPopup) {
+    closeViewPopup();
+    return;
+  }
+
+  closePanel();
+  _viewPopup = renderViewPopup();
+  _viewChip?.classList.add('view-chip--open');
+  _viewTrigger?.setAttribute('aria-expanded', 'true');
+  document.body.append(_viewPopup);
+  positionPanel(_viewTrigger, _viewPopup);
+  attachPanelListeners();
+}
+
+function createViewChip(count) {
+  const chip = document.createElement('span');
+  const trigger = document.createElement('button');
+  const label = document.createElement('span');
+  const chevron = document.createElement('span');
+  const badge = document.createElement('span');
+
+  chip.className = 'toolbar__label view-chip';
+  trigger.type = 'button';
+  trigger.className = 'app-title-trigger';
+  trigger.setAttribute('aria-haspopup', 'menu');
+  trigger.setAttribute('aria-expanded', 'false');
+  label.className = 'app-title-trigger__label';
+  chevron.className = 'app-title-trigger__chevron';
+  chevron.textContent = '▾';
+  badge.className = 'count-badge';
+  badge.setAttribute('aria-live', 'polite');
+  badge.textContent = String(count);
+
+  trigger.append(label, chevron);
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openViewPopup();
+  });
+  chip.append(trigger, badge);
+  _viewChip = chip;
+  _viewTrigger = trigger;
+  _countEl = badge;
+
+  return chip;
 }
 
 function renderStatusPanel() {
@@ -400,6 +524,12 @@ function createAddButton() {
   return button;
 }
 
+function syncAddVisibility() {
+  if (_addButton) {
+    _addButton.hidden = !_showAddButton;
+  }
+}
+
 function updateEraseButton(activeFilters) {
   if (!_actionsEl || !_eraseBtn || !_sortTrigger) {
     return;
@@ -472,6 +602,7 @@ function refreshOpenPanel() {
 
 export function render(options = {}) {
   closePanel();
+  closeViewPopup();
 
   _allApps = options.apps ?? [];
   _filterState = options.filterState;
@@ -482,13 +613,19 @@ export function render(options = {}) {
     onSortChange: options.onSortChange,
     onClearAll: options.onClearAll,
     onAddApplication: options.onAddApplication,
+    onViewChange: options.onViewChange,
   };
+  _currentView = options.currentView === 'archived' ? 'archived' : 'active';
+  _viewCounts = options.viewCounts ?? {
+    activeCount: options.totalCount ?? _allApps.length,
+    archivedCount: 0,
+  };
+  _showAddButton = options.showAddButton !== false;
 
   const toolbar = document.createElement('div');
   const left = document.createElement('div');
   const right = document.createElement('div');
-  const label = document.createElement('span');
-  const count = document.createElement('span');
+  const label = createViewChip(options.filteredCount ?? options.totalCount ?? _allApps.length);
   const controls = document.createElement('div');
   const filters = document.createElement('div');
   const actions = document.createElement('div');
@@ -566,9 +703,6 @@ export function render(options = {}) {
   toolbar.className = 'toolbar subheader';
   left.className = 'toolbar__left';
   right.className = 'toolbar__right';
-  label.className = 'toolbar__label';
-  count.className = 'count-badge';
-  count.setAttribute('aria-live', 'polite');
   controls.className = 'toolbar__controls';
   filters.className = 'toolbar__filters';
   actions.className = 'toolbar__actions';
@@ -590,9 +724,8 @@ export function render(options = {}) {
   toolbar.append(left, right);
 
   _toolbarEl = toolbar;
-  _labelEl = label;
-  _countEl = count;
   _actionsEl = actions;
+  _addButton = addButton;
   _statusButton = status.button;
   _salaryButton = salary.button;
   _compatButton = compat.button;
@@ -604,6 +737,7 @@ export function render(options = {}) {
   _sortButton = sort.button;
   _sortTrigger = sort.trigger;
   _eraseBtn = erase;
+  syncAddVisibility();
 
   update(toolbar, {
     apps: _allApps,
@@ -611,6 +745,9 @@ export function render(options = {}) {
     filteredCount: options.filteredCount ?? _allApps.length,
     filterState: _filterState,
     sortState: _sortState,
+    currentView: _currentView,
+    viewCounts: _viewCounts,
+    showAddButton: _showAddButton,
   });
 
   return toolbar;
@@ -625,12 +762,24 @@ export function update(el, options = {}) {
   _filterState = options.filterState ?? _filterState;
   _sortState = options.sortState ?? _sortState;
   _salaryBounds = options.salaryBounds ?? _salaryBounds;
+  if (options.currentView === 'active' || options.currentView === 'archived') {
+    _currentView = options.currentView;
+  }
+  _viewCounts = options.viewCounts ?? _viewCounts;
+  _showAddButton = options.showAddButton !== undefined ? options.showAddButton !== false : _showAddButton;
 
   const totalCount = options.totalCount ?? _allApps.length;
   const filteredCount = options.filteredCount ?? totalCount;
 
   updateLabel(totalCount, filteredCount, _filterState);
   updateButtons(totalCount, _filterState);
+  syncAddVisibility();
+  if (_viewPopup) {
+    const nextPopup = renderViewPopup();
+    _viewPopup.replaceWith(nextPopup);
+    _viewPopup = nextPopup;
+    positionPanel(_viewTrigger, _viewPopup);
+  }
   refreshOpenPanel();
 
   el.dataset.activeFilterCount = String(getActiveFilterCount(_filterState));

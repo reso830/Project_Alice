@@ -25,6 +25,13 @@ export function getAll(targetDb = db) {
     .map(toRecord);
 }
 
+export function getAllArchived(targetDb = db) {
+  return targetDb
+    .prepare('SELECT * FROM applications WHERE archived = 1 ORDER BY created_at DESC')
+    .all()
+    .map(toRecord);
+}
+
 export function create(fields, targetDb = db, now = currentDate()) {
   const row = {
     status: DEFAULT_STATUS,
@@ -85,15 +92,24 @@ export function update(id, fields, targetDb = db, now = currentDate()) {
 }
 
 export function archive(id, targetDb = db, now = currentDate()) {
-  const current = getById(id, targetDb);
-  if (!current) {
-    return null;
-  }
-
   targetDb.prepare(`
     UPDATE applications
-    SET archived = 1, fav = 0, updated_at = @updated_at
-    WHERE id = @id
+    SET archived = 1,
+        archived_date = @now,
+        updated_at = @updated_at
+    WHERE id = @id AND archived = 0
+  `).run({ id, now, updated_at: now });
+
+  return getById(id, targetDb);
+}
+
+export function unarchive(id, targetDb = db, now = currentDate()) {
+  targetDb.prepare(`
+    UPDATE applications
+    SET archived = 0,
+        archived_date = NULL,
+        updated_at = @updated_at
+    WHERE id = @id AND archived = 1
   `).run({ id, updated_at: now });
 
   return getById(id, targetDb);

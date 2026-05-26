@@ -30,6 +30,9 @@ let _filterState = { ...DEFAULT_FILTER_STATE };
 let _sortState = { ...DEFAULT_SORT_STATE };
 let _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
 let _toolbarEl = null;
+let _fabEl = null;
+let _currentView = 'active';
+let _viewCounts = { activeCount: 0, archivedCount: 0 };
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
 
@@ -51,6 +54,42 @@ function replaceApplication(application) {
 function removeApplication(id) {
   const numericId = coerceId(id);
   _applications = _applications.filter((application) => application.id !== numericId);
+}
+
+function isArchivedView() {
+  return _currentView === 'archived';
+}
+
+function getListOptions() {
+  return isArchivedView() ? { view: 'archived' } : {};
+}
+
+function updateUrlForView() {
+  const url = new URL(window.location.href);
+  if (isArchivedView()) {
+    url.searchParams.set('view', 'archived');
+  } else {
+    url.searchParams.delete('view');
+  }
+  window.history.replaceState({}, '', url.toString());
+}
+
+function syncFabVisibility() {
+  if (!_container) {
+    return;
+  }
+
+  if (isArchivedView()) {
+    _fabEl?.remove();
+    return;
+  }
+
+  if (!_fabEl) {
+    _fabEl = Fab.render({ onClick: onFabAddApplication });
+  }
+  if (!_fabEl.isConnected) {
+    _container.append(_fabEl);
+  }
 }
 
 function normalizeIntegerOrNull(value, { min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY } = {}) {
@@ -185,6 +224,9 @@ function updateToolbar() {
     filterState: _filterState,
     sortState: _sortState,
     salaryBounds: _salaryBounds,
+    currentView: _currentView,
+    viewCounts: _viewCounts,
+    showAddButton: !isArchivedView(),
   });
 }
 
@@ -211,6 +253,43 @@ function onClearAll() {
   updateToolbar();
 }
 
+async function loadList() {
+  _applications = await api.getAll(getListOptions());
+  _filterState = syncDynamicSelections(_filterState, _applications);
+  _salaryBounds = getSalaryBounds(_applications);
+}
+
+async function setView(next) {
+  const normalized = next === 'archived' ? 'archived' : 'active';
+  if (normalized === _currentView) {
+    return;
+  }
+
+  _currentView = normalized;
+  updateUrlForView();
+  _currentPage = 1;
+  syncFabVisibility();
+
+  try {
+    await loadList();
+    ensureCardList();
+    renderPage({ moveFocus: true });
+    updateToolbar();
+  } catch (error) {
+    removeEmptyState();
+    _cardList?.replaceChildren();
+    if (error.code === 'NETWORK_ERROR') {
+      _container.append(renderMessage(
+        'Cannot connect to the backend — is the server running?',
+        'empty-state empty-state--error',
+      ));
+    } else {
+      Toast.show('Applications failed to load', 'failure');
+      _container.append(renderMessage('Applications failed to load', 'empty-state empty-state--error'));
+    }
+  }
+}
+
 function applicationMutationCallbacks() {
   return {
     onApplicationCreate: (newRecord) => {
@@ -227,9 +306,29 @@ function applicationMutationCallbacks() {
     },
     onArchiveSuccess: (updated) => {
       removeApplication(updated.id);
+      _viewCounts = {
+        activeCount: Math.max(0, _viewCounts.activeCount - 1),
+        archivedCount: _viewCounts.archivedCount + 1,
+      };
       _salaryBounds = getSalaryBounds(_applications);
       renderPage();
       updateToolbar();
+      focusCardList();
+    },
+    onUnarchiveSuccess: (updated) => {
+      if (isArchivedView()) {
+        removeApplication(updated.id);
+      } else {
+        replaceApplication(updated);
+      }
+      _viewCounts = {
+        activeCount: _viewCounts.activeCount + 1,
+        archivedCount: Math.max(0, _viewCounts.archivedCount - 1),
+      };
+      _salaryBounds = getSalaryBounds(_applications);
+      renderPage();
+      updateToolbar();
+      Toast.show('Unarchived.', 'success');
       focusCardList();
     },
   };
@@ -248,9 +347,20 @@ function renderFilterEmptyState() {
   const emptyState = document.createElement('div');
   emptyState.className = 'empty-state empty-state--filter';
   emptyState.append(
-    'No applications match',
+    isArchivedView() ? 'No archived items match' : 'No applications match',
     document.createElement('br'),
     'the active filters.',
+  );
+  return emptyState;
+}
+
+function renderArchivedEmptyState() {
+  const emptyState = document.createElement('div');
+  emptyState.className = 'empty-state';
+  emptyState.append(
+    'Nothing archived yet.',
+    document.createElement('br'),
+    'Archived applications will appear here.',
   );
   return emptyState;
 }
@@ -304,7 +414,9 @@ function renderPage({ moveFocus = false } = {}) {
   if (sortedApplications.length === 0 && isAnyFilterActive(_filterState)) {
     _container.append(renderFilterEmptyState());
   } else if (sortedApplications.length === 0) {
-    _container.append(renderMessage('No applications yet. Add your first one!'));
+    _container.append(isArchivedView()
+      ? renderArchivedEmptyState()
+      : renderMessage('No applications yet. Add your first one!'));
   }
 
   const model = getPaginationModel(_currentPage, sortedApplications.length, PAGE_SIZE);
@@ -333,11 +445,16 @@ function createCallbacks() {
           },
           onArchiveSuccess: (updated) => {
             removeApplication(updated.id);
+            _viewCounts = {
+              activeCount: Math.max(0, _viewCounts.activeCount - 1),
+              archivedCount: _viewCounts.archivedCount + 1,
+            };
             _salaryBounds = getSalaryBounds(_applications);
             renderPage();
             updateToolbar();
             focusCardList();
           },
+          onUnarchiveSuccess: applicationMutationCallbacks().onUnarchiveSuccess,
         });
       } catch {
         Toast.show('Application details failed to load', 'failure');
@@ -376,8 +493,12 @@ function createCallbacks() {
       }
 
       try {
-        await api.archive(coerceId(id));
-        removeApplication(id);
+        const updated = await api.archive(coerceId(id));
+        removeApplication(updated.id);
+        _viewCounts = {
+          activeCount: Math.max(0, _viewCounts.activeCount - 1),
+          archivedCount: _viewCounts.archivedCount + 1,
+        };
         _salaryBounds = getSalaryBounds(_applications);
         renderPage();
         updateToolbar();
@@ -385,6 +506,10 @@ function createCallbacks() {
       } catch {
         Toast.show('Archive failed', 'failure');
       }
+    },
+    onUnarchiveSuccess: applicationMutationCallbacks().onUnarchiveSuccess,
+    onError: () => {
+      Toast.show('Unarchive failed', 'failure');
     },
     onCopyUrl: async (id) => {
       let application;
@@ -440,6 +565,11 @@ export async function mount(container) {
   _filterState = loadPersistedFilterState();
   _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
   _toolbarEl = null;
+  _fabEl = null;
+  _currentView = new window.URLSearchParams(window.location.search).get('view') === 'archived'
+    ? 'archived'
+    : 'active';
+  _viewCounts = { activeCount: 0, archivedCount: 0 };
 
   const toolbar = QuickFiltersToolbar.render({
     apps: _applications,
@@ -448,21 +578,35 @@ export async function mount(container) {
     filterState: _filterState,
     sortState: _sortState,
     salaryBounds: _salaryBounds,
+    currentView: _currentView,
+    viewCounts: _viewCounts,
+    showAddButton: !isArchivedView(),
     onFilterChange,
     onSortChange,
     onClearAll,
     onAddApplication,
+    onViewChange: setView,
   });
-  const fab = Fab.render({ onClick: onFabAddApplication });
+  const fab = isArchivedView() ? null : Fab.render({ onClick: onFabAddApplication });
   const skeleton = renderApplicationSkeleton();
 
   _toolbarEl = toolbar;
+  _fabEl = fab;
   toolbar.setAttribute('aria-busy', 'true');
   toolbar.setAttribute('aria-disabled', 'true');
-  _container.append(toolbar, fab, skeleton);
+  _container.append(...[toolbar, fab, skeleton].filter(Boolean));
 
   try {
-    _applications = await api.getAll();
+    const [currentList, activeList, archivedList] = await Promise.all([
+      api.getAll(getListOptions()),
+      isArchivedView() ? api.getAll({}) : Promise.resolve(null),
+      isArchivedView() ? Promise.resolve(null) : api.getAll({ view: 'archived' }),
+    ]);
+    _applications = currentList;
+    _viewCounts = {
+      activeCount: (isArchivedView() ? activeList : currentList).length,
+      archivedCount: (isArchivedView() ? currentList : archivedList).length,
+    };
     _filterState = syncDynamicSelections(_filterState, _applications);
     _salaryBounds = getSalaryBounds(_applications);
   } catch (error) {
@@ -493,12 +637,6 @@ export async function mount(container) {
   skeleton.remove();
   updateToolbar();
 
-  if (_applications.length === 0) {
-    _container.append(renderMessage('No applications yet. Add your first one!'));
-    window.scrollTo(0, 0);
-    return;
-  }
-
   ensureCardList();
   renderPage();
   window.scrollTo(0, 0);
@@ -517,6 +655,9 @@ export function unmount() {
   _filterState = { ...DEFAULT_FILTER_STATE };
   _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
   _toolbarEl = null;
+  _fabEl = null;
+  _currentView = 'active';
+  _viewCounts = { activeCount: 0, archivedCount: 0 };
 }
 
 export const Tracker = { mount, unmount };

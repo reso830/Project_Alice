@@ -33,6 +33,7 @@ describe('initSchema', () => {
       'updated_at',
       'archived',
       'metadata',
+      'archived_date',
       'location',
       'shift',
       'work_setup',

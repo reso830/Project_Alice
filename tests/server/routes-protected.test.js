@@ -152,6 +152,92 @@ describe('protected routers — hosted-mode wiring', () => {
   });
 });
 
+describe('/api/applications archive view and unarchive routes', () => {
+  const appPayload = {
+    companyName: 'Acme Corp',
+    jobTitle: 'Frontend Engineer',
+    status: 'applied',
+    responsibilities: 'Build product UI',
+    fav: true,
+  };
+
+  it('returns archived rows only for view=archived and active rows for unknown views', async () => {
+    await withApp({ requireAuth: stubPass }, async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(appPayload),
+      });
+      const active = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({ ...appPayload, companyName: 'Globex' }),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-05-26' },
+      });
+
+      const archivedList = await request(baseUrl, '/api/applications?view=archived');
+      expect(archivedList.status).toBe(200);
+      expect(archivedList.body.data.map((record) => record.id)).toEqual([created.body.data.id]);
+      expect(archivedList.body.data[0].archivedDate).toBe('2026-05-26');
+
+      const fallbackList = await request(baseUrl, '/api/applications?view=banana');
+      expect(fallbackList.status).toBe(200);
+      expect(fallbackList.body.data.map((record) => record.id)).toEqual([active.body.data.id]);
+    });
+  });
+
+  it('unarchives an application and preserves archivedDate against PATCH writes', async () => {
+    await withApp({ requireAuth: stubPass }, async (baseUrl) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(appPayload),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-05-26' },
+      });
+
+      const patched = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ archivedDate: '2099-01-01' }),
+      });
+      expect(patched.status).toBe(200);
+      expect(patched.body.data.archivedDate).toBe('2026-05-26');
+
+      const restored = await request(baseUrl, `/api/applications/${created.body.data.id}/unarchive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-05-27' },
+      });
+      expect(restored.status).toBe(200);
+      expect(restored.body.data).toMatchObject({
+        archived: false,
+        archivedDate: null,
+        fav: true,
+        status: 'applied',
+      });
+    });
+  });
+
+  it('returns 404 and 400 for unarchive error cases', async () => {
+    await withApp({ requireAuth: stubPass }, async (baseUrl) => {
+      const missing = await request(baseUrl, '/api/applications/9999/unarchive', { method: 'POST' });
+      const invalid = await request(baseUrl, '/api/applications/abc/unarchive', { method: 'POST' });
+
+      expect(missing.status).toBe(404);
+      expect(invalid.status).toBe(400);
+    });
+  });
+
+  it('requires auth for unarchive', async () => {
+    await withApp({ config: hostedConfig(), requireAuth: stubReject }, async (baseUrl) => {
+      const response = await request(baseUrl, '/api/applications/1/unarchive', { method: 'POST' });
+
+      expect(response.status).toBe(401);
+    });
+  });
+});
+
 describe('createApp hosted-config safety', () => {
   it('throws a clear error when called without repositories', () => {
     expect(() => createApp()).toThrow(/repositories is required/);

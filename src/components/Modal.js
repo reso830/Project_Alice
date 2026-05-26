@@ -35,6 +35,11 @@ let _mode = 'edit';
 let _saveController = null;
 let _onApplicationUpdate = null;
 let _onApplicationCreate = null;
+let _onUnarchiveSuccess = null;
+
+function canEdit() {
+  return _mode !== 'archived';
+}
 
 function getFocusableElements(root) {
   return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
@@ -129,6 +134,10 @@ function valuesDiffer(first, second) {
 }
 
 function _isDirty() {
+  if (_mode === 'archived') {
+    return false;
+  }
+
   if (_mode === 'create') {
     return true;
   }
@@ -203,10 +212,11 @@ function createEditableShell(label, fullSpan = false, { required = false } = {})
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('span');
 
-  row.className = fullSpan
-    ? 'modal-field modal-field--full modal-field--editable'
-    : 'modal-field modal-field--editable';
-  row.setAttribute('tabindex', '0');
+  row.className = fullSpan ? 'modal-field modal-field--full' : 'modal-field';
+  if (canEdit()) {
+    row.classList.add('modal-field--editable');
+    row.setAttribute('tabindex', '0');
+  }
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value modal-field__display';
   appendFieldLabel(labelEl, label, required);
@@ -254,6 +264,14 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
     renderTextDisplay(valueEl, key, formatter);
     row.classList.remove('modal-field--editing');
     _syncFooter();
+  }
+
+  if (!canEdit()) {
+    if (multiline) {
+      valueEl.className += displayClass;
+    }
+    renderTextDisplay(valueEl, key, formatter);
+    return row;
   }
 
   row.addEventListener('click', (event) => {
@@ -328,6 +346,11 @@ function makeInlineSelect({ label, key, options, fullSpan = false }) {
     valueEl.textContent = displayValue(_draft[key]);
   }
 
+  if (!canEdit()) {
+    renderDisplay();
+    return row;
+  }
+
   row.addEventListener('click', () => {
     if (row.classList.contains('modal-field--editing')) {
       return;
@@ -390,7 +413,9 @@ function makeChipEditor({ label, key }) {
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('div');
 
-  row.className = 'modal-field modal-field--full modal-field--editable';
+  row.className = canEdit()
+    ? 'modal-field modal-field--full modal-field--editable'
+    : 'modal-field modal-field--full';
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value modal-skills modal-chip-editor';
   labelEl.textContent = label;
@@ -417,8 +442,14 @@ function makeChipEditor({ label, key }) {
         renderChips();
         _syncFooter();
       });
-      tag.append(removeButton);
+      if (canEdit()) {
+        tag.append(removeButton);
+      }
       valueEl.append(tag);
+    }
+
+    if (!canEdit()) {
+      return;
     }
 
     const input = document.createElement('input');
@@ -490,6 +521,11 @@ function renderTitle() {
   required.className = 'modal-field__required modal-title-required';
   required.setAttribute('aria-hidden', 'true');
   required.textContent = '*';
+
+  if (!canEdit()) {
+    _titleRow.replaceChildren(title);
+    return;
+  }
 
   title.addEventListener('click', () => {
     const previousValue = _draft.jobTitle;
@@ -799,6 +835,7 @@ export function close() {
   _mode = 'edit';
   _onApplicationUpdate = null;
   _onApplicationCreate = null;
+  _onUnarchiveSuccess = null;
   Timeline.reset();
 }
 
@@ -808,8 +845,11 @@ export function open(application, {
   onApplicationUpdate,
   onApplicationCreate,
   onArchiveSuccess,
+  onUnarchiveSuccess,
 } = {}) {
-  const nextMode = mode === 'create' || application === null ? 'create' : 'edit';
+  const nextMode = mode === 'create' || application === null
+    ? 'create'
+    : (application.archived === true ? 'archived' : 'edit');
 
   if (nextMode === 'edit' && !application) {
     return;
@@ -823,6 +863,7 @@ export function open(application, {
   _original = nextMode === 'create' ? null : copyApplication(application);
   _onApplicationUpdate = onApplicationUpdate;
   _onApplicationCreate = onApplicationCreate;
+  _onUnarchiveSuccess = onUnarchiveSuccess;
 
   _savedScrollY = window.scrollY;
   document.body.style.overflow = 'hidden';
@@ -845,6 +886,10 @@ export function open(application, {
   const archiveButton = createQuickButton(
     'modal-quick-action--archive',
     createArchiveIcon(),
+  );
+  const unarchiveButton = createQuickButton(
+    'modal-quick-action--unarchive',
+    createSvgIcon('M3 12a9 9 0 0 0 15 6.7M3 12H1m2 0 3 3m-3-3 3-3M21 12A9 9 0 0 0 6 5.3'),
   );
   const closeButton = createQuickButton(
     'modal-quick-action--close',
@@ -902,16 +947,20 @@ export function open(application, {
   favoriteButton.setAttribute('aria-label', 'Toggle favorite');
   statusButton.setAttribute('aria-label', 'Change status');
   archiveButton.setAttribute('aria-label', 'Archive application');
+  unarchiveButton.setAttribute('aria-label', 'Unarchive application');
   closeButton.setAttribute('aria-label', 'Close');
   favoriteButton.title = 'Star / Unstar';
   statusButton.title = 'Change status';
   archiveButton.title = 'Archive';
+  unarchiveButton.title = 'Unarchive';
   closeButton.title = 'Close';
-  statusBadge.setAttribute('role', 'button');
-  statusBadge.setAttribute('tabindex', '0');
-  statusBadge.setAttribute('aria-label', 'Change status');
+  if (canEdit()) {
+    statusBadge.setAttribute('role', 'button');
+    statusBadge.setAttribute('tabindex', '0');
+    statusBadge.setAttribute('aria-label', 'Change status');
+  }
 
-  if (isTerminal) {
+  if (isTerminal && canEdit()) {
     statusButton.disabled = true;
     statusButton.title = 'Workflow complete';
     statusBadge.removeAttribute('role');
@@ -941,7 +990,7 @@ export function open(application, {
     }
   });
 
-  if (!isTerminal) {
+  if (!isTerminal && canEdit()) {
     statusButton.addEventListener('click', () => {
       openStatusDropdown(statusButton);
     });
@@ -972,6 +1021,16 @@ export function open(application, {
     }
   });
 
+  unarchiveButton.addEventListener('click', async () => {
+    try {
+      const updated = await api.unarchive(_draft.id);
+      _onUnarchiveSuccess?.(updated);
+      close();
+    } catch {
+      Toast.show('Unarchive failed', 'failure');
+    }
+  });
+
   closeButton.addEventListener('click', _attemptClose);
 
   backdrop.addEventListener('click', (event) => {
@@ -983,6 +1042,9 @@ export function open(application, {
   _keydownHandler = (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
+      if (_mode === 'archived') {
+        return;
+      }
       if (document.activeElement && document.activeElement !== document.body) {
         document.activeElement.blur();
       }
@@ -1026,18 +1088,31 @@ export function open(application, {
   };
   document.addEventListener('keydown', _keydownHandler);
 
-  headerMeta.append(idPill, statusBadge, quickActions);
+  headerMeta.append(idPill, statusBadge);
+  if (_mode === 'archived') {
+    const archivedStamp = document.createElement('span');
+    archivedStamp.className = 'archived-stamp';
+    archivedStamp.textContent = 'Archived';
+    headerMeta.append(archivedStamp);
+  }
+  headerMeta.append(quickActions);
   renderTitle();
-  quickActions.append(favoriteButton, statusButton);
-
-  if (_mode !== 'create') {
-    quickActions.append(archiveButton);
+  if (_mode === 'archived') {
+    quickActions.append(unarchiveButton);
+  } else {
+    quickActions.append(favoriteButton, statusButton);
+    if (_mode !== 'create') {
+      quickActions.append(archiveButton);
+    }
   }
 
   quickActions.append(closeButton);
   header.append(headerMeta, titleRow);
   _renderBody();
-  panel.append(header, body, buildFooter());
+  panel.append(header, body);
+  if (_mode !== 'archived') {
+    panel.append(buildFooter());
+  }
   _syncFooter();
   backdrop.append(panel);
   document.body.append(backdrop);
