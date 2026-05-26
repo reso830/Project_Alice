@@ -9,13 +9,14 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the Calendar v3 patch (0.13.2) release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('0.13.2');
-    expect(APP_VERSION).toBe('v0.13.2');
+  it('keeps the 0.13.3 patch release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('0.13.3');
+    expect(APP_VERSION).toBe('v0.13.3');
 
-    expect(read('README.md')).toContain('Current version: **0.13.2**');
-    expect(read('CHANGELOG.md')).toContain('## [0.13.2] — 2026-05-25');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.2...HEAD');
+    expect(read('README.md')).toContain('Current version: **0.13.3**');
+    expect(read('CHANGELOG.md')).toContain('## [0.13.3] — 2026-05-26');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.3...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3');
     expect(read('CHANGELOG.md')).toContain('[0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2');
     expect(read('CHANGELOG.md')).toContain('[0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1');
     expect(read('CHANGELOG.md')).toContain('[0.13.0]: https://github.com/reso830/Project_Alice/compare/v0.12.0...v0.13.0');
