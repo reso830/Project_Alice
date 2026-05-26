@@ -165,7 +165,7 @@ Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 **Brand cluster (left)**
 - Logo mark: `38×38px` PNG image (`assets/Alice_White.png`), no border or background styling
 - Logo text: "Project Alice", white, 15px / 600, letter-spacing −0.3px
-- Mark and text wrapped together; text-only span is `.topbar-brand-text` (hidden at < 380px)
+- Mark and text wrapped together; text-only span is `.topbar-brand-text` (swapped to short `.topbar-brand-text--short` label "Alice" at < 380px)
 
 **Page nav (immediately after brand)**
 - Nav buttons: `padding: 7px 11px`, radius `--r-sm`, no border by default
@@ -326,7 +326,7 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 | **Desktop** `> 1024px` | 3-row card, compat bar 30%, 2-col modal, toolbar single row, top-bar nav inline beside brand |
 | **Tablet** `640–1023px` | Compat bar 36%, Responsibilities spans full detail row, modal 1-col |
 | **Mobile** `< 640px` | Card collapses to flex-column via CSS `order` (ID/badge/date → title → company → responsibilities → skills → salary → compat bar → actions); compat bar full-width; modal is bottom-sheet; toolbar is 2-row grid; filter panels expand inline; **page nav moves to bottom tab bar**; **+ New application becomes a FAB**; sign-out collapses to icon-only; email hidden; thin scrollbar (4px) on `<html>` |
-| **Fold-narrow** `< 380px` | "Project Alice" wordmark hides — only the 38px logo mark remains beside the sign-out icon |
+| **Fold-narrow** `< 380px` | "Project Alice" wordmark swaps to short "Alice" label beside the 38px logo mark and sign-out icon |
 
 ---
 
