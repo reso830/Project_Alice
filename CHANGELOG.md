@@ -7,6 +7,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.3] — 2026-05-26
+
 ### Changed
 
 - `createApp({ repositories })` now throws a clear `'createApp: repositories is required'` error when called bare, instead of letting the destructure surface a cryptic `TypeError`. Carried over from the PR #23 self-review (INFO).
