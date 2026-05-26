@@ -40,7 +40,7 @@ export function makeMemoryDb() {
 
 /**
  * Wrap a flat `{ applications, profile }` repository bundle (typically the
- * return of `createTestRepositories(db)`) in the dispatcher shape expected
+ * return of `createSqliteRepositories(db)`) in the dispatcher shape expected
  * by `createApp({ repositories })`. After Phase 05, `createApp` consumes
  * the uniform `{ forRequest(req) }` contract; this helper bridges legacy
  * test fixtures without forcing every test to refactor.

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../server/index.js';
-import { createTestRepositories } from '../../server/repositories/index.js';
+import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 // Phase 04 — FR-012 service-role credential isolation guard.
@@ -40,7 +40,7 @@ describe('resume API — service-role credential isolation (FR-012)', () => {
 
 async function withServer(test) {
   const db = makeMemoryDb();
-  const repositories = await createTestRepositories(db);
+  const repositories = await createSqliteRepositories(db);
   const app = createApp({ repositories: wrapAsDispatcher(repositories) });
   const server = app.listen(0);
   const { port } = server.address();
@@ -365,7 +365,7 @@ describe('resume API', () => {
 
 async function withHostedServer(test) {
   const db = makeMemoryDb();
-  const repositories = await createTestRepositories(db);
+  const repositories = await createSqliteRepositories(db);
   const requireAuth = (_req, res) =>
     res.status(401).json({
       error: { code: 'UNAUTHORIZED', message: 'Authentication required' },

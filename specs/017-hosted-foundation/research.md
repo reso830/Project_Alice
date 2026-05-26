@@ -135,7 +135,7 @@ repository methods.
 **Decision**: Change `createApp({ db })` to `createApp({ repositories })`.
 - `server/index.js` (the entry point) calls `createRepositories(config)` and passes the result to `createApp`.
 - `api/index.js` (Vercel entry point) does the same.
-- Existing test files that call `createApp({ db })` will need to construct a repositories object; a helper `createTestRepositories(db)` will be exported from `server/repositories/index.js` for this purpose.
+- Existing test files that call `createApp({ db })` will need to construct a repositories object; a helper `createSqliteRepositories(db)` will be exported from `server/repositories/index.js` for this purpose.
 
 ---
 

@@ -49,21 +49,23 @@ export async function createRepositories(config) {
 
   const { db, initSchema } = await import('../db.js');
   initSchema(db);
-  const sqlite = await createTestRepositories(db);
+  const sqlite = await createSqliteRepositories(db);
   return { forRequest: () => sqlite };
 }
 
 /**
- * Low-level testing utility. Returns the flat `{ applications, profile }`
- * shape directly against an injected database, bypassing the dispatcher.
- * Used by unit tests that exercise the SQLite adapter contract directly.
- * For integration tests that drive `createApp`, wrap the result via
- * `tests/server/helpers.js#wrapAsDispatcher`.
+ * SQLite repository factory. Returns the flat `{ applications, profile }`
+ * bundle against an injected database, bypassing the dispatcher.
+ *
+ * Used both by the local runtime (called from `createRepositories` above
+ * when `config.isHosted` is false) and by unit tests that exercise the
+ * SQLite adapter contract directly. For integration tests that drive
+ * `createApp`, wrap the result via `tests/server/helpers.js#wrapAsDispatcher`.
  *
  * @param {import('better-sqlite3').Database} db
  * @returns {Promise<{ applications: object, profile: object }>}
  */
-export async function createTestRepositories(db) {
+export async function createSqliteRepositories(db) {
   const [
     { createSqliteApplicationsRepository },
     { createSqliteProfileRepository },

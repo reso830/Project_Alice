@@ -39,7 +39,7 @@ and residual risk.
   documented in `contracts/api.md`
 - [x] Route factories change from `{ db }` to `{ repo }` — every db call becomes a
   repo method call
-- [x] `createTestRepositories(db)` exported for test use; no test logic changes beyond
+- [x] `createSqliteRepositories(db)` exported for test use; no test logic changes beyond
   using the helper
 - [x] Hosted stubs throw `HostedRepositoryNotImplementedError` (not silent no-ops)
 
@@ -73,7 +73,7 @@ and residual risk.
 - [x] `tests/server/repositories/profile.test.js` planned: interface conformance against
   SQLite adapter (get, upsert)
 - [x] Existing `tests/server/applications.test.js` and `tests/server/profile.test.js`
-  updated to use `createTestRepositories(db)` helper — no logic change expected
+  updated to use `createSqliteRepositories(db)` helper — no logic change expected
 - [x] Hosted stub throws the right error class — tested in
   `tests/server/repositories/stubs.test.js`
 
@@ -94,7 +94,7 @@ and residual risk.
 - [x] Local mode: existing behavior identical — same SQLite db functions, same routes,
   same validation
 - [x] All existing automated tests pass after the `{ db }` → `{ repositories }` change
-  (via `createTestRepositories` helper)
+  (via `createSqliteRepositories` helper)
 - [x] No npm dependencies added yet (Supabase client deferred to feature 019)
 - [x] `server/db.js`, `server/db/applications.js`, `server/db/profile.js` are not
   modified

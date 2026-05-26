@@ -62,7 +62,7 @@ server/
 │   ├── applications.js          # unchanged (SQLite implementation)
 │   └── profile.js               # unchanged (SQLite implementation)
 ├── repositories/
-│   ├── index.js                 # NEW — factory: createRepositories(config), createTestRepositories(db)
+│   ├── index.js                 # NEW — factory: createRepositories(config), createSqliteRepositories(db)
 │   ├── applications.js          # NEW — SQLite adapter implementing ApplicationsRepository
 │   └── profile.js               # NEW — SQLite adapter implementing ProfileRepository
 ├── routes/
@@ -87,8 +87,8 @@ tests/
     │   ├── applications.test.js # NEW
     │   ├── profile.test.js      # NEW
     │   └── stubs.test.js        # NEW
-    ├── applications.test.js     # MODIFIED — use createTestRepositories(db)
-    └── profile.test.js          # MODIFIED — use createTestRepositories(db)
+    ├── applications.test.js     # MODIFIED — use createSqliteRepositories(db)
+    └── profile.test.js          # MODIFIED — use createSqliteRepositories(db)
 ```
 
 ---
@@ -123,7 +123,7 @@ Hosted stubs implement the full interface but every method throws
 `HostedRepositoryNotImplementedError`. The server starts; requests fail with HTTP 500
 until feature 019 replaces the stubs with Supabase implementations.
 
-`createTestRepositories(db)` is the same as the local path but accepts an arbitrary
+`createSqliteRepositories(db)` is the same as the local path but accepts an arbitrary
 `better-sqlite3` instance — used by test files to pass in-memory databases.
 
 ### App Factory (`server/index.js`)
@@ -218,8 +218,8 @@ node server/index.js (or Vercel cold start of api/index.js)
 | `server/index.js` | `createApp({ db })` → `createApp({ repositories })`; wire config + repos at entry point |
 | `server/routes/applications.js` | `createApplicationsRouter({ db })` → `({ repo })`; all db calls → repo method calls |
 | `server/routes/profile.js` | `createProfileRouter({ db })` → `({ repo })`; db calls → repo method calls |
-| `tests/server/applications.test.js` | Pass `createTestRepositories(db)` instead of `{ db }` |
-| `tests/server/profile.test.js` | Pass `createTestRepositories(db)` instead of `{ db }` |
+| `tests/server/applications.test.js` | Pass `createSqliteRepositories(db)` instead of `{ db }` |
+| `tests/server/profile.test.js` | Pass `createSqliteRepositories(db)` instead of `{ db }` |
 
 ### Files to add
 
@@ -267,7 +267,7 @@ node server/index.js (or Vercel cold start of api/index.js)
 ### Route signature change breaks existing tests
 
 `createApplicationsRouter({ db })` → `({ repo })` is a breaking change to the factory
-signature used by test files. Mitigated by `createTestRepositories(db)` — tests
+signature used by test files. Mitigated by `createSqliteRepositories(db)` — tests
 construct the helper once and pass the result. The change is mechanical and confined to
 test setup blocks.
 
@@ -316,7 +316,7 @@ and prevents a partially-healthy server from appearing healthy.
 - Hosted stub: all methods throw `HostedRepositoryNotImplementedError`
 
 **Regression tests** (existing test files, modified setup only):
-- All existing `applications.test.js` and `profile.test.js` scenarios pass unchanged after switching to `createTestRepositories(db)`
+- All existing `applications.test.js` and `profile.test.js` scenarios pass unchanged after switching to `createSqliteRepositories(db)`
 
 **Manual smoke**:
 - Local mode: full CRUD workflow works with no env vars set (US1)

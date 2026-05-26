@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../server/index.js';
-import { createTestRepositories } from '../../server/repositories/index.js';
+import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 async function withServer(test) {
   const db = makeMemoryDb();
-  const repositories = await createTestRepositories(db);
+  const repositories = await createSqliteRepositories(db);
   const app = createApp({ repositories: wrapAsDispatcher(repositories) });
   const server = app.listen(0);
   const { port } = server.address();

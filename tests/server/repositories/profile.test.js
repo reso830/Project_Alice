@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../../../server/repositories/index.js';
+import { createSqliteRepositories } from '../../../server/repositories/index.js';
 import { makeMemoryDb } from '../helpers.js';
 
 async function withProfileRepository(test) {
   const db = makeMemoryDb();
-  const repositories = await createTestRepositories(db);
+  const repositories = await createSqliteRepositories(db);
 
   try {
     await test(repositories.profile);

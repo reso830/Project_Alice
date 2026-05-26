@@ -2,7 +2,7 @@ import { generateKeyPair, SignJWT } from 'jose';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequireAuth } from '../../server/auth/middleware.js';
 import { createApp, logBoot } from '../../server/index.js';
-import { createTestRepositories } from '../../server/repositories/index.js';
+import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 let trustedKeyPair;
@@ -60,7 +60,7 @@ async function withApp(
   test,
 ) {
   const db = makeMemoryDb();
-  const repositories = await createTestRepositories(db);
+  const repositories = await createSqliteRepositories(db);
   // Default the seed middleware to a passthrough so this file's auth-wiring
   // tests aren't accidentally coupled to the real seed step (which would
   // try to hit the fake example.supabase.co URL and return 500). Tests
@@ -161,7 +161,7 @@ describe('createApp hosted-config safety', () => {
   it('throws when hosted config is passed without supabase.url and no explicit requireAuth', async () => {
     const db = makeMemoryDb();
     try {
-      const repositories = await createTestRepositories(db);
+      const repositories = await createSqliteRepositories(db);
       const badConfig = {
         runtime: 'hosted',
         isHosted: true,
@@ -358,7 +358,7 @@ describe('seedHostedUserIfNeeded mount-time wiring', () => {
     // it would try to construct a Supabase client and fail because there's
     // no Authorization header — surfacing as a 500 from the route handler.
     // A clean 200 from a local-mode protected route proves no seed step ran.
-    const repositories = await createTestRepositories(makeMemoryDb());
+    const repositories = await createSqliteRepositories(makeMemoryDb());
     const app = createApp({
       repositories: wrapAsDispatcher(repositories),
       config: localConfig(),
