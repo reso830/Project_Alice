@@ -300,7 +300,7 @@ describe('ActionPanel', () => {
     });
 
     document.querySelector('.cal-act-btn').click();
-    document.querySelector('.cal-act-icon.danger').click();
+    document.querySelector('.cal-act-icon--danger').click();
 
     expect(onMarkGhosted).toHaveBeenCalledWith(6);
     expect(onDismiss).toHaveBeenCalledWith(6, 'ghost');

@@ -6,16 +6,16 @@ import {
   renderStatusFilterPanel,
 } from '../../src/components/QuickFiltersStatusPopup.js';
 
-function anchor() {
+function anchor(rect = {
+  left: 40,
+  right: 70,
+  top: 20,
+  bottom: 50,
+  width: 30,
+  height: 30,
+}) {
   const button = document.createElement('button');
-  button.getBoundingClientRect = () => ({
-    left: 40,
-    right: 70,
-    top: 20,
-    bottom: 50,
-    width: 30,
-    height: 30,
-  });
+  button.getBoundingClientRect = () => rect;
   document.body.append(button);
   return button;
 }
@@ -70,6 +70,37 @@ describe('QuickFiltersStatusPopup', () => {
     expect(onSelect).toHaveBeenCalledWith(null);
 
     mounted.close();
+    expect(document.querySelector('.filter-panel')).toBeNull();
+  });
+
+  it('flips above the anchor and repositions on scroll when the viewport would clip it', () => {
+    const trigger = anchor({
+      left: 40,
+      right: 70,
+      top: 260,
+      bottom: 290,
+      width: 30,
+      height: 30,
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(300);
+
+    mountStatusFilterPopup({ anchor: trigger });
+    const panel = document.querySelector('.filter-panel');
+    Object.defineProperty(panel, 'offsetHeight', { configurable: true, value: 120 });
+
+    window.dispatchEvent(new Event('scroll'));
+
+    expect(panel.style.top).toBe('132px');
+  });
+
+  it('closes on outside mousedown before click handlers can reopen it', () => {
+    const onClose = vi.fn();
+    const trigger = anchor();
+
+    mountStatusFilterPopup({ anchor: trigger, onClose });
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
     expect(document.querySelector('.filter-panel')).toBeNull();
   });
 });

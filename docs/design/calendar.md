@@ -209,7 +209,7 @@ padding: 11px 0
 
 Default state: `border: 1px solid --border`, `background: --surface`, `color: --t3` (icon) / `--t2` (text).
 Hover: border + color → `--indigo`, bg → `--indigo-dim` (icon) / `--indigo-soft` (text), `transition: all .14s ease`.
-Danger modifier (`.act-icon.danger`): hover border + color → `--danger`, bg → `--danger-bg`.
+Danger modifier (`.cal-act-icon--danger`): hover border + color → `--danger`, bg → `--danger-bg`.
 
 Action mapping:
 - **Today / Upcoming rows** → `[open ↗]` only. These are real Timeline events; they cannot be dismissed.

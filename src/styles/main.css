@@ -5631,9 +5631,7 @@ textarea.modal-inline-control {
 }
 
 .cal-act-icon--danger:hover,
-.cal-act-icon--danger:focus-visible,
-.cal-act-icon.danger:hover,
-.cal-act-icon.danger:focus-visible {
+.cal-act-icon--danger:focus-visible {
   border-color: #D84A4A;
   background: #FBE9E7;
   color: #B63838;

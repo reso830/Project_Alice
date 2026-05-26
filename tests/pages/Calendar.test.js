@@ -234,7 +234,7 @@ describe('Calendar page', () => {
     const setItem = vi.spyOn(window.Storage.prototype, 'setItem');
     const host = await mountWith();
 
-    host.querySelector('.cal-act-icon.danger').click();
+    host.querySelector('.cal-act-icon--danger').click();
 
     expect(setItem).toHaveBeenCalledWith(
       'alice:calendar:dismissals:local',
@@ -255,7 +255,7 @@ describe('Calendar page', () => {
     const setItem = vi.spyOn(window.Storage.prototype, 'setItem');
     const host = await mountWith();
 
-    host.querySelector('.cal-act-icon.danger').click();
+    host.querySelector('.cal-act-icon--danger').click();
 
     expect(setItem).not.toHaveBeenCalled();
     expect(host.textContent).not.toContain('No updates for 14 days. Mark as Ghosted?');

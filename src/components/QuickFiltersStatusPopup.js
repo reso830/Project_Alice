@@ -19,13 +19,19 @@ function statusOptions(options) {
 function positionPanel(anchor, panel) {
   const rect = anchor.getBoundingClientRect();
   const panelWidth = panel.offsetWidth || 220;
+  const panelHeight = panel.offsetHeight || 0;
   let left = rect.left;
+  let top = rect.bottom + PANEL_GAP;
 
   if (left + panelWidth > window.innerWidth - VIEWPORT_MARGIN) {
     left = Math.max(VIEWPORT_MARGIN, rect.right - panelWidth);
   }
 
-  panel.style.top = `${rect.bottom + PANEL_GAP}px`;
+  if (top + panelHeight > window.innerHeight - VIEWPORT_MARGIN) {
+    top = Math.max(VIEWPORT_MARGIN, rect.top - panelHeight - PANEL_GAP);
+  }
+
+  panel.style.top = `${top}px`;
   panel.style.left = `${left}px`;
 }
 
@@ -73,7 +79,8 @@ export function mountStatusFilterPopup({
 
   function detachListeners() {
     document.removeEventListener('keydown', handleKeydown);
-    document.removeEventListener('click', handleDocumentClick);
+    document.removeEventListener('mousedown', handleDocumentPointer);
+    window.removeEventListener('scroll', handleScroll, true);
     window.removeEventListener('resize', handleResize);
   }
 
@@ -94,7 +101,7 @@ export function mountStatusFilterPopup({
     }
   }
 
-  function handleDocumentClick(event) {
+  function handleDocumentPointer(event) {
     if (
       !panel.contains(event.target)
       && !anchor?.contains(event.target)
@@ -110,13 +117,18 @@ export function mountStatusFilterPopup({
     }
   }
 
+  function handleScroll() {
+    handleResize();
+  }
+
   document.body.append(panel);
   if (anchor) {
     positionPanel(anchor, panel);
   }
 
   document.addEventListener('keydown', handleKeydown);
-  document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('mousedown', handleDocumentPointer);
+  window.addEventListener('scroll', handleScroll, true);
   window.addEventListener('resize', handleResize);
 
   return { close };

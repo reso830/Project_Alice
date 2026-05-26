@@ -342,7 +342,7 @@ function createActivityRow(row, props, options = {}) {
     }
 
     actions.append(createIconButton(
-      'cal-act-icon danger cal-act-icon--danger',
+      'cal-act-icon cal-act-icon--danger',
       `Dismiss suggestion ${padId(row.id)}`,
       '\u00d7',
       () => props.onDismiss?.(row.id, row.kind),
@@ -466,15 +466,6 @@ function renderIntoHost() {
 
   body.className = 'cal-action-panel__body';
   body.id = bodyId;
-  body.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !root.classList.contains('cal-action-panel--expanded')) {
-      return;
-    }
-
-    const button = root.querySelector('.ap-greeting-btn');
-    setExpanded(root, button, false, { render: true });
-    document.querySelector('.ap-greeting-btn')?.focus();
-  });
 
   root.append(createGreetingButton(root, bodyId, _props));
 
