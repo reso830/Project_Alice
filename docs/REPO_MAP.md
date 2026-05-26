@@ -15,7 +15,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | Path | Purpose |
 |------|---------|
 | `src/pages/Tracker.js` | Main page — card grid, filters, sort, pagination, modal wiring |
-| `src/pages/Calendar.js` | Calendar view (follow-up dates) |
+| `src/pages/Calendar.js` | Calendar page — month-grid view of all Timeline activity; mounts MonthGrid, ActionPanel, MonthPicker, YearPicker, and the shared QuickFiltersStatusPopup; manages nav state and status filter |
 | `src/pages/Profile.js` | User profile screen |
 | `src/pages/ProfileEdit.js` | Profile editor — sticky Save/Cancel, dirty-state tracking, section overlays. In demo (feature 020) the resume-import slot renders an inline `.profile-edit__resume-demo-note` ("Resume import is available after signing in.") instead of mounting `ResumeImport` |
 | `src/pages/ConfigError.js` | Operator-facing fallback when hosted runtime detects missing Vite env vars |
@@ -54,6 +54,13 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/CompatBar.js` | Compatibility score visual bar |
 | `src/components/DonutChart.js` | SVG donut chart with per-segment hover tooltips (Profile page) |
 | `src/components/StackedBar.js` | Horizontal proportional bar for mobile stats (Profile page) |
+| `src/components/calendar/MonthGrid.js` | Month-grid calendar — 7-column layout with day cells showing timeline event dots; keyboard-selectable cells (Enter/Space); chips decorative; cell selection drives the inline DayPanel below the grid |
+| `src/components/calendar/ActionPanel.js` | Calendar right-panel — Today section, Suggested Actions (5 rule-based kinds), Upcoming section; Mark Ghosted from suggestion rows; local dismissals (with "Suggestion dismissed" toast); collapsible summary bar at `<1200px` stacked layouts |
+| `src/components/calendar/DayPanel.js` | Inline Day Details Panel (v2) — sits below the Month Grid in the same card; renders prompt/empty/populated state for the selected date; replaces the retired DayPopover |
+| `src/components/calendar/MonthPicker.js` | Month picker dropdown — 12-month grid anchored to the nav chevron |
+| `src/components/calendar/YearPicker.js` | Year picker dropdown — scrollable year list anchored to the nav chevron |
+| `src/components/QuickFiltersStatusPopup.js` | Shared status filter popup used by Tracker quick filters and Calendar status filtering |
+| `src/components/calendar/anchoredDropdown.js` | `mountAnchoredDropdown({ anchorEl, contentEl, align, asBottomSheet, scrim, ariaLabel, onClose })` — shared primitive; handles positioning, outside-click/Esc dismiss, `bsIn` animation for bottom-sheet mode |
 
 ---
 
@@ -61,7 +68,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers |
+| `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers · `applyStatusChange(app, status, options)` · `STATUS_DISPLAY_PRIORITY` · `TERMINAL_STATES` |
 | `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
 | `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
 
@@ -126,6 +133,10 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/utils/sort.js` | `sortEducation`, `sortExperience` — profile entry sorting |
 | `src/utils/url.js` | `getSafeExternalHref` — safe external link handling |
 | `src/utils/validate.js` | `validateRequired`, `validateMonthYear`, `validateUrl`, `validateEmail` |
+| `src/utils/calendar.js` | Date math helpers for the Calendar page — week-start offset, day-of-week index, ISO week number, month boundary helpers |
+| `src/utils/calendarProjection.js` | `projectCalendarMonth(apps, year, month)` — maps application Timeline entries onto a month grid; returns `{ days, eventsByDate }` |
+| `src/utils/calendarSuggestions.js` | `evaluateSuggestions(apps, todayISO, dismissals)` — 5 rule-based suggestion kinds: `followup`, `feedback`, `interview_followup`, `offer_expiry`, `ghost`; skips terminal-state apps and apps with future entries |
+| `src/utils/calendarDismissals.js` | In-memory dismissal store for Calendar Suggested Actions; `dismiss(key)`, `isDismissed(key)`, `clearAll()` — never touches localStorage (feature 020 FR-004) |
 | `src/styles/main.css` | Global styles and CSS design tokens |
 
 ---
@@ -137,12 +148,25 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `tests/models/` | Application field validation, status transitions |
 | `tests/models/timeline.test.js` | TimelineEntry model helper tests — id allocation, sorting, and legacy synthesis |
 | `tests/utils/` | filterSort, pagination, date utilities |
+| `tests/utils/calendar.test.js` | Calendar date math helpers |
+| `tests/utils/calendarProjection.test.js` | `projectCalendarMonth` — event mapping, boundary cases, empty months |
+| `tests/utils/calendarSuggestions.test.js` | `evaluateSuggestions` — all 5 rule kinds, terminal/future-entry guards, dismissal filtering |
+| `tests/utils/calendarDismissals.test.js` | In-memory dismissal store — dismiss, isDismissed, clearAll |
 | `tests/components/` | Component render / DOM behavior (jsdom) |
 | `tests/components/Timeline.test.js` | Timeline component DOM behavior — collapsed/expanded states, add/edit/delete, picker, and sorting interactions |
+| `tests/components/calendar/anchoredDropdown.test.js` | `mountAnchoredDropdown` — positioning, outside-click/Esc dismiss, bottom-sheet animation |
+| `tests/components/calendar/ActionPanel.test.js` | ActionPanel DOM — Today/Suggestions/Upcoming render, Mark Ghosted, dismiss |
+| `tests/components/calendar/MonthGrid.test.js` | MonthGrid DOM — day cells, event dots, keyboard nav, filter-hidden cells |
+| `tests/components/calendar/MonthPicker.test.js` | MonthPicker DOM — 12-month grid, current-month highlight, selection |
+| `tests/components/calendar/YearPicker.test.js` | YearPicker DOM — year list, current-year highlight, selection |
+| `tests/components/QuickFiltersStatusPopup.test.js` | Shared status popup DOM — Tracker-compatible surface, status ordering, Calendar single-select mount behavior |
+| `tests/components/calendar/DayPanel.test.js` | DayPanel DOM — prompt/empty/populated states, status priority grouping, mouse + keyboard (Enter/Space) row activation, root identity preserved across updates, deferred variant-prop guard |
 | `tests/server/` | Route handlers, Zod validation, DB queries, `requireAuth` middleware, protected-routes wiring |
 | `tests/services/` | API client, supabase client, resume API, health API |
 | `tests/data/` | Auth store, legacy localStorage store |
 | `tests/pages/` | Page-level integration (Tracker, Profile, ProfileEdit, ConfigError) |
+| `tests/pages/Calendar.test.js` | Calendar page integration — month nav, status filter, inline DayPanel selection, ActionPanel wiring, greeting name injection, dismiss toast |
+| `tests/seed-data.test.js` | Cross-validates demo seed and SQLite seed — parity checks + Calendar suggestion coverage (all 5 kinds exercised with date-shifted records) |
 | `tests/build/` | Vite build-time env-var assertion |
 | `tests/main.test.js` | `bootstrap()` + runtime handshake → ConfigError wiring |
 
@@ -192,6 +216,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/022-deployment-polish-docs/research.md` | Clarification decisions D1–D6 with rejected alternatives |
 | `specs/022-deployment-polish-docs/checklists/plan-review.md` | Pre-implementation review gate |
 | `specs/025-application-timeline/` | Application Timeline feature spec package — timeline persistence, modal UI, seed updates, hosted migration, release prep, and smoke plan |
+| `specs/026-calendar/` | Calendar page feature spec package — month-grid, Action Panel, suggestions engine, day popovers, seed augmentation, release prep, and smoke plan |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 
@@ -204,6 +229,8 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `docs/AI_WORKFLOW_GUIDE.md` | Local two-agent AI orchestration reference (Claude + Codex pipeline) |
 | `docs/deployment.md` | Operator-facing deployment guide — local + hosted modes, Supabase Setup Checklist, Environment Variable Checklist, Demo & Free-Tier Notes, Migration Clarification (consolidated in feature 022) |
 | `docs/design/welcome_page.md` | Visual specification for the welcome experience |
+| `docs/design/calendar.md` | Calendar page interaction and visual design — month-grid layout, Action Panel sections, popover anatomy, suggestion rule logic |
+| `docs/db/claim_and_seed_starter.md` | `claim_and_seed_starter()` RPC evolution — v1 (019), v2 (025 Timeline), v3 (026 Calendar suggestions); SQL bodies and operator apply instructions |
 | `docs/hosted-smoke-test.md` | Hosted smoke-test checklist — Given/When/Then verification flow run before promoting a deploy (feature 022) |
 | `docs/REPO_MAP.md` | This file — navigation shortcut for AI-assisted work |
 

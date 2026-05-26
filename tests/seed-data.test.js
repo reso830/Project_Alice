@@ -2,10 +2,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
-import { describe, expect, it } from 'vitest';
-import { DEMO_RECORDS } from '../server/db-seed.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_RECORDS } from '../server/seeds/applicationsData.js';
+import { buildDemoSeed } from '../src/data/demoSeed.js';
 import { validateApplication } from '../src/models/application.js';
 import { SEED_DATA } from '../src/main.js';
+import { evaluateSuggestions } from '../src/utils/calendarSuggestions.js';
+import { toISODate } from '../src/utils/date.js';
 
 function nonEmptyResponsibilities(records, field = 'responsibilities') {
   return records.map((record) => record[field]).filter((value) => typeof value === 'string' && value.trim());
@@ -30,6 +33,41 @@ function seedRecordToApplication(record, index, timeline) {
     workSetup: record.work_setup ?? '',
     jobPostingUrl: record.job_posting_url ?? '',
   };
+}
+
+function expectAllSuggestionKinds(applications) {
+  const suggestions = evaluateSuggestions(applications, toISODate(), []);
+  const kinds = new Set(suggestions.map((suggestion) => suggestion.kind));
+
+  expect(kinds).toContain('followup');
+  expect(kinds).toContain('feedback');
+  expect(kinds).toContain('interview_followup');
+  expect(kinds).toContain('offer_expiry');
+  expect(kinds).toContain('ghost');
+}
+
+function maxDistinctStatusesPerDay(applications) {
+  const byDate = new Map();
+
+  for (const app of applications) {
+    for (const entry of app.timeline ?? []) {
+      if (!byDate.has(entry.date)) {
+        byDate.set(entry.date, new Set());
+      }
+      byDate.get(entry.date).add(entry.status);
+    }
+  }
+
+  return Math.max(0, ...[...byDate.values()].map((statuses) => statuses.size));
+}
+
+async function loadSQLiteSeedApplicationsForToday() {
+  vi.resetModules();
+  const { DEMO_RECORDS: records } = await import('../server/seeds/applicationsData.js');
+
+  return records.map((record, index) => (
+    seedRecordToApplication(record, index, JSON.parse(record.timeline))
+  ));
 }
 
 describe('seed data variety', () => {
@@ -86,5 +124,30 @@ describe('seed data variety', () => {
     const seedScript = readFileSync(join(cwd(), 'server/db-seed.js'), 'utf8');
 
     expect(seedScript).toMatch(/'timeline'/);
+  });
+});
+
+describe('seed data calendar suggestion coverage', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-21T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('triggers all five suggestion kinds from the demo seed', () => {
+    const { applications } = buildDemoSeed();
+
+    expectAllSuggestionKinds(applications);
+    expect(maxDistinctStatusesPerDay(applications)).toBeGreaterThanOrEqual(4);
+  });
+
+  it('triggers all five suggestion kinds from the SQLite seed', async () => {
+    const applications = await loadSQLiteSeedApplicationsForToday();
+
+    expectAllSuggestionKinds(applications);
+    expect(maxDistinctStatusesPerDay(applications)).toBeGreaterThanOrEqual(4);
   });
 });

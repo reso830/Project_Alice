@@ -14,34 +14,75 @@
 // `src/data/demoSeed.js` in the same PR. The demoStore parity test will
 // fail if the two surfaces drift.
 
-const timeline = (entries) => JSON.stringify(entries);
+const SOURCE_ANCHOR_ISO = '2026-04-26';
+const DAY_MS = 86_400_000;
+
+function parseISODate(isoString) {
+  const [year, month, day] = isoString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toISODate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function shiftISODate(isoString) {
+  if (!isoString) {
+    return isoString;
+  }
+
+  const offsetMs = parseISODate(toISODate(new Date())).getTime() - parseISODate(SOURCE_ANCHOR_ISO).getTime();
+  return toISODate(new Date(parseISODate(isoString).getTime() + offsetMs));
+}
+
+function timeline(entries) {
+  return JSON.stringify(entries.map((entry) => ({
+    ...entry,
+    date: shiftISODate(entry.date),
+  })));
+}
+
+function shiftRecordDates(record) {
+  const shifted = { ...record };
+
+  for (const field of ['application_date', 'last_status_update', 'created_at', 'updated_at']) {
+    if (shifted[field]) {
+      shifted[field] = shiftISODate(shifted[field]);
+    }
+  }
+
+  return shifted;
+}
 
 const DEMO_TIMELINES = [
   timeline([
     { id: 1, date: '2026-04-10', status: 'applied', text: 'Submitted application through LinkedIn.' },
-    { id: 2, date: '2026-04-12', status: 'applied', text: 'Jane confirmed the profile is moving to hiring review.' },
+    { id: 2, date: '2026-04-18', status: 'applied', text: 'Jane confirmed the profile is moving to hiring review.' },
   ]),
   timeline([
     { id: 1, date: '2026-03-28', status: 'applied', text: 'Applied after Indeed recruiter outreach.' },
     { id: 2, date: '2026-04-04', status: 'phone_screen', text: 'Recruiter screen covered backend scope and on-site expectations.' },
     { id: 3, date: '2026-04-18', status: 'interview', text: 'Panel interview scheduled for next week.' },
-    { id: 4, date: '2026-04-30', status: 'interview', text: 'Follow-up reminder: send prep questions before the panel.' },
+    { id: 4, date: '2026-04-18', status: 'interview', text: 'Panel completed; send a concise thank-you note.' },
   ]),
   timeline([
     { id: 1, date: '2026-03-15', status: 'applied', text: 'Referral submitted by Maria.' },
     { id: 2, date: '2026-03-22', status: 'phone_screen', text: 'Recruiter screen went well; startup pace confirmed.' },
     { id: 3, date: '2026-04-02', status: 'interview', text: 'Technical interview focused on product launch tradeoffs.' },
-    { id: 4, date: '2026-04-16', status: 'offer', text: 'Verbal offer received with May 1 decision deadline.' },
-    { id: 5, date: '2026-04-28', status: 'accepted', text: 'Acceptance call tentatively booked after compensation review.' },
+    { id: 4, date: '2026-04-22', status: 'offer', text: 'Verbal offer received with five-day decision window.' },
+    { id: 5, date: '2026-04-22', status: 'accepted', text: 'Acceptance call tentatively booked after compensation review.' },
   ]),
   timeline([
     { id: 1, date: '2026-04-14', status: 'applied', text: 'Applied through company website.' },
-    { id: 2, date: '2026-04-20', status: 'phone_screen', text: 'HR call complete; waiting for technical screen invite.' },
+    { id: 2, date: '2026-04-18', status: 'phone_screen', text: 'HR call complete; waiting for technical screen invite.' },
   ]),
   timeline([
     { id: 1, date: '2026-04-05', status: 'applied', text: 'Applied for ML role via LinkedIn.' },
     { id: 2, date: '2026-04-12', status: 'phone_screen', text: 'Priya described recommendation-engine roadmap.' },
-    { id: 3, date: '2026-04-19', status: 'assessment', text: 'Take-home assessment assigned; due 2026-04-30.' },
+    { id: 3, date: '2026-04-18', status: 'assessment', text: 'Take-home assessment assigned; due 2026-04-30.' },
   ]),
   timeline([]),
   timeline([
@@ -83,7 +124,7 @@ const DEMO_TIMELINES = [
     { id: 1, date: '2026-04-25', status: 'wishlisted', text: 'Wishlisted dream staff role for later review.' },
   ]),
   timeline([
-    { id: 1, date: '2026-04-17', status: 'applied', text: 'Applied as a backup enterprise Java option.' },
+    { id: 1, date: '2026-04-10', status: 'applied', text: 'Applied as a backup enterprise Java option.' },
   ]),
   timeline([
     { id: 1, date: '2026-03-18', status: 'applied', text: 'Applied despite embedded experience gap.' },
@@ -137,9 +178,9 @@ const BASE_DEMO_RECORDS = [
     responsibilities: 'Shape a shared React design system for a corporate hiring platform, pairing Storybook governance with pragmatic accessibility reviews.',
     skills: JSON.stringify(['React', 'TypeScript', 'CSS', 'Vite']),
     application_date: '2026-04-10',
-    last_status_update: '2026-04-12',
+    last_status_update: '2026-04-18',
     created_at: '2026-04-10',
-    updated_at: '2026-04-12',
+    updated_at: '2026-04-18',
     archived: 0,
     location: 'Makati',
     shift: 'Day',
@@ -183,7 +224,7 @@ const BASE_DEMO_RECORDS = [
     source_platform: 'Referral',
     job_posting_url: null,
     recruiter: 'Maria Chen',
-    notes: 'Verbal offer received. Deadline to accept: 2026-05-01.',
+    notes: 'Verbal offer received. Five-day response window in progress.',
     responsibilities: 'Guide two startup product pods from discovery to launch, splitting time between React workflows, Node services, and release decisions.',
     skills: JSON.stringify(['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Redis']),
     application_date: '2026-03-15',
@@ -212,9 +253,9 @@ const BASE_DEMO_RECORDS = [
     responsibilities: 'Harden deployment paths for a cloud infrastructure team, tuning Terraform modules, GKE clusters, and incident drills.',
     skills: JSON.stringify(['Kubernetes', 'Terraform', 'GCP', 'Python']),
     application_date: '2026-04-14',
-    last_status_update: '2026-04-20',
+    last_status_update: '2026-04-18',
     created_at: '2026-04-14',
-    updated_at: '2026-04-20',
+    updated_at: '2026-04-18',
     archived: 0,
     location: null,
     shift: 'Mid',
@@ -487,9 +528,9 @@ const BASE_DEMO_RECORDS = [
     responsibilities: 'Refactor compliance-heavy banking services in Spring Boot, keeping Oracle-backed payment flows auditable and predictable.',
     skills: JSON.stringify(['Java', 'Spring Boot', 'Oracle DB', 'Maven']),
     application_date: '2026-04-17',
-    last_status_update: '2026-04-17',
+    last_status_update: '2026-04-10',
     created_at: '2026-04-17',
-    updated_at: '2026-04-17',
+    updated_at: '2026-04-10',
     archived: 0,
     location: 'Makati',
     shift: 'Day',
@@ -701,6 +742,6 @@ const BASE_DEMO_RECORDS = [
 ];
 
 export const DEMO_RECORDS = BASE_DEMO_RECORDS.map((record, index) => ({
-  ...record,
+  ...shiftRecordDates(record),
   timeline: DEMO_TIMELINES[index],
 }));
