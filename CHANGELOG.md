@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- `createApp({ repositories })` now throws a clear `'createApp: repositories is required'` error when called bare, instead of letting the destructure surface a cryptic `TypeError`. Carried over from the PR #23 self-review (INFO).
+- `docs/REPO_MAP.md` row descriptions for the 019 and 020 spec packages now reflect the actual artifact contents (plan scope, contract scope, quickstart scope). Carried over from the PR #30 self-review (INFO).
+
 ## [0.13.2] — 2026-05-25
 
 Calendar v3 patch — Phase 13 re-smoke follow-ups plus the long-deferred collapsible Action Panel summary bar. Same feature surface as v0.13.0; no API or schema changes.

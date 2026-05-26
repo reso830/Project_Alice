@@ -22,6 +22,10 @@ export function createApp({
   requireAuth: explicitRequireAuth,
   seedHostedUserIfNeeded,
 } = {}) {
+  if (!repositories) {
+    throw new Error('createApp: repositories is required');
+  }
+
   const app = express();
   const runtime = appConfig?.runtime ?? 'local';
 

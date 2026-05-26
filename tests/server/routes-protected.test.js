@@ -153,6 +153,11 @@ describe('protected routers — hosted-mode wiring', () => {
 });
 
 describe('createApp hosted-config safety', () => {
+  it('throws a clear error when called without repositories', () => {
+    expect(() => createApp()).toThrow(/repositories is required/);
+    expect(() => createApp({})).toThrow(/repositories is required/);
+  });
+
   it('throws when hosted config is passed without supabase.url and no explicit requireAuth', async () => {
     const db = makeMemoryDb();
     try {

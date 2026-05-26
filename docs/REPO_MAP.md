@@ -187,19 +187,19 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/018-auth-user-access/research.md` | 13 design decisions with rejected alternatives |
 | `specs/018-auth-user-access/checklists/plan-review.md` | Pre-implementation review gate |
 | `specs/019-supabase-persistence/spec.md` | Hosted Supabase Postgres persistence layer — feature spec |
-| `specs/019-supabase-persistence/plan.md` | Repository factory, RLS policies, migration architecture |
+| `specs/019-supabase-persistence/plan.md` | Repository factory, RLS policies, migration architecture, boot-time schema check, and per-user seed middleware |
 | `specs/019-supabase-persistence/tasks.md` | Phased implementation tasks ledger |
-| `specs/019-supabase-persistence/data-model.md` | Postgres schema (applications, profile) + RLS + indices |
-| `specs/019-supabase-persistence/contracts/api.md` | Hosted endpoints contract + boot-time schema probe |
+| `specs/019-supabase-persistence/data-model.md` | Postgres schema (applications, profile) + RLS + indices; §5 holds the canonical operator-applied SQL (no separate `.sql` file) |
+| `specs/019-supabase-persistence/contracts/api.md` | Internal contracts (dispatcher, Supabase adapter, per-request client, seed step, schema check) — wire-level API responses explicitly unchanged |
 | `specs/019-supabase-persistence/quickstart.md` | Operator migration steps + verification |
 | `specs/019-supabase-persistence/research.md` | Design decisions with rejected alternatives |
 | `specs/019-supabase-persistence/checklists/plan-review.md` | Pre-implementation review gate |
 | `specs/020-portfolio-demo-mode/spec.md` | Client-side in-memory portfolio demo — feature spec |
-| `specs/020-portfolio-demo-mode/plan.md` | Demo store, auth-status switch, seeded sample data architecture |
+| `specs/020-portfolio-demo-mode/plan.md` | Demo store, auth-status switch, seeded sample data architecture, removal of the 019 `APP_RUNTIME=demo` server slot, and side-effect-free seed extraction |
 | `specs/020-portfolio-demo-mode/tasks.md` | Phased implementation tasks ledger |
 | `specs/020-portfolio-demo-mode/data-model.md` | In-memory demo data shape (no persistence layer) |
 | `specs/020-portfolio-demo-mode/contracts/api.md` | Service-layer demo-mode short-circuit contracts |
-| `specs/020-portfolio-demo-mode/quickstart.md` | Manual verification recipe for the demo CTA |
+| `specs/020-portfolio-demo-mode/quickstart.md` | End-to-end verification walkthrough — exercised against both local dev and the hosted Vercel deploy |
 | `specs/020-portfolio-demo-mode/research.md` | Design decisions with rejected alternatives |
 | `specs/020-portfolio-demo-mode/checklists/plan-review.md` | Pre-implementation review gate |
 | `specs/021-hosted-resume-import-security/spec.md` | Hosted resume import security hardening — feature spec |
