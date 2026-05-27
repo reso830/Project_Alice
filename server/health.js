@@ -14,6 +14,12 @@ const PROBES = [
     failOn: [UNDEFINED_COLUMN],
     docPath: 'specs/025-application-timeline/quickstart.md §3.1',
   },
+  {
+    table: 'applications',
+    column: 'archived_date',
+    failOn: [UNDEFINED_COLUMN],
+    docPath: 'specs/028-archive-applications-view/data-model.md §1.3',
+  },
 ];
 
 function migrationHint(table, column, docPath) {
@@ -36,10 +42,13 @@ function migrationHint(table, column, docPath) {
 
 /**
  * Boot-time schema check for hosted mode. Verifies that the 019 migration
- * (see `specs/019-supabase-persistence/data-model.md §5`) has been applied
- * to the configured Supabase project by issuing sentinel PostgREST
- * probes — `SELECT user_id FROM <t> LIMIT 0` against `applications`,
- * `profile`, `user_seed_state`, and `applications.timeline`.
+ * (see `specs/019-supabase-persistence/data-model.md §5`) plus subsequent
+ * additive column migrations from features 025 (`applications.timeline`)
+ * and 028 (`applications.archived_date`) have been applied to the
+ * configured Supabase project by issuing sentinel PostgREST probes —
+ * `SELECT <column> FROM <t> LIMIT 0` against `applications`, `profile`,
+ * `user_seed_state`, `applications.timeline`, and
+ * `applications.archived_date`.
  *
  * Behavior:
  *   - `!config.isHosted` → early return, no network call.

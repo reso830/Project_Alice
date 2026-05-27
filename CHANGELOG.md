@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-05-26
+
+Archive Applications view — closes the archive lifecycle loop. Archived applications now have a dedicated reachable surface on the Tracker (toolbar chip + `?view=archived` deep link), a read-only Application Overlay mode, and a one-click unarchive action; the Profile page surfaces an `Archived applications · N →` entry point. Archived rows remain excluded from every active workflow surface (Active list, Calendar suggestions, Action Panel sections, Month Grid chips, Profile stat tiles).
+
+### Added
+
+- **Archived Applications view on the Tracker** — a new toolbar view chip (`Applications ▾` / `Archived ▾`) toggles between active and archived lists. Deep-linkable via `?view=archived` (initial render honors the URL with no flash of the Active view). Pagination resets to page 1 on switch; filters and sort persist.
+  (028-archive-applications-view)
+- **Read-only Archived mode for the Application Overlay** — clicking any archived card opens the overlay with an `ARCHIVED` header chip, only `↺ Unarchive` and `✕ Close` in the action cluster, all body fields rendered as plain values (no click-to-edit), and no Save/Discard footer. Esc / backdrop / ✕ close immediately without a discard confirmation.
+  (028-archive-applications-view §application_overlay.md §12)
+- **`POST /api/applications/:id/unarchive`** endpoint mirroring the existing `archive` endpoint. The client gains an `api.unarchive(id)` helper; both SQLite and Supabase repositories implement `unarchive(id)` and `getAllArchived()`. Demo mode supports the round-trip in memory.
+  (028-archive-applications-view)
+- **`archived_date` column** on the `applications` table (additive, nullable). Populated automatically when `archived` flips `false → true`; cleared when it flips back. Existing archived rows in legacy databases retain `archived_date = NULL`; the card date-stamp falls back to `lastStatusUpdate` for those.
+  (028-archive-applications-view)
+- **"Archived applications · N →" link on the Profile page** — deep-links to `Tracker.html?view=archived` and always renders, including at `N = 0`. Falls back to `N = 0` gracefully if the archived-count fetch fails.
+  (028-archive-applications-view)
+- **Two seeded archived rows in demo mode** (one favorited + non-terminal, one terminal-status + unfavorited) so portfolio visitors can exercise the Archived view, the unarchive action, and the favorite-preservation behavior out of the box.
+  (028-archive-applications-view)
+
+### Changed
+
+- **Archive no longer clears the `fav` star.** A starred row archived after this version retains `fav: true` through both archive and unarchive. This is a forward-only behavior change — rows archived before this version had their `fav` cleared at archive time; that state is not retroactively recovered.
+  (028-archive-applications-view FR-009)
+- **Tracker `+ New application` button and mobile FAB are hidden while the Archived view is active.** Creation is suppressed at every entry point on the Archived list.
+  (028-archive-applications-view FR-004)
+- **Toolbar chip label no longer renames to "Results" when filters are active.** The chip now always reads `Applications` (Active view) or `Archived` (Archived view); active-filter state is still signaled by the count badge updating to the filtered count and by the highlighted filter buttons. This is a small UX change to existing chrome introduced as a side-effect of the view-chip redesign.
+  (028-archive-applications-view tracker.md § View switcher)
+- Demo mode's `archive` operation now keeps the row in memory with `archived: true` (previously the row was spliced out of the demo array, which made an Archived view impossible in demo mode).
+  (028-archive-applications-view)
+- Application Overlay header now restores the `modal-header--light` / `modal-header--dark` contrast class after each status-accent change, ensuring the new archived stamp chip and any other contrast-dependent children render with the correct variant on every render. Pre-028 the class was stripped on status change without being re-added.
+  (028-archive-applications-view §07.3)
+
 ## [0.13.3] — 2026-05-26
 
 ### Changed
@@ -736,7 +768,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.3...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1

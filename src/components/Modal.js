@@ -103,6 +103,7 @@ function applyHeaderStatus(header, status) {
   header.style.backgroundColor = config.borderAccent;
   header.style.color = config.badgeText;
   header.classList.remove('modal-header--light', 'modal-header--dark');
+  header.classList.add(getHeaderContrastClass(config.borderAccent));
 }
 
 function updateStatusBadge(badge, status) {
@@ -578,7 +579,11 @@ function _renderBody() {
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
     createCompatField(_draft.compat),
     makeInlineText({ label: 'Compat Notes', key: 'compatNotes', multiline: true }),
-    Timeline.render(_draft, { currentStatus: _draft.status, onChange: _syncFooter }),
+    Timeline.render(_draft, {
+      currentStatus: _draft.status,
+      onChange: _syncFooter,
+      readOnly: _mode === 'archived',
+    }),
     makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
     makeChipEditor({ label: 'Required Skills', key: 'skills' }),
     makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills' }),

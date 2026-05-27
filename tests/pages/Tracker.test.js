@@ -120,6 +120,82 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.textContent).toContain('Role 1');
   });
 
+  it('keeps an active status filter applied when switching to archived rows with no matches', async () => {
+    const container = document.createElement('main');
+    const active = createApplication(1, { status: 'interview' });
+    const archived = createApplication(2, { status: 'offer', archived: true, archivedDate: '2026-05-01' });
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([active])
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      statuses: ['interview'],
+    });
+
+    expect(container.textContent).toContain('Role 1');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(toolbarUpdateOptions.at(-1).filterState.statuses).toEqual(['interview']);
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No archived items match<br>the active filters.');
+    expect(container.textContent).not.toContain('Role 2');
+  });
+
+  it('keeps salary sort applied when switching to archived rows', async () => {
+    const container = document.createElement('main');
+    const sortState = { field: 'salary', direction: 'desc' };
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve([
+          createApplication(2, { salary: 90000, archived: true }),
+          createApplication(3, { salary: 130000, archived: true }),
+        ])
+        : Promise.resolve([createApplication(1, { salary: 110000 })])
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onSortChange(sortState);
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    const cards = [...container.querySelectorAll('.card')].map((card) => card.textContent);
+
+    expect(toolbarUpdateOptions.at(-1).sortState).toEqual(sortState);
+    expect(cards[0]).toContain('Role 3');
+    expect(cards[1]).toContain('Role 2');
+  });
+
+  it('resets pagination to page 1 when switching views', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve(Array.from({ length: 14 }, (_, index) => createApplication(index + 40, { archived: true })))
+        : Promise.resolve(Array.from({ length: 25 }, (_, index) => createApplication(index + 1)))
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onSortChange({ field: 'id', direction: 'asc' });
+    [...container.querySelectorAll('.pagination__btn')]
+      .find((button) => button.textContent === '3')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toBe('3');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toBe('1');
+    expect(container.textContent).toContain('Role 40');
+    expect(container.textContent).not.toContain('Role 50');
+  });
+
   it('hides creation affordances in archived view and restores them on active view', async () => {
     const container = document.createElement('main');
 

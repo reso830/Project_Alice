@@ -120,6 +120,26 @@ function createStatChipRow(applications) {
   return row;
 }
 
+function createArchivedApplicationsLink(count, navigate) {
+  const link = document.createElement('a');
+
+  link.className = 'profile-archived-link';
+  link.href = 'Tracker.html?view=archived';
+  link.textContent = `Archived applications \u00b7 ${count} \u2192`;
+  link.setAttribute('aria-label', `View archived applications, ${count} ${count === 1 ? 'item' : 'items'}`);
+  link.addEventListener('click', (event) => {
+    if (typeof navigate !== 'function') {
+      return;
+    }
+
+    event.preventDefault();
+    window.history.pushState({}, '', 'Tracker.html?view=archived');
+    navigate('tracker', { view: 'archived' });
+  });
+
+  return link;
+}
+
 function renderApplicationsSection(page, navigate) {
   const { section, actions } = createSection('APPLICATIONS');
   const body = createElement('div', 'applications-body');
@@ -182,7 +202,7 @@ function updateLegendHover(legend, status) {
   }
 }
 
-function renderApplicationsVisuals(body, applications) {
+function renderApplicationsVisuals(body, applications, archivedCount, navigate) {
   const counts = computeAppCounts(applications);
   const entries = getStatusEntries(counts);
   const segments = calculateSegments(counts);
@@ -267,7 +287,11 @@ function renderApplicationsVisuals(body, applications) {
     }),
   );
 
-  body.replaceChildren(desktop, mobile);
+  body.replaceChildren(
+    desktop,
+    mobile,
+    createArchivedApplicationsLink(archivedCount, navigate),
+  );
 }
 
 function renderEmptyProfile(section, navigate) {
@@ -552,6 +576,7 @@ export async function mount(container, { navigate } = {}) {
 
   const profilePromise = getProfile().catch(() => null);
   const applicationsPromise = getAll();
+  const archivedApplicationsPromise = getAll({ view: 'archived' }).catch(() => []);
   const profile = await profilePromise;
 
   if (_container !== container) {
@@ -563,15 +588,24 @@ export async function mount(container, { navigate } = {}) {
   const applicationsSection = renderApplicationsSection(page, safeNavigate);
 
   try {
-    const applications = await applicationsPromise;
+    const [applications, archivedApplications] = await Promise.all([
+      applicationsPromise,
+      archivedApplicationsPromise,
+    ]);
     const safeApplications = Array.isArray(applications) ? applications : [];
+    const safeArchivedApplications = Array.isArray(archivedApplications) ? archivedApplications : [];
 
-    renderApplicationsVisuals(applicationsSection.body, safeApplications);
+    renderApplicationsVisuals(
+      applicationsSection.body,
+      safeApplications,
+      safeArchivedApplications.length,
+      safeNavigate,
+    );
     applicationsSection.message.textContent = safeApplications.length === 0
       ? 'No applications yet.'
       : '';
   } catch {
-    renderApplicationsVisuals(applicationsSection.body, []);
+    renderApplicationsVisuals(applicationsSection.body, [], 0, safeNavigate);
     applicationsSection.message.textContent = 'Application data is unavailable right now.';
   }
 

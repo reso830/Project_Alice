@@ -9,13 +9,14 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 0.13.3 patch release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('0.13.3');
-    expect(APP_VERSION).toBe('v0.13.3');
+  it('keeps the 0.14.0 minor release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('0.14.0');
+    expect(APP_VERSION).toBe('v0.14.0');
 
-    expect(read('README.md')).toContain('Current version: **0.13.3**');
-    expect(read('CHANGELOG.md')).toContain('## [0.13.3] — 2026-05-26');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.13.3...HEAD');
+    expect(read('README.md')).toContain('Current version: **0.14.0**');
+    expect(read('CHANGELOG.md')).toContain('## [0.14.0] — 2026-05-26');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.14.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0');
     expect(read('CHANGELOG.md')).toContain('[0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3');
     expect(read('CHANGELOG.md')).toContain('[0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2');
     expect(read('CHANGELOG.md')).toContain('[0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1');
@@ -72,6 +73,30 @@ describe('release metadata', () => {
       'src/components/calendar/MonthGrid.js',
       'src/utils/calendarSuggestions.js',
       'tests/pages/Calendar.test.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Archive Applications view release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const deployment = read('docs/deployment.md');
+    const repoMap = read('docs/REPO_MAP.md');
+
+    expect(readme).toContain('Archive Applications view');
+    expect(readme).toContain('specs/028-archive-applications-view/');
+    expect(deployment).toContain('specs/028-archive-applications-view/data-model.md');
+    expect(deployment).toContain('specs/028-archive-applications-view/quickstart.md');
+    expect(repoMap).toContain('specs/028-archive-applications-view/');
+    expect(repoMap).toContain('archived_date');
+    expect(repoMap).toContain('getAllArchived');
+    expect(repoMap).toContain('unarchive');
+
+    for (const path of [
+      'specs/028-archive-applications-view',
+      'specs/028-archive-applications-view/spec.md',
+      'specs/028-archive-applications-view/data-model.md',
+      'specs/028-archive-applications-view/quickstart.md',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

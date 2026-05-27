@@ -12,6 +12,7 @@ let _draft = null;
 let _expanded = false;
 let _onChange = null;
 let _currentStatus = null;
+let _readOnly = false;
 let _addDate = toISODate();
 let _addStatus = null;
 let _addText = '';
@@ -65,7 +66,9 @@ function createCollapsedRow() {
   } else {
     const empty = document.createElement('span');
     empty.className = 'tl-empty';
-    empty.textContent = 'No entries yet — click to add';
+    empty.textContent = _readOnly
+      ? 'No timeline entries.'
+      : 'No entries yet — click to add';
     row.append(empty);
   }
 
@@ -218,6 +221,10 @@ function createAddRow() {
 function createEntryStatusBadge(entry) {
   const badge = createStatusBadge(entry.status);
 
+  if (_readOnly) {
+    return badge;
+  }
+
   badge.setAttribute('role', 'button');
   badge.tabIndex = 0;
   badge.setAttribute('aria-label', 'Timeline entry status');
@@ -248,8 +255,13 @@ function createEntryTextDisplay(entry) {
   const text = document.createElement('span');
 
   text.className = 'tl-text-line';
-  text.tabIndex = 0;
   text.textContent = entry.text === '' ? '—' : entry.text;
+
+  if (_readOnly) {
+    return text;
+  }
+
+  text.tabIndex = 0;
   text.addEventListener('click', () => {
     _editingTextEntryId = entry.id;
     refresh();
@@ -311,8 +323,13 @@ function createEntryDateDisplay(entry) {
   const date = document.createElement('span');
 
   date.className = 'tl-date-text';
-  date.tabIndex = 0;
   date.textContent = toDisplayDate(entry.date);
+
+  if (_readOnly) {
+    return date;
+  }
+
+  date.tabIndex = 0;
   date.addEventListener('click', () => {
     _editingDateEntryId = entry.id;
     refresh();
@@ -413,14 +430,19 @@ function createEntryRow(entry) {
     createDash(),
     createEntryStatusBadge(entry),
     _editingTextEntryId === entry.id ? createEntryTextInput(entry) : createEntryTextDisplay(entry),
-    createDeleteButton(entry),
   );
+  if (!_readOnly) {
+    row.append(createDeleteButton(entry));
+  }
 
   return row;
 }
 
 function createExpandedContents() {
-  const contents = [createHeader(), createAddRow()];
+  const contents = [createHeader()];
+  if (!_readOnly) {
+    contents.push(createAddRow());
+  }
 
   for (const entry of sortTimelineEntries(_draft?.timeline ?? [])) {
     contents.push(createEntryRow(entry));
@@ -541,10 +563,11 @@ function openInlineStatusPicker(anchor, currentValue, onPick) {
   document.addEventListener('keydown', _pickerKeydownHandler, true);
 }
 
-export function render(draft, { currentStatus, onChange } = {}) {
+export function render(draft, { currentStatus, onChange, readOnly = false } = {}) {
   _draft = draft;
   _currentStatus = currentStatus;
   _onChange = onChange;
+  _readOnly = readOnly === true;
   _addStatus = currentStatus || 'wishlisted';
 
   const wrapper = document.createElement('div');
@@ -585,6 +608,7 @@ export function reset() {
   _draft = null;
   _onChange = null;
   _currentStatus = null;
+  _readOnly = false;
   _editingTextEntryId = null;
   _editingDateEntryId = null;
   resetAddRow();

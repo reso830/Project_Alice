@@ -31,6 +31,11 @@ function getButton(container, label) {
     .find((button) => button.textContent === label);
 }
 
+function getArchivedLink(container) {
+  return [...container.querySelectorAll('a')]
+    .find((link) => link.textContent.includes('Archived applications'));
+}
+
 function getSubsection(container, label) {
   return [...container.querySelectorAll('.profile-subsection')]
     .find((section) => section.querySelector('.profile-subsection__label')?.textContent.includes(label));
@@ -87,6 +92,54 @@ describe('Profile page', () => {
 
     expect(navigate).toHaveBeenCalledWith('tracker');
     expect(navigate).toHaveBeenCalledWith('profile-edit', { highlightImport: true });
+  });
+
+  it('fetches archived applications and routes the archived link to the archived tracker view', async () => {
+    const container = document.createElement('main');
+    const navigate = vi.fn();
+
+    window.history.replaceState({}, '', '/Profile.html');
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockImplementation(({ view } = {}) => Promise.resolve(
+      view === 'archived'
+        ? [createApplication({ id: 2, archived: true }), createApplication({ id: 3, archived: true })]
+        : [createApplication({ id: 1 })],
+    ));
+
+    await Profile.mount(container, { navigate });
+
+    const link = getArchivedLink(container);
+
+    expect(api.getAll).toHaveBeenCalledWith();
+    expect(api.getAll).toHaveBeenCalledWith({ view: 'archived' });
+    expect(link.textContent).toBe('Archived applications · 2 →');
+    expect(link.getAttribute('href')).toBe('Tracker.html?view=archived');
+    expect(link.getAttribute('aria-label')).toBe('View archived applications, 2 items');
+
+    link.click();
+
+    expect(window.location.pathname).toBe('/Tracker.html');
+    expect(window.location.search).toBe('?view=archived');
+    expect(navigate).toHaveBeenCalledWith('tracker', { view: 'archived' });
+  });
+
+  it('renders archived count zero when archived loading fails without changing active stats', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockImplementation(({ view } = {}) => (
+      view === 'archived'
+        ? Promise.reject(new Error('archived unavailable'))
+        : Promise.resolve([createApplication({ id: 1, status: 'offer' })])
+    ));
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    expect(getArchivedLink(container).textContent).toBe('Archived applications · 0 →');
+    expect(getArchivedLink(container).getAttribute('aria-label')).toBe('View archived applications, 0 items');
+    expect(container.textContent).not.toContain('Application data is unavailable right now.');
+    expect([...container.querySelectorAll('.stat-chip__value')].map((chip) => chip.textContent))
+      .toEqual(['1', '0', '0', '1', '1', '0', '0', '1']);
   });
 
   it('renders a saved profile and wires edit navigation', async () => {

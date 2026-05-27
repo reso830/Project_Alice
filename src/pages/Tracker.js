@@ -253,9 +253,11 @@ function onClearAll() {
   updateToolbar();
 }
 
-async function loadList() {
+async function loadList({ preserveFilters = false } = {}) {
   _applications = await api.getAll(getListOptions());
-  _filterState = syncDynamicSelections(_filterState, _applications);
+  if (!preserveFilters) {
+    _filterState = syncDynamicSelections(_filterState, _applications);
+  }
   _salaryBounds = getSalaryBounds(_applications);
 }
 
@@ -271,7 +273,7 @@ async function setView(next) {
   syncFabVisibility();
 
   try {
-    await loadList();
+    await loadList({ preserveFilters: true });
     ensureCardList();
     renderPage({ moveFocus: true });
     updateToolbar();

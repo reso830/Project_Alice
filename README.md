@@ -5,6 +5,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 ## Features
 
 - **Application cards** — surface company, role, status, date, and compatibility at a glance
+- **Archive Applications view** — a Tracker toolbar chip toggles between active and archived rows (deep-linkable via `?view=archived`); archived cards open a read-only overlay with a single ↺ Unarchive action; archived rows are excluded from every active workflow surface (Calendar suggestions, Action Panel sections, Profile stat tiles); a Profile entry point (`Archived applications · N →`) makes the view discoverable from anywhere
 - **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
 - **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
 - **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
@@ -211,7 +212,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.13.3** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.14.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -251,6 +252,7 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 - [docs/design/application_timeline.md](docs/design/application_timeline.md) — Application Timeline interaction and visual design
 - [specs/026-calendar/](specs/026-calendar/) — Calendar page specification package
 - [docs/design/calendar.md](docs/design/calendar.md) — Calendar page interaction and visual design
+- [specs/028-archive-applications-view/](specs/028-archive-applications-view/) — Archive Applications view specification package
 - [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
 - [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
 - [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup

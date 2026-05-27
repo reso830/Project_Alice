@@ -1059,7 +1059,7 @@
 
 ## Phase 06 — Profile + Calendar verification (US-4, US-5)
 
-### [ ] Task 06.1 — Profile `Archived applications · N →` link
+### [X] Task 06.1 — Profile `Archived applications · N →` link
 
 **Target file**: [src/pages/Profile.js](../../src/pages/Profile.js)
 
@@ -1115,7 +1115,7 @@
 
 ---
 
-### [ ] Task 06.2 — Calendar verification test (no production code change)
+### [X] Task 06.2 — Calendar verification test (no production code change)
 
 **Target file**: [tests/pages/Calendar.test.js](../../tests/pages/Calendar.test.js)
 
@@ -1148,7 +1148,7 @@
 
 ## Phase 07 — Styling polish (also covers US-6 finishing)
 
-### [ ] Task 07.1 — View chip + view popup styles
+### [X] Task 07.1 — View chip + view popup styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1181,7 +1181,7 @@ Add CSS for the toolbar view chip and view popup per [tracker.md § View switche
 
 ---
 
-### [ ] Task 07.2 — Archived card styles
+### [X] Task 07.2 — Archived card styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1210,7 +1210,7 @@ Add CSS per [tracker.md § Card > Archived card variant](../../docs/design/track
 
 ---
 
-### [ ] Task 07.3 — Archived overlay chip + button styles
+### [X] Task 07.3 — Archived overlay chip + button styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1239,7 +1239,7 @@ Per [application_overlay.md §12.1](../../docs/design/application_overlay.md):
 
 ---
 
-### [ ] Task 07.4 — Profile archived link styles
+### [X] Task 07.4 — Profile archived link styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1265,7 +1265,7 @@ Add `.profile-archived-link` styling consistent with the Profile's other action 
 
 ---
 
-### [ ] Task 07.5 — Filter / sort / pagination compatibility check (US-6 polish)
+### [X] Task 07.5 — Filter / sort / pagination compatibility check (US-6 polish)
 
 **Target files**:
 - [src/components/QuickFiltersToolbar.js](../../src/components/QuickFiltersToolbar.js) — inspect only
@@ -1299,7 +1299,7 @@ Add `.profile-archived-link` styling consistent with the Profile's other action 
 
 ## Phase 08 — Release Prep (REQUIRED — constitution Amendment 1.3.0)
 
-### [ ] Task 08.1 — Version bump
+### [X] Task 08.1 — Version bump
 
 **Target files**:
 - [package.json](../../package.json) — `version` field
@@ -1330,7 +1330,7 @@ Add `.profile-archived-link` styling consistent with the Profile's other action 
 
 ---
 
-### [ ] Task 08.2 — CHANGELOG entry
+### [X] Task 08.2 — CHANGELOG entry
 
 **Target file**: [CHANGELOG.md](../../CHANGELOG.md)
 
@@ -1375,7 +1375,7 @@ Then update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of
 
 ---
 
-### [ ] Task 08.3 — README updates
+### [X] Task 08.3 — README updates
 
 **Target file**: [README.md](../../README.md)
 
@@ -1401,7 +1401,7 @@ Then update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of
 
 ---
 
-### [ ] Task 08.4 — deployment.md (Supabase migration)
+### [X] Task 08.4 — deployment.md (Supabase migration)
 
 **Target file**: [docs/deployment.md](../../docs/deployment.md)
 
@@ -1425,7 +1425,7 @@ Then update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of
 
 ---
 
-### [ ] Task 08.5 — REPO_MAP.md
+### [X] Task 08.5 — REPO_MAP.md
 
 **Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 
@@ -1458,7 +1458,7 @@ Then update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of
 
 ---
 
-### [ ] Task 08.6 — Docs sanity check
+### [X] Task 08.6 — Docs sanity check
 
 **Target files**: cross-cutting
 
@@ -1489,7 +1489,7 @@ Then update the `[Unreleased]` and `[<new-version>]` diff links at the bottom of
 
 Each task below walks one user story's Independent Test against the merged-state branch in a real browser, on both desktop (≥ 1024px) and mobile (≤ 639px) viewports.
 
-### [ ] Task 09.1 [US-1] Open the Archived view
+### [X] Task 09.1 [US-1] Open the Archived view
 
 Per [spec.md US-1](spec.md):
 
@@ -1501,7 +1501,7 @@ Per [spec.md US-1](spec.md):
 - ✅ "+ New application" button hidden (desktop); FAB hidden (mobile).
 - ✅ Switching back to Active strips `?view=` and restores the original list.
 
-### [ ] Task 09.2 [US-2] Unarchive from the card
+### [X] Task 09.2 [US-2] Unarchive from the card
 
 Per [spec.md US-2](spec.md):
 
@@ -1512,7 +1512,7 @@ Per [spec.md US-2](spec.md):
 - ✅ Switching to Active, the row is present with `status` unchanged.
 - ✅ In local mode, check the DB: `archived = 0`, `archived_date = NULL`, `fav` preserved (test with a starred row and confirm `fav = 1` survives).
 
-### [ ] Task 09.3 [US-3] Archived overlay (read-only)
+### [X] Task 09.3 [US-3] Archived overlay (read-only)
 
 Per [spec.md US-3](spec.md):
 
@@ -1527,7 +1527,7 @@ Per [spec.md US-3](spec.md):
 - ✅ ✕ closes immediately, no discard dialog.
 - ✅ ↺ in the header unarchives the row, closes the modal, fires the `Unarchived.` toast.
 
-### [ ] Task 09.4 [US-4] Profile entry point
+### [X] Task 09.4 [US-4] Profile entry point
 
 Per [spec.md US-4](spec.md):
 
@@ -1536,7 +1536,7 @@ Per [spec.md US-4](spec.md):
 - ✅ Clicking the link navigates to `/Tracker.html?view=archived` and the Archived view is the initial state (no flash).
 - ✅ The existing stat tiles (Total / Active / Pending / Offer) still render unchanged.
 
-### [ ] Task 09.5 [US-5] Active surfaces exclude archived rows
+### [X] Task 09.5 [US-5] Active surfaces exclude archived rows
 
 Per [spec.md US-5](spec.md):
 
@@ -1547,7 +1547,7 @@ Per [spec.md US-5](spec.md):
 - Unarchive the row. Reload the Calendar.
 - ✅ The row's activity reappears in the Calendar.
 
-### [ ] Task 09.6 [US-6] Filter / sort / pagination within the Archived view
+### [X] Task 09.6 [US-6] Filter / sort / pagination within the Archived view
 
 Per [spec.md US-6](spec.md):
 
@@ -1558,7 +1558,7 @@ Per [spec.md US-6](spec.md):
 - ✅ Switch back to Active — the same filter + sort still applied (against active rows now).
 - ✅ Pagination reset to page 1 on each switch.
 
-### [ ] Task 09.7 Mobile layout
+### [X] Task 09.7 Mobile layout
 
 - DevTools at ≤ 639px (or a real mobile device on the preview deploy).
 - ✅ Toolbar view chip renders correctly and the popup is reachable.
@@ -1567,7 +1567,7 @@ Per [spec.md US-6](spec.md):
 - ✅ FAB is absent on the Archived view; visible on Active.
 - ✅ Profile archived link is touch-reachable, navigates correctly.
 
-### [ ] Task 09.8 Hosted mode parity
+### [X] Task 09.8 Hosted mode parity
 
 - Sign in to a preview deploy.
 - ✅ Migration applied; `archived_date` column present in Supabase.
@@ -1575,7 +1575,7 @@ Per [spec.md US-6](spec.md):
 - ✅ A second user signing in cannot see the first user's archived rows.
 - ✅ Pre-feature archived rows (if any) display `Archived <lastStatusUpdate>` (fallback) without crashing.
 
-### [ ] Task 09.9 Demo mode
+### [X] Task 09.9 Demo mode
 
 - Open the demo from the welcome page.
 - ✅ The Archived view shows the two seeded archived rows.
