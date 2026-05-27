@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
@@ -43,7 +43,7 @@ const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 afterEach(() => {
   Tracker.unmount();
   document.body.replaceChildren();
-  window.history.replaceState({}, '', '/Tracker.html');
+  window.history.replaceState({}, '', '/');
   toolbarRenderOptions.length = 0;
   toolbarUpdateOptions.length = 0;
   window.localStorage.clear();
@@ -75,7 +75,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const archived = createApplication(9, { archived: true, archivedDate: '2026-05-01' });
 
     window.scrollTo = vi.fn();
-    window.history.replaceState({}, '', '/Tracker.html?view=archived');
+    window.history.replaceState({}, '', '/?view=archived');
     api.getAll.mockImplementation((options) => (
       options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([])
     ));
@@ -94,7 +94,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const sortState = { field: 'salary', direction: 'desc' };
 
     window.scrollTo = vi.fn();
-    window.history.replaceState({}, '', '/Tracker.html');
+    window.history.replaceState({}, '', '/');
     api.getAll.mockImplementation((options) => (
       options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([active])
     ));
@@ -200,7 +200,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const container = document.createElement('main');
 
     window.scrollTo = vi.fn();
-    window.history.replaceState({}, '', '/Tracker.html?view=archived');
+    window.history.replaceState({}, '', '/?view=archived');
     api.getAll.mockImplementation((options) => (
       options?.view === 'archived' ? Promise.resolve([createApplication(2, { archived: true })]) : Promise.resolve([createApplication(1)])
     ));
@@ -220,7 +220,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const container = document.createElement('main');
 
     window.scrollTo = vi.fn();
-    window.history.replaceState({}, '', '/Tracker.html');
+    window.history.replaceState({}, '', '/');
     api.getAll.mockResolvedValue([]);
 
     await Tracker.mount(container);
@@ -255,7 +255,7 @@ describe('Tracker quick filter toolbar integration', () => {
     const restored = { ...archived, archived: false, archivedDate: null };
 
     window.scrollTo = vi.fn();
-    window.history.replaceState({}, '', '/Tracker.html?view=archived');
+    window.history.replaceState({}, '', '/?view=archived');
     api.getAll.mockImplementation((options) => (
       options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([createApplication(1)])
     ));

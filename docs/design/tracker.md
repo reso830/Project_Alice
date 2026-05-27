@@ -396,7 +396,7 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 |---|---|---|
 | Tracker | `tracker` | Card list with filters, sort, detail modal |
 | Calendar | `calendar` | Current month grid with applied-date markers |
-| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections; also surfaces an "Archived applications · N →" link that deep-links to `Tracker.html?view=archived` |
+| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections; also surfaces an "Archived applications · N →" link that deep-links to `/?view=archived` |
 
 Mobile bottom-tab icons:
 - **Tracker** — list / clipboard glyph (rect + 3 lines)

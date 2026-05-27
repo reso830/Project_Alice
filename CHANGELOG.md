@@ -21,7 +21,7 @@ Archive Applications view — closes the archive lifecycle loop. Archived applic
   (028-archive-applications-view)
 - **`archived_date` column** on the `applications` table (additive, nullable). Populated automatically when `archived` flips `false → true`; cleared when it flips back. Existing archived rows in legacy databases retain `archived_date = NULL`; the card date-stamp falls back to `lastStatusUpdate` for those.
   (028-archive-applications-view)
-- **"Archived applications · N →" link on the Profile page** — deep-links to `Tracker.html?view=archived` and always renders, including at `N = 0`. Falls back to `N = 0` gracefully if the archived-count fetch fails.
+- **"Archived applications · N →" link on the Profile page** — deep-links to `/?view=archived` and always renders, including at `N = 0`. Falls back to `N = 0` gracefully if the archived-count fetch fails.
   (028-archive-applications-view)
 - **Two seeded archived rows in demo mode** (one favorited + non-terminal, one terminal-status + unfavorited) so portfolio visitors can exercise the Archived view, the unarchive action, and the favorite-preservation behavior out of the box.
   (028-archive-applications-view)

@@ -98,7 +98,9 @@ describe('Profile page', () => {
     const container = document.createElement('main');
     const navigate = vi.fn();
 
-    window.history.replaceState({}, '', '/Profile.html');
+    // Start the test from the SPA root path so the click's relative
+    // pushState reflects the actual production navigation state.
+    window.history.replaceState({}, '', '/');
     api.getProfile.mockResolvedValue(null);
     api.getAll.mockImplementation(({ view } = {}) => Promise.resolve(
       view === 'archived'
@@ -113,12 +115,12 @@ describe('Profile page', () => {
     expect(api.getAll).toHaveBeenCalledWith();
     expect(api.getAll).toHaveBeenCalledWith({ view: 'archived' });
     expect(link.textContent).toBe('Archived applications · 2 →');
-    expect(link.getAttribute('href')).toBe('Tracker.html?view=archived');
+    expect(link.getAttribute('href')).toBe('/?view=archived');
     expect(link.getAttribute('aria-label')).toBe('View archived applications, 2 items');
 
     link.click();
 
-    expect(window.location.pathname).toBe('/Tracker.html');
+    expect(window.location.pathname).toBe('/');
     expect(window.location.search).toBe('?view=archived');
     expect(navigate).toHaveBeenCalledWith('tracker', { view: 'archived' });
   });

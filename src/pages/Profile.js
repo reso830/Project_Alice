@@ -124,7 +124,11 @@ function createArchivedApplicationsLink(count, navigate) {
   const link = document.createElement('a');
 
   link.className = 'profile-archived-link';
-  link.href = 'Tracker.html?view=archived';
+  // SPA convention: the app lives at `/` (single index.html); the view is
+  // encoded in the query string. Using an absolute SPA root URL keeps the
+  // href routable for middle-click / copy-paste / refresh on hosted Vercel
+  // builds (no Tracker.html file exists; vercel.json rewrites only /api/*).
+  link.href = '/?view=archived';
   link.textContent = `Archived applications \u00b7 ${count} \u2192`;
   link.setAttribute('aria-label', `View archived applications, ${count} ${count === 1 ? 'item' : 'items'}`);
   link.addEventListener('click', (event) => {
@@ -133,7 +137,7 @@ function createArchivedApplicationsLink(count, navigate) {
     }
 
     event.preventDefault();
-    window.history.pushState({}, '', 'Tracker.html?view=archived');
+    window.history.pushState({}, '', '/?view=archived');
     navigate('tracker', { view: 'archived' });
   });
 
