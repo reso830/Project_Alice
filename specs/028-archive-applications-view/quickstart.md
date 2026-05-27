@@ -137,13 +137,13 @@ Per the project constitution (V), tests must pass before the Release Prep phase 
 
 The feature is ready for the constitution-mandated Browser Smoke Test (Amendment 1.1.0 + 1.3.0) when all of the following hold:
 
-- [ ] `npm test` passes.
-- [ ] Lint and format checks pass.
-- [ ] Steps 1.3–1.10 pass on local mode in a real browser.
-- [ ] Steps 2.1–2.3 pass on demo mode in a real browser.
-- [ ] Steps 3.1–3.4 pass on a hosted preview deploy in a real browser, on desktop AND mobile viewports.
-- [ ] `CHANGELOG.md` lists the feature with the `fav` behavior change called out.
-- [ ] `docs/REPO_MAP.md` is updated for any new files (Modal mode addition, view-chip component, etc.).
-- [ ] `docs/deployment.md` documents the Supabase migration if env-vars or migration steps are required.
+- [X] `npm test` passes.
+- [X] Lint and format checks pass.
+- [X] Steps 1.3–1.10 pass on local mode in a real browser.
+- [X] Steps 2.1–2.3 pass on demo mode in a real browser.
+- [X] Steps 3.1–3.4 pass on a hosted preview deploy in a real browser, on desktop AND mobile viewports.
+- [X] `CHANGELOG.md` lists the feature with the `fav` behavior change called out.
+- [X] `docs/REPO_MAP.md` is updated for any new files (Modal mode addition, view-chip component, etc.).
+- [X] `docs/deployment.md` documents the Supabase migration if env-vars or migration steps are required.
 
 After all boxes are checked, proceed to the final Browser Smoke Test phase against the to-be-merged branch state (per Amendment 1.3.0, smoke test follows Release Prep).
