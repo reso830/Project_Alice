@@ -93,7 +93,15 @@ export function clear() {
 }
 
 export function getAll() {
-  return _applications.map((row) => deepClone(row));
+  return _applications
+    .filter((row) => row.archived !== true)
+    .map((row) => deepClone(row));
+}
+
+export function getAllArchived() {
+  return _applications
+    .filter((row) => row.archived === true)
+    .map((row) => deepClone(row));
 }
 
 export function getById(id) {
@@ -141,7 +149,7 @@ export function update(id, fields) {
   return deepClone(validated);
 }
 
-export function archive(id) {
+export function archive(id, now = toISODate()) {
   const index = findIndexById(id);
   if (index === -1) {
     throw {
@@ -150,12 +158,41 @@ export function archive(id) {
     };
   }
 
-  const removed = _applications[index];
+  const existing = _applications[index];
+  const updated = {
+    ...existing,
+    archived: true,
+    archivedDate: existing.archivedDate ?? now,
+  };
   _applications = [
     ..._applications.slice(0, index),
+    updated,
     ..._applications.slice(index + 1),
   ];
-  return deepClone(removed);
+  return deepClone(updated);
+}
+
+export function unarchive(id) {
+  const index = findIndexById(id);
+  if (index === -1) {
+    throw {
+      code: 'NOT_FOUND',
+      message: 'Application not found',
+    };
+  }
+
+  const existing = _applications[index];
+  const updated = {
+    ...existing,
+    archived: false,
+    archivedDate: null,
+  };
+  _applications = [
+    ..._applications.slice(0, index),
+    updated,
+    ..._applications.slice(index + 1),
+  ];
+  return deepClone(updated);
 }
 
 export function getProfile() {

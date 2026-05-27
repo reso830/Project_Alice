@@ -111,6 +111,7 @@ export const APPLICATION_COLUMNS_WITHOUT_USER_ID = [
   'created_at',
   'updated_at',
   'archived',
+  'archived_date',
 ];
 
 export function parseJson(value, fallback) {
@@ -198,6 +199,7 @@ export function toRecord(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archived: Boolean(row.archived ?? false),
+    archivedDate: row.archived_date ?? null,
     metadata: parseJson(row.metadata, null),
   };
 }
@@ -213,9 +215,6 @@ export function toRow(fields) {
       row[column] = value ? 1 : 0;
     } else if (field === 'archived') {
       row[column] = value ? 1 : 0;
-      if (value) {
-        row.fav = 0;
-      }
     } else if (field === 'skills') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'preferredSkills') {

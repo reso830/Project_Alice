@@ -783,6 +783,24 @@ textarea.edit-field__control {
   color: var(--t1);
 }
 
+.profile-archived-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 14px;
+  color: var(--indigo);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.profile-archived-link:hover,
+.profile-archived-link:focus-visible {
+  color: var(--indigo-hover);
+  text-decoration: underline;
+}
+
 .stat-chip-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1607,6 +1625,63 @@ button:focus-visible,
   font-weight: 600;
 }
 
+.view-chip {
+  width: fit-content;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r-pill);
+  padding: 3px 4px 3px 0;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.view-chip:hover,
+.view-chip:focus-within,
+.view-chip--open {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-title-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  border: 0;
+  border-radius: var(--r-pill);
+  padding: 0 3px 0 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.app-title-trigger:hover,
+.app-title-trigger:focus-visible,
+.view-chip--open .app-title-trigger {
+  color: #FFFFFF;
+}
+
+.app-title-trigger__label {
+  min-width: 0;
+}
+
+.app-title-trigger__chevron {
+  color: currentColor;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  opacity: .55;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.view-chip--open .app-title-trigger__chevron {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
 .toolbar__controls,
 .toolbar__filters,
 .toolbar__actions {
@@ -1629,6 +1704,85 @@ button:focus-visible,
 
 .toolbar__add:hover {
   background: var(--indigo-hover);
+}
+
+.view-popup {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: 220px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 5px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.view-popup__header {
+  padding: 7px 10px 4px;
+  color: var(--t4);
+  font-size: 8px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.view-popup__option {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: 0 8px;
+  background: transparent;
+  color: var(--t2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.view-popup__option:hover,
+.view-popup__option:focus-visible {
+  background: var(--indigo-soft);
+}
+
+.view-popup__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--t4);
+}
+
+.view-popup__option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.view-popup__count {
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+  background: var(--bg);
+  color: var(--t3);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.view-popup__option--selected {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.view-popup__option--selected .view-popup__dot {
+  background: var(--indigo);
+}
+
+.view-popup__option--selected .view-popup__count {
+  background: var(--indigo-dim);
+  color: var(--indigo);
 }
 
 /* FAB — Phase 13: mobile-only, sits above the bottom tab bar.
@@ -2114,6 +2268,11 @@ button:focus-visible,
   background: #FEF2F2;
 }
 
+.card.card-archived {
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
 .card__row {
   display: flex;
   align-items: center;
@@ -2262,6 +2421,34 @@ button:focus-visible,
   color: #D97706;
 }
 
+.card-archived-stamp {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+  background: var(--bg);
+  color: var(--t3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+}
+
+.card-btn--unarchive {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
+.card-btn--unarchive:not(:disabled):hover,
+.card-btn--unarchive:not(:disabled):focus-visible {
+  border-color: var(--indigo);
+  background: var(--indigo-dim);
+  color: var(--indigo);
+}
+
 .card-warning {
   color: #DC2626;
 }
@@ -2367,6 +2554,69 @@ button:focus-visible,
 .modal-quick-action:disabled {
   opacity: .55;
   cursor: not-allowed;
+}
+
+.archived-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.archived-stamp::before {
+  width: 11px;
+  height: 11px;
+  opacity: .85;
+  content: '';
+  background: currentColor;
+  clip-path: polygon(15% 28%, 38% 28%, 43% 16%, 57% 16%, 62% 28%, 85% 28%, 85% 84%, 15% 84%);
+}
+
+.modal-header--light .archived-stamp {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.modal-header--dark .archived-stamp {
+  background: rgba(0, 0, 0, 0.10);
+  color: rgba(0, 0, 0, 0.72);
+}
+
+/* Z Fold 5 cover screen (~370px) — tighten the archived-stamp so the
+   header meta cluster + action buttons fit on a single row even for
+   the longest status label ("Phone Screen"). Without this, the actions
+   wrap to a second row on the right side of the header (see
+   028-archive-applications-view §09.7b). */
+@media (max-width: 380px) {
+  .archived-stamp {
+    gap: 3px;
+    padding: 3px 6px;
+    letter-spacing: .5px;
+  }
+
+  .archived-stamp::before {
+    width: 9px;
+    height: 9px;
+  }
+}
+
+.modal-quick-action--unarchive {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
+.modal-quick-action--unarchive:not(:disabled):hover,
+.modal-quick-action--unarchive:not(:disabled):focus-visible {
+  border-color: var(--indigo);
+  background: var(--indigo-dim);
+  color: var(--indigo);
 }
 
 .modal-header h2 {
@@ -3235,8 +3485,11 @@ textarea.modal-inline-control {
   }
 
   .toolbar__label {
-    width: 100%;
     min-width: 0;
+  }
+
+  .toolbar__label:not(.view-chip) {
+    width: 100%;
   }
 
   .toolbar__left {

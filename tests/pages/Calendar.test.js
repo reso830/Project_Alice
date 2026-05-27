@@ -148,11 +148,40 @@ describe('Calendar page', () => {
     const host = await mountWith();
 
     expect(api.getAll).toHaveBeenCalledTimes(1);
+    expect(api.getAll).toHaveBeenCalledWith();
     expect(host.querySelector('.cal-action-panel')).not.toBeNull();
     expect(host.querySelector('.cal-grid-header')).not.toBeNull();
     expect(host.textContent).toContain('Today interview');
     expect(host.textContent).toContain('No updates for 14 days. Mark as Ghosted?');
     expect(host.querySelector('.cal-month-btn').textContent).toBe('May');
+  });
+
+  it('documents that Calendar renders only the active rows returned by api.getAll', async () => {
+    const archivedOnly = app(9, {
+      companyName: 'Archived Co',
+      jobTitle: 'Archived Role',
+      archived: true,
+      status: 'interview',
+      timeline: [{ id: 1, date: '2026-05-21', status: 'interview', text: 'Archived interview' }],
+      lastStatusUpdate: '2026-05-21',
+    });
+    const activeRows = fixtureApps();
+    const host = mountHost();
+
+    api.getAll.mockResolvedValue(activeRows);
+    api.getProfile.mockResolvedValue(null);
+
+    await Calendar.mount(host);
+
+    expect(api.getAll).toHaveBeenCalledTimes(1);
+    expect(api.getAll).toHaveBeenCalledWith();
+    expect(api.getAll).not.toHaveBeenCalledWith({ view: 'archived' });
+    expect(host.textContent).toContain('Today interview');
+    expect(host.textContent).toContain('Offer call');
+    expect(host.textContent).toContain('No updates for 14 days. Mark as Ghosted?');
+    expect(host.textContent).not.toContain(archivedOnly.companyName);
+    expect(host.textContent).not.toContain(archivedOnly.jobTitle);
+    expect(host.textContent).not.toContain('Archived interview');
   });
 
   it('renders empty states and a failure toast when loading fails', async () => {

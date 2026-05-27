@@ -13,6 +13,8 @@ Spec captures the modal that opens when a user clicks an application card in the
 
 Both modes share identical layout, validation, dirty-state tracking, and discard flow.
 
+> **Archived mode:** A third mode opens when the user clicks any card in the Archived view. It uses the same frame, header, and body grid, but every field is read-only and the footer is hidden. See §12 for the full set of differences.
+
 ---
 
 ## 2 · Frame
@@ -138,6 +140,7 @@ If the draft is **not** dirty, ✕ / backdrop / Esc close immediately with no di
 | ★ Favorite      | Row (live)     | No        | Toast: `Favorited.` / `Unfavorited.`                    |
 | ⇄ Change Status | Draft          | No        | Header bg recolors immediately; counts as dirty change  |
 | 🗄 Archive      | Row (live)     | Yes       | Confirm: *"Archive this application?"* → row leaves the visible list, modal closes, toast with **Undo** |
+| ↺ Unarchive     | Row (live)     | No        | Archived mode only. Clears `archived` + nulls `archivedDate`; modal closes; toast: `Unarchived.` |
 | ✕ Close         | Modal          | If dirty  | See §7                                                  |
 
 **Note:** Favorite and Archive bypass the draft because they're meta-state, not field edits — the user expects them to take effect instantly the way they do on the card.
@@ -179,3 +182,86 @@ const isDirty = !shallowEqual(draft, original);
 - Compat score editability — currently read-only; revisit if scoring becomes manual
 - Attachments (resume version, cover letter) — not in this spec; future addition probably as a section under Notes
 - Activity / timeline log — not in this spec; would live as a separate tab in the modal if added
+
+---
+
+## 12 · Archived mode
+
+The modal opens in Archived mode when the user clicks any card from the Tracker's Archived view (see [`tracker.md`](tracker.md) § View switcher). It is a third mode alongside Edit and Create, sharing the same frame, header layout, and body grid — but read-only.
+
+### 12.1 · Header (Row 1)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  [#A-0042]  [● Interview]  [ARCHIVED]                  ↺    ✕     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**ARCHIVED chip (`.archived-stamp`)** — appended to the meta cluster immediately after the status badge. It uses a neutral translucent fill that adapts to the header's light/dark contrast class so the chip never fights the status accent.
+
+| Header contrast class | Background | Text |
+| --- | --- | --- |
+| `modal-header--light` (dark accents like `applied`, `rejected`, `withdrawn`) | `rgba(255,255,255,0.16)` | `rgba(255,255,255,0.95)` |
+| `modal-header--dark`  (light accents like `wishlisted`, `interview`, `offer`) | `rgba(0,0,0,0.10)` | `rgba(0,0,0,0.72)` |
+
+- Shape: pill (`--r-pill`), padding `4px 10px`
+- Type: DM Mono 9px / 600, uppercase, 0.8px letter-spacing
+- Leading icon: a small 11×11 archive-box SVG glyph, opacity 0.85
+- Label: simply **"Archived"** — no date (the row's `archivedDate` already appears in the card's date-stamp slot and is not duplicated here)
+
+**Quick action collapse.** The right-side cluster collapses to **two** buttons only:
+
+| Button | Behavior |
+| --- | --- |
+| **↺ Unarchive** | Clears `archived` (and nulls `archivedDate`) immediately; modal closes; toast: `Unarchived.` No confirmation dialog — unarchive is a non-destructive restore. |
+| **✕ Close** | Closes immediately. No dirty-check is needed (the modal cannot be dirty in archived mode). |
+
+The **★ Favorite**, **⇄ Change Status**, and **🗄 Archive** icons are hidden in archived mode.
+
+### 12.2 · Header (Row 2)
+
+Job Title is rendered as plain text — same size and weight as in Edit mode (24px / 600), but **not click-to-edit**. No caret cursor, no background hover lift. The status badge in Row 1 is likewise non-interactive — clicking it does nothing.
+
+### 12.3 · Body — read-only behavior
+
+All body fields render with the same layout and order documented in §4, but with editing affordances suppressed:
+
+- **No field swap to input.** Display elements do not become editable on click.
+- **No hover lift.** Field-value backgrounds stay transparent on hover (no `--indigo-soft` tint, no cursor change).
+- **Chip editors** (Required Skills, Preferred Skills) render chips but omit the `×` remove buttons and the trailing input.
+- **Dropdowns** (Shift, Work Setup) render the current value as plain text; no caret or open-on-click.
+- **Status dropdown** is unavailable (the header badge is no longer a trigger).
+- **URL field** is rendered as a link/value, not as an inline editor.
+
+### 12.4 · Footer
+
+The Save / Discard footer is **hidden entirely** in archived mode. There is no draft state — nothing can be committed.
+
+### 12.5 · Discard / keyboard
+
+Because archived mode has no draft:
+
+- **✕ Close**, backdrop click, and **Esc** all close immediately. No discard confirmation is ever shown.
+- **`Cmd/Ctrl + S`** is a no-op.
+- All other field-level shortcuts (`Esc` in field, `Cmd/Ctrl + Enter`) are inert because no field is in edit mode.
+
+### 12.6 · State
+
+```ts
+type ModalState = {
+  mode: 'edit' | 'create' | 'archived';   // ← archived added
+  rowId: string | null;
+  draft: Application;                     // mirror of original; never mutated in archived mode
+  original: Application | null;
+  editingField: null;                     // always null in archived mode
+  confirmDiscard: false;                  // never set in archived mode
+  confirmArchive: false;                  // archive icon is hidden, never triggers
+};
+```
+
+`isDirty` is always `false` in archived mode by construction.
+
+### 12.7 · Mode entry / exit
+
+- **Opening:** clicking a card with `row.archived === true` resolves to Archived mode (independent of which view is active).
+- **Exiting:** closing the modal returns to the Archived list unchanged. Clicking **↺ Unarchive** clears the flag on the row, closes the modal, the row immediately disappears from the Archived list, and the toolbar chip count updates.

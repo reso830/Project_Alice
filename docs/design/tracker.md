@@ -190,7 +190,50 @@ Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 - Subheader label: 13px / 500, `rgba(255,255,255,0.8)`
 - Count badge: pill shape, `rgba(129,140,248,0.18)` bg, `#C7CCFE` text, 12px / 500, padding `3px 10px`
 - Filter chips, sort, erase-all: dark-toolbar tints (see Color Tokens § Toolbar-on-navy tints)
-- Primary action (`.btn-primary.new-app-btn`): standard indigo button, flush right via `margin-left: auto`. **Hidden on mobile** — replaced by the FAB.
+- Primary action (`.btn-primary.new-app-btn`): standard indigo button, flush right via `margin-left: auto`. **Hidden on mobile** — replaced by the FAB. **Also hidden whenever the Archived view is active** (in both desktop and mobile, the FAB hides as well).
+
+#### View switcher (Active / Archived)
+
+The leading toolbar element is a single pill-shaped chip that wraps **both** the current view label and its count. Clicking the label opens a small popup menu listing the two views with their respective counts.
+
+```
+┌────────────────────┐
+│ Applications ▾  22 │     ← chip border wraps both halves
+└────────────────────┘
+```
+
+**Chip container (`.view-chip`)**
+- Border: `1px solid rgba(255,255,255,0.18)`
+- Background: `rgba(255,255,255,0.04)`
+- Radius: `--r-pill`
+- Padding: `3px 4px 3px 0`, gap `4px`
+- Hover / open: border `rgba(255,255,255,0.32)`, background `rgba(255,255,255,0.08)`
+
+**Title trigger (`.app-title-trigger`)**
+- Sora 13px / 500, color `rgba(255,255,255,0.88)` → `#fff` on hover/open
+- Chevron `▾` to the right of the label (DM Mono 11px, 55% opacity → 100% on open, rotates 180° when popup is open)
+- Label reads **"Applications"** in the Active view, **"Archived"** in the Archived view
+
+**Count badge inside the chip**
+- Retains the standard purple count-badge styling (`rgba(129,140,248,0.18)` bg, `#C7CCFE` text)
+- Reflects the **filtered** count of whichever view is active (not the unfiltered total)
+
+**View popup (`.view-popup`)**
+- Anchored below the chip, `top: calc(100% + 8px)`, `left: 0`
+- Background `--surface`, border `1.5px solid --color-border`, radius `--r-md`, shadow `--shadow-lg`
+- Min-width `220px`, padding `5px`
+- Header label "View" (8px uppercase, 0.8px tracking, `--t4`)
+- Each option: 3-col grid (dot | label | count pill)
+  - Idle: `--t2` text, `--t4` dot, light count pill `--bg` background
+  - Selected: `--indigo` text + dot, `--indigo-dim` count pill
+  - Hover row: `--indigo-soft` background
+- Closes on outside click or option select
+- Switching views resets pagination to page 1
+- Active filters and sort **persist** across the view switch
+
+**URL synchronization**
+- The selected view writes to the URL search params: Active = no param, Archived = `?view=archived`
+- On load, the value of `?view=` initialises the view (deep-link from Profile's Archived tile, or refresh-safe)
 
 ### Card
 - Background: `--surface`
@@ -202,6 +245,19 @@ Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 - Cursor: pointer; keyboard accessible (`tabIndex=0`)
 
 **Corrupt card variant:** border `#FECACA`, background `#FEF2F2`; shows `⚠` icon (`.card-warning`, `#DC2626`) in meta row.
+
+**Archived card variant (`.card.card-archived`):**
+- Background, border, shadow, and status badge are **identical to active cards** — the card itself receives no muted treatment so the status accent reads at full strength
+- Differentiated only by three signals in row 1:
+  1. A small `.card-archived-stamp` chip — DM Mono 9px / 600, uppercase 0.7px tracking, color `--t3`, background `--bg`, border `1px solid --border`, padding `2px 7px`, pill radius. Reads simply **"Archived"** (no date — the date already lives in the date-stamp slot).
+  2. The date-stamp slot reads **"Archived [date]"** instead of **"Updated [date]"** (using the row's `archivedDate`, with `lastStatusUpdate` as fallback)
+  3. Quick actions row collapses to a single button — see Quick Action Buttons § Unarchive
+
+For archived cards, Row 1 reads:
+
+```
+[ID Pill]  [Status Badge]  [Archived]    Archived [date]    →   [↺]
+```
 
 **Card layout (3 rows, desktop):**
 
@@ -240,8 +296,11 @@ Row 3 grid: `minmax(0, 2fr) minmax(140px, 1fr) minmax(90px, .6fr)`
 | Copy job URL | 🔗 | "Copy job URL" |
 | Star / favorite | ★ | "Star application" |
 | Archive | × | "Archive application permanently from active list" |
+| Unarchive (archived view) | ↺ | "Unarchive application" |
 
 > **Archive confirm dialog:** Archiving (from card × or modal × button) triggers a `ConfirmDialog` before proceeding. The dialog is a centered modal at `z-index: var(--z-modal) + 10`, max-width `380px`, with "Archive this application?" message and Cancel / Confirm buttons.
+
+> **Unarchive action:** When viewing the Archived list, the row of quick actions collapses to a **single** Unarchive button (↺). It uses the same outline chrome as peer card-action buttons but with the border and icon recolored to `--indigo` so it remains identifiable as the restore action; hover lifts to background `--indigo-dim`. Unlike Archive, Unarchive does **not** trigger a confirmation — it is a non-destructive restore. On click the row's `archived` flag is cleared (and `archivedDate` nulled) and a toast fires (`Unarchived.`). _Earlier drafts of this section called for a filled `--indigo-soft` background; that was revised after the v0.14.0 browser smoke walk surfaced the visual inconsistency against peer buttons (see [028-archive-applications-view](../../specs/028-archive-applications-view/) Phase 09 § 09.2 follow-up)._
 
 Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 
@@ -301,6 +360,7 @@ Floating action button that replaces the toolbar "+ New application" on mobile.
 - Active press: `transform: scale(0.96)`
 - z-index: `calc(--z-nav + 1)` so it floats above the tab bar
 - `aria-label="New application"`; opens the Detail Modal in Create mode
+- **Hidden when the Archived view is active** — creation is suppressed at every entry point (toolbar button + FAB) while viewing archived items.
 
 ---
 
@@ -336,7 +396,7 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 |---|---|---|
 | Tracker | `tracker` | Card list with filters, sort, detail modal |
 | Calendar | `calendar` | Current month grid with applied-date markers |
-| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections |
+| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections; also surfaces an "Archived applications · N →" link that deep-links to `/?view=archived` |
 
 Mobile bottom-tab icons:
 - **Tracker** — list / clipboard glyph (rect + 3 lines)
@@ -357,7 +417,11 @@ Mobile bottom-tab icons:
 | 🔗 button | Copies `jobPostingUrl` to clipboard; fires toast |
 | ★ button | Toggles favorite state (gold / default); persisted immediately, bypasses draft |
 | × button (card) | Archives application after confirmation; removes from active list |
+| ↺ button (archived card) | Unarchives application immediately (no confirm); row leaves the archived list, toast: `Unarchived.` |
+| Click "Applications ▾" / "Archived ▾" chip | Opens the View popup (Active / Archived) |
+| Select view in popup | Switches between active and archived lists; resets pagination; persists filters/sort; updates URL `?view=` param |
 | 🗄 button (modal) | Archives application after confirmation; modal closes |
+| ↺ button (modal, archived) | Unarchives application immediately (no confirm); modal closes; toast: `Unarchived.` |
 | ✕ button (modal) | Attempts close — shows discard confirmation if draft has unsaved changes |
 | Status change (modal) | Dropdown appears; on select, updates badge + header bg color immediately; counts as a draft change (date updates only on Save) |
 | Click outside modal (backdrop) | Attempts close — shows discard confirmation if draft has unsaved changes |
@@ -379,6 +443,8 @@ Mobile bottom-tab icons:
 |---|---|---|---|
 | No applications | `.empty-state` | "No applications yet. Add your first one!" | Centered, `--t2`, `padding: 48px 24px` |
 | Filter no results | `.empty-state.empty-state--filter` | "No applications match / the active filters." | DM Mono 12px, `#BBBBBB`, centered, line-height 1.8 |
+| Archived view, no archived items | `.empty-state` | "Nothing archived yet. / Archived applications will appear here." | Same as `.empty-state` |
+| Archived view, filters return nothing | `.empty-state.empty-state--filter` | "No archived items match / the active filters." | Same as filter no results |
 | Load / network error | `.empty-state.empty-state--error` | "Cannot connect to the backend…" | Same as `.empty-state` |
 
 ---
@@ -406,6 +472,8 @@ Mobile bottom-tab icons:
 | `generalNotes` | String \| null | Free-text notes; full-span field at bottom of modal body |
 | `preferredSkills` | String[] | Chip editor in modal; separate from `skills` (required skills); starts empty for all records |
 | `_corrupt` | Boolean | Validation flag — set when `id`, `jobTitle`, or `companyName` is invalid |
+| `archived` | Boolean | When `true`, row is hidden from the Active view and shown in the Archived view. Defaults to `false`. |
+| `archivedDate` | ISO date (`YYYY-MM-DD`) \| null | Date the row was archived; populated automatically when `archived` flips to `true`. Cleared on unarchive. Displayed in the card's date-stamp slot as "Archived [date]". |
 
 ---
 

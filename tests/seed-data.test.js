@@ -90,6 +90,16 @@ describe('seed data variety', () => {
     expect(new Set(sentenceOpeners(responsibilities)).size).toBe(responsibilities.length);
   });
 
+  it('includes exactly two archived client demo seed rows with favorite and terminal coverage', () => {
+    const { applications } = buildDemoSeed();
+    const archived = applications.filter((record) => record.archived === true);
+
+    expect(archived).toHaveLength(2);
+    expect(archived.every((record) => typeof record.archivedDate === 'string' && record.archivedDate !== '')).toBe(true);
+    expect(archived.some((record) => record.fav === true)).toBe(true);
+    expect(archived.some((record) => ['accepted', 'rejected', 'withdrawn', 'ghosted'].includes(record.status))).toBe(true);
+  });
+
   it('keeps every SQLite seed timeline valid and covers the required Timeline shapes', () => {
     const timelines = DEMO_RECORDS.map((record, index) => {
       expect(typeof record.timeline).toBe('string');

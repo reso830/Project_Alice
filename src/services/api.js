@@ -79,9 +79,14 @@ export function create(fields) {
   return request('POST', '/api/applications', fields);
 }
 
-export function getAll() {
-  if (isDemo()) return Promise.resolve(demoStore.getAll());
-  return request('GET', '/api/applications');
+export function getAll({ view } = {}) {
+  if (isDemo()) {
+    return Promise.resolve(
+      view === 'archived' ? demoStore.getAllArchived() : demoStore.getAll(),
+    );
+  }
+  const query = view === 'archived' ? '?view=archived' : '';
+  return request('GET', `/api/applications${query}`);
 }
 
 export function getProfile() {
@@ -102,6 +107,11 @@ export function update(id, fields, { signal } = {}) {
 export function archive(id) {
   if (isDemo()) return fromDemo(() => demoStore.archive(id));
   return request('POST', `/api/applications/${id}/archive`);
+}
+
+export function unarchive(id) {
+  if (isDemo()) return fromDemo(() => demoStore.unarchive(id));
+  return request('POST', `/api/applications/${id}/unarchive`);
 }
 
 export function saveProfile(profile) {

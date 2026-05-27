@@ -22,6 +22,14 @@ When a newer feature updates the RPC body, that feature MUST:
 This is the rule introduced by feature 025 to stop retroactive edits to
 older spec packages.
 
+> **Note on `archived_date` (feature 028, 2026-05-26):** Feature 028 adds an
+> `archived_date date` column to `applications`. The starter rows seeded by
+> this RPC are active (`archived = false`), so `archived_date` is `NULL` by
+> column default and does not need to be set explicitly. If a future RPC
+> revision ever seeds archived starter rows (currently out of scope), the
+> INSERT must include `archived_date` as an ISO date string; otherwise the
+> column default (`NULL`) is the correct value and no RPC change is needed.
+
 ---
 
 ## When operators run this

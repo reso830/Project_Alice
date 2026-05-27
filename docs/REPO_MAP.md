@@ -35,9 +35,9 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/components/Card.js` | Application card (status badge, star, compat score) |
-| `src/components/Modal.js` | Inline-edit detail modal — edit/create modes, draft management, focus trap |
-| `src/components/QuickFiltersToolbar.js` | Full filter + sort toolbar — 8 filter dimensions, sort panel, erase-all |
+| `src/components/Card.js` | Application card (status badge, star, compat score). Archived-card variant (`.card-archived`) collapses the actions row to a single ↺ Unarchive button, prefixes the date-stamp with `Archived`, and renders an "Archived" stamp chip in row 1 |
+| `src/components/Modal.js` | Inline-edit detail modal — edit/create modes, draft management, focus trap. Third `archived` mode (selected by `row.archived === true` at open time) is read-only: ARCHIVED chip in header, ↺+✕ action cluster only, body fields inert, no Save/Discard footer, Esc/backdrop/✕ close without confirmation |
+| `src/components/QuickFiltersToolbar.js` | Full filter + sort toolbar — 8 filter dimensions, sort panel, erase-all. Leading view chip toggles Applications ↔ Archived (popup with unfiltered counts for both views); chip count badge reflects current view's filtered count |
 | `src/components/FilterPanel.js` | Filter popup renderer — checklist and range-slider panels; used by QuickFiltersToolbar |
 | `src/components/SortPanel.js` | Sort popup renderer — used by QuickFiltersToolbar |
 | `src/components/ConfirmDialog.js` | Reusable confirmation dialog (archive, discard) |
@@ -48,7 +48,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/components/Toast.js` | User feedback notifications |
 | `src/components/Navbar.js` | Top navigation bar — sticky navy band (52px), brand cluster + page nav + identity cluster; email truncated via CSS `max-width` with full value in `title`; door-arrow sign-out button (icon-only at `≤ 639px`); subscribes to `authStore`; `destroy()` unsubscribes. In demo (feature 020) the identity cluster renders a "Demo mode" badge and an Exit demo button that calls `authStore.exitDemo()` |
 | `src/components/BottomTabBar.js` | Mobile bottom tab bar (`≤ 639px`) — three tabs (Tracker / Calendar / Profile); same `setActive(page)` contract as Navbar |
-| `src/components/Fab.js` | Mobile floating action button — "+ New application" above the bottom tab bar at `≤ 639px`; opens the Create-mode detail modal |
+| `src/components/Fab.js` | Mobile floating action button — "+ New application" above the bottom tab bar at `≤ 639px`; opens the Create-mode detail modal. Hidden while the Archived view is active |
 | `src/components/Footer.js` | Page footer; sources `APP_VERSION` / `ISSUE_URL` / `LICENSE_NAME` / `LICENSE_URL` from `src/pages/welcome/shared/appMeta.js` |
 | `src/components/ResumeImport.js` | Drag-and-drop resume parser; subscribes to `authStore` and hides outside `local-mode` / `authenticated`. Exports `VISIBLE_STATUSES` (feature 020 design-by-contract guard — `'demo'` intentionally excluded) |
 | `src/components/CompatBar.js` | Compatibility score visual bar |
@@ -88,7 +88,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only |
 | `api/index.js` | Vercel serverless entry — lazy-imports the seed middleware in hosted mode; passes `config` + dispatcher + seed middleware into `createApp` |
 | `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; PostgREST sentinel probes against `applications` (including `applications.timeline`), `profile`, and `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
-| `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises) |
+| `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises). `GET /` accepts `?view=archived` (strict scalar equality; unknown values fall back to active). `POST /:id/unarchive` mirrors archive |
 | `server/routes/profile.js` | Profile route handlers — same `{ repos, requireAuth, seedHostedUserIfNeeded }` shape |
 | `server/routes/resume.js` | Resume parse handler — `{ requireAuth, seedHostedUserIfNeeded }`; doesn't consume repos but mounts seed so a hosted user's first action via resume upload still seeds |
 | `server/auth/middleware.js` | `createRequireAuth({ jwksUri, jwks?, logger })` — verifies Supabase JWTs against the project's JWKS endpoint (`['ES256', 'RS256']` algorithm allowlist) via `jose.jwtVerify`; categorized rejection logging (token contents never logged) |
@@ -96,15 +96,15 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/repositories/index.js` | `createRepositories(config)` returns uniform `{ forRequest(req) }` across `local` and `hosted` runtimes. Hosted lazy-imports the Supabase modules; local never loads `@supabase/supabase-js` |
 | `server/repositories/middleware.js` | `attachRepos(dispatcher)` — Express middleware factory that sets `req.repos = dispatcher.forRequest(req)`; mounted after `requireAuth` in every protected router |
 | `server/middleware/requestDate.js` | `resolveRequestDate(req)` — derives the user's local `YYYY-MM-DD` from the `X-Client-Date` request header (regex-validated); falls back to UTC `currentDate()` when the header is missing/malformed (#43) |
-| `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter. `create/update/archive` accept an optional `now` (YYYY-MM-DD) which the router supplies via `resolveRequestDate(req)` to stamp audit columns in the user's local timezone (#43) |
+| `server/repositories/applications.js` | `createSqliteApplicationsRepository(db)` — local SQLite adapter. `create/update/archive/unarchive` accept an optional `now` (YYYY-MM-DD) which the router supplies via `resolveRequestDate(req)` to stamp audit columns in the user's local timezone (#43). Also exposes `getAllArchived` (returns rows where `archived = 1` in `created_at DESC` order) |
 | `server/repositories/profile.js` | `createSqliteProfileRepository(db)` — local SQLite adapter |
 | `server/repositories/supabase/client.js` | `createSupabaseClientForRequest(req)` — per-request anon-key Supabase client initialized with the caller's JWT; never reads `SUPABASE_SERVICE_ROLE_KEY` |
-| `server/repositories/supabase/applications.js` | `createSupabaseApplicationsRepository(client, userId)` — hosted adapter. RLS-scoped reads/writes via PostgREST; `normalizeForPostgres()` helper coerces SQLite-shaped int booleans + JSON strings to Postgres `bool`/`jsonb` before any write |
+| `server/repositories/supabase/applications.js` | `createSupabaseApplicationsRepository(client, userId)` — hosted adapter. RLS-scoped reads/writes via PostgREST; `normalizeForPostgres()` helper coerces SQLite-shaped int booleans + JSON strings to Postgres `bool`/`jsonb` before any write. `archive`/`unarchive` use atomic conditional UPDATE with `.eq('archived', <opposite>)` predicate + fallback `getById` on the no-op path — race-free idempotency symmetric with the SQLite adapter. `getAllArchived` filters `.eq('archived', true)` |
 | `server/repositories/supabase/profile.js` | `createSupabaseProfileRepository(client, userId)` — hosted adapter; `data` jsonb projection; one-row-per-user via `{ onConflict: 'user_id' }` upsert |
 | `server/db/applications.js` | SQL query layer for SQLite (re-exports `toRow`/`toRecord` from columns.js for backward compat with foundation.test.js) |
 | `server/db/profile.js` | SQL query layer for SQLite profile (`getProfile` / `saveProfile`) |
-| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate` (UTC fallback, see #43), `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`, including `timeline` JSON mapping. MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
-| `server/db.js` | SQLite connection and schema creation |
+| `server/db/columns.js` | Pure data-layer helpers shared by SQLite + Supabase adapters — `FIELD_TO_COLUMN`, `toRow`, `toRecord`, `currentDate` (UTC fallback, see #43), `APPLICATION_COLUMNS_WITHOUT_USER_ID`, `PROFILE_COLUMNS_WITHOUT_USER_ID`, including `timeline` JSON mapping and read-only `archived_date` projection (`archivedDate` is deliberately absent from `FIELD_TO_COLUMN` — server-set only, dropped from any client PATCH). MUST NOT import `db.js` (would trigger SQLite load in hosted cold start) |
+| `server/db.js` | SQLite connection and schema creation; `ensureColumn` cluster handles in-place column adds for evolving columns (e.g. `archived`, `timeline`, `archived_date`) |
 | `server/validation/application.js` | Zod schemas for request validation |
 | `server/db-seed.js` | Load 23 demo records (local SQLite only); imports `DEMO_RECORDS` from `server/seeds/applicationsData.js` |
 | `server/db-init.js` | Standalone schema init script (local SQLite only) |
@@ -119,13 +119,13 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `src/services/api.js` | Fetch wrapper for all `/api/*` calls; auto-attaches `Authorization: Bearer <token>` when `authStore.getAccessToken()` returns one; in demo, every export short-circuits to `src/data/demoStore.js` and never calls `fetch` |
+| `src/services/api.js` | Fetch wrapper for all `/api/*` calls; auto-attaches `Authorization: Bearer <token>` when `authStore.getAccessToken()` returns one; in demo, every export short-circuits to `src/data/demoStore.js` and never calls `fetch`. `getAll({ view })` accepts an optional `view: 'archived'` to fetch the archived list; `unarchive(id)` mirrors `archive(id)` |
 | `src/services/resumeApi.js` | Resume upload client — same auth-header behavior as `api.js`; in demo, throws `{ code: 'DEMO_FEATURE_UNAVAILABLE' }` before any network call |
 | `src/services/supabaseClient.js` | Supabase JS client wrapper; reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_EMAIL_REDIRECT_URL`; exports `isHostedAuthAvailable` |
 | `src/services/healthApi.js` | `getHealth()` — standalone fetcher returning raw `{ status, runtime }` (does not unwrap `data`) |
 | `src/data/authStore.js` | Module-state subscribable auth store — `init`, `subscribe`, `getAuthState`, `getAccessToken`, `signOut`, `enterDemo`, `exitDemo`, `DEMO_STATUS`; states `initializing | local-mode | unauthenticated | authenticated | demo`. `init()` has no demo restore path — refresh always ends the demo (feature 020) |
-| `src/data/demoStore.js` | In-memory portfolio-demo data adapter (feature 020) — `loadSeed`, `clear`, `getAll`, `getById`, `create`, `update`, `archive`, `getProfile`, `saveProfile`. Reads deep-clone; validation reuses `src/models/application.js` + `src/models/profile.js`; no `localStorage`, `sessionStorage`, `IndexedDB`, or `fetch` |
-| `src/data/demoSeed.js` | Demo seed fixture (feature 020) — `buildDemoSeed()` returns `{ applications, profile }` with the 23 SQLite seed records translated to frontend shape and dates shifted so the most recent `lastStatusUpdate` anchors to today; profile biographical dates static |
+| `src/data/demoStore.js` | In-memory portfolio-demo data adapter (feature 020) — `loadSeed`, `clear`, `getAll`, `getAllArchived`, `getById`, `create`, `update`, `archive`, `unarchive`, `getProfile`, `saveProfile`. Reads deep-clone; `archive` flips `archived` + sets `archivedDate` (does NOT remove the row); `unarchive` mirrors. Validation reuses `src/models/application.js` + `src/models/profile.js`; no `localStorage`, `sessionStorage`, `IndexedDB`, or `fetch` |
+| `src/data/demoSeed.js` | Demo seed fixture (feature 020) — `buildDemoSeed()` returns `{ applications, profile }` with 23 active SQLite seed records plus 2 client-only archived rows (one favorited non-terminal, one terminal-status unfavorited) translated to frontend shape and dates shifted so the most recent `lastStatusUpdate` anchors to today; profile biographical dates static |
 | `src/utils/filterSort.js` | Client-side filter + sort logic (all 8 filter dimensions) |
 | `src/utils/currency.js` | `parseSalaryInput`, `formatSalaryDisplay` — peso salary formatting |
 | `src/utils/pagination.js` | Pagination state model |
@@ -220,6 +220,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/022-deployment-polish-docs/checklists/plan-review.md` | Pre-implementation review gate |
 | `specs/025-application-timeline/` | Application Timeline feature spec package — timeline persistence, modal UI, seed updates, hosted migration, release prep, and smoke plan |
 | `specs/026-calendar/` | Calendar page feature spec package — month-grid, Action Panel, suggestions engine, day popovers, seed augmentation, release prep, and smoke plan |
+| `specs/028-archive-applications-view/` | Archive Applications view feature spec package — view-switcher toolbar chip, archived card variant, read-only Application Overlay archived mode, `unarchive` operation, `archived_date` column, Profile entry-point link, demo-mode archived seeds, and exclusion of archived rows from active workflow surfaces |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 

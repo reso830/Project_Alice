@@ -14,10 +14,12 @@ const authStoreMock = {
 
 const demoStoreMock = {
   getAll: vi.fn(() => 'sentinel:getAll'),
+  getAllArchived: vi.fn(() => 'sentinel:getAllArchived'),
   getById: vi.fn(() => 'sentinel:getById'),
   create: vi.fn(() => 'sentinel:create'),
   update: vi.fn(() => 'sentinel:update'),
   archive: vi.fn(() => 'sentinel:archive'),
+  unarchive: vi.fn(() => 'sentinel:unarchive'),
   getProfile: vi.fn(() => 'sentinel:getProfile'),
   saveProfile: vi.fn(() => 'sentinel:saveProfile'),
   loadSeed: vi.fn(),
@@ -53,6 +55,14 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('getAll({ view: archived }) returns demoStore.getAllArchived() and does not call fetch', async () => {
+    const api = await import('../../src/services/api.js');
+    await expect(api.getAll({ view: 'archived' })).resolves.toBe('sentinel:getAllArchived');
+    expect(demoStoreMock.getAllArchived).toHaveBeenCalledTimes(1);
+    expect(demoStoreMock.getAll).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('getById(id) returns demoStore.getById(id) and does not call fetch', async () => {
     const api = await import('../../src/services/api.js');
     await expect(api.getById(7)).resolves.toBe('sentinel:getById');
@@ -83,6 +93,13 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('unarchive(id) returns demoStore.unarchive(id) and does not call fetch', async () => {
+    const api = await import('../../src/services/api.js');
+    await expect(api.unarchive(4)).resolves.toBe('sentinel:unarchive');
+    expect(demoStoreMock.unarchive).toHaveBeenCalledWith(4);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('getProfile() returns demoStore.getProfile() and does not call fetch', async () => {
     const api = await import('../../src/services/api.js');
     await expect(api.getProfile()).resolves.toBe('sentinel:getProfile');
@@ -105,6 +122,8 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     await api.create({ companyName: 'C', jobTitle: 'T' });
     await api.update(1, { status: 'applied' });
     await api.archive(1);
+    await api.unarchive(1);
+    await api.getAll({ view: 'archived' });
     await api.getProfile();
     await api.saveProfile({ firstName: 'D' });
     expect(fetchSpy).not.toHaveBeenCalled();

@@ -58,6 +58,7 @@ export function initSchema(targetDb = db) {
   `);
 
   ensureColumn(targetDb, 'applications', 'archived', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(targetDb, 'applications', 'archived_date', 'TEXT');
   ensureColumn(targetDb, 'applications', 'location', 'TEXT');
   ensureColumn(targetDb, 'applications', 'shift', 'TEXT');
   ensureColumn(targetDb, 'applications', 'work_setup', 'TEXT');

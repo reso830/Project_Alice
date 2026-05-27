@@ -84,6 +84,17 @@ export function createSupabaseApplicationsRepository(client, userId) {
     return (data ?? []).map(toRecord);
   }
 
+  async function getAllArchived() {
+    const { data, error } = await client
+      .from('applications')
+      .select(SELECT_PROJECTION)
+      .eq('user_id', userId)
+      .eq('archived', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(toRecord);
+  }
+
   async function create(fields, now = currentDate()) {
     const sanitized = stripUserId(fields);
     const row = {
@@ -142,21 +153,33 @@ export function createSupabaseApplicationsRepository(client, userId) {
   }
 
   async function archive(id, now = currentDate()) {
-    // SQLite's archive() sets archived=1 AND fav=0 in one statement; mirror
-    // that exactly. Calling update({ archived: true }) would also work via
-    // toRow's archived→fav side effect, but the explicit form here keeps
-    // the archive semantics readable and avoids the conditional fetch in
-    // update(). Native booleans here because the Postgres columns are bool.
+    // Archive is an atomic state flip; it preserves fav and sets archived_date once.
     const { data, error } = await client
       .from('applications')
-      .update({ archived: true, fav: false, updated_at: now })
+      .update({ archived: true, archived_date: now, updated_at: now })
       .eq('id', id)
       .eq('user_id', userId)
+      .eq('archived', false)
       .select(SELECT_PROJECTION)
       .maybeSingle();
     if (error) throw error;
-    return data ? toRecord(data) : null;
+    if (data) return toRecord(data);
+    return getById(id);
   }
 
-  return { getAll, getById, create, update, archive };
+  async function unarchive(id, now = currentDate()) {
+    const { data, error } = await client
+      .from('applications')
+      .update({ archived: false, archived_date: null, updated_at: now })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .eq('archived', true)
+      .select(SELECT_PROJECTION)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return toRecord(data);
+    return getById(id);
+  }
+
+  return { getAll, getAllArchived, getById, create, update, archive, unarchive };
 }

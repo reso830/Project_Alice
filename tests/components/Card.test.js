@@ -2,12 +2,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Card } from '../../src/components/Card.js';
+import * as api from '../../src/services/api.js';
 import { STATUS_CONFIG, TERMINAL_STATES } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
+
+vi.mock('../../src/services/api.js', () => ({
+  unarchive: vi.fn(),
+}));
 
 function application(overrides = {}) {
   return {
@@ -33,6 +38,11 @@ function hexToRgb(hex) {
 
   return `rgb(${red}, ${green}, ${blue})`;
 }
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.clearAllMocks();
+});
 
 describe('Card', () => {
   it('renders status badge and accent from STATUS_CONFIG', () => {
@@ -107,5 +117,54 @@ describe('Card', () => {
     const card = Card.render(application({ salary: 0 }));
 
     expect(card.querySelector('.salary').textContent).toBe('');
+  });
+
+  it('renders archived card metadata and collapses actions to unarchive', () => {
+    const card = Card.render(application({
+      archived: true,
+      archivedDate: '2026-05-01',
+    }));
+
+    expect(card.classList.contains('card-archived')).toBe(true);
+    expect(card.querySelector('.card-archived-stamp')?.textContent).toBe('Archived');
+    expect(card.querySelector('.date')?.textContent).toMatch(/^Archived /);
+    expect(card.querySelectorAll('.card-btn')).toHaveLength(1);
+    expect(card.querySelector('.card-btn--unarchive')).not.toBeNull();
+    expect(card.querySelector('.card-btn--archive')).toBeNull();
+    expect(card.querySelector('.card-btn--edit')).toBeNull();
+    expect(card.querySelector('.card-btn--status')).toBeNull();
+    expect(card.querySelector('.card-btn--copy')).toBeNull();
+    expect(card.querySelector('.card-btn--star')).toBeNull();
+  });
+
+  it('falls back to lastStatusUpdate for archived date text', () => {
+    const card = Card.render(application({
+      archived: true,
+      archivedDate: null,
+      lastStatusUpdate: '2026-04-30',
+    }));
+
+    expect(card.querySelector('.date')?.textContent).toMatch(/^Archived /);
+    expect(card.querySelector('.date')?.textContent).toContain('Apr');
+  });
+
+  it('unarchives from the archived action without opening the card', async () => {
+    const onOpen = vi.fn();
+    const onUnarchiveSuccess = vi.fn();
+    const updated = application({ archived: false, archivedDate: null });
+    api.unarchive.mockResolvedValue(updated);
+
+    const card = Card.render(application({ archived: true }), {
+      onOpen,
+      onUnarchiveSuccess,
+    });
+
+    card.querySelector('.card-btn--unarchive')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await Promise.resolve();
+
+    expect(api.unarchive).toHaveBeenCalledWith(1);
+    expect(onUnarchiveSuccess).toHaveBeenCalledWith(updated);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });

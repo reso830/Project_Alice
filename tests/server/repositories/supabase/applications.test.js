@@ -133,6 +133,24 @@ describe('createSupabaseApplicationsRepository', () => {
     });
   });
 
+  describe('getAllArchived', () => {
+    it('scopes by user_id and includes archived rows only', async () => {
+      const { client, calls } = makeClient({ data: [], error: null });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      const result = await repo.getAllArchived();
+
+      expect(result).toEqual([]);
+      const eqArgs = callsOf(calls, 'eq').map((c) => c.args);
+      expect(eqArgs).toContainEqual(['user_id', USER_ID]);
+      expect(eqArgs).toContainEqual(['archived', true]);
+      expect(callsOf(calls, 'order')[0].args).toEqual([
+        'created_at',
+        { ascending: false },
+      ]);
+    });
+  });
+
   describe('getById', () => {
     it('scopes by id and user_id, returns null when not found', async () => {
       const { client, calls } = makeClient({ data: null, error: null });
@@ -420,24 +438,25 @@ describe('createSupabaseApplicationsRepository', () => {
   });
 
   describe('archive', () => {
-    it('sets archived=true and fav=false in one update (Postgres bool columns)', async () => {
+    it('sets archived=true and archived_date without clearing fav', async () => {
       const { client, calls } = makeClient({
-        data: { id: 1, archived: true, fav: false },
+        data: { id: 1, archived: true, archived_date: '2030-03-10', fav: true },
         error: null,
       });
       const repo = createSupabaseApplicationsRepository(client, USER_ID);
 
-      await repo.archive(1);
+      await repo.archive(1, '2030-03-10');
 
       const updateRow = callsOf(calls, 'update')[0].args[0];
       expect(updateRow.archived).toBe(true);
-      expect(updateRow.fav).toBe(false);
-      expect(updateRow.updated_at).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(updateRow.archived_date).toBe('2030-03-10');
+      expect(updateRow).not.toHaveProperty('fav');
+      expect(updateRow.updated_at).toBe('2030-03-10');
     });
 
-    it('scopes UPDATE by id AND user_id', async () => {
+    it('scopes UPDATE by id, user_id, and active archived state', async () => {
       const { client, calls } = makeClient({
-        data: { id: 1, archived: true, fav: false },
+        data: { id: 1, archived: true, fav: true },
         error: null,
       });
       const repo = createSupabaseApplicationsRepository(client, USER_ID);
@@ -446,12 +465,106 @@ describe('createSupabaseApplicationsRepository', () => {
       const eqArgs = callsOf(calls, 'eq').map((c) => c.args);
       expect(eqArgs).toContainEqual(['id', 1]);
       expect(eqArgs).toContainEqual(['user_id', USER_ID]);
+      expect(eqArgs).toContainEqual(['archived', false]);
     });
 
-    it('returns null on cross-user attempt', async () => {
-      const { client } = makeClient({ data: null, error: null });
+    it('falls back to getById when already archived or missing', async () => {
+      const updateChain = makeChainMock({ data: null, error: null });
+      const getByIdChain = makeChainMock({
+        data: {
+          id: 1,
+          company_name: 'X',
+          job_title: 'Y',
+          status: 'applied',
+          archived: true,
+          archived_date: '2026-05-26',
+          fav: true,
+          skills: [],
+          preferred_skills: [],
+          metadata: null,
+          timeline: [],
+        },
+        error: null,
+      });
+      let fromCallCount = 0;
+      const client = {
+        from: vi.fn(() => {
+          fromCallCount += 1;
+          return fromCallCount === 1 ? updateChain.chain : getByIdChain.chain;
+        }),
+      };
       const repo = createSupabaseApplicationsRepository(client, USER_ID);
-      expect(await repo.archive(99)).toBeNull();
+
+      const result = await repo.archive(1, '2026-06-01');
+
+      expect(result.archivedDate).toBe('2026-05-26');
+      expect(result.fav).toBe(true);
+      expect(callsOf(getByIdChain.calls, 'maybeSingle')).toHaveLength(1);
+    });
+  });
+
+  describe('unarchive', () => {
+    it('sets archived=false and clears archived_date without changing fav or status', async () => {
+      const { client, calls } = makeClient({
+        data: { id: 1, archived: false, archived_date: null, fav: true, status: 'rejected' },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.unarchive(1, '2030-03-11');
+
+      const updateRow = callsOf(calls, 'update')[0].args[0];
+      expect(updateRow).toEqual({
+        archived: false,
+        archived_date: null,
+        updated_at: '2030-03-11',
+      });
+    });
+
+    it('scopes UPDATE by id, user_id, and archived state', async () => {
+      const { client, calls } = makeClient({ data: { id: 1, archived: false }, error: null });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.unarchive(1);
+
+      const eqArgs = callsOf(calls, 'eq').map((c) => c.args);
+      expect(eqArgs).toContainEqual(['id', 1]);
+      expect(eqArgs).toContainEqual(['user_id', USER_ID]);
+      expect(eqArgs).toContainEqual(['archived', true]);
+    });
+
+    it('falls back to getById when already active or missing', async () => {
+      const updateChain = makeChainMock({ data: null, error: null });
+      const getByIdChain = makeChainMock({
+        data: {
+          id: 1,
+          company_name: 'X',
+          job_title: 'Y',
+          status: 'applied',
+          archived: false,
+          archived_date: null,
+          fav: true,
+          skills: [],
+          preferred_skills: [],
+          metadata: null,
+          timeline: [],
+        },
+        error: null,
+      });
+      let fromCallCount = 0;
+      const client = {
+        from: vi.fn(() => {
+          fromCallCount += 1;
+          return fromCallCount === 1 ? updateChain.chain : getByIdChain.chain;
+        }),
+      };
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      const result = await repo.unarchive(1, '2026-06-01');
+
+      expect(result.archived).toBe(false);
+      expect(result.archivedDate).toBeNull();
+      expect(callsOf(getByIdChain.calls, 'maybeSingle')).toHaveLength(1);
     });
   });
 
@@ -511,7 +624,7 @@ describe('createSupabaseApplicationsRepository', () => {
 
     it('archive() persists the supplied `now` into updated_at', async () => {
       const { client, calls } = makeClient({
-        data: { id: 1, archived: true, fav: false },
+        data: { id: 1, archived: true, fav: true },
         error: null,
       });
       const repo = createSupabaseApplicationsRepository(client, USER_ID);

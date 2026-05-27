@@ -459,7 +459,7 @@ describe('applications API', () => {
     });
   });
 
-  it('updates archived state and resets fav to false through the update endpoint', async () => {
+  it('updates archived state without clearing fav through the update endpoint', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {
         method: 'POST',
@@ -474,7 +474,7 @@ describe('applications API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.archived).toBe(true);
-      expect(response.body.data.fav).toBe(false);
+      expect(response.body.data.fav).toBe(true);
     });
   });
 

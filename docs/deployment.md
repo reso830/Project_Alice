@@ -53,6 +53,17 @@ after the 025 block and before promoting a v0.13.0+ hosted deploy. The
 RPC is idempotent — calling `CREATE OR REPLACE FUNCTION` with the v3
 body is safe to re-run against a project that already has v2.
 
+Feature **028-archive-applications-view** adds an additive
+`archived_date date` column to `applications` (nullable, default NULL,
+no backfill). Apply the SQL block from
+[`specs/028-archive-applications-view/data-model.md §1.3`](../specs/028-archive-applications-view/data-model.md)
+after the 026 RPC and before promoting a v0.14.0+ hosted deploy. The
+migration uses `ADD COLUMN IF NOT EXISTS` and is safe to re-run.
+Operator walkthrough: [`specs/028-archive-applications-view/quickstart.md §3.1`](../specs/028-archive-applications-view/quickstart.md).
+Legacy archived rows (those archived before this migration) retain
+`archived_date = NULL` and surface as `Archived ${lastStatusUpdate}` in
+the card date-stamp — no data fix is required.
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
 probes against `applications` (including `applications.timeline`),

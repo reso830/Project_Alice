@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
@@ -25,6 +25,7 @@ vi.mock('../../src/services/api.js', () => ({
   archive: vi.fn(),
   getAll: vi.fn(),
   getById: vi.fn(),
+  unarchive: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -42,6 +43,7 @@ const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 afterEach(() => {
   Tracker.unmount();
   document.body.replaceChildren();
+  window.history.replaceState({}, '', '/');
   toolbarRenderOptions.length = 0;
   toolbarUpdateOptions.length = 0;
   window.localStorage.clear();
@@ -68,6 +70,240 @@ function createApplication(id, overrides = {}) {
 }
 
 describe('Tracker quick filter toolbar integration', () => {
+  it('initializes archived view from the URL and fetches archived rows first', async () => {
+    const container = document.createElement('main');
+    const archived = createApplication(9, { archived: true, archivedDate: '2026-05-01' });
+
+    window.scrollTo = vi.fn();
+    window.history.replaceState({}, '', '/?view=archived');
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([])
+    ));
+
+    await Tracker.mount(container);
+
+    expect(api.getAll).toHaveBeenCalledWith({ view: 'archived' });
+    expect(toolbarRenderOptions[0].currentView).toBe('archived');
+    expect(container.textContent).toContain('Role 9');
+  });
+
+  it('switches views through toolbar props, syncs URL, and preserves filters and sort', async () => {
+    const container = document.createElement('main');
+    const active = createApplication(1, { status: 'interview' });
+    const archived = createApplication(2, { status: 'interview', archived: true, archivedDate: '2026-05-01' });
+    const sortState = { field: 'salary', direction: 'desc' };
+
+    window.scrollTo = vi.fn();
+    window.history.replaceState({}, '', '/');
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([active])
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      statuses: ['interview'],
+    });
+    toolbarRenderOptions[0].onSortChange(sortState);
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(window.location.search).toBe('?view=archived');
+    expect(api.getAll).toHaveBeenLastCalledWith({ view: 'archived' });
+    expect(toolbarUpdateOptions.at(-1).filterState.statuses).toEqual(['interview']);
+    expect(toolbarUpdateOptions.at(-1).sortState).toEqual(sortState);
+    expect(container.textContent).toContain('Role 2');
+
+    await toolbarRenderOptions[0].onViewChange('active');
+
+    expect(window.location.search).toBe('');
+    expect(api.getAll).toHaveBeenLastCalledWith({});
+    expect(container.textContent).toContain('Role 1');
+  });
+
+  it('keeps an active status filter applied when switching to archived rows with no matches', async () => {
+    const container = document.createElement('main');
+    const active = createApplication(1, { status: 'interview' });
+    const archived = createApplication(2, { status: 'offer', archived: true, archivedDate: '2026-05-01' });
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([active])
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      statuses: ['interview'],
+    });
+
+    expect(container.textContent).toContain('Role 1');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(toolbarUpdateOptions.at(-1).filterState.statuses).toEqual(['interview']);
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No archived items match<br>the active filters.');
+    expect(container.textContent).not.toContain('Role 2');
+  });
+
+  it('keeps salary sort applied when switching to archived rows', async () => {
+    const container = document.createElement('main');
+    const sortState = { field: 'salary', direction: 'desc' };
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve([
+          createApplication(2, { salary: 90000, archived: true }),
+          createApplication(3, { salary: 130000, archived: true }),
+        ])
+        : Promise.resolve([createApplication(1, { salary: 110000 })])
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onSortChange(sortState);
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    const cards = [...container.querySelectorAll('.card')].map((card) => card.textContent);
+
+    expect(toolbarUpdateOptions.at(-1).sortState).toEqual(sortState);
+    expect(cards[0]).toContain('Role 3');
+    expect(cards[1]).toContain('Role 2');
+  });
+
+  it('resets pagination to page 1 when switching views', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve(Array.from({ length: 14 }, (_, index) => createApplication(index + 40, { archived: true })))
+        : Promise.resolve(Array.from({ length: 25 }, (_, index) => createApplication(index + 1)))
+    ));
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onSortChange({ field: 'id', direction: 'asc' });
+    [...container.querySelectorAll('.pagination__btn')]
+      .find((button) => button.textContent === '3')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toBe('3');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toBe('1');
+    expect(container.textContent).toContain('Role 40');
+    expect(container.textContent).not.toContain('Role 50');
+  });
+
+  it('hides creation affordances in archived view and restores them on active view', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    window.history.replaceState({}, '', '/?view=archived');
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([createApplication(2, { archived: true })]) : Promise.resolve([createApplication(1)])
+    ));
+
+    await Tracker.mount(container);
+
+    expect(toolbarRenderOptions[0].showAddButton).toBe(false);
+    expect(container.querySelector('.fab')).toBeNull();
+
+    await toolbarRenderOptions[0].onViewChange('active');
+
+    expect(toolbarUpdateOptions.at(-1).showAddButton).toBe(true);
+    expect(container.querySelector('.fab')).not.toBeNull();
+  });
+
+  it('renders active and archived empty-state copy variants', async () => {
+    const container = document.createElement('main');
+
+    window.scrollTo = vi.fn();
+    window.history.replaceState({}, '', '/');
+    api.getAll.mockResolvedValue([]);
+
+    await Tracker.mount(container);
+    expect(container.querySelector('.empty-state')?.textContent)
+      .toBe('No applications yet. Add your first one!');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+    expect(container.querySelector('.empty-state')?.innerHTML)
+      .toBe('Nothing archived yet.<br>Archived applications will appear here.');
+
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve([createApplication(2, { status: 'rejected', archived: true })])
+        : Promise.resolve([createApplication(1, { status: 'applied' })])
+    ));
+    await toolbarRenderOptions[0].onViewChange('active');
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      favoritesOnly: true,
+    });
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No applications match<br>the active filters.');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+    expect(container.querySelector('.empty-state--filter')?.innerHTML)
+      .toBe('No archived items match<br>the active filters.');
+  });
+
+  it('unarchives archived cards locally, updates counts, and keeps rows on failure', async () => {
+    const container = document.createElement('main');
+    const archived = createApplication(2, { archived: true, archivedDate: '2026-05-01' });
+    const restored = { ...archived, archived: false, archivedDate: null };
+
+    window.scrollTo = vi.fn();
+    window.history.replaceState({}, '', '/?view=archived');
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([createApplication(1)])
+    ));
+    api.unarchive.mockResolvedValue(restored);
+
+    await Tracker.mount(container);
+    container.querySelector('.card-btn--unarchive').click();
+    await Promise.resolve();
+
+    expect(api.unarchive).toHaveBeenCalledWith(2);
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(0);
+    expect(document.body.textContent).toContain('Unarchived.');
+    expect(toolbarUpdateOptions.at(-1).viewCounts).toEqual({ activeCount: 2, archivedCount: 0 });
+
+    api.unarchive.mockRejectedValue(new Error('server error'));
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived' ? Promise.resolve([archived]) : Promise.resolve([])
+    ));
+    await toolbarRenderOptions[0].onViewChange('active');
+    await toolbarRenderOptions[0].onViewChange('archived');
+    container.querySelector('.card-btn--unarchive').click();
+    await Promise.resolve();
+
+    expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
+    expect(document.body.textContent).toContain('Unarchive failed');
+  });
+
+  it('updates view summary counts after archive without switching views', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1);
+
+    window.scrollTo = vi.fn();
+    ConfirmDialog.show.mockResolvedValue(true);
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve(Array.from({ length: 5 }, (_, index) => createApplication(index + 20, { archived: true })))
+        : Promise.resolve(Array.from({ length: 8 }, (_, index) => createApplication(index + 1)))
+    ));
+    api.archive.mockResolvedValue({ ...original, archived: true, archivedDate: '2026-05-01' });
+
+    await Tracker.mount(container);
+    container.querySelector('.card-btn--archive').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(toolbarUpdateOptions.at(-1).viewCounts).toEqual({ activeCount: 7, archivedCount: 6 });
+  });
+
   it('shows application skeleton cards while the application list is loading', async () => {
     const container = document.createElement('main');
     let resolveApplications;

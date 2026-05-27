@@ -3,6 +3,7 @@ import {
   APPLICATION_COLUMNS_WITHOUT_USER_ID,
   currentDate,
   FIELD_TO_COLUMN,
+  UPDATABLE_COLUMNS,
   toRecord,
   toRow,
 } from '../../../server/db/columns.js';
@@ -80,6 +81,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       created_at: '2026-05-01',
       updated_at: '2026-05-01',
       archived: 0,
+      archived_date: null,
       metadata: null,
       timeline: '[]',
     };
@@ -88,6 +90,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
     expect(Object.keys(record).sort()).toEqual([
       'applicationDate',
       'archived',
+      'archivedDate',
       'companyName',
       'compat',
       'compatNotes',
@@ -120,8 +123,17 @@ describe('toRecord / toRow round-trip via shared module', () => {
   it('toRow coerces fav and archived to 0/1 (SQLite + Supabase both consume integer flags)', () => {
     expect(toRow({ fav: true })).toEqual({ fav: 1 });
     expect(toRow({ fav: false })).toEqual({ fav: 0 });
-    expect(toRow({ archived: true })).toEqual({ archived: 1, fav: 0 });
+    expect(toRow({ archived: true })).toEqual({ archived: 1 });
     expect(toRow({ archived: false })).toEqual({ archived: 0 });
+  });
+
+  it('preserves fav when archived and fav are translated together', () => {
+    expect(toRow({ archived: true, fav: true })).toEqual({ archived: 1, fav: 1 });
+  });
+
+  it('drops archivedDate from write rows and keeps archived_date non-updatable', () => {
+    expect(toRow({ archivedDate: '2099-01-01' })).toEqual({});
+    expect(UPDATABLE_COLUMNS.has('archived_date')).toBe(false);
   });
 
   it('toRow stringifies skills, preferredSkills, metadata, and timeline', () => {
@@ -154,6 +166,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       metadata: '{"key":"value"}',
       timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":"x"}]',
       archived: 0,
+      archived_date: '2026-05-26',
     });
     expect(record.skills).toEqual(['js', 'ts']);
     expect(record.preferredSkills).toEqual(['storybook']);
@@ -161,6 +174,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
     expect(record.timeline).toEqual([
       { id: 1, date: '2026-05-21', status: 'applied', text: 'x' },
     ]);
+    expect(record.archivedDate).toBe('2026-05-26');
   });
 
   it('toRecord accepts pre-parsed objects for JSON fields (Postgres JSONB shape)', () => {
