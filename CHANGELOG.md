@@ -38,6 +38,8 @@ Archive Applications view — closes the archive lifecycle loop. Archived applic
   (028-archive-applications-view)
 - Application Overlay header now restores the `modal-header--light` / `modal-header--dark` contrast class after each status-accent change, ensuring the new archived stamp chip and any other contrast-dependent children render with the correct variant on every render. Pre-028 the class was stripped on status change without being re-added.
   (028-archive-applications-view §07.3)
+- Unarchive button (card + overlay) uses outline chrome with an `--indigo` border + icon so it matches peer card-action buttons while staying color-coded as the restore action; hover lifts to an `--indigo-dim` fill. Earlier drafts spec'd a filled `--indigo-soft` treatment; revised after the Phase 09 browser smoke walk surfaced visual inconsistency against peer buttons.
+  (028-archive-applications-view §09.2)
 
 ## [0.13.3] — 2026-05-26
 
