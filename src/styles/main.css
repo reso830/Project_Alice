@@ -2589,6 +2589,24 @@ button:focus-visible,
   color: rgba(0, 0, 0, 0.72);
 }
 
+/* Z Fold 5 cover screen (~370px) — tighten the archived-stamp so the
+   header meta cluster + action buttons fit on a single row even for
+   the longest status label ("Phone Screen"). Without this, the actions
+   wrap to a second row on the right side of the header (see
+   028-archive-applications-view §09.7b). */
+@media (max-width: 380px) {
+  .archived-stamp {
+    gap: 3px;
+    padding: 3px 6px;
+    letter-spacing: .5px;
+  }
+
+  .archived-stamp::before {
+    width: 9px;
+    height: 9px;
+  }
+}
+
 .modal-quick-action--unarchive {
   border-color: var(--indigo);
   color: var(--indigo);
