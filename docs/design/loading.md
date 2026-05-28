@@ -93,6 +93,7 @@ Used for cold-load failures on Tracker, Calendar, Profile applications, Creation
 - **Duplicate-click guard**: a second `run()` while pending returns the same in-flight promise (FR-009).
 - **AbortError**: resolves to `null` silently.
 - **dispose()**: idempotent; safe during pending (clears attributes, does not abort the request).
+- **Disabled-restore invariant**: cleanup restores the button's pre-`run()` `disabled` value. A caller whose action recalculates the final `disabled` (e.g. ProfileEdit's `updateControlsState()` disabling Save once the form is clean) MUST dispose or detach the button before the cleanup microtask — typically by closing or navigating away — otherwise the restore re-applies the stale value. All current callers do this (Modal/Card close on success; ProfileEdit navigates away, which unmounts and disposes the binding synchronously).
 
 See [contracts/api.md § 2.1](../../specs/029-loading-async-states/contracts/api.md) for the full signature.
 
