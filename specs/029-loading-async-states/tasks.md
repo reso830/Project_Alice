@@ -45,7 +45,7 @@
 
 ## Phase 01 — Foundation: shared utilities + CSS
 
-### [ ] Task 01.1 — Create `src/utils/asyncUI.js` with `bindBusyButton`, `bindContainerBusy`, `renderInlineError`
+### [X] Task 01.1 — Create `src/utils/asyncUI.js` with `bindBusyButton`, `bindContainerBusy`, `renderInlineError`
 
 **Target file**: `src/utils/asyncUI.js` (new file)
 
@@ -94,7 +94,7 @@
 
 ---
 
-### [ ] Task 01.2 — Create `src/utils/skeletons.js` with five DOM-factory builders
+### [X] Task 01.2 — Create `src/utils/skeletons.js` with five DOM-factory builders
 
 **Target file**: `src/utils/skeletons.js` (new file)
 
@@ -129,7 +129,7 @@
 
 ---
 
-### [ ] Task 01.3 — Add new CSS rules to `src/styles/main.css`
+### [X] Task 01.3 — Add new CSS rules to `src/styles/main.css`
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -211,7 +211,7 @@
 
 ---
 
-### [ ] Task 01.4 — [P] Add `tests/utils/asyncUI.test.js`
+### [X] Task 01.4 — [P] Add `tests/utils/asyncUI.test.js`
 
 **Target file**: `tests/utils/asyncUI.test.js` (new file)
 
@@ -252,7 +252,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 01.5 — [P] Add `tests/utils/skeletons.test.js`
+### [X] Task 01.5 — [P] Add `tests/utils/skeletons.test.js`
 
 **Target file**: `tests/utils/skeletons.test.js` (new file)
 
@@ -281,7 +281,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 01.6 — [P] Wire CSS into the build verification
+### [X] Task 01.6 — [P] Wire CSS into the build verification
 
 **Target files**: none (verification only)
 
@@ -307,7 +307,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 01.7 — Phase 01 review gate
+### [X] Task 01.7 — Phase 01 review gate
 
 **Target files**: none
 
@@ -333,7 +333,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ## Phase 02 — Tracker page (US-1)
 
-### [ ] Task 02.1 — [US1] Replace inline `renderApplicationSkeleton` with the shared builder
+### [X] Task 02.1 — [US1] Replace inline `renderApplicationSkeleton` with the shared builder
 
 **Target file**: [src/pages/Tracker.js](../../src/pages/Tracker.js)
 
@@ -357,7 +357,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 02.2 — [US1] Add inline-error path to Tracker list fetch
+### [X] Task 02.2 — [US1] Add inline-error path to Tracker list fetch
 
 **Target file**: [src/pages/Tracker.js](../../src/pages/Tracker.js)
 
@@ -385,7 +385,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 02.3 — [US1] View-switcher chip `aria-busy` during transition
+### [X] Task 02.3 — [US1] View-switcher chip `aria-busy` during transition
 
 **Target file**: [src/components/QuickFiltersToolbar.js](../../src/components/QuickFiltersToolbar.js)
 
@@ -416,7 +416,7 @@ Use `Toast.show` mocked via `vi.mock('../../src/components/Toast.js', ...)`.
 
 ---
 
-### [ ] Task 02.4 — [P] [US1] Extend `tests/pages/Tracker.test.js`
+### [X] Task 02.4 — [P] [US1] Extend `tests/pages/Tracker.test.js`
 
 **Target file**: [tests/pages/Tracker.test.js](../../tests/pages/Tracker.test.js)
 
@@ -454,7 +454,7 @@ Add three test groups:
 
 ---
 
-### [ ] Task 02.5 — [US1] Phase 02 review gate
+### [X] Task 02.5 — [US1] Phase 02 review gate
 
 **Target files**: none
 
@@ -469,7 +469,7 @@ Add three test groups:
 
 ## Phase 03 — Application Overlay save / mutation busy (US-2)
 
-### [ ] Task 03.1 — [US2] Wire `bindBusyButton` to Modal `Save` button
+### [X] Task 03.1 — [US2] Wire `bindBusyButton` to Modal `Save` button
 
 **Target file**: [src/components/Modal.js](../../src/components/Modal.js)
 
@@ -512,7 +512,7 @@ Add three test groups:
 
 ---
 
-### [ ] Task 03.2 — [US2] Wire `bindBusyButton` to Modal Create-mode save (if separate)
+### [X] Task 03.2 — [US2] Wire `bindBusyButton` to Modal Create-mode save (if separate)
 
 **Target file**: [src/components/Modal.js](../../src/components/Modal.js)
 
@@ -533,7 +533,7 @@ Add three test groups:
 
 ---
 
-### [ ] Task 03.3 — [US2] Wire `bindBusyButton` to Modal Archive / Unarchive / Star / Status
+### [X] Task 03.3 — [US2] Wire `bindBusyButton` to Modal Archive / Unarchive / Star / Status
 
 **Target file**: [src/components/Modal.js](../../src/components/Modal.js)
 
@@ -569,7 +569,7 @@ Each binding:
 
 ---
 
-### [ ] Task 03.4 — [US2] Identify and pass Modal Save's peer buttons
+### [X] Task 03.4 — [US2] Identify and pass Modal Save's peer buttons
 
 **Target file**: [src/components/Modal.js](../../src/components/Modal.js)
 
@@ -597,7 +597,7 @@ Each binding:
 
 ---
 
-### [ ] Task 03.5 — [US2] Resolve FR-008 close-path-during-save (per research § 3.4)
+### [X] Task 03.5 — [US2] Resolve FR-008 close-path-during-save (per research § 3.4)
 
 **Target file**: [src/components/Modal.js](../../src/components/Modal.js)
 
@@ -636,7 +636,7 @@ The spec's FR-008 says "modal close paths MUST be inert during a Save." Per [res
 
 ---
 
-### [ ] Task 03.6 — [US2] Wire `bindBusyButton` to Status Dropdown selection commit
+### [X] Task 03.6 — [US2] Wire `bindBusyButton` to Status Dropdown selection commit
 
 **Target file**: [src/components/StatusDropdown.js](../../src/components/StatusDropdown.js)
 
@@ -662,7 +662,7 @@ The spec's FR-008 says "modal close paths MUST be inert during a Save." Per [res
 
 ---
 
-### [ ] Task 03.7 — [P] [US2] Extend `tests/components/Modal.test.js`
+### [X] Task 03.7 — [P] [US2] Extend `tests/components/Modal.test.js`
 
 **Target file**: [tests/components/Modal.test.js](../../tests/components/Modal.test.js)
 
@@ -691,7 +691,7 @@ Add test cases:
 
 ---
 
-### [ ] Task 03.8 — [US2] Phase 03 review gate
+### [X] Task 03.8 — [US2] Phase 03 review gate
 
 **Target files**: none
 
@@ -706,7 +706,7 @@ Add test cases:
 
 ## Phase 04 — Card mutation busy (US-2)
 
-### [ ] Task 04.1 — [US2] Wire `bindBusyButton` to Card × Archive button
+### [X] Task 04.1 — [US2] Wire `bindBusyButton` to Card × Archive button
 
 **Target file**: [src/components/Card.js](../../src/components/Card.js)
 
@@ -732,7 +732,7 @@ Add test cases:
 
 ---
 
-### [ ] Task 04.2 — [US2] Wire `bindBusyButton` to Card ↺ Unarchive button
+### [X] Task 04.2 — [US2] Wire `bindBusyButton` to Card ↺ Unarchive button
 
 **Target file**: [src/components/Card.js](../../src/components/Card.js)
 
@@ -754,7 +754,7 @@ Add test cases:
 
 ---
 
-### [ ] Task 04.3 — [P] [US2] Extend `tests/components/Card.test.js`
+### [X] Task 04.3 — [P] [US2] Extend `tests/components/Card.test.js`
 
 **Target file**: [tests/components/Card.test.js](../../tests/components/Card.test.js)
 
@@ -771,7 +771,7 @@ Add cases:
 
 ---
 
-### [ ] Task 04.4 — [US2] Phase 04 review gate
+### [X] Task 04.4 — [US2] Phase 04 review gate
 
 Confirm 04.1–04.3 done; `npm run test:run` green; browser spot-check on a × Archive on Tracker.
 
@@ -779,7 +779,7 @@ Confirm 04.1–04.3 done; `npm run test:run` green; browser spot-check on a × A
 
 ## Phase 05 — Parsing surfaces (US-3)
 
-### [ ] Task 05.1 — [US3] Wire `bindBusyButton` to CreationPicker Process button + inline-error retry + demo-mode gate
+### [X] Task 05.1 — [US3] Wire `bindBusyButton` to CreationPicker Process button + inline-error retry + demo-mode gate
 
 **Target file**: [src/components/CreationPicker.js](../../src/components/CreationPicker.js)
 
@@ -821,7 +821,7 @@ Confirm 04.1–04.3 done; `npm run test:run` green; browser spot-check on a × A
 
 ---
 
-### [ ] Task 05.2 — [US3] Wire `bindBusyButton` to ResumeImport upload trigger + inline-error retry
+### [X] Task 05.2 — [US3] Wire `bindBusyButton` to ResumeImport upload trigger + inline-error retry
 
 **Target file**: [src/components/ResumeImport.js](../../src/components/ResumeImport.js)
 
@@ -854,7 +854,7 @@ Confirm 04.1–04.3 done; `npm run test:run` green; browser spot-check on a × A
 
 ---
 
-### [ ] Task 05.3 — [P] [US3] Create `tests/components/CreationPicker.test.js`
+### [X] Task 05.3 — [P] [US3] Create `tests/components/CreationPicker.test.js`
 
 **Target file**: `tests/components/CreationPicker.test.js` (verify if exists; create if absent)
 
@@ -873,7 +873,7 @@ Add (or extend) test cases:
 
 ---
 
-### [ ] Task 05.4 — [P] [US3] Create or extend `tests/components/ResumeImport.test.js`
+### [X] Task 05.4 — [P] [US3] Create or extend `tests/components/ResumeImport.test.js`
 
 **Target file**: `tests/components/ResumeImport.test.js` (verify; create if absent)
 
@@ -889,7 +889,7 @@ Add (or extend) test cases:
 
 ---
 
-### [ ] Task 05.5 — [US3] Phase 05 review gate
+### [X] Task 05.5 — [US3] Phase 05 review gate
 
 Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on CreationPicker against an AI-backed deploy.
 
@@ -897,7 +897,7 @@ Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on Creati
 
 ## Phase 06 — Calendar page (US-4)
 
-### [ ] Task 06.1 — [US4] Replace `"Loading…"` strings with skeleton
+### [X] Task 06.1 — [US4] Replace `"Loading…"` strings with skeleton
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js)
 
@@ -930,7 +930,7 @@ Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on Creati
 
 ---
 
-### [ ] Task 06.2 — [US4] Add refresh `aria-busy` for month/year switch
+### [X] Task 06.2 — [US4] Add refresh `aria-busy` for month/year switch
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js)
 
@@ -951,7 +951,7 @@ Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on Creati
 
 ---
 
-### [ ] Task 06.3 — [US4] Inline-error path on Calendar cold-load failure
+### [X] Task 06.3 — [US4] Inline-error path on Calendar cold-load failure
 
 **Target file**: [src/pages/Calendar.js](../../src/pages/Calendar.js)
 
@@ -972,7 +972,7 @@ Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on Creati
 
 ---
 
-### [ ] Task 06.4 — [P] [US4] Extend `tests/pages/Calendar.test.js`
+### [X] Task 06.4 — [P] [US4] Extend `tests/pages/Calendar.test.js`
 
 **Target file**: [tests/pages/Calendar.test.js](../../tests/pages/Calendar.test.js)
 
@@ -989,7 +989,7 @@ Confirm 05.1–05.4 done; `npm run test:run` green; browser spot-check on Creati
 
 ---
 
-### [ ] Task 06.5 — [US4] Phase 06 review gate
+### [X] Task 06.5 — [US4] Phase 06 review gate
 
 Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calendar with throttling.
 
@@ -997,7 +997,7 @@ Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calend
 
 ## Phase 07 — Profile + ProfileEdit (US-5)
 
-### [ ] Task 07.1 — [US5] Port `renderProfileSkeleton` to shared builder
+### [X] Task 07.1 — [US5] Port `renderProfileSkeleton` to shared builder
 
 **Target file**: [src/pages/Profile.js](../../src/pages/Profile.js)
 
@@ -1015,7 +1015,7 @@ Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calend
 
 ---
 
-### [ ] Task 07.2 — [US5] Replace Profile apps-block `"Loading applications..."` with skeleton
+### [X] Task 07.2 — [US5] Replace Profile apps-block `"Loading applications..."` with skeleton
 
 **Target file**: [src/pages/Profile.js](../../src/pages/Profile.js)
 
@@ -1038,7 +1038,7 @@ Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calend
 
 ---
 
-### [ ] Task 07.3 — [US5] Replace ProfileEdit `"Loading profile..."` with skeleton
+### [X] Task 07.3 — [US5] Replace ProfileEdit `"Loading profile..."` with skeleton
 
 **Target file**: [src/pages/ProfileEdit.js](../../src/pages/ProfileEdit.js)
 
@@ -1059,7 +1059,7 @@ Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calend
 
 ---
 
-### [ ] Task 07.4 — [US5] Wire `bindBusyButton` to ProfileEdit Save / Cancel
+### [X] Task 07.4 — [US5] Wire `bindBusyButton` to ProfileEdit Save / Cancel
 
 **Target file**: [src/pages/ProfileEdit.js](../../src/pages/ProfileEdit.js)
 
@@ -1085,7 +1085,7 @@ Confirm 06.1–06.4 done; `npm run test:run` green; browser spot-check on Calend
 
 ---
 
-### [ ] Task 07.5 — [P] [US5] Extend `tests/pages/Profile.test.js` and `tests/pages/ProfileEdit.test.js`
+### [X] Task 07.5 — [P] [US5] Extend `tests/pages/Profile.test.js` and `tests/pages/ProfileEdit.test.js`
 
 **Target files**: [tests/pages/Profile.test.js](../../tests/pages/Profile.test.js), [tests/pages/ProfileEdit.test.js](../../tests/pages/ProfileEdit.test.js)
 
@@ -1108,7 +1108,7 @@ ProfileEdit.test.js additions:
 
 ---
 
-### [ ] Task 07.6 — [US5] Phase 07 review gate
+### [X] Task 07.6 — [US5] Phase 07 review gate
 
 Confirm 07.1–07.5 done; `npm run test:run` green; browser spot-check on Profile + ProfileEdit.
 
@@ -1116,7 +1116,7 @@ Confirm 07.1–07.5 done; `npm run test:run` green; browser spot-check on Profil
 
 ## Phase 08 — Cross-cutting verification (US-6)
 
-### [ ] Task 08.1 — [US6] Accessibility audit pass
+### [X] Task 08.1 — [US6] Accessibility audit pass
 
 **Target files**: spot-checks across the touched components / pages.
 
@@ -1143,7 +1143,7 @@ Confirm 07.1–07.5 done; `npm run test:run` green; browser spot-check on Profil
 
 ---
 
-### [ ] Task 08.2 — [US6] Demo-mode parity assertions
+### [X] Task 08.2 — [US6] Demo-mode parity assertions
 
 **Target file**: any of the touched component / page tests where demo-mode coverage is missing.
 
@@ -1168,7 +1168,7 @@ Confirm 07.1–07.5 done; `npm run test:run` green; browser spot-check on Profil
 
 ---
 
-### [ ] Task 08.3 — [US6] Repo-wide bare-`"Loading…"` regression assertion
+### [X] Task 08.3 — [US6] Repo-wide bare-`"Loading…"` regression assertion
 
 **Target file**: `tests/main.test.js` (or a new `tests/regression/no-bare-loading.test.js`)
 
@@ -1187,7 +1187,7 @@ Confirm 07.1–07.5 done; `npm run test:run` green; browser spot-check on Profil
 
 ---
 
-### [ ] Task 08.4 — [US6] Phase 08 review gate
+### [X] Task 08.4 — [US6] Phase 08 review gate
 
 Confirm 08.1–08.3 done; documented manual results in checklist.
 
@@ -1195,7 +1195,7 @@ Confirm 08.1–08.3 done; documented manual results in checklist.
 
 ## Phase 09 — Design doc + Polish
 
-### [ ] Task 09.1 — Write `docs/design/loading.md`
+### [X] Task 09.1 — Write `docs/design/loading.md`
 
 **Target file**: `docs/design/loading.md` (new file)
 
@@ -1222,7 +1222,7 @@ Write the canonical design reference for the channel vocabulary. Structure:
 
 ---
 
-### [ ] Task 09.2 — Lint pass
+### [X] Task 09.2 — Lint pass
 
 **Target files**: all touched files.
 
@@ -1235,7 +1235,7 @@ Write the canonical design reference for the channel vocabulary. Structure:
 
 ---
 
-### [ ] Task 09.3 — Orphaned-CSS audit
+### [X] Task 09.3 — Orphaned-CSS audit
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -1253,7 +1253,7 @@ Write the canonical design reference for the channel vocabulary. Structure:
 
 ---
 
-### [ ] Task 09.4 — Phase 09 review gate
+### [X] Task 09.4 — Phase 09 review gate
 
 Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Release Prep.
 
@@ -1261,7 +1261,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ## Phase 10 — Release Prep (REQUIRED)
 
-### [ ] Task 10.1 — Bump version in `package.json`
+### [X] Task 10.1 — Bump version in `package.json`
 
 **Target file**: [package.json](../../package.json)
 
@@ -1280,7 +1280,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ---
 
-### [ ] Task 10.2 — Add CHANGELOG entry
+### [X] Task 10.2 — Add CHANGELOG entry
 
 **Target file**: [CHANGELOG.md](../../CHANGELOG.md)
 
@@ -1306,7 +1306,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ---
 
-### [ ] Task 10.3 — README updates (only if UX section exists)
+### [X] Task 10.3 — README updates (only if UX section exists)
 
 **Target file**: [README.md](../../README.md)
 
@@ -1322,7 +1322,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ---
 
-### [ ] Task 10.4 — Verify `docs/deployment.md` does NOT need updating
+### [X] Task 10.4 — Verify `docs/deployment.md` does NOT need updating
 
 **Target file**: [docs/deployment.md](../../docs/deployment.md)
 
@@ -1331,11 +1331,13 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 1. Confirm this feature introduces no env vars, no runtime modes, no architecture change.
 2. Document the skip in this task's checkbox: "No deployment.md update required (verified per plan § Affected Areas — no infra changes)."
 
+**Skip note**: No deployment.md update required. Feature 029 is a client-only UX refactor — no env vars, no runtime modes, no schema/RPC/migration, no architecture change. Verified against plan § Affected Areas. The existing `v0.14.0+` migration references in deployment.md are unrelated (028 `archived_date`) and remain valid for v0.15.0+.
+
 **Expected behavior**: deployment.md is untouched.
 
 ---
 
-### [ ] Task 10.5 — Add REPO_MAP entries
+### [X] Task 10.5 — Add REPO_MAP entries
 
 **Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 
@@ -1353,7 +1355,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ---
 
-### [ ] Task 10.6 — Docs sanity check
+### [X] Task 10.6 — Docs sanity check
 
 **Target files**: cross-cutting
 
@@ -1368,7 +1370,7 @@ Confirm 09.1–09.3 done; design doc reads cleanly; lint green; ready for Releas
 
 ---
 
-### [ ] Task 10.7 — Phase 10 review gate
+### [X] Task 10.7 — Phase 10 review gate
 
 Confirm 10.1–10.6 done; `npm run test:run` and `npm run lint` green; ready for the smoke test against the to-be-merged state.
 
@@ -1380,7 +1382,7 @@ Confirm 10.1–10.6 done; `npm run test:run` and `npm run lint` green; ready for
 
 For each user story below, walk the spec.md Independent Test in a real browser; verify the acceptance scenarios pass; document deviations.
 
-### [ ] Task 11.1 — [US1] User Story 1 walk: Tracker initial-load + recovery + view transition
+### [X] Task 11.1 — [US1] User Story 1 walk: Tracker initial-load + recovery + view transition
 
 **Walkthrough**: [quickstart.md § 1](quickstart.md#1-user-story-1--hosted-user-sees-the-system-is-working-not-frozen).
 
@@ -1392,9 +1394,11 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 **Mode coverage**: local-throttled + hosted-preview.
 
+**Result (hosted, Edge)**: PASS. Cold-load skeleton + view transition OK. Failure path confirmed via DevTools request-blocking on `GET /api/applications` → inline-error + `Try again` → recovers on unblock. (Real 500 not injectable in-browser; request-block exercises the same catch path.)
+
 ---
 
-### [ ] Task 11.2 — [US2] User Story 2 walk: Save without doubling up
+### [X] Task 11.2 — [US2] User Story 2 walk: Save without doubling up
 
 **Walkthrough**: [quickstart.md § 2](quickstart.md#2-user-story-2--save-without-doubling-up).
 
@@ -1407,9 +1411,11 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 **Mode coverage**: local + hosted-preview. Demo: tests-only (per quickstart § 2).
 
+**Result (hosted, Edge)**: PASS. Two rapid Save clicks → one PATCH; Esc during save aborts with no toast. Failure path confirmed via DevTools **Offline** toggle → button restored, modal stays open, "Failed to save" toast.
+
 ---
 
-### [ ] Task 11.3 — [US3] User Story 3 walk: Smart Parser progress + failure
+### [X] Task 11.3 — [US3] User Story 3 walk: Smart Parser progress + failure
 
 **Walkthrough**: [quickstart.md § 3](quickstart.md#3-user-story-3--smart-parser-communicates-progress--failure).
 
@@ -1422,9 +1428,11 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 **Mode coverage**: hosted-preview required (AI parsing). Demo: verify the Smart Parser entry in CreationPicker is disabled / hidden and Manual Entry remains the only clickable creation path (per [spec § Clarifications Q5](../../specs/029-loading-async-states/spec.md#session-2026-05-27)); verify ResumeImport widget is hidden. No `DEMO_FEATURE_UNAVAILABLE` toast should be reachable from a user click.
 
+**Result (hosted + demo, Edge)**: PASS with deviation. Demo-mode gating confirmed — Smart Parser entry hidden, Manual Entry is the only creation path, no demo toast reachable. Parse busy / inline-error / Try again **not browser-observable**: `parseJobPost()` is a client-side synchronous regex parse (no network call), so throttling can't slow it and a parse failure can't be injected in-browser. Those states are covered by `tests/components/CreationPicker.test.js` with a controllable promise. Residual risk: low (test-covered).
+
 ---
 
-### [ ] Task 11.4 — [US4] User Story 4 walk: Calendar skeletons
+### [X] Task 11.4 — [US4] User Story 4 walk: Calendar skeletons
 
 **Walkthrough**: [quickstart.md § 4](quickstart.md#4-user-story-4--calendar-renders-without-a-loading-string).
 
@@ -1440,7 +1448,7 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 ---
 
-### [ ] Task 11.5 — [US5] User Story 5 walk: ProfileEdit + Profile apps
+### [X] Task 11.5 — [US5] User Story 5 walk: ProfileEdit + Profile apps
 
 **Walkthrough**: [quickstart.md § 5](quickstart.md#5-user-story-5--profileedit--profile-applications-block).
 
@@ -1453,7 +1461,7 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 ---
 
-### [ ] Task 11.6 — [US6] User Story 6 walk: Accessibility
+### [X] Task 11.6 — [US6] User Story 6 walk: Accessibility
 
 **Walkthrough**: [quickstart.md § 6](quickstart.md#6-user-story-6--recoverable-error-surfaces-are-accessible).
 
@@ -1465,9 +1473,11 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 **Mode coverage**: local with assistive tech.
 
+**Result (Edge)**: PASS with documented deferral. Reduced-motion (6.4) confirmed — `prefers-reduced-motion: reduce` emulation renders Calendar / ProfileEdit / Profile-apps skeleton blocks solid (no shimmer). Screen-reader spot-checks (6.1 / 6.3 / 6.5) **deferred** — not exercised with a live AT this session. Residual risk: low. The ARIA contract is automated-test-covered: `tests/utils/asyncUI.test.js` asserts `renderInlineError` produces `role="alert"` + `aria-live="polite"` and moves focus to the `Try again` button; `bindBusyButton` sets/clears `aria-busy`. Deferral consistent with Task 08.1's documented note (constitution allows a documented skip with residual risk).
+
 ---
 
-### [ ] Task 11.7 — Mobile layout walk
+### [X] Task 11.7 — Mobile layout walk
 
 **Pass criteria**:
 
@@ -1481,7 +1491,7 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 ---
 
-### [ ] Task 11.8 — Regression smoke
+### [X] Task 11.8 — Regression smoke
 
 **Walkthrough**: [quickstart.md § 7](quickstart.md#7-regression-smoke-existing-flows-that-should-remain-unchanged).
 
@@ -1491,7 +1501,7 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 
 ---
 
-### [ ] Task 11.9 — Phase 11 sign-off
+### [~] Task 11.9 — Phase 11 sign-off
 
 **Target file**: PR description / merge log
 
@@ -1501,6 +1511,14 @@ For each user story below, walk the spec.md Independent Test in a real browser; 
 2. Confirm [quickstart.md § 10](quickstart.md#10-sign-off-gate) sign-off boxes are checked.
 3. Document any deferred items with rationale (e.g., a non-blocking visual nit found during the smoke — flagged for follow-up, residual risk noted).
 4. Merge to `main`.
+
+**Sign-off (recorded; merge pending user authorization)**:
+
+- 11.1–11.8 walked on **hosted** (Edge) + demo; results recorded per-task above. 11.4 / 11.5 / 11.7 / 11.8 clean PASS; 11.1 / 11.2 failure paths confirmed via DevTools request-blocking / Offline; 11.3 demo-gating PASS with the parse-failure path deferred as test-covered.
+- 11.6: reduced-motion PASS; screen-reader AT deferred (test-covered, documented).
+- [quickstart.md § 10](quickstart.md#10-sign-off-gate) boxes updated with annotations; deferrals carry documented residual risk (constitution-permitted).
+- Section 8: 1208/1208 tests + ESLint clean.
+- **Merge step (4) outstanding** — not performed; awaiting explicit user go-ahead. Branch `029-loading-async-states` is otherwise ready to merge to `main`.
 
 ---
 

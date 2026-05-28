@@ -10,7 +10,7 @@
 
 ## Clarifications
 
-### Session 2026-05-27
+### Session 2026-05-27 (plan-time)
 
 - Q: FR-008 says modal close paths MUST be "inert" during a Save, but the existing Modal save uses Esc / backdrop / ✕ to abort via `_saveController.abort()`. What is the canonical resolution? → A: **Preserve the abort escape hatch.** "Inert" in FR-008 means "does not commit a different action (does not open a different row, does not switch modes)" — the abort path is allowed and preserved. FR-008 wording revised to remove the literal contradiction.
 - Q: Should the 429 `Retry-After` countdown UI (`Try again in N s`) be built in this feature? → A: **Defer.** No current server path returns `Retry-After`; the countdown is speculative UI. The 429 edge case is scoped to "toast + immediate retry available." When/if a future feature returns 429 with `Retry-After`, the countdown is added then. Edge-case wording revised below.

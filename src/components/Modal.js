@@ -6,6 +6,7 @@ import {
   normalizeApplication,
 } from '../models/application.js';
 import * as api from '../services/api.js';
+import { bindBusyButton } from '../utils/asyncUI.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
@@ -25,6 +26,11 @@ let _body = null;
 let _titleRow = null;
 let _footer = null;
 let _saveButton = null;
+let _saveBinding = null;
+let _saveStatusPeer = null;
+let _saveStatusPeerDisabled = null;
+let _savePending = false;
+let _busyBindings = [];
 let _idPill = null;
 let _archiveButton = null;
 let _quickActions = null;
@@ -36,6 +42,23 @@ let _saveController = null;
 let _onApplicationUpdate = null;
 let _onApplicationCreate = null;
 let _onUnarchiveSuccess = null;
+
+function trackBusyBinding(binding) {
+  _busyBindings.push(binding);
+  return binding;
+}
+
+function disposeBusyBindings() {
+  _saveBinding?.dispose();
+  for (const binding of _busyBindings) {
+    binding.dispose();
+  }
+  _saveBinding = null;
+  _saveStatusPeer = null;
+  _saveStatusPeerDisabled = null;
+  _savePending = false;
+  _busyBindings = [];
+}
 
 function canEdit() {
   return _mode !== 'archived';
@@ -124,6 +147,41 @@ function updateFavoriteButton(button, isFavorite) {
   icon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
   button.replaceChildren(icon);
   button.setAttribute('aria-pressed', String(isFavorite));
+}
+
+function lockStatusControlsIfTerminal() {
+  if (!_draft || !TERMINAL_STATES.has(_draft.status)) {
+    return;
+  }
+
+  const button = document.querySelector('.modal-quick-action--status');
+  const badge = document.querySelector('#modal-status-badge');
+
+  if (button) {
+    button.disabled = true;
+    button.title = 'Workflow complete';
+  }
+
+  if (badge) {
+    badge.removeAttribute('role');
+    badge.removeAttribute('tabindex');
+    badge.setAttribute('aria-disabled', 'true');
+    badge.setAttribute('aria-label', 'Status locked — workflow complete');
+  }
+}
+
+function setStatusBadgeSaveLocked(locked) {
+  const badge = document.querySelector('#modal-status-badge');
+
+  if (!badge || TERMINAL_STATES.has(_draft?.status)) {
+    return;
+  }
+
+  if (locked) {
+    badge.setAttribute('aria-disabled', 'true');
+  } else {
+    badge.removeAttribute('aria-disabled');
+  }
 }
 
 function valuesDiffer(first, second) {
@@ -603,7 +661,47 @@ function copyApplication(application) {
   };
 }
 
-function buildFooter() {
+async function runSave() {
+  if (!_isDirty() || !_draft) {
+    return null;
+  }
+
+  if (!validateDraft()) {
+    return null;
+  }
+
+  if (_saveBinding) {
+    _savePending = true;
+    setStatusBadgeSaveLocked(true);
+    const shouldManageStatusPeer = _saveStatusPeer && _saveStatusPeerDisabled === null;
+    if (shouldManageStatusPeer) {
+      _saveStatusPeerDisabled = _saveStatusPeer.disabled;
+      _saveStatusPeer.disabled = true;
+    }
+
+    try {
+      const result = await _saveBinding.run();
+      _syncFooter();
+      if (shouldManageStatusPeer) {
+        if (TERMINAL_STATES.has(_draft?.status)) {
+          lockStatusControlsIfTerminal();
+        } else if (_saveStatusPeer) {
+          _saveStatusPeer.disabled = _saveStatusPeerDisabled;
+        }
+        _saveStatusPeerDisabled = null;
+      }
+      lockStatusControlsIfTerminal();
+      return result;
+    } finally {
+      _savePending = false;
+      setStatusBadgeSaveLocked(false);
+    }
+  }
+
+  return saveDraft({ skipValidation: true });
+}
+
+function buildFooter(savePeers = []) {
   const footer = document.createElement('div');
   const discardButton = document.createElement('button');
   const saveButton = document.createElement('button');
@@ -618,7 +716,18 @@ function buildFooter() {
   saveButton.className = 'modal-footer__button modal-footer__button--primary';
 
   discardButton.addEventListener('click', _attemptDiscardDraft);
-  saveButton.addEventListener('click', saveDraft);
+  _saveStatusPeer = savePeers.find((peer) => peer?.classList?.contains('modal-quick-action--status')) ?? null;
+  const bindingPeers = savePeers.filter((peer) => peer !== _saveStatusPeer);
+  _saveBinding = bindBusyButton({
+    button: saveButton,
+    action: () => saveDraft({ skipValidation: true }),
+    busyLabel: 'Saving…',
+    peers: [discardButton, ...bindingPeers.filter(Boolean)],
+    silent: true,
+  });
+  saveButton.addEventListener('click', () => {
+    runSave();
+  });
   footer.append(discardButton, saveButton);
   footer.hidden = true;
   _footer = footer;
@@ -659,12 +768,12 @@ function validateDraft() {
   return isValid;
 }
 
-async function saveDraft() {
+async function saveDraft({ skipValidation = false } = {}) {
   if (!_isDirty() || !_draft) {
     return;
   }
 
-  if (!validateDraft()) {
+  if (!skipValidation && !validateDraft()) {
     return;
   }
 
@@ -682,6 +791,12 @@ async function saveDraft() {
       _draft = copyApplication(newRecord);
       _original = copyApplication(newRecord);
       _idPill.textContent = newRecord.id;
+
+      if (TERMINAL_STATES.has(_draft.status)) {
+        lockStatusControlsIfTerminal();
+      } else {
+        setStatusBadgeSaveLocked(false);
+      }
 
       if (TERMINAL_STATES.has(_draft.status)) {
         const btn = document.querySelector('.modal-quick-action--status');
@@ -726,6 +841,12 @@ async function saveDraft() {
 
     _draft = copyApplication({ ..._draft, ...updated });
     _original = copyApplication(_draft);
+
+    if (TERMINAL_STATES.has(_draft.status)) {
+      lockStatusControlsIfTerminal();
+    } else {
+      setStatusBadgeSaveLocked(false);
+    }
 
     if (TERMINAL_STATES.has(_draft.status)) {
       const btn = document.querySelector('.modal-quick-action--status');
@@ -789,6 +910,11 @@ async function _attemptDiscardDraft() {
 }
 
 async function _attemptClose() {
+  if (_saveController) {
+    close();
+    return;
+  }
+
   if (!_isDirty()) {
     close();
     return;
@@ -823,6 +949,9 @@ export function close() {
     window.scrollTo(0, _savedScrollY);
   }
 
+  // During an in-flight save, close paths abort the save rather than blocking the user.
+  // See specs/029-loading-async-states/research.md § 3.4.
+  disposeBusyBindings();
   _saveController?.abort();
   _saveController = null;
   _draft = null;
@@ -831,6 +960,11 @@ export function close() {
   _titleRow = null;
   _footer = null;
   _saveButton = null;
+  _saveBinding = null;
+  _saveStatusPeer = null;
+  _saveStatusPeerDisabled = null;
+  _savePending = false;
+  _busyBindings = [];
   _idPill = null;
   _archiveButton = null;
   _quickActions = null;
@@ -919,6 +1053,7 @@ export function open(application, {
   };
 
   function openStatusDropdown(anchorEl) {
+    if (_savePending) return;
     if (_mode === 'edit' && TERMINAL_STATES.has(_draft.status)) return;
 
     const openDropdown = _mode === 'create' ? StatusDropdown.openAll : StatusDropdown.open;
@@ -974,7 +1109,56 @@ export function open(application, {
     statusBadge.setAttribute('aria-label', 'Status locked — workflow complete');
   }
 
-  favoriteButton.addEventListener('click', async () => {
+  const favoriteBinding = trackBusyBinding(bindBusyButton({
+    button: favoriteButton,
+    action: async () => {
+      try {
+        const updated = await api.update(_draft.id, { fav: !currentFavorite });
+        currentFavorite = updated.fav === true;
+        _draft.fav = currentFavorite;
+        _original.fav = currentFavorite;
+        updateFavoriteButton(favoriteButton, currentFavorite);
+        onApplicationUpdate?.(updated);
+        return updated;
+      } catch {
+        Toast.show('Favorite update failed', 'failure');
+        return null;
+      }
+    },
+    silent: true,
+  }));
+  const archiveBinding = trackBusyBinding(bindBusyButton({
+    button: archiveButton,
+    action: async () => {
+      try {
+        const updated = await api.archive(_draft.id);
+        onArchiveSuccess?.(updated);
+        close();
+        return updated;
+      } catch {
+        Toast.show('Archive failed', 'failure');
+        return null;
+      }
+    },
+    silent: true,
+  }));
+  const unarchiveBinding = trackBusyBinding(bindBusyButton({
+    button: unarchiveButton,
+    action: async () => {
+      try {
+        const updated = await api.unarchive(_draft.id);
+        _onUnarchiveSuccess?.(updated);
+        close();
+        return updated;
+      } catch {
+        Toast.show('Unarchive failed', 'failure');
+        return null;
+      }
+    },
+    silent: true,
+  }));
+
+  favoriteButton.addEventListener('click', () => {
     if (_mode === 'create') {
       currentFavorite = !currentFavorite;
       _draft.fav = currentFavorite;
@@ -983,16 +1167,7 @@ export function open(application, {
       return;
     }
 
-    try {
-      const updated = await api.update(_draft.id, { fav: !currentFavorite });
-      currentFavorite = updated.fav === true;
-      _draft.fav = currentFavorite;
-      _original.fav = currentFavorite;
-      updateFavoriteButton(favoriteButton, currentFavorite);
-      onApplicationUpdate?.(updated);
-    } catch {
-      Toast.show('Favorite update failed', 'failure');
-    }
+    favoriteBinding.run();
   });
 
   if (!isTerminal && canEdit()) {
@@ -1017,23 +1192,11 @@ export function open(application, {
       return;
     }
 
-    try {
-      const updated = await api.archive(_draft.id);
-      onArchiveSuccess?.(updated);
-      close();
-    } catch {
-      Toast.show('Archive failed', 'failure');
-    }
+    archiveBinding.run();
   });
 
-  unarchiveButton.addEventListener('click', async () => {
-    try {
-      const updated = await api.unarchive(_draft.id);
-      _onUnarchiveSuccess?.(updated);
-      close();
-    } catch {
-      Toast.show('Unarchive failed', 'failure');
-    }
+  unarchiveButton.addEventListener('click', () => {
+    unarchiveBinding.run();
   });
 
   closeButton.addEventListener('click', _attemptClose);
@@ -1053,7 +1216,7 @@ export function open(application, {
       if (document.activeElement && document.activeElement !== document.body) {
         document.activeElement.blur();
       }
-      saveDraft();
+      runSave();
       return;
     }
 
@@ -1116,7 +1279,7 @@ export function open(application, {
   _renderBody();
   panel.append(header, body);
   if (_mode !== 'archived') {
-    panel.append(buildFooter());
+    panel.append(buildFooter([favoriteButton, archiveButton, statusButton]));
   }
   _syncFooter();
   backdrop.append(panel);

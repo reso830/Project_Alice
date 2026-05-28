@@ -77,6 +77,12 @@ function fixtureApps() {
   ];
 }
 
+async function flushPromises(count = 2) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 async function mountWith(apps = fixtureApps()) {
   const host = mountHost();
   api.getAll.mockResolvedValue(apps);
@@ -125,7 +131,7 @@ describe('formatDateLabel', () => {
 });
 
 describe('Calendar page', () => {
-  it('renders the shell and loading placeholders immediately', async () => {
+  it('renders skeleton placeholders on cold load without bare Loading text', async () => {
     const host = mountHost();
     let resolveApps;
     api.getAll.mockReturnValue(new Promise((resolve) => {
@@ -137,11 +143,18 @@ describe('Calendar page', () => {
     expect(host.querySelector('.calendar-page')).not.toBeNull();
     expect(host.querySelectorAll('.calendar-page__panel, .calendar-page__grid'))
       .toHaveLength(2);
-    expect([...host.querySelectorAll('.calendar-page__panel, .calendar-page__grid')]
-      .map((slot) => slot.textContent)).toEqual(['Loading…', 'Loading…']);
+    const gridSlot = host.querySelector('.calendar-page__grid');
+    const panelSlot = host.querySelector('.calendar-page__panel');
+    expect(gridSlot.querySelector('.calendar-skeleton__grid')).not.toBeNull();
+    expect(panelSlot.querySelector('.calendar-skeleton__panel')).not.toBeNull();
+    expect(gridSlot.querySelector('.calendar-skeleton__grid').getAttribute('aria-busy')).toBe('true');
+    expect(gridSlot.textContent).not.toContain('Loading…');
+    expect(panelSlot.textContent).not.toContain('Loading…');
 
     resolveApps([]);
     await mounted;
+
+    expect(gridSlot.querySelector('.calendar-skeleton__grid')).toBeNull();
   });
 
   it('renders loaded applications into the Action Panel and Month Grid', async () => {
@@ -184,27 +197,34 @@ describe('Calendar page', () => {
     expect(host.textContent).not.toContain('Archived interview');
   });
 
-  it('renders empty states and a failure toast when loading fails', async () => {
+  it('replaces skeletons with inline error on cold-load failure', async () => {
     const host = mountHost();
     api.getAll.mockRejectedValue(new Error('nope'));
 
     await Calendar.mount(host);
 
-    expect(Toast.show).toHaveBeenCalledWith('Could not load calendar', 'failure');
-    expect(host.textContent).toContain('Quiet day');
-    expect(host.querySelector('.cal-status-filter-btn')).not.toBeNull();
+    const gridSlot = host.querySelector('.calendar-page__grid');
+    const panelSlot = host.querySelector('.calendar-page__panel');
+    expect(gridSlot.querySelector('.inline-error')).not.toBeNull();
+    expect(gridSlot.querySelector('.inline-error__message').textContent)
+      .toBe("Couldn't load the calendar.");
+    expect(gridSlot.querySelector('.inline-error__retry')).not.toBeNull();
+    expect(panelSlot.children).toHaveLength(0);
+    expect(Toast.show).not.toHaveBeenCalledWith('Could not load calendar', 'failure');
   });
 
   it('updates view state from nav arrows and month picker selection', async () => {
     const host = await mountWith([]);
 
     host.querySelector('[aria-label="Previous month"]').click();
+    await flushPromises(4);
     expect(host.querySelector('.cal-month-btn').textContent).toBe('April');
 
     host.querySelector('.cal-month-btn').click();
     [...document.querySelectorAll('.cal-picker-item')]
       .find((button) => button.textContent === 'Jan')
       .click();
+    await flushPromises(4);
 
     expect(host.querySelector('.cal-month-btn').textContent).toBe('January');
   });
@@ -435,5 +455,58 @@ describe('Calendar page', () => {
     expect(host.children).toHaveLength(0);
     expect(document.querySelector('.cal-picker')).toBeNull();
     expect(document.querySelector('.cal-day-panel')).toBeNull();
+  });
+
+  it('retries from the inline error and re-mounts skeletons before refetching', async () => {
+    const host = mountHost();
+    api.getAll
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(fixtureApps());
+
+    await Calendar.mount(host);
+
+    const gridSlot = host.querySelector('.calendar-page__grid');
+    expect(gridSlot.querySelector('.inline-error')).not.toBeNull();
+
+    gridSlot.querySelector('.inline-error__retry').click();
+
+    expect(gridSlot.querySelector('.calendar-skeleton__grid')).not.toBeNull();
+    expect(api.getAll).toHaveBeenCalledTimes(2);
+
+    await flushPromises(4);
+
+    expect(gridSlot.querySelector('.inline-error')).toBeNull();
+    expect(gridSlot.querySelector('.calendar-skeleton__grid')).toBeNull();
+    expect(host.querySelector('.cal-grid-header')).not.toBeNull();
+  });
+
+  it('refetches data and sets aria-busy on the grid during a month switch', async () => {
+    const host = await mountWith([]);
+    const gridSlot = host.querySelector('.calendar-page__grid');
+    expect(gridSlot.hasAttribute('aria-busy')).toBe(false);
+
+    const callsBefore = api.getAll.mock.calls.length;
+    host.querySelector('[aria-label="Previous month"]').click();
+
+    expect(gridSlot.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('.cal-month-btn').textContent).toBe('May');
+
+    await flushPromises(4);
+
+    expect(api.getAll).toHaveBeenCalledTimes(callsBefore + 1);
+    expect(host.querySelector('.cal-month-btn').textContent).toBe('April');
+    expect(gridSlot.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('shows a failure toast on month switch refetch failure and keeps the prior view', async () => {
+    const host = await mountWith(fixtureApps());
+    api.getAll.mockRejectedValueOnce(new Error('offline'));
+
+    host.querySelector('[aria-label="Previous month"]').click();
+    await flushPromises(4);
+
+    expect(Toast.show).toHaveBeenCalledWith('Could not load calendar', 'failure');
+    expect(host.querySelector('.cal-month-btn').textContent).toBe('May');
+    expect(host.querySelector('.calendar-page__grid').hasAttribute('aria-busy')).toBe(false);
   });
 });

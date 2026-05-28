@@ -31,7 +31,7 @@ A Codex review on 2026-05-27 caught four artifact-drift items (duplicate-run con
 | Empty / loading / error states defined | [x] | This feature is the empty/loading/error-state work. |
 | Automated tests planned for changed validation / status / date behaviour | [x] | Tests cover the new helper + each retrofit site. |
 | Local-first / no analytics preserved | [x] | No new telemetry. |
-| Desktop + mobile responsive, labeled forms, keyboard navigation, non-color-only signalling | [x] | New skeletons + inline-error + busy buttons all conform. |
+| Desktop + mobile responsive, labeled forms, keyboard navigation, non-color-only signalling | [x] | Phase 08 audit confirmed skeleton ARIA, polite inline-error regions, retry focus, keyboard reachability, busy labels, and reduced-motion CSS through automated tests and source inspection. Manual screen-reader and OS reduced-motion spot checks were not executable in this sandbox; residual visual/AT confirmation is deferred to Phase 11 browser smoke. |
 | Data-model extensibility preserved | [x] | No persistence change to extend. |
 | Release Prep phase planned (before Browser Smoke Test) | [x] | Captured in plan § Project Structure + Affected Areas. |
 | Browser Smoke Test phase planned (last phase) | [x] | Captured in [quickstart.md](../quickstart.md). |
@@ -186,3 +186,5 @@ If any item is unchecked, list the blockers below and resolve them before genera
 ```
 (no blockers — signed off A · 2026-05-27)
 ```
+
+Phase 01 implementation note (2026-05-27): `npm.cmd run test:run`, `npm.cmd run lint`, and `npm.cmd run build` passed. The build command required local placeholder values for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_AUTH_EMAIL_REDIRECT_URL` because production builds enforce hosted frontend env vars. Vite dev server startup reached `http://127.0.0.1:5173/`, but the sandbox could not keep a persistent browser/manual session alive (`Start-Process` hit Windows `Path`/`PATH` environment casing; node_repl browser launch failed at sandbox setup), so Task 01.6's manual inline-error injection was substituted with a jsdom CSS injection check confirming `.inline-error` flex column layout, retry cursor, and `button[aria-busy="true"]` progress cursor / opacity. Residual risk: true visual/manual confirmation remains for Phase 11 browser smoke.

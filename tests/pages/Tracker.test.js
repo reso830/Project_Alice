@@ -325,6 +325,86 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
   });
 
+  it('shows an inline error with retry when the initial application list fails', async () => {
+    const container = document.createElement('main');
+    const retried = createApplication(7);
+    let resolveRetry;
+
+    document.body.append(container);
+    window.scrollTo = vi.fn();
+    api.getAll
+      .mockRejectedValueOnce(new Error('server down'))
+      .mockReturnValueOnce(Promise.resolve([]))
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveRetry = resolve;
+      }))
+      .mockReturnValue(Promise.resolve([]));
+
+    await Tracker.mount(container);
+
+    const errorBlock = container.querySelector('.inline-error');
+    const retryButton = container.querySelector('.inline-error__retry');
+
+    expect(errorBlock).not.toBeNull();
+    expect(errorBlock.querySelector('.inline-error__message')?.textContent)
+      .toBe("Couldn't load your applications. Check your connection or try again.");
+    expect(retryButton).not.toBeNull();
+    expect(document.activeElement).toBe(retryButton);
+    expect(document.body.textContent).not.toContain('Applications failed to load');
+
+    retryButton.click();
+
+    expect(api.getAll).toHaveBeenCalledTimes(4);
+    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+
+    resolveRetry([retried]);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('.inline-error')).toBeNull();
+    expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
+    expect(container.textContent).toContain('Role 7');
+  });
+
+  it('shows a destination skeleton and view chip busy state while switching views', async () => {
+    const container = document.createElement('main');
+    const active = createApplication(1);
+    const archived = createApplication(2, { archived: true, archivedDate: '2026-05-01' });
+    let resolveArchived;
+
+    window.scrollTo = vi.fn();
+    let viewSwitchStarted = false;
+    api.getAll.mockImplementation((options) => {
+      if (options?.view === 'archived') {
+        if (!viewSwitchStarted) {
+          return Promise.resolve([]);
+        }
+        return new Promise((resolve) => {
+          resolveArchived = resolve;
+        });
+      }
+      return Promise.resolve([active]);
+    });
+
+    await Tracker.mount(container);
+    viewSwitchStarted = true;
+    const switchPromise = toolbarRenderOptions[0].onViewChange('archived');
+
+    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+    expect(container.textContent).not.toContain('Role 1');
+    expect(toolbarUpdateOptions.at(-1).viewBusy).toBe(true);
+
+    resolveArchived([archived]);
+    await switchPromise;
+
+    expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
+    expect(container.textContent).toContain('Role 2');
+    expect(toolbarUpdateOptions.at(-1).viewBusy).toBe(false);
+  });
+
   it('renders a mobile FAB that uses the same add-application callback surface as the toolbar', async () => {
     const container = document.createElement('main');
 
@@ -674,6 +754,9 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(api.archive).not.toHaveBeenCalled();
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(1);
 
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     container.querySelector('.card-btn--archive').click();
     await Promise.resolve();
     await Promise.resolve();

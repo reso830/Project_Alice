@@ -1,4 +1,5 @@
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
+import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
 import { parseResume } from '../services/resumeApi.js';
 
 // Exported (feature 020) so the demo test can assert
@@ -201,7 +202,14 @@ export const ResumeImport = {
       const fileName = createElement('p', 'resume-import__filename', selectedFile.name);
       const actions = createElement('div', 'resume-import__actions');
       const chooseAgain = createButton('Choose Different File', 'profile-btn profile-btn--outline', () => input.click());
-      const process = createButton('Process Resume', 'profile-btn profile-btn--primary', renderProcessing);
+      const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {
+        processBinding.run().catch(() => {});
+      });
+      const processBinding = bindBusyButton({
+        button: process,
+        action: processSelectedFile,
+        silent: true,
+      });
 
       actions.append(chooseAgain, process);
       root.append(fileName, actions, error);
@@ -211,7 +219,7 @@ export const ResumeImport = {
       renderShell('resume-import--processing');
       root.setAttribute('aria-busy', 'true');
 
-      const status = createElement('p', 'resume-import__status', PROCESSING_MESSAGES[0]);
+      const status = createElement('div', 'resume-import__status', PROCESSING_MESSAGES[0]);
       const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {});
 
       process.disabled = true;
@@ -224,38 +232,41 @@ export const ResumeImport = {
         status.textContent = PROCESSING_MESSAGES[processingIndex];
       }, 1200);
 
-      parseResume(selectedFile)
-        .then((parsedData) => {
-          clearProcessingTimer();
-          if (!hasExtractedData(parsedData)) {
-            renderError();
-            return;
-          }
-
-          onSuccess(parsedData);
-          completed = true;
-          applyVisibility();
-        })
-        .catch(() => {
-          clearProcessingTimer();
-          renderError();
-        });
+      return status;
     }
 
-    function renderError() {
-      renderShell('resume-import--error');
+    async function processSelectedFile() {
+      const status = renderProcessing();
 
-      const message = createElement('p', 'resume-import__error-message', 'Unable to parse resume. Try a different file or continue manually.');
-      const actions = createElement('div', 'resume-import__actions');
-      const retry = createButton('Retry', 'profile-btn profile-btn--primary', renderSelected);
-      const dismiss = createButton('Continue Manually', 'profile-btn profile-btn--outline', () => {
-        onDismiss();
+      try {
+        const parsedData = await parseResume(selectedFile);
+        clearProcessingTimer();
+        if (!hasExtractedData(parsedData)) {
+          throw new Error('No resume data extracted.');
+        }
+
+        onSuccess(parsedData);
         completed = true;
         applyVisibility();
-      });
-
-      actions.append(retry, dismiss);
-      root.append(message, actions);
+        return parsedData;
+      } catch {
+        clearProcessingTimer();
+        root.setAttribute('aria-busy', 'false');
+        const inlineError = renderInlineError({
+          target: status,
+          message: "Couldn't parse the resume. Try again.",
+          onRetry: () => {
+            processSelectedFile().catch(() => {});
+          },
+        });
+        const dismiss = createButton('Continue Manually', 'profile-btn profile-btn--outline', () => {
+          onDismiss();
+          completed = true;
+          applyVisibility();
+        });
+        inlineError.element.append(dismiss);
+        return null;
+      }
     }
 
     input.addEventListener('change', () => selectFile(input.files?.[0]));

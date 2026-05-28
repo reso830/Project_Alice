@@ -42,6 +42,7 @@ let _callbacks = {};
 let _currentView = 'active';
 let _viewCounts = { activeCount: 0, archivedCount: 0 };
 let _showAddButton = true;
+let _viewBusy = false;
 
 const SALARY_FILTER_MIN = 50000;
 const SALARY_FILTER_MAX = 250000;
@@ -99,6 +100,18 @@ function updateLabel(totalCount, filteredCount, filterState) {
 
   _viewTrigger?.querySelector('.app-title-trigger__label')?.replaceChildren(label);
   _viewTrigger?.setAttribute('aria-label', `Switch application view, current view ${label}`);
+}
+
+function updateViewBusy() {
+  if (!_viewChip) {
+    return;
+  }
+
+  if (_viewBusy) {
+    _viewChip.setAttribute('aria-busy', 'true');
+  } else {
+    _viewChip.removeAttribute('aria-busy');
+  }
 }
 
 function handleDocumentKeydown(event) {
@@ -621,6 +634,7 @@ export function render(options = {}) {
     archivedCount: 0,
   };
   _showAddButton = options.showAddButton !== false;
+  _viewBusy = options.viewBusy === true;
 
   const toolbar = document.createElement('div');
   const left = document.createElement('div');
@@ -748,6 +762,7 @@ export function render(options = {}) {
     currentView: _currentView,
     viewCounts: _viewCounts,
     showAddButton: _showAddButton,
+    viewBusy: _viewBusy,
   });
 
   return toolbar;
@@ -767,11 +782,13 @@ export function update(el, options = {}) {
   }
   _viewCounts = options.viewCounts ?? _viewCounts;
   _showAddButton = options.showAddButton !== undefined ? options.showAddButton !== false : _showAddButton;
+  _viewBusy = options.viewBusy === true;
 
   const totalCount = options.totalCount ?? _allApps.length;
   const filteredCount = options.filteredCount ?? totalCount;
 
   updateLabel(totalCount, filteredCount, _filterState);
+  updateViewBusy();
   updateButtons(totalCount, _filterState);
   syncAddVisibility();
   if (_viewPopup) {

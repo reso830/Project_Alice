@@ -3,6 +3,8 @@ import { Toast } from '../components/Toast.js';
 import * as authStore from '../data/authStore.js';
 import { mergeResumeData, normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
+import { bindBusyButton } from '../utils/asyncUI.js';
+import { buildProfileEditSkeleton } from '../utils/skeletons.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
 import { validateMonthYear, validateRequired, validateUrl, validateYear } from '../utils/validate.js';
 
@@ -22,6 +24,7 @@ let _highlightImport = false;
 let _importDone = false;
 let _importArea = null;
 let _mountGeneration = 0;
+let _saveBindings = [];
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -97,6 +100,23 @@ function updateControlsState() {
     if (!_saving) {
       button.textContent = 'Save';
     }
+  }
+}
+
+function setSavingControlsBusy(isSaving) {
+  for (const button of document.querySelectorAll('.page-controls__save')) {
+    if (isSaving) {
+      button.setAttribute('aria-busy', 'true');
+      button.disabled = true;
+      button.textContent = 'Saving changes…';
+    } else {
+      button.removeAttribute('aria-busy');
+      button.textContent = 'Save';
+    }
+  }
+
+  for (const button of document.querySelectorAll('.page-controls__cancel')) {
+    button.disabled = isSaving;
   }
 }
 
@@ -428,9 +448,20 @@ function renderSubheader() {
 function renderPageControls() {
   const controls = createElement('div', 'page-controls');
   const cancel = createButton('Cancel', 'profile-btn profile-btn--outline page-controls__cancel', handleCancel);
-  const save = createButton('Save', 'profile-btn profile-btn--primary page-controls__save', handleSave);
+  let saveBinding;
+  const save = createButton('Save', 'profile-btn profile-btn--primary page-controls__save', () => {
+    saveBinding.run().catch(() => {});
+  });
 
   save.disabled = true;
+  saveBinding = bindBusyButton({
+    button: save,
+    action: handleSave,
+    busyLabel: 'Saving changes…',
+    peers: [cancel],
+    silent: true,
+  });
+  _saveBindings.push(saveBinding);
   controls.append(cancel, save);
 
   return controls;
@@ -1174,10 +1205,7 @@ async function handleSave() {
   }
 
   _saving = true;
-  for (const button of document.querySelectorAll('.page-controls__save')) {
-    button.disabled = true;
-    button.textContent = 'Saving…';
-  }
+  setSavingControlsBusy(true);
 
   try {
     await saveProfile(_formState);
@@ -1189,9 +1217,7 @@ async function handleSave() {
     Toast.show('Could not save profile. Please try again.', 'error');
   } finally {
     _saving = false;
-    for (const button of document.querySelectorAll('.page-controls__save')) {
-      button.textContent = 'Save';
-    }
+    setSavingControlsBusy(false);
     updateControlsState();
   }
 }
@@ -1275,7 +1301,7 @@ export async function mount(container, { navigate, highlightImport = false } = {
   _highlightImport = highlightImport;
   _importDone = false;
   _mountGeneration += 1;
-  container.replaceChildren(createElement('div', 'profile-loading', 'Loading profile...'));
+  container.replaceChildren(buildProfileEditSkeleton());
 
   const profile = await getProfile().catch(() => null);
 
@@ -1325,6 +1351,10 @@ export function unmount() {
   _renderSkillsBody = () => {};
   _importArea?.destroy?.();
   _importArea = null;
+  for (const binding of _saveBindings) {
+    binding.dispose();
+  }
+  _saveBindings = [];
   _highlightImport = false;
   _importDone = false;
 }

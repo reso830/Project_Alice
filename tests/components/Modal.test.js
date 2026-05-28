@@ -1022,6 +1022,138 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-backdrop')).toBeNull();
   });
 
+  it('marks Save busy, prevents duplicate saves, and disables peer write actions while pending', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    let resolveSave;
+    api.update.mockReturnValue(new Promise((resolve) => {
+      resolveSave = resolve;
+    }));
+
+    Modal.open(application({ status: 'applied' }));
+    editTextField('Company', 'Globex');
+
+    const save = saveButton();
+    save.click();
+    save.click();
+
+    expect(save.getAttribute('aria-busy')).toBe('true');
+    expect(save.disabled).toBe(true);
+    expect(save.textContent).toBe('Saving…');
+    expect(api.update).toHaveBeenCalledTimes(1);
+    expect(discardButton().disabled).toBe(true);
+    expect(document.querySelector('.modal-quick-action--favorite').disabled).toBe(true);
+    expect(document.querySelector('.modal-quick-action--archive').disabled).toBe(true);
+    expect(document.querySelector('.modal-quick-action--status').disabled).toBe(true);
+
+    resolveSave({ ...application(), companyName: 'Globex' });
+    await flushPromises();
+
+    expect(save.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('does not open status dropdown from the badge while Save is pending', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    let resolveSave;
+    api.update.mockReturnValue(new Promise((resolve) => {
+      resolveSave = resolve;
+    }));
+
+    Modal.open(application({ status: 'applied' }));
+    editTextField('Company', 'Globex');
+    saveButton().click();
+
+    const badge = document.querySelector('#modal-status-badge');
+    badge.click();
+    badge.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(badge.getAttribute('aria-disabled')).toBe('true');
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+
+    resolveSave({ ...application(), status: 'applied', companyName: 'Globex' });
+    await flushPromises(4);
+
+    expect(document.querySelector('#modal-status-badge').getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('does not leave a busy peer disabled when that peer resolves before Save', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    let resolveFavorite;
+    let resolveSave;
+    api.update
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveFavorite = resolve;
+      }))
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveSave = resolve;
+      }));
+
+    Modal.open(application({ fav: false }));
+    editTextField('Company', 'Globex');
+    const favorite = document.querySelector('.modal-quick-action--favorite');
+
+    favorite.click();
+    saveButton().click();
+
+    resolveFavorite({ ...application(), fav: true });
+    await flushPromises();
+    resolveSave({ ...application(), fav: true, companyName: 'Globex' });
+    await flushPromises();
+
+    expect(favorite.disabled).toBe(false);
+    expect(favorite.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('keeps terminal status controls disabled after a save busy cycle restores peers', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({ status: 'accepted' }));
+
+    Modal.open(application({ status: 'offer' }));
+    document.querySelector('.modal-quick-action--status').click();
+    document.querySelector('[data-status="accepted"]').click();
+    saveButton().click();
+    await flushPromises();
+
+    expect(document.querySelector('.modal-quick-action--status').disabled).toBe(true);
+    expect(document.querySelector('#modal-status-badge').getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('restores Save after failure and shows one failure toast without closing', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockRejectedValue(new Error('server error'));
+
+    Modal.open(application());
+    editTextField('Company', 'Globex');
+    saveButton().click();
+    await flushPromises();
+
+    expect(saveButton().textContent).toBe('Save');
+    expect(saveButton().hasAttribute('aria-busy')).toBe(false);
+    expect(document.querySelector('.toast')?.textContent).toContain('Failed to save');
+    expect(document.querySelectorAll('.toast')).toHaveLength(1);
+    expect(modalBackdrop()).not.toBeNull();
+  });
+
+  it('aborts an in-flight save from Escape without success or failure toast', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    ConfirmDialog.show.mockResolvedValue(true);
+    api.update.mockImplementation((id, payload, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        reject(new window.DOMException('Aborted', 'AbortError'));
+      });
+    }));
+
+    Modal.open(application());
+    editTextField('Company', 'Globex');
+    saveButton().click();
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flushPromises();
+
+    expect(modalBackdrop()).toBeNull();
+    expect(ConfirmDialog.show).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain('Saved.');
+    expect(document.body.textContent).not.toContain('Failed to save');
+  });
+
   it('keeps favorite sync when saving after an immediate favorite toggle', async () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     api.update
@@ -1228,12 +1360,24 @@ describe('Modal', () => {
   it('toggles favorite through PATCH and updates the quick action state', async () => {
     const onApplicationUpdate = vi.fn();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    api.update.mockResolvedValue({ ...application(), fav: true });
+    let resolveFavorite;
+    api.update.mockReturnValue(new Promise((resolve) => {
+      resolveFavorite = resolve;
+    }));
 
     Modal.open(application(), { onApplicationUpdate });
-    document.querySelector('.modal-quick-action--favorite').click();
-    await Promise.resolve();
+    const favorite = document.querySelector('.modal-quick-action--favorite');
+    favorite.click();
+    favorite.click();
 
+    expect(favorite.getAttribute('aria-busy')).toBe('true');
+    expect(favorite.disabled).toBe(true);
+    expect(api.update).toHaveBeenCalledTimes(1);
+
+    resolveFavorite({ ...application(), fav: true });
+    await flushPromises();
+
+    expect(favorite.hasAttribute('aria-busy')).toBe(false);
     expect(api.update).toHaveBeenCalledWith(1, { fav: true });
     expect(document.querySelector('.modal-quick-action--favorite svg.icon')).not.toBeNull();
     expect(document.querySelector('.modal-quick-action--favorite .modal-quick-action__label')).toBeNull();
@@ -1356,10 +1500,13 @@ describe('Modal', () => {
     const onArchiveSuccess = vi.fn();
     const favorited = application({ fav: true });
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    let resolveArchive;
     ConfirmDialog.show
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
-    api.archive.mockResolvedValue({ ...favorited, archived: true, fav: true });
+    api.archive.mockReturnValue(new Promise((resolve) => {
+      resolveArchive = resolve;
+    }));
 
     Modal.open(favorited, { onArchiveSuccess });
     document.querySelector('.modal-quick-action--archive').click();
@@ -1370,7 +1517,16 @@ describe('Modal', () => {
 
     document.querySelector('.modal-quick-action--archive').click();
     await Promise.resolve();
-    await Promise.resolve();
+
+    const archive = document.querySelector('.modal-quick-action--archive');
+    archive.click();
+
+    expect(archive.getAttribute('aria-busy')).toBe('true');
+    expect(archive.disabled).toBe(true);
+    expect(api.archive).toHaveBeenCalledTimes(1);
+
+    resolveArchive({ ...favorited, archived: true, fav: true });
+    await flushPromises();
 
     expect(api.archive).toHaveBeenCalledWith(1);
     expect(onArchiveSuccess).toHaveBeenCalledWith(expect.objectContaining({ archived: true, fav: true }));
@@ -1482,10 +1638,21 @@ describe('Modal', () => {
     const archived = application({ archived: true, archivedDate: '2026-05-01' });
     const restored = { ...archived, archived: false, archivedDate: null };
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    api.unarchive.mockResolvedValue(restored);
+    let resolveUnarchive;
+    api.unarchive.mockReturnValue(new Promise((resolve) => {
+      resolveUnarchive = resolve;
+    }));
 
     Modal.open(archived, { onUnarchiveSuccess });
-    document.querySelector('.modal-quick-action--unarchive').click();
+    const unarchive = document.querySelector('.modal-quick-action--unarchive');
+    unarchive.click();
+    unarchive.click();
+
+    expect(unarchive.getAttribute('aria-busy')).toBe('true');
+    expect(unarchive.disabled).toBe(true);
+    expect(api.unarchive).toHaveBeenCalledTimes(1);
+
+    resolveUnarchive(restored);
     await flushPromises();
 
     expect(api.unarchive).toHaveBeenCalledWith(1);

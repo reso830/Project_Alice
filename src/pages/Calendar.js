@@ -18,6 +18,8 @@ import * as dismissals from '../utils/calendarDismissals.js';
 import { YEAR_MAX, YEAR_MIN } from '../utils/calendar.js';
 import { applyStatusChange } from '../models/application.js';
 import { toISODate } from '../utils/date.js';
+import { buildCalendarSkeleton } from '../utils/skeletons.js';
+import { bindContainerBusy, renderInlineError } from '../utils/asyncUI.js';
 
 const POOLS = {
   morning: ['Good morning', 'Morning', 'Rise and shine', 'Bright and early'],
@@ -42,6 +44,9 @@ let _selectedDate = null;
 let _dayActivities = {};
 let _activeOverlay = null;
 let _statusFilterPopup = null;
+let _gridRefreshBinding = null;
+let _pendingYear = null;
+let _pendingMonth = null;
 let _mountId = 0;
 
 export function chooseGreeting(date, randomFn = Math.random) {
@@ -118,16 +123,14 @@ function clampView(year, month) {
   return { year, month };
 }
 
-function setView(year, month) {
-  const next = clampView(year, month);
-  _viewYear = next.year;
-  _viewMonth = next.month;
-}
-
 function monthDelta(delta) {
-  const date = new Date(_viewYear, _viewMonth + delta, 1);
-  setView(date.getFullYear(), date.getMonth());
-  _render();
+  const base = _pendingYear ?? _viewYear;
+  const baseMonth = _pendingMonth ?? _viewMonth;
+  const date = new Date(base, baseMonth + delta, 1);
+  const clamped = clampView(date.getFullYear(), date.getMonth());
+  _pendingYear = clamped.year;
+  _pendingMonth = clamped.month;
+  _gridRefreshBinding?.run();
 }
 
 function currentAuthState() {
@@ -148,6 +151,36 @@ function isCurrentMount(mountId) {
   return _container !== null && _mountId === mountId;
 }
 
+function mountSkeletons() {
+  const { grid, panel } = buildCalendarSkeleton();
+  _gridSlot.replaceChildren(grid);
+  _panelSlot.replaceChildren(panel);
+}
+
+async function _refreshAndRender() {
+  const mountId = _mountId;
+  try {
+    const applications = await api.getAll();
+    if (!isCurrentMount(mountId)) return;
+    _applications = applications;
+    _dismissals = dismissals.load(currentAuthState());
+  } catch {
+    if (!isCurrentMount(mountId)) return;
+    _pendingYear = null;
+    _pendingMonth = null;
+    Toast.show('Could not load calendar', 'failure');
+    return;
+  }
+  if (!isCurrentMount(mountId)) return;
+  if (_pendingYear !== null) {
+    _viewYear = _pendingYear;
+    _viewMonth = _pendingMonth;
+    _pendingYear = null;
+    _pendingMonth = null;
+  }
+  _render();
+}
+
 function createShell() {
   const page = document.createElement('div');
   _panelSlot = document.createElement('section');
@@ -156,8 +189,13 @@ function createShell() {
   page.className = 'calendar-page';
   _panelSlot.className = 'calendar-page__panel';
   _gridSlot.className = 'calendar-page__grid';
-  _panelSlot.textContent = 'Loading\u2026';
-  _gridSlot.textContent = 'Loading\u2026';
+  mountSkeletons();
+
+  _gridRefreshBinding = bindContainerBusy({
+    container: _gridSlot,
+    action: () => _refreshAndRender(),
+    silent: true,
+  });
 
   page.append(_panelSlot, _gridSlot);
   _container.append(page);
@@ -196,8 +234,9 @@ function _render() {
     onNavigateNext: () => monthDelta(1),
     onJumpToToday: () => {
       const todayDate = new Date();
-      setView(todayDate.getFullYear(), todayDate.getMonth());
-      _render();
+      _pendingYear = todayDate.getFullYear();
+      _pendingMonth = todayDate.getMonth();
+      _gridRefreshBinding?.run();
     },
     onOpenMonthPicker: _onOpenMonthPicker,
     onOpenYearPicker: _onOpenYearPicker,
@@ -248,8 +287,9 @@ function _onOpenMonthPicker(anchor) {
     viewYear: _viewYear,
     viewMonth: _viewMonth,
     onSelect: (monthIndex) => {
-      _viewMonth = monthIndex;
-      _render();
+      _pendingYear = _viewYear;
+      _pendingMonth = monthIndex;
+      _gridRefreshBinding?.run();
     },
     onClose: () => {
       MonthPicker.close();
@@ -267,8 +307,9 @@ function _onOpenYearPicker(anchor) {
     anchor,
     viewYear: _viewYear,
     onSelect: (year) => {
-      _viewYear = year;
-      _render();
+      _pendingYear = year;
+      _pendingMonth = _viewMonth;
+      _gridRefreshBinding?.run();
     },
     onClose: () => {
       YearPicker.close();
@@ -376,6 +417,43 @@ async function _onOpenApp(applicationId) {
   });
 }
 
+async function _loadData(mountId) {
+  try {
+    const [applications, profile] = await Promise.all([
+      api.getAll(),
+      api.getProfile().catch(() => null),
+    ]);
+    if (!isCurrentMount(mountId)) {
+      return;
+    }
+    _applications = applications;
+    _greeting = formatGreeting(_greeting, profileName(profile));
+    _dismissals = dismissals.load(currentAuthState());
+  } catch {
+    if (!isCurrentMount(mountId)) {
+      return;
+    }
+    _applications = [];
+    _dismissals = [];
+    renderInlineError({
+      target: _gridSlot,
+      message: "Couldn't load the calendar.",
+      onRetry: () => {
+        mountSkeletons();
+        _loadData(mountId);
+      },
+    });
+    _panelSlot.replaceChildren();
+    return;
+  }
+
+  if (!isCurrentMount(mountId)) {
+    return;
+  }
+
+  _render();
+}
+
 export async function mount(container) {
   unmount();
 
@@ -395,31 +473,7 @@ export async function mount(container) {
   _container.replaceChildren();
   createShell();
 
-  try {
-    const [applications, profile] = await Promise.all([
-      api.getAll(),
-      api.getProfile().catch(() => null),
-    ]);
-    if (!isCurrentMount(mountId)) {
-      return;
-    }
-    _applications = applications;
-    _greeting = formatGreeting(_greeting, profileName(profile));
-    _dismissals = dismissals.load(currentAuthState());
-  } catch {
-    if (!isCurrentMount(mountId)) {
-      return;
-    }
-    _applications = [];
-    _dismissals = [];
-    Toast.show('Could not load calendar', 'failure');
-  }
-
-  if (!isCurrentMount(mountId)) {
-    return;
-  }
-
-  _render();
+  await _loadData(mountId);
 }
 
 export function unmount() {
@@ -444,6 +498,9 @@ export function unmount() {
   _selectedDate = null;
   _dayActivities = {};
   _statusFilterPopup = null;
+  _gridRefreshBinding = null;
+  _pendingYear = null;
+  _pendingMonth = null;
   _activeOverlay = null;
 }
 

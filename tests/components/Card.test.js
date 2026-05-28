@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Card } from '../../src/components/Card.js';
+import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
 import { STATUS_CONFIG, TERMINAL_STATES } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
@@ -12,6 +13,10 @@ const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
 
 vi.mock('../../src/services/api.js', () => ({
   unarchive: vi.fn(),
+}));
+
+vi.mock('../../src/components/Toast.js', () => ({
+  Toast: { show: vi.fn() },
 }));
 
 function application(overrides = {}) {
@@ -43,6 +48,12 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.clearAllMocks();
 });
+
+async function flushPromises(count = 2) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve();
+  }
+}
 
 describe('Card', () => {
   it('renders status badge and accent from STATUS_CONFIG', () => {
@@ -166,5 +177,63 @@ describe('Card', () => {
     expect(api.unarchive).toHaveBeenCalledWith(1);
     expect(onUnarchiveSuccess).toHaveBeenCalledWith(updated);
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('marks the archive action busy and prevents duplicate archive requests', async () => {
+    let resolveArchive;
+    const onArchive = vi.fn(() => new Promise((resolve) => {
+      resolveArchive = resolve;
+    }));
+    const card = Card.render(application(), { onArchive });
+    const archiveButton = card.querySelector('.card-btn--archive');
+
+    archiveButton.click();
+    archiveButton.click();
+
+    expect(archiveButton.getAttribute('aria-busy')).toBe('true');
+    expect(archiveButton.disabled).toBe(true);
+    expect(onArchive).toHaveBeenCalledTimes(1);
+
+    resolveArchive();
+    await flushPromises();
+
+    expect(archiveButton.hasAttribute('aria-busy')).toBe(false);
+    expect(archiveButton.disabled).toBe(false);
+  });
+
+  it('uses the archive-specific failure toast when archive fails', async () => {
+    const onArchive = vi.fn(() => Promise.reject(new Error('nope')));
+    const card = Card.render(application(), { onArchive });
+    const archiveButton = card.querySelector('.card-btn--archive');
+
+    archiveButton.click();
+    await flushPromises();
+
+    expect(Toast.show).toHaveBeenCalledWith("Couldn't archive.", 'failure');
+  });
+
+  it('marks the unarchive action busy and prevents duplicate unarchive requests', async () => {
+    const updated = application({ archived: false, archivedDate: null });
+    let resolveUnarchive;
+    api.unarchive.mockReturnValue(new Promise((resolve) => {
+      resolveUnarchive = resolve;
+    }));
+    const onUnarchiveSuccess = vi.fn();
+    const card = Card.render(application({ archived: true }), { onUnarchiveSuccess });
+    const unarchiveButton = card.querySelector('.card-btn--unarchive');
+
+    unarchiveButton.click();
+    unarchiveButton.click();
+
+    expect(unarchiveButton.getAttribute('aria-busy')).toBe('true');
+    expect(unarchiveButton.disabled).toBe(true);
+    expect(api.unarchive).toHaveBeenCalledTimes(1);
+
+    resolveUnarchive(updated);
+    await flushPromises();
+
+    expect(unarchiveButton.hasAttribute('aria-busy')).toBe(false);
+    expect(unarchiveButton.disabled).toBe(false);
+    expect(onUnarchiveSuccess).toHaveBeenCalledWith(updated);
   });
 });
