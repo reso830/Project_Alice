@@ -37,7 +37,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 |------|---------|
 | `src/components/Card.js` | Application card (status badge, star, compat score). Archived-card variant (`.card-archived`) collapses the actions row to a single ↺ Unarchive button, prefixes the date-stamp with `Archived`, and renders an "Archived" stamp chip in row 1 |
 | `src/components/Modal.js` | Inline-edit detail modal — edit/create modes, draft management, focus trap. Third `archived` mode (selected by `row.archived === true` at open time) is read-only: ARCHIVED chip in header, ↺+✕ action cluster only, body fields inert, no Save/Discard footer, Esc/backdrop/✕ close without confirmation |
-| `src/components/QuickFiltersToolbar.js` | Full filter + sort toolbar — 8 filter dimensions, sort panel, erase-all. Leading view chip toggles Applications ↔ Archived (popup with unfiltered counts for both views); chip count badge reflects current view's filtered count |
+| `src/components/QuickFiltersToolbar.js` | Full filter + sort toolbar — 8 filter dimensions, sort panel, erase-all. Leading view chip toggles Applications ↔ Archived (popup with unfiltered counts for both views); chip count badge reflects current view's filtered count. View chip carries `aria-busy="true"` during in-flight view transitions (feature 029 FR-005) |
 | `src/components/FilterPanel.js` | Filter popup renderer — checklist and range-slider panels; used by QuickFiltersToolbar |
 | `src/components/SortPanel.js` | Sort popup renderer — used by QuickFiltersToolbar |
 | `src/components/ConfirmDialog.js` | Reusable confirmation dialog (archive, discard) |
@@ -139,6 +139,8 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/utils/calendarProjection.js` | `projectCalendarMonth(apps, year, month)` — maps application Timeline entries onto a month grid; returns `{ days, eventsByDate }` |
 | `src/utils/calendarSuggestions.js` | `evaluateSuggestions(apps, todayISO, dismissals)` — 5 rule-based suggestion kinds: `followup`, `feedback`, `interview_followup`, `offer_expiry`, `ghost`; skips terminal-state apps and apps with future entries |
 | `src/utils/calendarDismissals.js` | In-memory dismissal store for Calendar Suggested Actions; `dismiss(key)`, `isDismissed(key)`, `clearAll()` — never touches localStorage (feature 020 FR-004) |
+| `src/utils/asyncUI.js` | Shared client-side loading + async-state utilities — `bindBusyButton`, `bindContainerBusy`, `renderInlineError`. Used by Modal, Card, CreationPicker, ResumeImport, StatusDropdown, Tracker, Calendar, Profile, ProfileEdit (feature 029) |
+| `src/utils/skeletons.js` | Shared DOM-factory builders for loading skeletons — `buildApplicationListSkeleton`, `buildProfileSkeleton`, `buildCalendarSkeleton`, `buildProfileEditSkeleton`, `buildProfileAppsSkeleton` (feature 029) |
 | `src/styles/main.css` | Global styles and CSS design tokens |
 
 ---
@@ -221,6 +223,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/025-application-timeline/` | Application Timeline feature spec package — timeline persistence, modal UI, seed updates, hosted migration, release prep, and smoke plan |
 | `specs/026-calendar/` | Calendar page feature spec package — month-grid, Action Panel, suggestions engine, day popovers, seed augmentation, release prep, and smoke plan |
 | `specs/028-archive-applications-view/` | Archive Applications view feature spec package — view-switcher toolbar chip, archived card variant, read-only Application Overlay archived mode, `unarchive` operation, `archived_date` column, Profile entry-point link, demo-mode archived seeds, and exclusion of archived rows from active workflow surfaces |
+| `specs/029-loading-async-states/` | Loading & async states feature spec package — six loading channels (`initial-load` / `refresh` / `save` / `parse` / `mutation` / `transition`), shared `asyncUI.js` + `skeletons.js` utilities, inline-error recovery, button-busy + peer-lockout contracts, view-switcher chip `aria-busy`, demo-mode parity regression suite |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 
@@ -234,6 +237,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `docs/deployment.md` | Operator-facing deployment guide — local + hosted modes, Supabase Setup Checklist, Environment Variable Checklist, Demo & Free-Tier Notes, Migration Clarification (consolidated in feature 022) |
 | `docs/design/welcome_page.md` | Visual specification for the welcome experience |
 | `docs/design/calendar.md` | Calendar page interaction and visual design — month-grid layout, Action Panel sections, popover anatomy, suggestion rule logic |
+| `docs/design/loading.md` | Channels + visual conventions for loading + async UX — six channels, skeleton vocabulary, inline-error block, button-busy contract, reduced-motion inheritance, quickref for adding new surfaces (feature 029) |
 | `docs/db/claim_and_seed_starter.md` | `claim_and_seed_starter()` RPC evolution — v1 (019), v2 (025 Timeline), v3 (026 Calendar suggestions); SQL bodies and operator apply instructions |
 | `docs/hosted-smoke-test.md` | Hosted smoke-test checklist — Given/When/Then verification flow run before promoting a deploy (feature 022) |
 | `docs/REPO_MAP.md` | This file — navigation shortcut for AI-assisted work |

@@ -9,13 +9,14 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 0.14.0 minor release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('0.14.0');
-    expect(APP_VERSION).toBe('v0.14.0');
+  it('keeps the 0.15.0 minor release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('0.15.0');
+    expect(APP_VERSION).toBe('v0.15.0');
 
-    expect(read('README.md')).toContain('Current version: **0.14.0**');
-    expect(read('CHANGELOG.md')).toContain('## [0.14.0] — 2026-05-26');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.14.0...HEAD');
+    expect(read('README.md')).toContain('Current version: **0.15.0**');
+    expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.15.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0');
     expect(read('CHANGELOG.md')).toContain('[0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0');
     expect(read('CHANGELOG.md')).toContain('[0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3');
     expect(read('CHANGELOG.md')).toContain('[0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2');

@@ -79,4 +79,28 @@ describe('StatusDropdown', () => {
     expect(document.querySelectorAll('.status-option')).toHaveLength(STATUS_VALUES.length);
     expect(document.querySelector('[data-status="accepted"]')).not.toBeNull();
   });
+
+  it('marks the dropdown busy and prevents duplicate async commits', async () => {
+    const anchor = document.createElement('button');
+    let resolveCommit;
+    const onChange = vi.fn(() => new Promise((resolve) => {
+      resolveCommit = resolve;
+    }));
+    document.body.append(anchor);
+
+    StatusDropdown.open(anchor, 'wishlisted', onChange);
+    const option = document.querySelector('[data-status="applied"]');
+    option.click();
+    option.click();
+
+    expect(document.querySelector('.status-dropdown')?.getAttribute('aria-busy')).toBe('true');
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    resolveCommit();
+    for (let index = 0; index < 4; index += 1) {
+      await Promise.resolve();
+    }
+
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
 });

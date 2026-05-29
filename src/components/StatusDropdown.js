@@ -1,4 +1,5 @@
 import { STATUS_CONFIG, STATUS_VALUES, getValidTransitions } from '../models/application.js';
+import { bindContainerBusy } from '../utils/asyncUI.js';
 
 let _backdrop = null;
 let _panel = null;
@@ -40,7 +41,7 @@ function positionPanel(anchorEl, panel) {
   panel.style.left = `${left}px`;
 }
 
-function createOption(value, currentStatus, onChange) {
+function createOption(value, currentStatus, onCommit) {
   const config = STATUS_CONFIG[value];
   const option = document.createElement('div');
   const dot = document.createElement('span');
@@ -63,15 +64,13 @@ function createOption(value, currentStatus, onChange) {
   }
 
   option.addEventListener('click', () => {
-    onChange(value);
-    close();
+    onCommit(value);
   });
 
   option.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onChange(value);
-      close();
+      onCommit(value);
     }
   });
 
@@ -85,6 +84,7 @@ function openWithOptions(anchorEl, currentStatus, onChange, values) {
 
   const backdrop = document.createElement('div');
   const panel = document.createElement('div');
+  let pendingCommit = null;
 
   backdrop.className = 'status-dropdown-backdrop';
   panel.className = 'status-dropdown';
@@ -97,8 +97,36 @@ function openWithOptions(anchorEl, currentStatus, onChange, values) {
 
   backdrop.addEventListener('click', close);
 
+  const commitBinding = bindContainerBusy({
+    container: panel,
+    action: () => pendingCommit,
+    silent: true,
+  });
+
+  function commit(value) {
+    if (pendingCommit) {
+      commitBinding.run();
+      return;
+    }
+
+    const result = onChange(value);
+    if (!result || typeof result.then !== 'function') {
+      close();
+      return;
+    }
+
+    pendingCommit = Promise.resolve(result);
+    pendingCommit
+      .finally(() => {
+        pendingCommit = null;
+        close();
+      })
+      .catch(() => {});
+    commitBinding.run().catch(() => {});
+  }
+
   for (const value of values) {
-    panel.append(createOption(value, currentStatus, onChange));
+    panel.append(createOption(value, currentStatus, commit));
   }
 
   document.body.append(backdrop, panel);

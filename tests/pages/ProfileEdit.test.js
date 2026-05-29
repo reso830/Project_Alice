@@ -133,6 +133,26 @@ function fillValidExperience(overlay, role = 'Platform Engineer') {
 }
 
 describe('ProfileEdit page', () => {
+  it('shows a profile edit skeleton on cold load without bare loading text', async () => {
+    const container = createAppShell();
+    let resolveProfile;
+
+    api.getProfile.mockReturnValue(new Promise((resolve) => {
+      resolveProfile = resolve;
+    }));
+
+    const mountPromise = ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    expect(container.querySelector('.profile-edit-skeleton')).not.toBeNull();
+    expect(container.querySelector('.profile-edit-skeleton')?.getAttribute('aria-busy')).toBe('true');
+    expect(container.textContent).not.toContain('Loading profile...');
+
+    resolveProfile(createProfile());
+    await mountPromise;
+
+    expect(container.querySelector('.profile-edit-skeleton')).toBeNull();
+  });
+
   it('creates a desktop entry modal, saves form data, and restores scroll', () => {
     window.innerWidth = 1024;
     const onSave = vi.fn();
@@ -674,7 +694,7 @@ describe('ProfileEdit page', () => {
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
-  it('shows saving state on both save buttons while save is in progress', async () => {
+  it('shows shared busy state on Save and disables Cancel while save is in progress', async () => {
     const container = createAppShell();
     let resolveSave;
     const savePromise = new Promise((resolve) => {
@@ -690,10 +710,37 @@ describe('ProfileEdit page', () => {
     getSaveButton(getTopControls(container)).click();
     await flushPromises();
 
-    expect(getSaveButton(getTopControls(container)).textContent).toBe('Saving…');
-    expect(getSaveButton(getBottomControls(container)).textContent).toBe('Saving…');
-    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
-    expect(getSaveButton(getBottomControls(container)).disabled).toBe(true);
+    const topSave = getSaveButton(getTopControls(container));
+    const bottomSave = getSaveButton(getBottomControls(container));
+    const topCancel = getCancelButton(getTopControls(container));
+    expect(topSave.textContent).toBe('Saving changes…');
+    expect(bottomSave.textContent).toBe('Saving changes…');
+    expect(topSave.getAttribute('aria-busy')).toBe('true');
+    expect(bottomSave.getAttribute('aria-busy')).toBe('true');
+    expect(topSave.disabled).toBe(true);
+    expect(bottomSave.disabled).toBe(true);
+    expect(topCancel.disabled).toBe(true);
+
+    resolveSave(createProfile({ phone: '555-0100' }));
+    await flushPromises();
+  });
+
+  it('prevents duplicate profile saves from rapid Save clicks', async () => {
+    const container = createAppShell();
+    let resolveSave;
+
+    api.getProfile.mockResolvedValue(createProfile());
+    api.saveProfile.mockReturnValue(new Promise((resolve) => {
+      resolveSave = resolve;
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    inputValue(getFieldInput(getCard(container, 'BASIC INFO'), 'Phone'), '555-0100');
+    getSaveButton(getTopControls(container)).click();
+    getSaveButton(getBottomControls(container)).click();
+
+    expect(api.saveProfile).toHaveBeenCalledTimes(1);
 
     resolveSave(createProfile({ phone: '555-0100' }));
     await flushPromises();
@@ -764,6 +811,8 @@ describe('ProfileEdit page', () => {
     expect(Toast.show).toHaveBeenCalledWith('Could not save profile. Please try again.', 'error');
     expect(phone.value).toBe('555-0100');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+    expect(getSaveButton(getTopControls(container)).hasAttribute('aria-busy')).toBe(false);
+    expect(getCancelButton(getTopControls(container)).disabled).toBe(false);
   });
 
   it('surfaces first and last name validation errors before save', async () => {

@@ -5,6 +5,8 @@ import { StackedBar } from '../components/StackedBar.js';
 import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
 import * as authStore from '../data/authStore.js';
+import { renderInlineError } from '../utils/asyncUI.js';
+import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
 import { getSafeExternalHref } from '../utils/url.js';
 
 let _container = null;
@@ -34,29 +36,6 @@ function createButton(label, className, onClick) {
   button.addEventListener('click', onClick);
 
   return button;
-}
-
-function createSkeletonLine(modifier = '') {
-  const line = createElement('span', `skeleton-line${modifier ? ` skeleton-line--${modifier}` : ''}`);
-
-  line.setAttribute('aria-hidden', 'true');
-  return line;
-}
-
-function renderProfileSkeleton(page) {
-  const wrap = createElement('div', 'loading-skeleton loading-skeleton--profile');
-  const hero = createElement('section', 'section-card skeleton-section');
-  const apps = createElement('section', 'section-card skeleton-section');
-  const profile = createElement('section', 'section-card skeleton-section');
-
-  wrap.setAttribute('aria-busy', 'true');
-  wrap.setAttribute('aria-live', 'polite');
-  wrap.setAttribute('aria-label', 'Loading profile');
-  hero.append(createSkeletonLine('title'), createSkeletonLine('medium'));
-  apps.append(createSkeletonLine('short'), createSkeletonLine(), createSkeletonLine('medium'));
-  profile.append(createSkeletonLine('short'), createSkeletonLine('title'), createSkeletonLine(), createSkeletonLine('medium'));
-  wrap.append(hero, apps, profile);
-  page.append(wrap);
 }
 
 function renderWelcome(page, profile) {
@@ -153,11 +132,42 @@ function renderApplicationsSection(page, navigate) {
   const message = createElement('p', 'apps-empty-message');
 
   actions.append(createButton('Go to Tracker', 'profile-btn profile-btn--primary', () => navigate('tracker')));
-  body.append(createElement('div', 'profile-loading', 'Loading applications...'));
+  body.append(buildProfileAppsSkeleton());
   section.append(body, message);
   page.append(section);
 
   return { body, message };
+}
+
+async function renderApplicationsData(applicationsSection, navigate, applicationsPromise = getAll(), archivedApplicationsPromise = getAll({ view: 'archived' }).catch(() => [])) {
+  try {
+    const [applications, archivedApplications] = await Promise.all([
+      applicationsPromise,
+      archivedApplicationsPromise,
+    ]);
+    const safeApplications = Array.isArray(applications) ? applications : [];
+    const safeArchivedApplications = Array.isArray(archivedApplications) ? archivedApplications : [];
+
+    renderApplicationsVisuals(
+      applicationsSection.body,
+      safeApplications,
+      safeArchivedApplications.length,
+      navigate,
+    );
+    applicationsSection.message.textContent = safeApplications.length === 0
+      ? 'No applications yet.'
+      : '';
+  } catch {
+    applicationsSection.message.textContent = '';
+    renderInlineError({
+      target: applicationsSection.body,
+      message: "Couldn't load your applications.",
+      onRetry: () => {
+        applicationsSection.body.replaceChildren(buildProfileAppsSkeleton());
+        renderApplicationsData(applicationsSection, navigate);
+      },
+    });
+  }
 }
 
 function getTooltip() {
@@ -665,7 +675,7 @@ export async function mount(container, { navigate } = {}) {
 
   _container = container;
   _container.replaceChildren(page);
-  renderProfileSkeleton(page);
+  page.replaceChildren(buildProfileSkeleton());
 
   const profilePromise = getProfile().catch(() => null);
   const applicationsPromise = getAll();
@@ -680,27 +690,7 @@ export async function mount(container, { navigate } = {}) {
   renderWelcome(page, profile);
   const applicationsSection = renderApplicationsSection(page, safeNavigate);
 
-  try {
-    const [applications, archivedApplications] = await Promise.all([
-      applicationsPromise,
-      archivedApplicationsPromise,
-    ]);
-    const safeApplications = Array.isArray(applications) ? applications : [];
-    const safeArchivedApplications = Array.isArray(archivedApplications) ? archivedApplications : [];
-
-    renderApplicationsVisuals(
-      applicationsSection.body,
-      safeApplications,
-      safeArchivedApplications.length,
-      safeNavigate,
-    );
-    applicationsSection.message.textContent = safeApplications.length === 0
-      ? 'No applications yet.'
-      : '';
-  } catch {
-    renderApplicationsVisuals(applicationsSection.body, [], 0, safeNavigate);
-    applicationsSection.message.textContent = 'Application data is unavailable right now.';
-  }
+  await renderApplicationsData(applicationsSection, safeNavigate, applicationsPromise, archivedApplicationsPromise);
 
   if (_container !== container) {
     return;

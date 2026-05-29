@@ -5,6 +5,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 ## Features
 
 - **Application cards** — surface company, role, status, date, and compatibility at a glance
+- **Loading & async states** — every list fetch shows a skeleton placeholder; every mutation button (Save, Archive, Unarchive, Star, Status, Process, Upload) shows a busy state and prevents duplicate submissions; failed list loads recover via an inline `Try again` block with screen-reader-announced messaging. See [docs/design/loading.md](docs/design/loading.md).
 - **Archive Applications view** — a Tracker toolbar chip toggles between active and archived rows (deep-linkable via `?view=archived`); archived cards open a read-only overlay with a single ↺ Unarchive action; archived rows are excluded from every active workflow surface (Calendar suggestions, Action Panel sections, Profile stat tiles); a Profile entry point (`Archived applications · N →`) makes the view discoverable from anywhere
 - **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
 - **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
@@ -212,7 +213,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.14.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **0.15.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -253,6 +254,8 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 - [specs/026-calendar/](specs/026-calendar/) — Calendar page specification package
 - [docs/design/calendar.md](docs/design/calendar.md) — Calendar page interaction and visual design
 - [specs/028-archive-applications-view/](specs/028-archive-applications-view/) — Archive Applications view specification package
+- [specs/029-loading-async-states/](specs/029-loading-async-states/) — Loading & async states specification package
+- [docs/design/loading.md](docs/design/loading.md) — Loading channels, skeleton vocabulary, inline-error and button-busy contracts
 - [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
 - [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
 - [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup

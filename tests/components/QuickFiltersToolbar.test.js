@@ -195,6 +195,35 @@ describe('QuickFiltersToolbar', () => {
       .map((node) => node.textContent)).toEqual(['7', '6']);
   });
 
+  it('marks the view chip busy while a view change is in flight', () => {
+    const { toolbar } = renderToolbar();
+    const chip = toolbar.querySelector('.view-chip');
+
+    expect(chip?.hasAttribute('aria-busy')).toBe(false);
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: apps.length,
+      filterState: DEFAULT_FILTER_STATE,
+      sortState: DEFAULT_SORT_STATE,
+      viewBusy: true,
+    });
+
+    expect(chip?.getAttribute('aria-busy')).toBe('true');
+
+    QuickFiltersToolbar.update(toolbar, {
+      apps,
+      totalCount: apps.length,
+      filteredCount: apps.length,
+      filterState: DEFAULT_FILTER_STATE,
+      sortState: DEFAULT_SORT_STATE,
+      viewBusy: false,
+    });
+
+    expect(chip?.hasAttribute('aria-busy')).toBe(false);
+  });
+
   it('closes the view popup on Escape and outside click', () => {
     const { toolbar } = renderToolbar();
     const trigger = toolbar.querySelector('.app-title-trigger');
