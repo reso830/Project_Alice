@@ -33,7 +33,7 @@ Pre-implementation quality gates. Check before `/speckit.tasks` and re-confirm b
 
 ## Cross-device / session handling
 
-- [ ] `api.js` invokes `authStore.handleAuthFailure(status)` on 401/404/500 of authenticated requests, excluding 400 and `INVALID_PASSWORD` (FR-011a).
+- [ ] `api.js` invokes `authStore.handleAuthFailure()` on `UNAUTHORIZED` / `INVALID_PASSWORD` / 404 / 500 of authenticated requests, excluding 400 (FR-011a).
 - [ ] `handleAuthFailure()` calls `getUser()` and signs out **only** when the account is gone (no spurious sign-out on transient errors).
 - [ ] The delete modal handles `INVALID_PASSWORD` as a form error, not a dead-session reroute.
 - [ ] Idle-device limitation (token-lifetime window) is documented, not silently assumed away (FR-011b).

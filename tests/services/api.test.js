@@ -340,6 +340,7 @@ describe('api service', () => {
 
     it.each([
       ['401 UNAUTHORIZED', 401, 'UNAUTHORIZED'],
+      ['401 INVALID_PASSWORD (stale-session delete recheck)', 401, 'INVALID_PASSWORD'],
       ['404 NOT_FOUND', 404, 'NOT_FOUND'],
       ['500 INTERNAL_ERROR', 500, 'INTERNAL_ERROR'],
     ])('fires handleAuthFailure on %s when a token is present', async (_label, status, code) => {
@@ -347,12 +348,11 @@ describe('api service', () => {
       const spy = vi.spyOn(authStore, 'handleAuthFailure').mockResolvedValue();
       vi.stubGlobal('fetch', failWith(status, code));
 
-      await expect(request('GET', '/api/applications')).rejects.toMatchObject({ code });
+      await expect(request('DELETE', '/api/account', {})).rejects.toMatchObject({ code });
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
     it.each([
-      ['INVALID_PASSWORD (401 form error)', 401, 'INVALID_PASSWORD'],
       ['400 VALIDATION_ERROR', 400, 'VALIDATION_ERROR'],
     ])('does NOT fire handleAuthFailure on %s', async (_label, status, code) => {
       vi.spyOn(authStore, 'getAccessToken').mockReturnValue('tok');

@@ -47,14 +47,20 @@ export async function request(method, path, body, { signal } = {}) {
     // Session revalidation (feature 030 FR-011a). When an authenticated
     // request fails in a way that could mean the account was deleted from
     // another device, revalidate out-of-band and reroute to Welcome if it's
-    // gone. Triggers on a clean UNAUTHORIZED, or on a 404/500 (the stale-
-    // session delete-race surfaces as those — see specs/030 research R-4).
-    // Excludes 400 validation errors and the delete modal's INVALID_PASSWORD
-    // (a 401 with that code never matches `UNAUTHORIZED`). Fire-and-forget so
-    // the original rejection still propagates.
+    // gone. Triggers on UNAUTHORIZED, a 404/500 (the stale-session delete-race
+    // surfaces as those — see specs/030 research R-4), or INVALID_PASSWORD (a
+    // deleted account makes the delete endpoint's password recheck fail with
+    // that code even though the password is correct). Excludes 400 validation
+    // errors. Safe across the board because handleAuthFailure() no-ops when
+    // getUser() confirms the account still exists — a genuinely wrong password
+    // keeps the modal's inline error and never signs the user out.
+    // Fire-and-forget so the original rejection still propagates.
     if (
       token
-      && (code === 'UNAUTHORIZED' || response.status === 404 || response.status === 500)
+      && (code === 'UNAUTHORIZED'
+        || code === 'INVALID_PASSWORD'
+        || response.status === 404
+        || response.status === 500)
     ) {
       handleAuthFailure();
     }

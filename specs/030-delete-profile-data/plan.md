@@ -53,7 +53,7 @@ The feature spans backend (new endpoint + `account` repository concern), the cli
 ### Client — service layer
 
 - `src/services/api.js#deleteAccount(payload = {})` → `DELETE /api/account` with `payload` (hosted: `{ password }`; local: `{ confirm: 'DELETE' }`). Add the mandatory **demo branch** (no fetch): demo throws/rejects a "not available in demo" error to satisfy the `api.demo.test.js` no-fetch invariant — though the control is disabled in demo so this path is not user-reachable.
-- **Session-revalidation hook (FR-011a)**: on a failed authenticated response, `api.js` invokes `authStore.handleAuthFailure(status)`. `authStore` gains `handleAuthFailure()` which calls `supabase.auth.getUser()`; if it reports the account no longer exists, it clears the session (→ `unauthenticated` → Welcome) with a message. Trigger is scoped to auth-suspicious statuses — **401, 404, or 500** (the stale-session delete-race surfaces as a 500 from the seed middleware or a 404 from a zero-row update) — and excludes 400 validation errors and the `INVALID_PASSWORD` modal error, so ordinary failures never trigger a spurious sign-out (a still-valid `getUser()` is a no-op).
+- **Session-revalidation hook (FR-011a)**: on a failed authenticated response, `api.js` invokes `authStore.handleAuthFailure()`. `authStore` gains `handleAuthFailure()` which calls `supabase.auth.getUser()`; if it reports the account no longer exists, it clears the session (→ `unauthenticated` → Welcome) with a message. Trigger is scoped to auth-suspicious codes/statuses — **`UNAUTHORIZED`, `INVALID_PASSWORD`, 404, or 500** (the stale-session delete-race surfaces as a 500 from the seed middleware, a 404 from a zero-row update, or `INVALID_PASSWORD` from the delete endpoint's password recheck against a deleted account) — and excludes 400 validation errors. The `getUser()` guard means ordinary failures never trigger a spurious sign-out (a genuine wrong password keeps its inline modal error).
 
 ### Client — UI
 
@@ -123,7 +123,7 @@ The feature spans backend (new endpoint + `account` repository concern), the cli
 ### Tests likely to be added or updated
 - `tests/server/account.test.js` — endpoint auth required (hosted); own-account scope; success path (mocked admin client + cascade assumption); `INVALID_PASSWORD` on wrong password; local clear path (`confirm` gate); **no seed middleware** on the route. (Mirrors the existing `tests/server/profile.test.js` location.)
 - `tests/server/repositories/**` — hosted account adapter (password verify branch, admin delete called with `userId`); local adapter `delete({ confirm: 'DELETE' })` transaction empties both tables, and a missing/wrong `confirm` clears nothing.
-- `tests/services/api.*` — `deleteAccount(payload)` request shape; demo no-fetch branch; auth-failure hook fires `handleAuthFailure` on 401/404/500 only (not 400 / `INVALID_PASSWORD`).
+- `tests/services/api.*` — `deleteAccount(payload)` request shape; demo no-fetch branch; auth-failure hook fires `handleAuthFailure` on `UNAUTHORIZED` / `INVALID_PASSWORD` / 404 / 500 (not 400).
 - `tests/data/authStore.*` — `handleAuthFailure()` signs out when `getUser()` reports a deleted account; no sign-out when the user still exists.
 - `tests/pages/profile.*` — Account section renders per mode (hosted enabled / local "Clear all data" / demo disabled); modal gate (password / typed `DELETE`); post-action behavior.
 
@@ -142,7 +142,7 @@ The feature spans backend (new endpoint + `account` repository concern), the cli
 | Service-role key leakage (first runtime use). | Admin client constructed server-side only, lazy-imported on the delete path; never returned in a response or bundled client-side; covered by SC-008 test/inspection. |
 | `signInWithPassword` for verification creates a transient session. | Use `persistSession: false`; the result is discarded. Documented in research.md R-2. Only viable because auth is password-only (no OAuth/magic-link). |
 | Stale-token device sees a confusing 500 (seed FK violation) instead of 401. | `handleAuthFailure()` revalidates via `getUser()` on failure and reroutes cleanly (FR-011a). Idle-device window is a documented limitation (FR-011b). |
-| Auth-failure hook causing spurious sign-outs on transient errors. | Scope the trigger to 401/404/500 (not 400 / `INVALID_PASSWORD`); `getUser()` confirms the account still exists before any sign-out, so a genuine transient 404/500 never logs the user out. |
+| Auth-failure hook causing spurious sign-outs on transient errors. | Scope the trigger to `UNAUTHORIZED` / `INVALID_PASSWORD` / 404 / 500 (not 400); `getUser()` confirms the account still exists before any sign-out, so a genuine transient failure (or a real wrong-password attempt) never logs the user out. |
 | Local clear partial failure. | Single SQLite transaction — all-or-nothing; `confirm` gate checked before the transaction. |
 | Re-seed during deletion. | Seed middleware deliberately not mounted on the account route (R-3). |
 

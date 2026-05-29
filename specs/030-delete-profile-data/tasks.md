@@ -256,18 +256,19 @@
    - `error.code === 'UNAUTHORIZED'` (expired/invalid JWT), OR
    - `response.status === 404` (a stale session's data request can 404 when the rows are gone — spec Edge Cases / FR-011a), OR
    - `response.status === 500` (the delete-race manifests as a seed-middleware FK-violation 500 — research.md R-4).
-   - **Do NOT** trigger on `INVALID_PASSWORD` (that is a delete-modal form error) or on `400 VALIDATION_ERROR`. A legitimate 404/500 for a still-valid user is a harmless no-op (`getUser()` succeeds → no sign-out).
+   - `error.code === 'INVALID_PASSWORD'` — a stale session whose account was deleted elsewhere gets this from the delete endpoint's password recheck even with a *correct* password. Safe to revalidate: `getUser()` no-ops for a genuine wrong-password attempt (account still exists) so the inline modal error stands; it reroutes only if the account is gone.
+   - **Do NOT** trigger on `400 VALIDATION_ERROR`. A legitimate 404/500 (or wrong password) for a still-valid user is a harmless no-op (`getUser()` succeeds → no sign-out).
 2. Fire-and-forget (do not await before throwing) so the original rejection still propagates to the caller; `handleAuthFailure` runs in parallel and reroutes if appropriate.
 3. `authStore` is already imported by `api.js` ([api.js:1](../../src/services/api.js#L1)) — no new import cycle.
 
-**Expected behavior**: a deleted-account session's next authenticated request (401/404/500) reroutes to Welcome; a wrong-password attempt stays in the modal; a 400 validation error never signs the user out.
+**Expected behavior**: a deleted-account session's next authenticated request (`UNAUTHORIZED` / `INVALID_PASSWORD` / 404 / 500) reroutes to Welcome; a genuine wrong-password attempt stays in the modal (revalidation no-ops); a 400 validation error never signs the user out.
 
 **Constraints**:
 - Only when `token` is present (skip local/demo).
 - FR-011a; must not regress ordinary error handling.
 
 **Validation**:
-- [tests/services/api.test.js](../../tests/services/api.test.js) — spy on `authStore.handleAuthFailure`: triggered on a 401 `UNAUTHORIZED`, a 404, and a 500 (with token); NOT triggered on `INVALID_PASSWORD`, on a 400, or when no token is present.
+- [tests/services/api.test.js](../../tests/services/api.test.js) — spy on `authStore.handleAuthFailure`: triggered on `UNAUTHORIZED`, `INVALID_PASSWORD`, a 404, and a 500 (with token); NOT triggered on a 400, or when no token is present.
 
 **Out of scope**: UI wiring (Phase 03).
 

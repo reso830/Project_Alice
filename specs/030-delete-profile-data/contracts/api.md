@@ -33,7 +33,7 @@ Permanently deletes the current user's account and all associated data (hosted),
 ```
 Local mode MAY return `{ "data": { "cleared": true } }`. Either way the client treats 200 as success.
 
-**401 Unauthorized — `INVALID_PASSWORD`** (hosted) — the submitted password did not match. **Nothing was deleted.** Distinct from a missing/expired-token 401 so the client can show a password error rather than rerouting.
+**401 Unauthorized — `INVALID_PASSWORD`** (hosted) — the submitted password did not match (or the account no longer exists, so the server-side recheck fails). **Nothing was deleted.** Distinct from a missing/expired-token 401 so the client can show a password error inline; the client also runs a one-shot `getUser()` revalidation on this code (FR-011a) and reroutes only if the account is actually gone.
 ```json
 { "error": { "code": "INVALID_PASSWORD", "message": "Incorrect password." } }
 ```
@@ -89,6 +89,6 @@ deleteAccount(payload = {})     // hosted: { password }; local: { confirm: 'DELE
   - else:   request('DELETE', '/api/account', payload)
 ```
 
-**Auth-failure hook (FR-011a)**: `request()` invokes `authStore.handleAuthFailure(status)` when an authenticated request returns a status that could indicate a dead session — **401, 404, or 500** (NOT 400, and NOT `INVALID_PASSWORD`). `handleAuthFailure` calls `supabase.auth.getUser()`; if the account no longer exists it clears the session (→ Welcome) with a message. A still-valid user → no action (a legitimate 404/500 never signs the user out).
+**Auth-failure hook (FR-011a)**: `request()` invokes `authStore.handleAuthFailure()` when an authenticated request fails with a code/status that could indicate a dead session — **`UNAUTHORIZED`, `INVALID_PASSWORD`, 404, or 500** (NOT 400). `handleAuthFailure` calls `supabase.auth.getUser()`; if the account no longer exists it clears the session (→ Welcome) with a message. A still-valid user → no action (a legitimate failure — including a genuine wrong-password attempt — never signs the user out).
 
-> The `INVALID_PASSWORD` 401 from the delete modal MUST be handled as a form error within the modal, **not** treated as a dead-session reroute — distinguish by `error.code`.
+> The `INVALID_PASSWORD` 401 from the delete modal is handled as a form error within the modal (inline "Incorrect password.") **and** triggers the FR-011a `getUser()` revalidation. For a genuine wrong password the account still exists, so the revalidation no-ops and the inline error stands; for a stale session whose account was deleted elsewhere, the revalidation detects the deletion and reroutes to Welcome.
