@@ -1,4 +1,4 @@
-import { DEMO_STATUS, getAccessToken, getAuthState } from '../data/authStore.js';
+import { DEMO_STATUS, getAccessToken, getAuthState, handleAuthFailure } from '../data/authStore.js';
 import * as demoStore from '../data/demoStore.js';
 import { toISODate } from '../utils/date.js';
 
@@ -42,8 +42,25 @@ export async function request(method, path, body, { signal } = {}) {
 
   if (!response.ok) {
     const error = payload.error ?? {};
+    const code = error.code ?? 'INTERNAL_ERROR';
+
+    // Session revalidation (feature 030 FR-011a). When an authenticated
+    // request fails in a way that could mean the account was deleted from
+    // another device, revalidate out-of-band and reroute to Welcome if it's
+    // gone. Triggers on a clean UNAUTHORIZED, or on a 404/500 (the stale-
+    // session delete-race surfaces as those — see specs/030 research R-4).
+    // Excludes 400 validation errors and the delete modal's INVALID_PASSWORD
+    // (a 401 with that code never matches `UNAUTHORIZED`). Fire-and-forget so
+    // the original rejection still propagates.
+    if (
+      token
+      && (code === 'UNAUTHORIZED' || response.status === 404 || response.status === 500)
+    ) {
+      handleAuthFailure();
+    }
+
     throw {
-      code: error.code ?? 'INTERNAL_ERROR',
+      code,
       message: error.message ?? 'Request failed',
       fields: error.fields,
     };
@@ -117,4 +134,20 @@ export function unarchive(id) {
 export function saveProfile(profile) {
   if (isDemo()) return fromDemo(() => demoStore.saveProfile(profile));
   return request('PUT', '/api/profile', profile);
+}
+
+// Account deletion (hosted) / clear all data (local). The caller passes the
+// mode-appropriate body: hosted `{ password }`, local `{ confirm: 'DELETE' }`.
+// Demo has no real account — short-circuit with a no-fetch rejection to keep
+// the 020 demo seam intact (the UI disables the control, so this is unreached).
+export function deleteAccount(payload = {}) {
+  if (isDemo()) {
+    return fromDemo(() => {
+      throw {
+        code: 'DEMO_UNAVAILABLE',
+        message: 'Account deletion is not available in the demo.',
+      };
+    });
+  }
+  return request('DELETE', '/api/account', payload);
 }

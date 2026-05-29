@@ -1,0 +1,105 @@
+import process from 'node:process';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const USER_ID = 'user-uuid-abc';
+const EMAIL = 'jane@example.com';
+
+// Hoisted spies so the (hoisted) vi.mock factories can reference them.
+const { signInWithPassword, deleteUser, createClient, createSupabaseAdminClient } =
+  vi.hoisted(() => {
+    const signIn = vi.fn();
+    const del = vi.fn();
+    return {
+      signInWithPassword: signIn,
+      deleteUser: del,
+      createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn } })),
+      createSupabaseAdminClient: vi.fn(() => ({
+        auth: { admin: { deleteUser: del } },
+      })),
+    };
+  });
+
+vi.mock('@supabase/supabase-js', () => ({ createClient }));
+vi.mock('../../../../server/repositories/supabase/adminClient.js', () => ({
+  createSupabaseAdminClient,
+}));
+
+const { createSupabaseAccountRepository } = await import(
+  '../../../../server/repositories/supabase/account.js'
+);
+
+describe('createSupabaseAccountRepository', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('rejects with VALIDATION_ERROR when password is missing — no clients built', async () => {
+    const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+    await expect(repo.delete({})).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
+    expect(signInWithPassword).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects with INVALID_PASSWORD on wrong password — admin delete NOT called', async () => {
+    signInWithPassword.mockResolvedValue({ error: new Error('Invalid login') });
+    const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+    await expect(repo.delete({ password: 'wrong' })).rejects.toMatchObject({
+      code: 'INVALID_PASSWORD',
+      status: 401,
+    });
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: EMAIL, password: 'wrong' });
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('verifies the password then deletes the auth user on success', async () => {
+    signInWithPassword.mockResolvedValue({ error: null });
+    deleteUser.mockResolvedValue({ error: null });
+    const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+    const result = await repo.delete({ password: 'correct' });
+
+    expect(result).toEqual({ deleted: true });
+    expect(signInWithPassword).toHaveBeenCalledTimes(1);
+    // The admin client (not the per-request JWT client) performs the delete.
+    expect(createSupabaseAdminClient).toHaveBeenCalledTimes(1);
+    expect(deleteUser).toHaveBeenCalledTimes(1);
+    expect(deleteUser).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it('propagates an admin delete error (route maps to 500) without a status', async () => {
+    signInWithPassword.mockResolvedValue({ error: null });
+    deleteUser.mockResolvedValue({ error: new Error('admin boom') });
+    const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+    await expect(repo.delete({ password: 'correct' })).rejects.toThrow('admin boom');
+  });
+
+  it('never logs the password', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    signInWithPassword.mockResolvedValue({ error: null });
+    deleteUser.mockResolvedValue({ error: null });
+    const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+    await repo.delete({ password: 'super-secret' });
+
+    const allLogged = [...logSpy.mock.calls, ...errSpy.mock.calls]
+      .flat()
+      .map(String)
+      .join(' ');
+    expect(allLogged).not.toContain('super-secret');
+  });
+});

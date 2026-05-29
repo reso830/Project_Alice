@@ -129,6 +129,14 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('deleteAccount(payload) rejects with DEMO_UNAVAILABLE and does not call fetch', async () => {
+    const api = await import('../../src/services/api.js');
+    await expect(api.deleteAccount({ password: 'pw' })).rejects.toMatchObject({
+      code: 'DEMO_UNAVAILABLE',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('rejects with the demoStore-thrown error shape (no wrapping) when create throws', async () => {
     demoStoreMock.create.mockImplementationOnce(() => {
       throw { code: 'VALIDATION_ERROR', message: 'Validation failed', fields: {} };

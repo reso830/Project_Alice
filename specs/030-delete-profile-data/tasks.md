@@ -35,7 +35,7 @@
 
 ## Phase 01 — Backend
 
-### [ ] Task 01.1 — Service-role admin client factory
+### [X] Task 01.1 — Service-role admin client factory
 
 **Target file** (new): [server/repositories/supabase/adminClient.js](../../server/repositories/supabase/adminClient.js)
 
@@ -60,7 +60,7 @@
 
 ---
 
-### [ ] Task 01.2 — Hosted `account` adapter (password verify + admin delete)
+### [X] Task 01.2 — Hosted `account` adapter (password verify + admin delete)
 
 **Target file** (new): [server/repositories/supabase/account.js](../../server/repositories/supabase/account.js)
 
@@ -89,7 +89,7 @@
 
 ---
 
-### [ ] Task 01.3 — Local `account` adapter (`delete` → clear all)
+### [X] Task 01.3 — Local `account` adapter (`delete` → clear all)
 
 **Target file** (new): [server/repositories/account.js](../../server/repositories/account.js) (SQLite-side, alongside [server/repositories/applications.js](../../server/repositories/applications.js))
 
@@ -125,7 +125,7 @@
 
 ---
 
-### [ ] Task 01.4 — Wire `account` into the repository dispatcher
+### [X] Task 01.4 — Wire `account` into the repository dispatcher
 
 **Target file**: [server/repositories/index.js](../../server/repositories/index.js)
 
@@ -148,7 +148,7 @@
 
 ---
 
-### [ ] Task 01.5 — `DELETE /api/account` route + mount
+### [X] Task 01.5 — `DELETE /api/account` route + mount
 
 **Target files** (new): [server/routes/account.js](../../server/routes/account.js); (modify) [server/index.js](../../server/index.js)
 
@@ -188,7 +188,7 @@
 
 ## Phase 02 — Client data layer
 
-### [ ] Task 02.1 — `api.deleteAccount()` + demo no-fetch branch
+### [X] Task 02.1 — `api.deleteAccount()` + demo no-fetch branch
 
 **Target file**: [src/services/api.js](../../src/services/api.js)
 
@@ -217,18 +217,20 @@
 
 ---
 
-### [ ] Task 02.2 — `authStore.handleAuthFailure()` session revalidation
+### [X] Task 02.2 — `authStore.handleAuthFailure()` session revalidation + reroute notice
 
-**Target file**: [src/data/authStore.js](../../src/data/authStore.js)
+**Target files**: [src/data/authStore.js](../../src/data/authStore.js), [src/main.js](../../src/main.js)
 
 **What to do**:
 
 1. Export `async function handleAuthFailure()`:
    - If `!isHostedAuthAvailable` or current status is `demo`/`local-mode` → return (nothing to revalidate).
    - Call `const { data, error } = await supabase.auth.getUser();`
-   - If `error` or `!data?.user` → the account/session is no longer valid: call `await signOut()` (which triggers `onAuthStateChange(null)` → `unauthenticated` → Welcome) so the user is rerouted; optionally surface a message ("Your account no longer exists.").
-   - If a valid user is returned → no-op (avoids spurious sign-outs on transient errors).
-2. Guard against re-entrancy (e.g. a module flag) so a burst of failed requests triggers at most one `getUser()` round-trip.
+   - If `error` or `!data?.user` → the account/session is no longer valid: set a one-shot notice (`ACCOUNT_DELETED_NOTICE = 'Your account no longer exists.'`) then call `await signOut()` (which triggers `onAuthStateChange(null)` → `unauthenticated` → Welcome) so the user is rerouted.
+   - If a valid user is returned → no-op (avoids spurious sign-outs on transient errors); swallow transient `getUser()` rejections.
+2. Guard against re-entrancy (a module flag) so a burst of failed requests triggers at most one `getUser()` round-trip.
+3. Carry the message UI-free: export `setAuthNotice(message, type)` + `consumeAuthNotice()` (one-shot, returns `{ message, type } | null`) from authStore; **do not** import Toast into the data layer. The same carrier serves both the involuntary deleted-account reroute (`type: 'error'`) and the voluntary account-deletion success confirmation (`type: 'success'`, staged by Task 03.2) — both must survive the reroute that clears `document.body`.
+4. Display it on the reroute: `src/main.js` `mountWelcome()` calls `authStore.consumeAuthNotice()` after mounting Welcome and, if non-null, `Toast.show(notice.message, notice.type)`. A normal/voluntary sign-out (e.g. the Navbar button) leaves the notice null → no toast (the Navbar shows its own "Signed out" toast).
 
 **Expected behavior**: a stale session whose account was deleted gets signed out + rerouted on the next failed request; a still-valid session is untouched.
 
@@ -237,13 +239,14 @@
 - FR-011a; complements the existing `onAuthStateChange` catch-all (FR-011b — no new code).
 
 **Validation**:
-- [tests/data/authStore.test.js](../../tests/data/authStore.test.js) — mock `supabase.auth.getUser`: returns no user → `handleAuthFailure()` calls `signOut`; returns a user → does NOT call `signOut`; in `local-mode`/`demo` → no `getUser` call.
+- [tests/data/authStore.test.js](../../tests/data/authStore.test.js) — mock `supabase.auth.getUser`: returns no user → `handleAuthFailure()` calls `signOut` and `consumeAuthNotice()` returns `ACCOUNT_DELETED_NOTICE` once (then null); returns a user → no `signOut`, no notice; transient rejection → no `signOut`; in `local-mode`/`demo` → no `getUser` call.
+- [tests/main.test.js](../../tests/main.test.js) — rerouting to Welcome with a pending notice shows a `.toast`; a normal sign-out (no notice) shows none.
 
 **Out of scope**: deciding *when* to call it (Task 02.3).
 
 ---
 
-### [ ] Task 02.3 — Wire the auth-failure hook into `request()`
+### [X] Task 02.3 — Wire the auth-failure hook into `request()`
 
 **Target file**: [src/services/api.js](../../src/services/api.js)
 
@@ -272,7 +275,7 @@
 
 ## Phase 03 — UI (US-1…US-4)
 
-### [ ] Task 03.1 — Deletion confirmation modal component
+### [X] Task 03.1 — Deletion confirmation modal component
 
 **Target files** (new): a modal under [src/components/](../../src/components/) (e.g. `DeleteAccountModal.js`), reusing [src/components/Modal.js](../../src/components/Modal.js); reference [src/components/ConfirmDialog.js](../../src/components/ConfirmDialog.js) for structure.
 
@@ -298,7 +301,7 @@
 
 ---
 
-### [ ] Task 03.2 — Profile **Account** section + post-action handling
+### [X] Task 03.2 — Profile **Account** section + post-action handling
 
 **Target file**: [src/pages/Profile.js](../../src/pages/Profile.js)
 
@@ -307,7 +310,7 @@
 1. Add `renderAccountSection(page, { mode, navigate })` and call it after `renderProfileSection` in `mount()` ([Profile.js:560-620](../../src/pages/Profile.js#L560-L620)). Use the existing `createSection('ACCOUNT')` helper ([Profile.js:74-84](../../src/pages/Profile.js#L74-L84)).
 2. Resolve `mode` from `authStore.getAuthState().status`: `authenticated` → hosted; `local-mode` → local; `demo` → disabled.
 3. Render the control per mode (FR-002):
-   - **Hosted**: enabled "Delete account" button → opens the modal in `'hosted'` mode. On confirm → `api.deleteAccount({ password })`; on success → `Toast.show('Account deleted.', 'success')` then `authStore.signOut()` (→ Welcome). On `INVALID_PASSWORD` → keep modal open, show inline error. On other errors → error toast, modal closes, user stays (FR-012, FR-013, FR-010).
+   - **Hosted**: enabled "Delete account" button → opens the modal in `'hosted'` mode. On confirm → `api.deleteAccount({ password })`; on success → `authStore.setAuthNotice('Account deleted.', 'success')` then `authStore.signOut()` (→ Welcome). The success confirmation is **staged**, not shown immediately, because the sign-out reroute clears `document.body` and would wipe a toast shown now — `main.js` shows it on the Welcome reroute via `consumeAuthNotice()` (FR-013). On `INVALID_PASSWORD` → keep modal open, show inline error. On other errors → error toast, modal closes, user stays (FR-012, FR-013, FR-010).
    - **Local**: "Clear all data" button → modal in `'local'` mode. On confirm → `api.deleteAccount({ confirm: 'DELETE' })`; on success → `Toast.show('All data cleared.', 'success')` and re-render the Tracker/Profile empty states without a full reload (e.g. `navigate('profile')` re-mount); app stays mounted (FR-014, FR-016).
    - **Demo**: render the button **disabled** with copy ("Account deletion applies to a real hosted account and isn't available in the demo.") — never opens the modal, never calls the API (FR-018, FR-019).
 4. Add the section's `aria` labeling and ensure it reads after the Profile section.
@@ -327,7 +330,7 @@
 
 ---
 
-### [ ] Task 03.3 — Styles for the Account section + modal
+### [X] Task 03.3 — Styles for the Account section + modal
 
 **Target files**: [src/styles/](../../src/styles/) (the stylesheet(s) that hold Profile + Modal styles — locate via the existing `profile-*` and modal class names).
 

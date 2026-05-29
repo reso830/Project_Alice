@@ -79,7 +79,7 @@ The feature spans backend (new endpoint + `account` repository concern), the cli
 4. Handler → `req.repos.account.delete(req.body)`:
    a. Anon client `signInWithPassword({ email, password })` → on failure return `401 INVALID_PASSWORD`, nothing deleted.
    b. Service-role `admin.deleteUser(userId)` → cascade removes `applications` + `profile` + `user_seed_state`.
-5. `200 { data: { deleted: true } }` → client `authStore.signOut()` → `onAuthStateChange(null)` → `unauthenticated` → Welcome + toast.
+5. `200 { data: { deleted: true } }` → client stages `setAuthNotice('Account deleted.', 'success')` → `authStore.signOut()` → `onAuthStateChange(null)` → `unauthenticated` → Welcome; `mountWelcome()` consumes the notice and shows the success toast (staged so it survives the body-clearing reroute).
 
 ### Local clear flow
 1. Profile → Account → "Clear all data" → modal → type `DELETE` → confirm.
@@ -98,7 +98,8 @@ The feature spans backend (new endpoint + `account` repository concern), the cli
 - `server/index.js` — mount the new `account` router (no seed middleware).
 - `server/repositories/index.js` — add `account` to the hosted and local repository bundles.
 - `src/services/api.js` — add `deleteAccount()` (+ demo no-fetch branch) and the auth-failure hook call.
-- `src/data/authStore.js` — add `handleAuthFailure()` (session revalidation via `getUser()`); confirm `signOut()` reroute path.
+- `src/data/authStore.js` — add `handleAuthFailure()` (session revalidation via `getUser()`) + a one-shot reroute-notice carrier `setAuthNotice(message, type)` / `consumeAuthNotice()` returning `{ message, type }` (`ACCOUNT_DELETED_NOTICE` for the involuntary case; reused for the voluntary "Account deleted." success); confirm `signOut()` reroute path.
+- `src/main.js` — `mountWelcome()` consumes the pending notice and shows it via `Toast.show(message, type)` on the reroute (FR-011a + FR-013 display; keeps Toast out of the data layer). Both the involuntary deleted-account message and the voluntary deletion-success confirmation are surfaced here because the reroute clears `document.body`.
 - `src/pages/Profile.js` — add the Account section (`renderAccountSection`) + wire the modal.
 - `src/styles/**` — styles for the Account section, destructive button, and modal states.
 - `CHANGELOG.md`, `README.md`, `package.json` (version bump), `docs/deployment.md` (note first runtime use of `SUPABASE_SERVICE_ROLE_KEY`), `docs/REPO_MAP.md` (new files) — Release Prep phase.
