@@ -10,6 +10,7 @@ const authMocks = vi.hoisted(() => ({
   subscribers: new Set(),
   init: vi.fn().mockResolvedValue(undefined),
   signOut: vi.fn(),
+  notice: null,
 }));
 
 vi.mock('../src/data/authStore.js', () => ({
@@ -22,7 +23,20 @@ vi.mock('../src/data/authStore.js', () => ({
   init: authMocks.init,
   signOut: authMocks.signOut,
   getAccessToken: () => null,
+  setAuthNotice: (message, type = 'error') => {
+    authMocks.notice = message ? { message, type } : null;
+  },
+  consumeAuthNotice: () => {
+    const n = authMocks.notice;
+    authMocks.notice = null;
+    return n;
+  },
 }));
+
+vi.mock('../src/pages/welcome/WelcomePage.js', () => ({
+  WelcomePage: { mount: vi.fn(), unmount: vi.fn() },
+}));
+vi.mock('../src/pages/welcome/AuthOverlay.js', () => ({ AuthOverlay: {} }));
 
 const supabaseClientState = vi.hoisted(() => ({
   isHostedAuthAvailable: true,
@@ -77,6 +91,7 @@ beforeEach(() => {
   authMocks.init.mockClear();
   authMocks.init.mockResolvedValue(undefined);
   authMocks.signOut.mockClear();
+  authMocks.notice = null;
   supabaseClientState.isHostedAuthAvailable = true;
   healthMocks.getHealth.mockReset();
   while (document.body.firstChild) {
@@ -165,5 +180,44 @@ describe('bootstrap — ConfigError handshake wiring', () => {
     // also subscribes when mounted, so we allow >= 1.
     expect(authMocks.subscribers.size).toBeGreaterThanOrEqual(1);
     expect(authMocks.init).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the deleted-account notice as a toast when rerouting to Welcome (FR-011a)', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    authMocks.notice = { message: 'Your account no longer exists.', type: 'error' };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    expect(document.querySelector('#welcome-root')).not.toBeNull();
+    const toast = document.querySelector('.toast');
+    expect(toast).not.toBeNull();
+    expect(toast.textContent).toContain('Your account no longer exists.');
+  });
+
+  it('shows the account-deleted success confirmation as a toast on the Welcome reroute (FR-013)', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    authMocks.notice = { message: 'Account deleted.', type: 'success' };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    const toast = document.querySelector('.toast');
+    expect(toast).not.toBeNull();
+    expect(toast.textContent).toContain('Account deleted.');
+  });
+
+  it('shows no toast on a normal sign-out to Welcome (no notice)', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    authMocks.notice = null;
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    expect(document.querySelector('#welcome-root')).not.toBeNull();
+    expect(document.querySelector('.toast')).toBeNull();
   });
 });

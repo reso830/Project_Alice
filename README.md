@@ -23,6 +23,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
 - **Hosted persistence** — applications and profile data persist per-user in Supabase Postgres, scoped by Row Level Security. New hosted users see 2 seeded starter applications on first sign-in (empty profile by design). Operators apply the schema migration from `specs/019-supabase-persistence/data-model.md §5` before deploying hosted mode; see [docs/deployment.md](docs/deployment.md). Local SQLite mode is unaffected.
 - **Portfolio demo mode** — public visitors can click **Try the demo** on the welcome page to preview the tracker and profile with 23 seeded sample applications and a fully populated persona; changes feel real but live in memory only and reset on browser refresh. No sign-in required, no data persisted, no network calls; always enabled in hosted deployments with no configuration (feature 020).
+- **Delete Profile & User Data** — an **Account** section on the Profile page lets hosted users permanently delete their account (password-confirmed; the Supabase auth user is removed and `ON DELETE CASCADE` clears applications, profile, and the seed marker) and lets local users clear all stored data behind a typed-`DELETE` gate. The control is disabled with explanatory copy in demo mode; a stale session on another device revalidates and reroutes to Welcome after a deletion. See [`specs/030-delete-profile-data/`](specs/030-delete-profile-data/).
 
 ## Tech Stack
 
@@ -213,7 +214,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **0.15.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.0.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

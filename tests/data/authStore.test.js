@@ -23,6 +23,7 @@ function makeAuthMock({ session = null } = {}) {
   const mock = {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session } }),
+      getUser: vi.fn().mockResolvedValue({ data: { user: session?.user ?? null }, error: null }),
       onAuthStateChange: vi.fn((cb) => {
         onChangeCallback = cb;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
@@ -151,5 +152,88 @@ describe('authStore', () => {
 
     const store = await import('../../src/data/authStore.js');
     await expect(store.signOut()).resolves.toBeUndefined();
+  });
+
+  describe('handleAuthFailure (FR-011a)', () => {
+    const session = {
+      user: { id: 'user-1', email: 'jane@example.com' },
+      access_token: 'tok-1',
+    };
+
+    it('signs out and carries the deleted-account notice when getUser reports no user', async () => {
+      supabaseMock = makeAuthMock({ session });
+      isHostedAuthAvailableMock = true;
+      supabaseMock.auth.getUser.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'user not found' },
+      });
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      await store.handleAuthFailure();
+
+      expect(supabaseMock.auth.getUser).toHaveBeenCalledTimes(1);
+      expect(supabaseMock.auth.signOut).toHaveBeenCalledTimes(1);
+      // The notice is carried for the UI and is one-shot.
+      expect(store.consumeAuthNotice()).toEqual({
+        message: store.ACCOUNT_DELETED_NOTICE,
+        type: 'error',
+      });
+      expect(store.consumeAuthNotice()).toBeNull();
+    });
+
+    it('does not sign out when getUser returns a valid user', async () => {
+      supabaseMock = makeAuthMock({ session });
+      isHostedAuthAvailableMock = true;
+      supabaseMock.auth.getUser.mockResolvedValue({
+        data: { user: session.user },
+        error: null,
+      });
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      await store.handleAuthFailure();
+
+      expect(supabaseMock.auth.getUser).toHaveBeenCalledTimes(1);
+      expect(supabaseMock.auth.signOut).not.toHaveBeenCalled();
+      expect(store.consumeAuthNotice()).toBeNull();
+    });
+
+    it('does not sign out when getUser rejects (transient error)', async () => {
+      supabaseMock = makeAuthMock({ session });
+      isHostedAuthAvailableMock = true;
+      supabaseMock.auth.getUser.mockRejectedValue(new Error('network'));
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      await expect(store.handleAuthFailure()).resolves.toBeUndefined();
+      expect(supabaseMock.auth.signOut).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op in demo mode (no getUser call)', async () => {
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      store.enterDemo();
+
+      await store.handleAuthFailure();
+
+      expect(supabaseMock.auth.getUser).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op in local mode (supabase unavailable)', async () => {
+      isHostedAuthAvailableMock = false;
+      supabaseMock = null;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      await expect(store.handleAuthFailure()).resolves.toBeUndefined();
+    });
   });
 });

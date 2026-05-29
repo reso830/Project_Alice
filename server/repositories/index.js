@@ -29,10 +29,12 @@ export async function createRepositories(config) {
       { createSupabaseClientForRequest },
       { createSupabaseApplicationsRepository },
       { createSupabaseProfileRepository },
+      { createSupabaseAccountRepository },
     ] = await Promise.all([
       import('./supabase/client.js'),
       import('./supabase/applications.js'),
       import('./supabase/profile.js'),
+      import('./supabase/account.js'),
     ]);
 
     return {
@@ -42,6 +44,10 @@ export async function createRepositories(config) {
         return {
           applications: createSupabaseApplicationsRepository(client, userId),
           profile: createSupabaseProfileRepository(client, userId),
+          account: createSupabaseAccountRepository({
+            userId,
+            email: req.user?.email,
+          }),
         };
       },
     };
@@ -69,13 +75,16 @@ export async function createSqliteRepositories(db) {
   const [
     { createSqliteApplicationsRepository },
     { createSqliteProfileRepository },
+    { createSqliteAccountRepository },
   ] = await Promise.all([
     import('./applications.js'),
     import('./profile.js'),
+    import('./account.js'),
   ]);
 
   return {
     applications: createSqliteApplicationsRepository(db),
     profile: createSqliteProfileRepository(db),
+    account: createSqliteAccountRepository(db),
   };
 }

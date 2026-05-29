@@ -1,7 +1,10 @@
-import { getAll, getProfile } from '../services/api.js';
+import { deleteAccount, getAll, getProfile } from '../services/api.js';
 import { computeAppCounts, computeStats, STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
+import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
+import { Toast } from '../components/Toast.js';
+import * as authStore from '../data/authStore.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
 import { getSafeExternalHref } from '../utils/url.js';
@@ -580,6 +583,92 @@ function renderProfileSection(page, profile, navigate) {
   page.append(section);
 }
 
+const ACCOUNT_COPY = {
+  hosted: 'Permanently delete your account and all associated data.',
+  local: 'Permanently clear all locally stored applications and profile data.',
+  demo: 'Account deletion applies to a real hosted account and isn’t available in the demo.',
+};
+
+function resolveAccountMode() {
+  const { status } = authStore.getAuthState();
+
+  if (status === 'authenticated') {
+    return 'hosted';
+  }
+
+  if (status === authStore.DEMO_STATUS) {
+    return 'demo';
+  }
+
+  return 'local';
+}
+
+// Builds the mode-specific `onConfirm` handler the modal invokes. The handler
+// owns the network call + side effects; it re-throws INVALID_PASSWORD so the
+// modal keeps itself open, and re-throws other errors (after toasting) so the
+// modal closes.
+function buildAccountConfirm(mode, navigate, container) {
+  if (mode === 'hosted') {
+    return async (password) => {
+      try {
+        await deleteAccount({ password });
+      } catch (error) {
+        if (error?.code === 'INVALID_PASSWORD') {
+          throw error;
+        }
+        Toast.show('Could not delete your account. Please try again.', 'error');
+        throw error;
+      }
+
+      // Stage the success confirmation so it survives the sign-out reroute
+      // (the reroute clears document.body, removing any toast shown now).
+      // FR-013 / US1 — shown on the Welcome page by main.js.
+      authStore.setAuthNotice('Account deleted.', 'success');
+      await authStore.signOut();
+    };
+  }
+
+  return async () => {
+    try {
+      await deleteAccount({ confirm: 'DELETE' });
+    } catch (error) {
+      Toast.show('Could not clear your data. Please try again.', 'error');
+      throw error;
+    }
+
+    Toast.show('All data cleared.', 'success');
+    if (container) {
+      // Re-mount in place so the Tracker/Profile empty states render without a
+      // full reload (navigate('profile') is a no-op when already on Profile).
+      await mount(container, { navigate });
+    }
+  };
+}
+
+function renderAccountSection(page, { navigate, container } = {}) {
+  const mode = resolveAccountMode();
+  const { section } = createSection('ACCOUNT');
+  const body = createElement('div', 'account-section');
+  const description = createElement('p', 'account-section__desc', ACCOUNT_COPY[mode]);
+  const label = mode === 'local' ? 'Clear all data' : 'Delete account';
+  const button = createButton(label, 'profile-btn profile-btn--danger account-section__btn', () => {
+    if (mode === 'demo') {
+      return;
+    }
+
+    DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container) });
+  });
+
+  if (mode === 'demo') {
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+  }
+
+  body.append(description, button);
+  section.append(body);
+  page.append(section);
+}
+
 export async function mount(container, { navigate } = {}) {
   const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
   const page = createElement('div', 'profile-page');
@@ -608,6 +697,7 @@ export async function mount(container, { navigate } = {}) {
   }
 
   renderProfileSection(page, profile, safeNavigate);
+  renderAccountSection(page, { navigate: safeNavigate, container });
 }
 
 export function unmount() {

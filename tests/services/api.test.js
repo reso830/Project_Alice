@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   archive,
   create,
+  deleteAccount,
   getAll,
   getById,
   getProfile,
@@ -178,6 +179,37 @@ describe('api service', () => {
     }));
   });
 
+  it('deleteAccount sends the hosted password body to DELETE /api/account', async () => {
+    vi.spyOn(authStore, 'getAccessToken').mockReturnValue('tok');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: { deleted: true } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteAccount({ password: 'pw' })).resolves.toEqual({ deleted: true });
+    expect(fetchMock).toHaveBeenCalledWith('/api/account', expect.objectContaining({
+      method: 'DELETE',
+      body: JSON.stringify({ password: 'pw' }),
+    }));
+  });
+
+  it('deleteAccount sends the local confirm body to DELETE /api/account', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: { cleared: true } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteAccount({ confirm: 'DELETE' })).resolves.toEqual({ cleared: true });
+    expect(fetchMock).toHaveBeenCalledWith('/api/account', expect.objectContaining({
+      method: 'DELETE',
+      body: JSON.stringify({ confirm: 'DELETE' }),
+    }));
+  });
+
   it('throws error envelopes for non-2xx responses', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
@@ -265,6 +297,19 @@ describe('api service', () => {
       expect(headers['X-Client-Date']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
+    it('does not attempt session revalidation on a 401 when no token is present', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue(null);
+      const spy = vi.spyOn(authStore, 'handleAuthFailure').mockResolvedValue();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: { code: 'UNAUTHORIZED', message: 'x' } }),
+      }));
+
+      await expect(request('GET', '/api/applications')).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+      expect(spy).not.toHaveBeenCalled();
+    });
+
     it('surfaces 401 responses as UNAUTHORIZED error envelopes', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: false,
@@ -281,6 +326,50 @@ describe('api service', () => {
         message: 'Authentication required',
         fields: undefined,
       });
+    });
+  });
+
+  describe('auth-failure session revalidation (FR-011a)', () => {
+    function failWith(status, code) {
+      return vi.fn().mockResolvedValue({
+        ok: false,
+        status,
+        json: () => Promise.resolve({ error: { code, message: 'x' } }),
+      });
+    }
+
+    it.each([
+      ['401 UNAUTHORIZED', 401, 'UNAUTHORIZED'],
+      ['401 INVALID_PASSWORD (stale-session delete recheck)', 401, 'INVALID_PASSWORD'],
+      ['404 NOT_FOUND', 404, 'NOT_FOUND'],
+      ['500 INTERNAL_ERROR', 500, 'INTERNAL_ERROR'],
+    ])('fires handleAuthFailure on %s when a token is present', async (_label, status, code) => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue('tok');
+      const spy = vi.spyOn(authStore, 'handleAuthFailure').mockResolvedValue();
+      vi.stubGlobal('fetch', failWith(status, code));
+
+      await expect(request('DELETE', '/api/account', {})).rejects.toMatchObject({ code });
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['400 VALIDATION_ERROR', 400, 'VALIDATION_ERROR'],
+    ])('does NOT fire handleAuthFailure on %s', async (_label, status, code) => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue('tok');
+      const spy = vi.spyOn(authStore, 'handleAuthFailure').mockResolvedValue();
+      vi.stubGlobal('fetch', failWith(status, code));
+
+      await expect(request('DELETE', '/api/account', {})).rejects.toMatchObject({ code });
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire handleAuthFailure when no token is present', async () => {
+      vi.spyOn(authStore, 'getAccessToken').mockReturnValue(null);
+      const spy = vi.spyOn(authStore, 'handleAuthFailure').mockResolvedValue();
+      vi.stubGlobal('fetch', failWith(500, 'INTERNAL_ERROR'));
+
+      await expect(request('GET', '/api/applications')).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 });

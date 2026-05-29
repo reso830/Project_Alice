@@ -5,6 +5,7 @@ import { createRequireAuth } from './auth/middleware.js';
 import { config } from './config.js';
 import { assertHostedSchema } from './health.js';
 import { createRepositories } from './repositories/index.js';
+import { createAccountRouter } from './routes/account.js';
 import { createApplicationsRouter } from './routes/applications.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createResumeRouter } from './routes/resume.js';
@@ -74,6 +75,9 @@ export function createApp({
     '/api/resume',
     createResumeRouter({ requireAuth, seedHostedUserIfNeeded }),
   );
+  // Account deletion. Intentionally NO seedHostedUserIfNeeded — the delete
+  // path must never re-seed (research.md R-3 / specs/030).
+  app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
 
   app.use((err, _req, res, _next) => {
     if (err?.status === 400 && err?.type === 'entity.parse.failed') {

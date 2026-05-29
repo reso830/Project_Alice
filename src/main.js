@@ -14,6 +14,7 @@ import { WelcomePage } from './pages/welcome/WelcomePage.js';
 import { getHealth } from './services/healthApi.js';
 import { isHostedAuthAvailable } from './services/supabaseClient.js';
 import { toISODate } from './utils/date.js';
+import { Toast } from './components/Toast.js';
 
 const DAY_MS = 86400000;
 
@@ -144,6 +145,15 @@ function mountWelcome() {
 
   WelcomePage.mount(root, { authOverlay: AuthOverlay });
   _welcomeMounted = true;
+
+  // Surface a one-shot notice after a sign-out reroute (feature 030): the
+  // involuntary deleted-account message (FR-011a) or the voluntary
+  // account-deletion success confirmation (FR-013). Shown here because the
+  // reroute cleared document.body, so a toast staged before sign-out survives.
+  const notice = authStore.consumeAuthNotice();
+  if (notice) {
+    Toast.show(notice.message, notice.type);
+  }
 }
 
 function unmountWelcome() {

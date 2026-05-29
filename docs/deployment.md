@@ -132,6 +132,18 @@ server log:
 > and grants full database access. Treat it as a secret. Never commit it,
 > never expose it to the frontend, and never prefix it with `VITE_`.
 
+> **Runtime use (feature 030)**: as of **v1.0.0**, the service-role key is
+> used at **runtime** — not just at boot — by the account-deletion endpoint
+> (`DELETE /api/account`). It constructs a server-only Supabase **admin**
+> client (lazy-imported on the delete path) to call
+> `auth.admin.deleteUser(...)`; the `ON DELETE CASCADE` foreign keys from
+> 019 then remove the user's `applications`, `profile`, and `user_seed_state`
+> rows. No new environment variable is introduced — the key was already
+> required in hosted mode — but its runtime role is new. See
+> [`specs/030-delete-profile-data/`](../specs/030-delete-profile-data/)
+> (contracts/api.md for the endpoint shape; research.md R-1/R-2 for the
+> cascade + password-verification design).
+
 The Supabase database schema (tables, indexes, RLS policies) for application
 and profile records is **not** provisioned by this feature. Schema creation,
 migrations, and RLS for those tables are part of feature
