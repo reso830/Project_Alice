@@ -3,6 +3,7 @@ import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { bindBusyButton } from '../utils/asyncUI.js';
 import * as api from '../services/api.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
@@ -49,7 +50,7 @@ function createSkills(skills) {
 
 function stopAction(event, callback) {
   event.stopPropagation();
-  callback();
+  return callback();
 }
 
 export function render(application, callbacks = {}) {
@@ -172,17 +173,33 @@ export function render(application, callbacks = {}) {
       callbacks.onFavToggle?.(application.id);
     });
   });
-  archiveButton.addEventListener('click', (event) => {
-    stopAction(event, () => callbacks.onArchive?.(application.id));
+  const archiveBinding = bindBusyButton({
+    button: archiveButton,
+    action: () => callbacks.onArchive?.(application.id),
+    errorMessage: () => "Couldn't archive.",
   });
-  unarchiveButton.addEventListener('click', async (event) => {
+  archiveButton.addEventListener('click', (event) => {
+    stopAction(event, () => {
+      archiveBinding.run().catch(() => {});
+    });
+  });
+  const unarchiveBinding = bindBusyButton({
+    button: unarchiveButton,
+    action: async () => {
+      try {
+        const updated = await api.unarchive(application.id);
+        callbacks.onUnarchiveSuccess?.(updated);
+        return updated;
+      } catch (error) {
+        callbacks.onError?.(error);
+        return null;
+      }
+    },
+    silent: true,
+  });
+  unarchiveButton.addEventListener('click', (event) => {
     event.stopPropagation();
-    try {
-      const updated = await api.unarchive(application.id);
-      callbacks.onUnarchiveSuccess?.(updated);
-    } catch (error) {
-      callbacks.onError?.(error);
-    }
+    unarchiveBinding.run();
   });
 
   card.addEventListener('click', (event) => {

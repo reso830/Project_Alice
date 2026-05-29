@@ -20,9 +20,12 @@ import {
   syncDynamicSelections,
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
+import { renderInlineError } from '../utils/asyncUI.js';
+import { buildApplicationListSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
 let _cardList = null;
+let _listStateEl = null;
 let _currentPage = 1;
 let _paginationEl = null;
 let _applications = [];
@@ -33,8 +36,10 @@ let _toolbarEl = null;
 let _fabEl = null;
 let _currentView = 'active';
 let _viewCounts = { activeCount: 0, archivedCount: 0 };
+let _viewBusy = false;
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
+const APPLICATIONS_LOAD_ERROR_MESSAGE = "Couldn't load your applications. Check your connection or try again.";
 
 function coerceId(id) {
   return typeof id === 'number' ? id : parseInt(id, 10);
@@ -192,11 +197,57 @@ function ensureCardList() {
   }
 
   removeEmptyState();
+  _listStateEl?.remove();
+  _listStateEl = null;
   _cardList = document.createElement('div');
   _cardList.className = 'card-list';
   _cardList.tabIndex = -1;
   _cardList.setAttribute('aria-label', 'Application list');
   _container.append(_cardList);
+}
+
+function clearListDecorations() {
+  removeEmptyState();
+  _paginationEl?.remove();
+  _paginationEl = null;
+}
+
+function renderApplicationListSkeleton() {
+  if (!_container) {
+    return null;
+  }
+
+  clearListDecorations();
+  _cardList?.remove();
+  _cardList = null;
+  _listStateEl?.remove();
+  _listStateEl = buildApplicationListSkeleton();
+  _container.append(_listStateEl);
+  return _listStateEl;
+}
+
+function showApplicationLoadError(onRetry) {
+  if (!_container) {
+    return;
+  }
+
+  clearListDecorations();
+  const target = document.createElement('div');
+  target.className = 'list-load-state';
+  if (_listStateEl?.isConnected) {
+    _listStateEl.replaceWith(target);
+  } else if (_cardList?.isConnected) {
+    _cardList.replaceWith(target);
+    _cardList = null;
+  } else {
+    _container.append(target);
+  }
+  _listStateEl = target;
+  renderInlineError({
+    target,
+    message: APPLICATIONS_LOAD_ERROR_MESSAGE,
+    onRetry,
+  });
 }
 
 function focusCardList() {
@@ -227,6 +278,7 @@ function updateToolbar() {
     currentView: _currentView,
     viewCounts: _viewCounts,
     showAddButton: !isArchivedView(),
+    viewBusy: _viewBusy,
   });
 }
 
@@ -261,6 +313,73 @@ async function loadList({ preserveFilters = false } = {}) {
   _salaryBounds = getSalaryBounds(_applications);
 }
 
+async function loadInitialLists() {
+  const [currentList, activeList, archivedList] = await Promise.all([
+    api.getAll(getListOptions()),
+    isArchivedView() ? api.getAll({}) : Promise.resolve(null),
+    isArchivedView() ? Promise.resolve(null) : api.getAll({ view: 'archived' }),
+  ]);
+
+  _applications = currentList;
+  _viewCounts = {
+    activeCount: (isArchivedView() ? activeList : currentList).length,
+    archivedCount: (isArchivedView() ? currentList : archivedList).length,
+  };
+  _filterState = syncDynamicSelections(_filterState, _applications);
+  _salaryBounds = getSalaryBounds(_applications);
+}
+
+function setToolbarLoading(loading) {
+  if (!_toolbarEl) {
+    return;
+  }
+
+  if (loading) {
+    _toolbarEl.setAttribute('aria-busy', 'true');
+    _toolbarEl.setAttribute('aria-disabled', 'true');
+  } else {
+    _toolbarEl.removeAttribute('aria-busy');
+    _toolbarEl.removeAttribute('aria-disabled');
+  }
+}
+
+async function retryInitialLoad() {
+  renderApplicationListSkeleton();
+  setToolbarLoading(true);
+
+  try {
+    await loadInitialLists();
+  } catch {
+    setToolbarLoading(false);
+    showApplicationLoadError(retryInitialLoad);
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  setToolbarLoading(false);
+  updateToolbar();
+  ensureCardList();
+  renderPage({ moveFocus: true });
+}
+
+async function reloadCurrentView({ preserveFilters = true, moveFocus = true } = {}) {
+  _viewBusy = true;
+  updateToolbar();
+  renderApplicationListSkeleton();
+
+  try {
+    await loadList({ preserveFilters });
+    ensureCardList();
+    renderPage({ moveFocus });
+  } catch {
+    showApplicationLoadError(() => reloadCurrentView({ preserveFilters, moveFocus }));
+    window.scrollTo(0, 0);
+  } finally {
+    _viewBusy = false;
+    updateToolbar();
+  }
+}
+
 async function setView(next) {
   const normalized = next === 'archived' ? 'archived' : 'active';
   if (normalized === _currentView) {
@@ -272,24 +391,7 @@ async function setView(next) {
   _currentPage = 1;
   syncFabVisibility();
 
-  try {
-    await loadList({ preserveFilters: true });
-    ensureCardList();
-    renderPage({ moveFocus: true });
-    updateToolbar();
-  } catch (error) {
-    removeEmptyState();
-    _cardList?.replaceChildren();
-    if (error.code === 'NETWORK_ERROR') {
-      _container.append(renderMessage(
-        'Cannot connect to the backend — is the server running?',
-        'empty-state empty-state--error',
-      ));
-    } else {
-      Toast.show('Applications failed to load', 'failure');
-      _container.append(renderMessage('Applications failed to load', 'empty-state empty-state--error'));
-    }
-  }
+  await reloadCurrentView({ preserveFilters: true, moveFocus: true });
 }
 
 function applicationMutationCallbacks() {
@@ -365,30 +467,6 @@ function renderArchivedEmptyState() {
     'Archived applications will appear here.',
   );
   return emptyState;
-}
-
-function renderApplicationSkeleton() {
-  const wrap = document.createElement('div');
-
-  wrap.className = 'loading-skeleton loading-skeleton--applications';
-  wrap.setAttribute('aria-busy', 'true');
-  wrap.setAttribute('aria-live', 'polite');
-  wrap.setAttribute('aria-label', 'Loading applications');
-
-  for (let index = 0; index < 3; index += 1) {
-    const card = document.createElement('div');
-
-    card.className = 'skeleton-card';
-    card.setAttribute('aria-hidden', 'true');
-    card.append(
-      Object.assign(document.createElement('span'), { className: 'skeleton-line skeleton-line--short' }),
-      Object.assign(document.createElement('span'), { className: 'skeleton-line skeleton-line--title' }),
-      Object.assign(document.createElement('span'), { className: 'skeleton-line' }),
-    );
-    wrap.append(card);
-  }
-
-  return wrap;
 }
 
 function renderPage({ moveFocus = false } = {}) {
@@ -561,6 +639,7 @@ export async function mount(container) {
   _container = container;
   _container.replaceChildren();
   _cardList = null;
+  _listStateEl = null;
   _currentPage = 1;
   _paginationEl = null;
   _applications = [];
@@ -572,6 +651,7 @@ export async function mount(container) {
     ? 'archived'
     : 'active';
   _viewCounts = { activeCount: 0, archivedCount: 0 };
+  _viewBusy = false;
 
   const toolbar = QuickFiltersToolbar.render({
     apps: _applications,
@@ -583,6 +663,7 @@ export async function mount(container) {
     currentView: _currentView,
     viewCounts: _viewCounts,
     showAddButton: !isArchivedView(),
+    viewBusy: _viewBusy,
     onFilterChange,
     onSortChange,
     onClearAll,
@@ -590,41 +671,18 @@ export async function mount(container) {
     onViewChange: setView,
   });
   const fab = isArchivedView() ? null : Fab.render({ onClick: onFabAddApplication });
-  const skeleton = renderApplicationSkeleton();
 
   _toolbarEl = toolbar;
   _fabEl = fab;
-  toolbar.setAttribute('aria-busy', 'true');
-  toolbar.setAttribute('aria-disabled', 'true');
-  _container.append(...[toolbar, fab, skeleton].filter(Boolean));
+  setToolbarLoading(true);
+  _container.append(...[toolbar, fab].filter(Boolean));
+  renderApplicationListSkeleton();
 
   try {
-    const [currentList, activeList, archivedList] = await Promise.all([
-      api.getAll(getListOptions()),
-      isArchivedView() ? api.getAll({}) : Promise.resolve(null),
-      isArchivedView() ? Promise.resolve(null) : api.getAll({ view: 'archived' }),
-    ]);
-    _applications = currentList;
-    _viewCounts = {
-      activeCount: (isArchivedView() ? activeList : currentList).length,
-      archivedCount: (isArchivedView() ? currentList : archivedList).length,
-    };
-    _filterState = syncDynamicSelections(_filterState, _applications);
-    _salaryBounds = getSalaryBounds(_applications);
-  } catch (error) {
-    skeleton.remove();
-    toolbar.removeAttribute('aria-busy');
-    toolbar.removeAttribute('aria-disabled');
-
-    if (error.code === 'NETWORK_ERROR') {
-      _container.append(renderMessage(
-        'Cannot connect to the backend — is the server running?',
-        'empty-state empty-state--error',
-      ));
-    } else {
-      Toast.show('Applications failed to load', 'failure');
-      _container.append(renderMessage('Applications failed to load', 'empty-state empty-state--error'));
-    }
+    await loadInitialLists();
+  } catch {
+    setToolbarLoading(false);
+    showApplicationLoadError(retryInitialLoad);
 
     window.scrollTo(0, 0);
     return;
@@ -634,9 +692,7 @@ export async function mount(container) {
     return;
   }
 
-  toolbar.removeAttribute('aria-busy');
-  toolbar.removeAttribute('aria-disabled');
-  skeleton.remove();
+  setToolbarLoading(false);
   updateToolbar();
 
   ensureCardList();
@@ -651,6 +707,7 @@ export function unmount() {
 
   _container = null;
   _cardList = null;
+  _listStateEl = null;
   _currentPage = 1;
   _paginationEl = null;
   _applications = [];
@@ -660,6 +717,7 @@ export function unmount() {
   _fabEl = null;
   _currentView = 'active';
   _viewCounts = { activeCount: 0, archivedCount: 0 };
+  _viewBusy = false;
 }
 
 export const Tracker = { mount, unmount };

@@ -41,6 +41,12 @@ function getSubsection(container, label) {
     .find((section) => section.querySelector('.profile-subsection__label')?.textContent.includes(label));
 }
 
+async function flushPromises(count = 2) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 describe('Profile page', () => {
   it('shows profile skeleton sections while profile data is loading', async () => {
     const container = document.createElement('main');
@@ -61,6 +67,63 @@ describe('Profile page', () => {
     await mountPromise;
 
     expect(container.querySelector('.loading-skeleton--profile')).toBeNull();
+  });
+
+  it('shows an applications block skeleton while applications are loading without bare loading text', async () => {
+    const container = document.createElement('main');
+    let resolveApplications;
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockImplementation(({ view } = {}) => (
+      view === 'archived'
+        ? Promise.resolve([])
+        : new Promise((resolve) => {
+          resolveApplications = resolve;
+        })
+    ));
+
+    const mountPromise = Profile.mount(container, { navigate: vi.fn() });
+    await flushPromises();
+
+    const appsBody = container.querySelector('.applications-body');
+    expect(appsBody.querySelector('.profile-apps-skeleton')).not.toBeNull();
+    expect(appsBody.textContent).not.toContain('Loading applications...');
+
+    resolveApplications([]);
+    await mountPromise;
+
+    expect(appsBody.querySelector('.profile-apps-skeleton')).toBeNull();
+  });
+
+  it('renders inline application load error and retries the applications fetch', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockImplementation(({ view } = {}) => {
+      if (view === 'archived') {
+        return Promise.resolve([]);
+      }
+
+      return api.getAll.mock.calls.filter(([args]) => !args?.view).length === 1
+        ? Promise.reject(new Error('offline'))
+        : Promise.resolve([createApplication()]);
+    });
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const appsBody = container.querySelector('.applications-body');
+    expect(appsBody.querySelector('.inline-error__message')?.textContent)
+      .toBe("Couldn't load your applications.");
+
+    appsBody.querySelector('.inline-error__retry').click();
+    expect(appsBody.querySelector('.profile-apps-skeleton')).not.toBeNull();
+
+    await flushPromises(4);
+
+    expect(api.getAll.mock.calls.filter(([args]) => !args?.view)).toHaveLength(2);
+    expect(appsBody.querySelector('.inline-error')).toBeNull();
+    expect(appsBody.querySelector('.profile-apps-skeleton')).toBeNull();
+    expect(appsBody.textContent).toContain('Archived applications');
   });
 
   it('scopes desktop application stat chips to a two-column grid', () => {
@@ -221,9 +284,9 @@ describe('Profile page', () => {
 
     await Profile.mount(container, { navigate: vi.fn() });
 
-    expect(container.textContent).toContain('Application data is unavailable right now.');
-    expect([...container.querySelectorAll('.stat-chip__value')].map((chip) => chip.textContent))
-      .toEqual(['0', '0', '0', '0', '0', '0', '0', '0']);
+    expect(container.querySelector('.applications-body .inline-error__message')?.textContent)
+      .toBe("Couldn't load your applications.");
+    expect(container.querySelector('.applications-body .inline-error__retry')).not.toBeNull();
     expect(container.querySelector('.profile-basic__name')?.textContent).toBe('Taylor Ng');
     expect(container.querySelector('.pill-tag')).toBeNull();
   });

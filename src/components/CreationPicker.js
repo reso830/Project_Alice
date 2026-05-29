@@ -2,6 +2,8 @@
 // Manages two views: selection screen (Smart Parser vs Manual Entry) and paste step.
 // Module pattern mirrors Modal.js (module-level state, no class).
 
+import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
+import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
 import { parseJobPost } from '../utils/jobPostParser.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { Modal } from './Modal.js';
@@ -10,6 +12,9 @@ let _backdrop = null;
 let _panel = null;
 let _keydownHandler = null;
 let _callbacks = null;
+let _unsubscribeAuth = null;
+
+const PARSER_VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
 
 function getFocusableElements(root) {
   return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
@@ -19,6 +24,26 @@ function getFocusableElements(root) {
 function _modalCallbacks(callbacks = {}) {
   const { onApplicationCreate, onApplicationUpdate, onArchiveSuccess } = callbacks;
   return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess };
+}
+
+function _isParserVisible() {
+  return PARSER_VISIBLE_STATUSES.has(getAuthState()?.status);
+}
+
+function _hasParsedFields(parsed) {
+  return Boolean(
+    parsed.companyName
+    || parsed.jobTitle
+    || parsed.location
+    || parsed.responsibilities
+    || parsed.recruiter
+    || parsed.jobPostingUrl
+    || (parsed.salary !== null && parsed.salary !== undefined)
+    || parsed.workSetup
+    || parsed.shift
+    || (Array.isArray(parsed.skills) && parsed.skills.length > 0)
+    || (Array.isArray(parsed.preferredSkills) && parsed.preferredSkills.length > 0),
+  );
 }
 
 function _showErrorState(savedText, callbacks) {
@@ -53,35 +78,34 @@ function _showErrorState(savedText, callbacks) {
   getFocusableElements(errorView)[0]?.focus();
 }
 
-function _runParser(textarea, processBtn, loading) {
-  processBtn.disabled = true;
-  textarea.disabled = true;
+async function _runParser(textarea, loading, retry) {
+  loading.className = 'parser-loading';
+  loading.replaceChildren();
+  loading.textContent = 'Analyzing job post...';
   loading.hidden = false;
 
-  const parsed = parseJobPost(textarea.value);
-  const hasFields = Boolean(
-    parsed.companyName
-    || parsed.jobTitle
-    || parsed.location
-    || parsed.responsibilities
-    || parsed.recruiter
-    || parsed.jobPostingUrl
-    || (parsed.salary !== null && parsed.salary !== undefined)
-    || parsed.workSetup
-    || parsed.shift
-    || (Array.isArray(parsed.skills) && parsed.skills.length > 0)
-    || (Array.isArray(parsed.preferredSkills) && parsed.preferredSkills.length > 0),
-  );
+  try {
+    const parsed = await Promise.resolve(parseJobPost(textarea.value));
 
-  if (!hasFields) {
-    loading.hidden = true;
-    _showErrorState(textarea.value, _callbacks);
-    return;
+    if (!_hasParsedFields(parsed)) {
+      loading.hidden = true;
+      _showErrorState(textarea.value, _callbacks);
+      return null;
+    }
+
+    const callbacks = _callbacks;
+    close();
+    Modal.open(null, { mode: 'create', prefill: parsed, ..._modalCallbacks(callbacks) });
+    return parsed;
+  } catch {
+    loading.hidden = false;
+    renderInlineError({
+      target: loading,
+      message: "Couldn't analyze the job post. Try again.",
+      onRetry: retry,
+    });
+    return null;
   }
-
-  const callbacks = _callbacks;
-  close();
-  Modal.open(null, { mode: 'create', prefill: parsed, ..._modalCallbacks(callbacks) });
 }
 
 function _showPasteStep(initialValue = '') {
@@ -117,8 +141,17 @@ function _showPasteStep(initialValue = '') {
     }, 0);
   });
 
+  let parserBinding;
+  parserBinding = bindBusyButton({
+    button: processBtn,
+    action: () => _runParser(textarea, loading, () => parserBinding.run().catch(() => {})),
+    busyLabel: 'Processing...',
+    peers: [textarea],
+    silent: true,
+  });
+
   processBtn.addEventListener('click', () => {
-    _runParser(textarea, processBtn, loading);
+    parserBinding.run().catch(() => {});
   });
 
   step.append(textarea, loading, processBtn);
@@ -185,7 +218,10 @@ function _showSelectionScreen() {
     },
   });
 
-  cards.append(parserCard, manualCard);
+  if (_isParserVisible()) {
+    cards.append(parserCard);
+  }
+  cards.append(manualCard);
   content.replaceChildren(cards);
 }
 
@@ -197,6 +233,10 @@ export function close() {
   if (_keydownHandler) {
     document.removeEventListener('keydown', _keydownHandler);
     _keydownHandler = null;
+  }
+  if (_unsubscribeAuth) {
+    _unsubscribeAuth();
+    _unsubscribeAuth = null;
   }
   _panel = null;
   _callbacks = null;
@@ -244,6 +284,11 @@ export function open(callbacks) {
 
   _backdrop = backdrop;
   _panel = panel;
+  _unsubscribeAuth = subscribeAuth(() => {
+    if (_panel) {
+      _showSelectionScreen();
+    }
+  });
 
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) close();

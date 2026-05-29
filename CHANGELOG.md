@@ -7,6 +7,47 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-05-28
+
+Loading & async states — standardizes the visible state of every async operation across the app. Cold loads show skeleton placeholders, list-fetch failures recover via an inline-error block with a focused Try again button, every mutation button (Save, Archive, Unarchive, Star, Status, Process, Upload) shows a busy state and guards against duplicate clicks, and the Tracker view-switcher chip carries `aria-busy` during in-flight transitions. The bare `"Loading…"` strings on Calendar / ProfileEdit / Profile applications block are gone.
+
+### Added
+
+- **Shared loading + async-state utilities** — `src/utils/asyncUI.js` exposes `bindBusyButton`, `bindContainerBusy`, and `renderInlineError`; `src/utils/skeletons.js` exposes five DOM-factory builders (`buildApplicationListSkeleton`, `buildProfileSkeleton`, `buildCalendarSkeleton`, `buildProfileEditSkeleton`, `buildProfileAppsSkeleton`). Every retrofit imports from these two modules — no per-component spinner or skeleton vocabulary.
+  (029-loading-async-states)
+- **Calendar grid + Action Panel skeletons** — replace the bare `"Loading…"` strings on cold load and on month/year refresh; the prior month stays visible during the refresh fetch.
+  (029-loading-async-states)
+- **ProfileEdit and Profile applications skeletons** — replace the bare `"Loading profile..."` / `"Loading applications..."` strings on cold load.
+  (029-loading-async-states)
+- **Inline-error recovery surface** — Tracker list fetch, Calendar cold load, Profile applications block, CreationPicker parse, and Resume Import parse failures replace the skeleton/pending UI with an `role="alert"` `aria-live="polite"` block that auto-focuses a `Try again` button. No toast for cold-load failures.
+  (029-loading-async-states FR-010, FR-011)
+- **Application Overlay busy states** — Save (label swap to `Saving…` + `aria-busy="true"` + disabled + peer-lockout on Discard / ★ / 🗄 / Status), Archive, Unarchive, Favorite, and Status Dropdown commit all guarantee single-request semantics on rapid clicks; the existing `_saveController.abort()` escape hatch is preserved.
+  (029-loading-async-states FR-003, FR-007..FR-009)
+- **Card mutation busy states** — × Archive and ↺ Unarchive surface `aria-busy="true"` + disabled during the request; duplicate clicks resolve through the same in-flight promise.
+  (029-loading-async-states)
+- **CreationPicker + Resume Import busy states + inline-error recovery** — Process button busy (`Processing…` label + textarea read-only via peer-lock); Resume Import upload button busy preserving the rotating processing messages; parse failures swap into a Try again surface that preserves the user's input for retry. Demo mode disables the Smart Parser card and hides the Resume Import widget so no demo-feature toast is reachable from a real user flow.
+  (029-loading-async-states US-3, FR-012)
+- **View-switcher chip `aria-busy`** — the Tracker `Applications ▾` / `Archived ▾` chip carries `aria-busy="true"` during an in-flight view change, and the destination list's skeleton renders in place of the source list (no stale-list / frozen-toolbar in between).
+  (029-loading-async-states FR-005)
+- **Channel vocabulary documented in `docs/design/loading.md`** — the six loading channels (`initial-load`, `refresh`, `save`, `parse`, `mutation`, `transition`) with helper/visual mappings, skeleton inventory, inline-error contract, button-busy contract, reduced-motion inheritance, and quickref for future feature authors.
+  (029-loading-async-states)
+- **Demo-mode parity tests** — `tests/regression/demo-loading-parity.test.js` exercises every retrofit through the `demoStore` adapter with a `fetch` spy that throws on any network call, locking in FR-018 / FR-019 mode parity.
+  (029-loading-async-states)
+- **Bare-loading regression test** — `tests/regression/no-bare-loading.test.js` asserts Tracker / Calendar / Profile / ProfileEdit never paint the strings `"Loading…"`, `"Loading applications..."`, or `"Loading profile..."`, even when the underlying fetches never resolve.
+  (029-loading-async-states SC-003)
+
+### Changed
+
+- **View-switcher chip now signals in-flight transitions via `aria-busy`** (small additive change on top of feature 028). The chip's popup, count badge, and click semantics are unchanged.
+  (029-loading-async-states FR-005)
+- **Calendar month/year navigation now refetches data** through `bindContainerBusy` on the grid slot. On success, the new month renders with fresh data. On failure, a toast fires and the prior view is preserved (view-state revert via deferred pending values).
+  (029-loading-async-states FR-004)
+
+### Internal
+
+- Removed orphaned `.profile-loading` CSS selector — the `Profile.js` and `ProfileEdit.js` callers were replaced by skeletons; the `.apps-empty-message` rule retains its remaining styles.
+  (029-loading-async-states)
+
 ## [0.14.0] — 2026-05-26
 
 Archive Applications view — closes the archive lifecycle loop. Archived applications now have a dedicated reachable surface on the Tracker (toolbar chip + `?view=archived` deep link), a read-only Application Overlay mode, and a one-click unarchive action; the Profile page surfaces an `Archived applications · N →` entry point. Archived rows remain excluded from every active workflow surface (Active list, Calendar suggestions, Action Panel sections, Month Grid chips, Profile stat tiles).
@@ -770,7 +811,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2

@@ -843,7 +843,6 @@ textarea.edit-field__control {
   color: #16A34A;
 }
 
-.profile-loading,
 .apps-empty-message {
   margin: 0;
   color: var(--t3);
@@ -3914,6 +3913,48 @@ textarea.modal-inline-control {
   padding: .5rem 0;
 }
 
+/* FR-010/FR-011/FR-015/FR-016 — shared inline async recovery block */
+.inline-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-5, 24px);
+  text-align: center;
+}
+
+.inline-error__message {
+  margin: 0;
+  color: var(--color-text-muted, #475569);
+}
+
+.inline-error__retry {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--t1);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 var(--space-4, 16px);
+}
+
+.inline-error__retry:hover {
+  background: var(--surface-soft);
+}
+
+.inline-error__retry:focus-visible {
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+/* FR-003 — visible busy affordance without adding spinner glyphs */
+button[aria-busy="true"] {
+  cursor: progress;
+  opacity: .7;
+}
+
 /* Error state */
 
 .parser-error {
@@ -5431,6 +5472,40 @@ textarea.modal-inline-control {
 }
 
 /* === Calendar === */
+/* FR-002 — Calendar grid and Action Panel skeletons */
+.calendar-skeleton {
+  width: 100%;
+}
+
+.calendar-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1, 4px);
+}
+
+.calendar-skeleton__cell {
+  aspect-ratio: 1 / 1;
+  padding: var(--space-2, 8px);
+}
+
+.calendar-skeleton__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.calendar-skeleton__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+/* FR-002 — ProfileEdit and Profile applications skeleton variants */
+.profile-edit-skeleton,
+.profile-apps-skeleton {
+  display: grid;
+  gap: var(--space-3, 12px);
+}
+
 .calendar-page {
   display: grid;
   grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
