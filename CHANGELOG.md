@@ -7,6 +7,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-05-29
+
+Delete Profile & User Data — completes the account lifecycle and marks the **v1.0.0** milestone (Operational Core). Users can permanently delete their hosted account (password-confirmed; the Supabase auth user is removed and the `ON DELETE CASCADE` foreign keys clear applications, profile, and the seed marker), or in local mode clear all locally stored data behind a typed-`DELETE` gate. A new **Account** section on the Profile page hosts the control (visible-but-disabled in demo). Stale sessions on other devices revalidate on their next failed request and reroute to Welcome.
+
+### Added
+
+- **Account section on the Profile page** — a destructive control with serious, non-alarming warning copy, rendered after the Profile section. Mode-aware: hosted → "Delete account"; local → "Clear all data"; demo → disabled with explanatory copy.
+  (030-delete-profile-data)
+- **Permanent hosted account deletion** — `DELETE /api/account` re-verifies the account password server-side, then uses the Supabase service-role admin client to delete the auth user; the existing `ON DELETE CASCADE` foreign keys remove all of the user's `applications`, `profile`, and `user_seed_state` rows. A confirmation modal requires re-entering the password; an incorrect password blocks deletion with an inline error and deletes nothing.
+  (030-delete-profile-data)
+- **Local "Clear all data"** — the same control in local mode clears all SQLite `applications` + `profile` rows in one transaction behind a typed-`DELETE` confirmation enforced at the API boundary (`{ confirm: "DELETE" }`). The app stays mounted and re-renders its empty states; no auto re-seed.
+  (030-delete-profile-data)
+- **Cross-device session revalidation** — `authStore.handleAuthFailure()` revalidates via `supabase.auth.getUser()` on a failed authenticated request (401/404/500); if the account no longer exists it clears the session and reroutes to Welcome. The involuntary "Your account no longer exists." message and the voluntary "Account deleted." success confirmation are staged through one one-shot notice carrier so they survive the body-clearing reroute.
+  (030-delete-profile-data FR-011a / FR-013)
+
+### Changed
+
+- **First runtime use of `SUPABASE_SERVICE_ROLE_KEY`.** Previously required at boot but unused at runtime; account deletion is its first runtime consumer (server-only, lazy-imported on the delete path, never exposed to the browser or any response).
+  (030-delete-profile-data)
+- `.profile-btn--danger` now sets white text and a disabled state (it was background-only), used by the new Account control.
+  (030-delete-profile-data)
+
 ## [0.15.0] — 2026-05-28
 
 Loading & async states — standardizes the visible state of every async operation across the app. Cold loads show skeleton placeholders, list-fetch failures recover via an inline-error block with a focused Try again button, every mutation button (Save, Archive, Unarchive, Star, Status, Process, Upload) shows a busy state and guards against duplicate clicks, and the Tracker view-switcher chip carries `aria-busy` during in-flight transitions. The bare `"Loading…"` strings on Calendar / ProfileEdit / Profile applications block are gone.
@@ -811,7 +833,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0
 [0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/reso830/Project_Alice/compare/v0.13.2...v0.13.3

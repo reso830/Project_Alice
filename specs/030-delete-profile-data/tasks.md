@@ -355,7 +355,7 @@
 
 ## Phase 04 — Release Prep (REQUIRED — constitution Amendment 1.3.0)
 
-### [ ] Task 04.1 — Version bump
+### [X] Task 04.1 — Version bump
 
 **Target files**: [package.json](../../package.json) (+ any in-app version display, if present).
 
@@ -365,7 +365,7 @@
 
 ---
 
-### [ ] Task 04.2 — CHANGELOG entry
+### [X] Task 04.2 — CHANGELOG entry
 
 **Target file**: [CHANGELOG.md](../../CHANGELOG.md)
 
@@ -375,7 +375,7 @@
 
 ---
 
-### [ ] Task 04.3 — README updates
+### [X] Task 04.3 — README updates
 
 **Target file**: [README.md](../../README.md)
 
@@ -385,7 +385,7 @@
 
 ---
 
-### [ ] Task 04.4 — `docs/deployment.md` (service-role runtime use)
+### [X] Task 04.4 — `docs/deployment.md` (service-role runtime use)
 
 **Target file**: [docs/deployment.md](../../docs/deployment.md)
 
@@ -395,7 +395,7 @@
 
 ---
 
-### [ ] Task 04.5 — `docs/REPO_MAP.md`
+### [X] Task 04.5 — `docs/REPO_MAP.md`
 
 **Target file**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 
@@ -405,7 +405,7 @@
 
 ---
 
-### [ ] Task 04.6 — Docs sanity check
+### [X] Task 04.6 — Docs sanity check
 
 **What to do**: re-read spec/plan/contracts against the final code; confirm endpoint shape, error codes, and per-mode behavior match what shipped; fix drift.
 
@@ -417,20 +417,21 @@
 
 > Walk each Independent Test in a real browser against the to-be-merged state. Hosted walks require a Supabase preview deploy with `SUPABASE_SERVICE_ROLE_KEY` set; use a disposable account.
 
-### [ ] Task 05.1 [US-1/US-2] Hosted delete + password gate
+### [X] Task 05.1 [US-1/US-2] Hosted delete + password gate
 Open Profile → Account → Delete account. Empty password → disabled. Wrong password → error, data intact. Correct password → signed out, Welcome page, toast `Account deleted.`. Verify in Supabase: 0 rows in `applications`/`profile`/`user_seed_state` for the old id; `auth.users` row gone. Re-signup with the same email → fresh empty account.
+**PASS.** Finding fixed: modal now locks background scroll while open (`document.body.style.overflow = 'hidden'`, restored on close) — matches the Application Overlay.
 
-### [ ] Task 05.2 [US-3] Local clear all data
+### [X] Task 05.2 [US-3] Local clear all data
 Local mode with seeded data → Account → Clear all data. Non-`DELETE` text → disabled; `DELETE` → enabled → confirm → toast `All data cleared.`; Tracker + Profile show empty states; still in-app (no Welcome redirect).
 
-### [ ] Task 05.3 [US-4] Demo disabled control
+### [X] Task 05.3 [US-4] Demo disabled control
 Enter demo → Profile → Account. Control visible but disabled; activating it opens no modal and makes no network request (check Network tab).
 
-### [ ] Task 05.4 [US-5] Cross-device reroute
+### [X] Task 05.4 [US-5] Cross-device reroute
 Sign in on two browsers; delete from A. In B, edit an application → action fails and B reroutes to Welcome with the "account no longer exists" message (FR-011a). (Optionally verify the idle path: leave B until token refresh fails → reroutes via `onAuthStateChange`.)
 
-### [ ] Task 05.5 Mobile layout
+### [X] Task 05.5 Mobile layout
 Repeat US-1 (hosted) and US-3 (local) on a mobile viewport; confirm the Account section, button, and modal are usable and legible.
 
-### [ ] Task 05.6 No regressions
+### [X] Task 05.6 No regressions
 Confirm the existing Profile sections (Welcome, Applications, Profile) and the Navbar Sign out / Exit demo behave as before.
