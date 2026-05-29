@@ -56,6 +56,11 @@ export function open({ mode = 'hosted', onConfirm } = {}) {
   const copy = COPY[mode] ?? COPY.hosted;
   const previouslyFocused = document.activeElement;
 
+  // Lock background scroll while the modal is open (matches the Application
+  // Overlay). Restored on close.
+  const savedScrollY = window.scrollY;
+  document.body.style.overflow = 'hidden';
+
   const backdrop = el('div', 'delete-modal-backdrop');
   const dialog = el('div', 'delete-modal');
   dialog.setAttribute('role', 'alertdialog');
@@ -127,6 +132,8 @@ export function open({ mode = 'hosted', onConfirm } = {}) {
     closed = true;
     document.removeEventListener('keydown', onKeydown, true);
     backdrop.remove();
+    document.body.style.overflow = '';
+    window.scrollTo(0, savedScrollY);
     if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
       previouslyFocused.focus();
     }

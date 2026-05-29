@@ -83,6 +83,15 @@ describe('DeleteAccountModal', () => {
     expect(q('.delete-modal-backdrop')).toBeNull();
   });
 
+  it('locks background scroll while open and restores it on close', () => {
+    expect(document.body.style.overflow).toBe('');
+    modal = DeleteAccountModal.open({ mode: 'hosted', onConfirm: vi.fn() });
+    expect(document.body.style.overflow).toBe('hidden');
+
+    document.querySelector('.delete-modal__btn--cancel').click();
+    expect(document.body.style.overflow).toBe('');
+  });
+
   it('Cancel closes without calling onConfirm', () => {
     const onConfirm = vi.fn();
     modal = DeleteAccountModal.open({ mode: 'hosted', onConfirm });
