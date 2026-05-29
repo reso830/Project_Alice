@@ -21,16 +21,16 @@ Core philosophy:
 
 Alice is evolving through four major phases:
 
-| Version | Theme |
-|---|---|
-| 1.0.0 | Operational Core |
-| 2.0.0 | Smart Intake & AI Assistance |
-| 3.0.0 | Preference & Insight Engine |
-| 4.0.0 | Job Hunt OS |
+| Version | Theme | Status |
+|---|---|---|
+| 1.0.0 | Operational Core | ✅ Shipped (2026-05-29) |
+| 2.0.0 | Smart Intake & AI Assistance | Planned |
+| 3.0.0 | Preference & Insight Engine | Planned |
+| 4.0.0 | Job Hunt OS | Planned |
 
 ---
 
-# 1.0.0 — Operational Core
+# 1.0.0 — Operational Core  ·  ✅ Shipped (2026-05-29)
 
 > Track and manage the job hunt.
 
@@ -61,9 +61,9 @@ Alice is evolving through four major phases:
 - [x] 022-deployment-polish-docs
 - [x] 025-application-timeline
 - [x] 026-calendar
-- [ ] 028-archive-applications-view
-- [ ] 029-loading-async-states
-- [ ] 030-delete-profile-data
+- [x] 028-archive-applications-view
+- [x] 029-loading-async-states
+- [x] 030-delete-profile-data
 
 ---
 
