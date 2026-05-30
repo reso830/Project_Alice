@@ -1,4 +1,24 @@
 <!--
+Sync Impact Report (1.5.0 — 2026-05-30)
+Version change: 1.4.0 -> 1.5.0
+Reason: Amendment 1.5.0 — records the first explicit, scoped exception to
+the privacy clause's "Analytics, tracking, and third-party data sharing
+MUST be absent by default" rule. Vercel Speed Insights is enabled on the
+hosted deployment to report anonymized Core Web Vitals (page-level
+performance only — no application data, no cookies, no PII). The clause
+already permits external services "unless a later specification explicitly
+requires it"; this amendment is that explicit record. Local mode is
+unaffected — the @vercel/speed-insights package no-ops outside the
+production Vercel deployment, so local-first is preserved.
+Modified principles: none redefined.
+Modified sections:
+- Privacy, Accessibility, and Extensibility Constraints — privacy clause
+  annotated with the Speed Insights exception.
+Templates requiring updates: none.
+Follow-up TODOs: none.
+
+---
+
 Sync Impact Report (1.4.0 — 2026-05-21)
 Version change: 1.3.0 -> 1.4.0
 Reason: Amendment 1.4.0 — rescinds Amendment 1.0.1's removal of
@@ -216,6 +236,16 @@ expose application data, sensitive notes, or usage details to external services
 unless a later specification explicitly requires it. Analytics, tracking, and
 third-party data sharing MUST be absent by default.
 
+**Scoped exception (Amendment 1.5.0):** Vercel Speed Insights is enabled on
+the hosted Vercel deployment to report anonymized Core Web Vitals (page-level
+performance metrics only — never application data, no cookies, no PII). This
+is the explicit record required by the clause above. The exception is narrow:
+it covers performance telemetry only, and the `@vercel/speed-insights` package
+no-ops outside the production Vercel deployment, so local mode reports nothing
+and the local-first principle is preserved. Any broader analytics or
+visitor-tracking (e.g. Vercel Web Analytics) remains prohibited absent its own
+explicit amendment.
+
 The app MUST be usable on desktop and mobile browsers. Forms MUST have labels and
 clear validation messages. Keyboard navigation MUST work for core workflows.
 Color MUST NOT be the only way to communicate status.
@@ -258,4 +288,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.4.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-21
+**Version**: 1.5.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-30

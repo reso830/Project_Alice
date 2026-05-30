@@ -1,4 +1,5 @@
 import './styles/main.css';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import { BottomTabBar } from './components/BottomTabBar.js';
 import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
@@ -231,6 +232,13 @@ export function _resetForTesting() {
 }
 
 export async function bootstrap(deps = {}) {
+  // Report Core Web Vitals to Vercel Speed Insights. The package only sends
+  // data from the production Vercel deployment; in local/dev (e.g. a GitHub
+  // checkout) it no-ops and logs to the console, preserving the local-first
+  // principle. It measures page-level performance only — never application
+  // data — and was explicitly enabled per the constitution's privacy clause.
+  injectSpeedInsights();
+
   const existingRoot = document.querySelector('#app');
   const existingFooter = document.querySelector('.site-footer');
   existingRoot?.remove();
