@@ -33,9 +33,9 @@ Skills are defined in `.agents/skills/` and mirrored to `.claude/skills/`. Run t
 
 Feature branches follow sequential numbering: `###-feature-name` (e.g. `001-core-tracker`), configured in `.specify/init-options.json`.
 
-## Project Constitution (v1.3.0)
+## Project Constitution (v1.5.0)
 
-Ratified 2026-04-25, last amended 2026-05-16. Full text in `.specify/memory/constitution.md`. Summary of governing rules:
+Ratified 2026-04-25, last amended 2026-05-30. Full text in `.specify/memory/constitution.md`. Summary of governing rules:
 
 **Required data fields**: company name, job title, status, last_status_update / lastStatusUpdate, responsibilities (Amendment 1.2.0).  
 **Optional fields**: source, URL, application date, salary, notes, follow-up action/date.
@@ -45,7 +45,7 @@ Ratified 2026-04-25, last amended 2026-05-16. Full text in `.specify/memory/cons
 - Separate business logic from UI
 - Centralized, reusable validation rules
 - New dependencies require justification
-- Local-first; no external analytics or tracking
+- Local-first; no external analytics or tracking by default. One scoped exception (Amendment 1.5.0): Vercel Speed Insights reports anonymized Core Web Vitals from the hosted deployment only (prod-only, no app data/PII; local mode reports nothing).
 
 **Validation rules**:
 - Required fields validated before save

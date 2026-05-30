@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Vercel Speed Insights** — the hosted Vercel deployment now reports anonymized Core Web Vitals (LCP, CLS, INP, etc.) to Vercel Speed Insights via `@vercel/speed-insights`, injected once on app bootstrap. The package only sends data from the production Vercel deployment; in local/dev (e.g. a GitHub checkout) it no-ops and logs to the console, so the local-first principle is preserved. It measures page-level performance only — never application data, no cookies, no PII. Explicitly enabled per the constitution's privacy clause (recorded in `constitution.md`). Requires enabling the Speed Insights tab in the Vercel dashboard to collect data.
+
 ## [1.0.0] — 2026-05-29
 
 Delete Profile & User Data — completes the account lifecycle and marks the **v1.0.0** milestone (Operational Core). Users can permanently delete their hosted account (password-confirmed; the Supabase auth user is removed and the `ON DELETE CASCADE` foreign keys clear applications, profile, and the seed marker), or in local mode clear all locally stored data behind a typed-`DELETE` gate. A new **Account** section on the Profile page hosts the control (visible-but-disabled in demo). Stale sessions on other devices revalidate on their next failed request and reroute to Welcome.

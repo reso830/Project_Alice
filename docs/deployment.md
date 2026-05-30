@@ -501,6 +501,29 @@ boot path and the repository implementation differ.
 
 ---
 
+## Observability — Speed Insights
+
+The hosted Vercel deployment reports **Core Web Vitals** (LCP, CLS, INP,
+and related real-user performance metrics) to **Vercel Speed Insights**
+via the `@vercel/speed-insights` package, injected once on app bootstrap
+in [`src/main.js`](../src/main.js).
+
+- **Production-only.** The package only sends data from the production
+  Vercel deployment. In local mode (e.g. a GitHub checkout) and dev it
+  no-ops and logs to the console — no metrics leave the machine. This
+  preserves the constitution's local-first principle.
+- **Page performance only.** It measures page-level timings, never
+  application data. No cookies, no `localStorage`, no PII.
+- **Enable in the dashboard.** Collection requires turning on the
+  **Speed Insights** tab for the project in the Vercel dashboard. Until
+  that toggle is on, the injected script reports nothing. No environment
+  variables are required.
+- **Governance.** This is an explicit, scoped exception to the
+  constitution's "third-party data sharing absent by default" clause,
+  recorded in [`.specify/memory/constitution.md`](../.specify/memory/constitution.md).
+
+---
+
 ## Demo & Free-Tier Notes
 
 Project Alice's hosted deploy is shaped for free-tier hosting (Vercel
