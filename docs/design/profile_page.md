@@ -1,5 +1,5 @@
 # Profile Page — Design Specification
-**Project Alice** · Last updated: April 28, 2026
+**Project Alice** · Last updated: May 30, 2026
 
 ---
 
@@ -12,6 +12,7 @@
    - 4.2 [Welcome Heading](#42-welcome-heading)
    - 4.3 [Applications Section](#43-applications-section)
    - 4.4 [Profile Section](#44-profile-section)
+   - 4.5 [Account Section](#45-account-section)
 5. [Edit / Setup Profile Page](#5-edit--setup-profile-page)
 6. [Interactions & Behaviour](#6-interactions--behaviour)
 7. [Data Model](#7-data-model)
@@ -43,6 +44,8 @@ The page has two primary states driven by whether a profile has been set up.
 - Profile section renders all filled sub-sections.
 - An **Edit Profile** button appears right-aligned in the Profile section header.
 
+> Both states also render the **Account** section (§4.5) last, regardless of whether a profile exists — it is a runtime-mode-aware surface, not tied to profile setup.
+
 ---
 
 ## 3. Layout & Breakpoints
@@ -58,7 +61,8 @@ The page has two primary states driven by whether a profile has been set up.
 [Page body — max-width 1120px, centred, 36px vertical padding]
   ├── Welcome Heading
   ├── Applications Section Card
-  └── Profile Section Card
+  ├── Profile Section Card
+  └── Account Section Card
 [Footer]
 ```
 
@@ -140,6 +144,23 @@ Two-column layout inside the card (`.apps-desktop-vis`):
 - Desktop vis (`.apps-desktop-vis`) is hidden; mobile vis (`.apps-mobile-vis`) is shown
 - Tapping a bar segment or legend item shows an inline label with label, count, percentage
 - Label auto-dismisses after 2 seconds
+
+#### Archived applications link (feature 028)
+
+Rendered at the bottom of the applications body (below the desktop/mobile vis), in both layouts:
+
+```
+Archived applications · {N} →
+```
+
+- Element: `<a class="profile-archived-link">`, `href="/?view=archived"`
+- Text: `Archived applications · {count} →` — count is the number of archived rows for the current user
+- Style: inline-flex, `margin-top: 14px`, indigo (`var(--indigo)`), 13px / 600, no underline; hover/focus → `--indigo-hover` + underline
+- **Always rendered**, even when the count is `0` (keeps the surface discoverable; layout stays stable)
+- Accessible name: `aria-label="View archived applications, {N} item(s)"`
+- Click is intercepted for SPA navigation: `pushState('/?view=archived')` then `navigate('tracker', { view: 'archived' })`. The absolute `/?view=archived` href keeps middle-click / copy-paste / refresh routable on hosted builds
+- **Count source**: a separate `getAll({ view: 'archived' })` fetch, run in parallel with the active-applications fetch. On fetch failure it degrades to `0` rather than blocking the Profile render (the Archived view itself is the canonical place to report list-fetch errors)
+- The four stat chips (Total / Active / Pending / Offer) and the donut/bar **exclude** archived rows — only this link reports archived counts
 
 #### Status colour mapping
 
@@ -225,6 +246,68 @@ Clicking **Set Up Profile** navigates to the Edit / Setup Profile page.
 
 ---
 
+### 4.5 Account Section (feature 030)
+
+The final card on the page. A mode-aware section hosting a single **destructive control** that closes the account lifecycle. Rendered in **every** runtime mode (hosted, local, demo) and independent of whether a profile exists.
+
+#### Layout
+```
+ACCOUNT
+{mode-specific description copy}
+[ Destructive button ]
+```
+- Container: `.account-section` — column flex, `gap: 12px`
+- Description: `.account-section__desc` — 13px, `line-height 1.5`, `var(--color-text)`
+- Button: `.profile-btn--danger.account-section__btn` — left-aligned (`align-self: flex-start`); red (`#c1121f`, hover `#a00e19`); disabled → `opacity .55`, `not-allowed`
+
+#### Mode matrix
+
+| Mode    | Button label     | Enabled? | Description copy |
+|---------|------------------|----------|------------------|
+| Hosted  | `Delete account` | Yes      | "Permanently delete your account and all associated data." |
+| Local   | `Clear all data` | Yes      | "Permanently clear all locally stored applications and profile data." |
+| Demo    | `Delete account` | **No** (disabled, `aria-disabled`) | "Account deletion applies to a real hosted account and isn't available in the demo." |
+
+Mode is resolved from `authStore` state: `authenticated` → hosted, demo status → demo, otherwise local. The demo button is inert — clicking it opens no modal and fires no network request.
+
+#### Confirmation modal (`DeleteAccountModal`)
+
+Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`, `aria-modal`, labelled by title + body). The modal **collects the gate value and reports loading/error only** — it performs no deletion itself; the caller's `onConfirm(value)` runs the network call.
+
+| Element        | Detail |
+|----------------|--------|
+| Backdrop       | `rgba(0,0,0,.45)`, `z-index: calc(--z-modal + 10)`; locks background scroll |
+| Dialog         | `max-width: 420px`, `padding: 24px`, `border-radius --r-md`, `box-shadow 0 8px 32px rgba(0,0,0,.18)` |
+| Title          | `⚠ {title}` — warning glyph is a non-color destructive signal; `var(--color-danger)`, 17px / 700 |
+| Body           | Permanence warning copy (cannot be undone) |
+| Input          | Hosted: password field (`autocomplete="current-password"`), label "Enter your password to confirm". Local: text field, label "Type DELETE to confirm" |
+| Inline error   | `role="alert"`, hidden until a failed attempt; `var(--color-danger)` |
+| Actions        | **Cancel** (outline) + **danger confirm** button, right-aligned |
+
+**Gate / behaviour**
+- The confirm button is **disabled** until the gate is satisfied: hosted → non-empty password; local → input is exactly `DELETE`
+- On confirm: button shows a busy label ("Deleting…" / "Clearing…"), input + Cancel disable, `aria-busy` set
+- **Focus trap** (Tab/Shift+Tab cycle within the dialog); focus returns to the previously-focused element on close
+- Cancel / Esc / backdrop click all close the modal and delete nothing (disabled while a request is in flight)
+- Enter in the input submits
+
+**onConfirm contract**
+- Resolves → modal closes (success)
+- Rejects with `code === 'INVALID_PASSWORD'` → modal **stays open**, shows the inline error, re-enables the input (hosted: wrong password)
+- Any other rejection → modal closes (the caller surfaces its own error toast)
+
+#### Post-action behaviour by mode
+
+| Mode    | On success |
+|---------|-----------|
+| Hosted  | Server deletes the auth user (service-role admin call); `ON DELETE CASCADE` removes the user's `applications`, `profile`, and `user_seed_state` rows. Client stages an `Account deleted.` notice, signs out, and routes to the Welcome page (where the notice toast is shown). |
+| Local   | Server clears local `applications` + `profile`; a `All data cleared.` toast fires and the Profile **re-mounts in place** so the Tracker/Profile empty states render without a full reload. No sign-out. |
+| Demo    | N/A — control is disabled. |
+
+> **Cross-session note (hosted):** `deleteUser` revokes refresh tokens, but an already-issued access token on another device stays valid until expiry. Other sessions reroute to Welcome either eventually (token expiry + `onAuthStateChange`) or on their next failed authenticated request via a one-shot `getUser()` revalidation. See `specs/030-delete-profile-data/spec.md` (FR-011a/b) for the full session-invalidation contract.
+
+---
+
 ## 5. Edit / Setup Profile Page
 
 A dedicated full-page form. Entered from either:
@@ -281,10 +364,14 @@ Both entry points navigate to the same `profile-edit` page.
 | Tap legend item (mobile)      | Same as tapping corresponding bar segment                         |
 | Tap sub-section header (mob.) | Toggles collapse/expand with chevron animation                    |
 | Click "Go to Tracker"         | Navigates to Tracker page                                         |
+| Click "Archived applications" | Navigates to Tracker in the Archived view (`/?view=archived`)     |
 | Click "Edit Profile"          | Navigates to Edit Profile page                                    |
 | Click "Set Up Profile"        | Navigates to Edit Profile page (same destination)                 |
 | Click "← Back to Profile"     | Returns to Profile page; unsaved changes are discarded (TBD)      |
 | Click link chip               | Opens URL in new tab                                              |
+| Click "Delete account" (hosted)| Opens DeleteAccountModal; password gate → permanent account deletion → sign out → Welcome |
+| Click "Clear all data" (local)| Opens DeleteAccountModal; typed-`DELETE` gate → clears local data → re-mounts empty states |
+| Click "Delete account" (demo) | No-op — control is disabled                                       |
 
 ---
 
@@ -362,6 +449,11 @@ Derived stats:
 - **Pending** = `applied`
 - **Offer** = `offer`
 
+All four stats and the chart are computed from the **active** application list only (`getAll()` excludes `archived` rows server-side). The archived count comes from a separate `getAll({ view: 'archived' })` fetch and surfaces solely on the Archived applications link (§4.3). Each application carries `archived: boolean` and `archivedDate: ISO date | null` (set server-side when archived, cleared on unarchive — feature 028); the Profile page reads only the archived **count**, not individual fields.
+
+### Account section state (feature 030)
+The Account section has no persisted model of its own. Its behaviour is derived at render time from the runtime `mode` (hosted / local / demo, resolved from `authStore`), which selects the control label, description copy, enabled state, confirmation gate (password vs typed `DELETE`), and post-success path. The destructive backend operations act on existing entities — the Supabase `auth.users` row (cascade-deletes the user's data) in hosted mode, or the local `applications` + `profile` tables in local mode.
+
 ---
 
 ## 8. Design Tokens
@@ -374,8 +466,9 @@ Derived stats:
 | `--border`        | `#E8E3DA` | Card borders                       |
 | `--color-border`  | `#E0DDD8` | Input borders, sub-section dividers|
 | `--navy`          | `#1A1A2E` | Topbar, headings, key numbers      |
-| `--indigo`        | `#4F46E5` | Primary buttons, active nav, avatar|
-| `--indigo-hover`  | `#4338CA` | Primary button hover               |
+| `--indigo`        | `#4F46E5` | Primary buttons, active nav, avatar, Archived link|
+| `--indigo-hover`  | `#4338CA` | Primary button hover, Archived link hover |
+| `--color-danger`  | `#c1121f` | Account destructive button + delete modal (hover `#a00e19`) |
 | `--t2`            | `#4B5563` | Body text, muted content           |
 | `--t3`            | `#9CA3AF` | Muted / secondary text             |
 | `#999999`         | —         | Profile sub-line, basic info meta  |
@@ -414,3 +507,5 @@ Derived stats:
 | 5 | What additional link platforms should be supported (e.g. Indeed, Xing)? | **Resolved** — links are free-form URL + optional friendlyName; no platform list |
 | 6 | Should the avatar support a photo upload, or remain initials-only?       | Open (currently initials-only) |
 | 7 | Should the Calendar page have access to Profile data?                    | Open     |
+| 8 | How are archived applications surfaced on the Profile page?              | **Resolved** (028) — always-visible "Archived applications · N →" link in the Applications section; stats/chart exclude archived rows |
+| 9 | How does a user delete their account / clear their data?                 | **Resolved** (030) — mode-aware Account section (§4.5) with a gated confirmation modal; hosted deletes the account, local clears data, demo is disabled |
