@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project State
 
-This project uses the **Specify framework** for specification-driven development. The application is implemented: Vite + Vanilla JS frontend, Express backend, SQLite persistence (better-sqlite3). New features follow the Speckit workflow: specification → planning → tasks → implementation.
+This project uses the **Specify framework** for specification-driven development. The application is implemented: Vite + Vanilla JS frontend and an Express backend.
+
+**Dual-mode persistence** (since features 018–022): the data layer is selected at runtime by `createRepositories(config)` based on `config.isHosted`:
+- **Local mode** — SQLite via `better-sqlite3`, file-based, local-first (honors the constitution's local-first principle; runnable from a GitHub checkout).
+- **Hosted mode** — Supabase (Postgres) via `@supabase/supabase-js`. A boot-time schema check (`assertHostedSchema`) early-returns in local + demo modes.
+- **Demo mode** — portfolio/demo runtime (feature 020).
+
+**Deployment**: hosted on **Vercel**. The Vite build outputs to `dist` (static frontend); the entire Express app is wrapped as a single serverless function in `api/index.js`, with `vercel.json` rewriting `/api/:path*` → `/api/index`.
+
+New features follow the Speckit workflow: specification → planning → tasks → implementation.
 
 ## Specify Workflow
 
