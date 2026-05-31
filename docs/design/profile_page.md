@@ -218,11 +218,33 @@ Sections are separated by a subtle `1px solid #f5f3f0` top border (not a full-wi
 | 1 | Summary                  | Plain paragraph text (`white-space: pre-wrap`)                                      |
 | 2 | Professional Experience  | Structured entries: role (title), `company \| dateStarted – dateEnded/Present` (meta), responsibilities (body text) |
 | 3 | Education                | Structured entries: degreeMajor (title), `university \| yearCompleted` (meta)       |
-| 4 | Skills                   | Pill tags (`background: #F0EEFF`, `color: #4F46E5`, `border-radius: 4px`)           |
+| 4 | Skills                   | **Proficiency rows** — each skill on its own row with a 5-segment graded meter showing its level (1–5). See [Skills (proficiency)](#skills-proficiency) below. |
 | 5 | Certifications           | Structured entries: name (title), issuingBody (meta), issuanceDate–expiryDate (meta), certificateId (secondary meta, `10px`) |
 | 6 | Awards                   | Structured entries: awardName (title), `issuingBody \| date` (meta), details (body text) |
 | 7 | Languages                | Pill tags showing `"Language \| Proficiency"` (Proficiency levels: Beginner, Intermediate, Professional, Fluent) |
 | 8 | Links                    | Chip-style anchor tags — single line showing `friendlyName` or hostname of URL; no platform label |
+
+##### Skills (proficiency)
+
+Skills are no longer flat tags. Each skill is rated on a **5-level proficiency scale** and rendered as its own row: the skill name on the left, a **5-segment graded meter** on the right.
+
+**Proficiency scale**
+
+| Level | Label        | Segment colour    | Flavor text                              |
+|-------|--------------|-------------------|------------------------------------------|
+| 1     | Beginner     | `#E07B39` orange  | Aware of the basics; needs guidance.     |
+| 2     | Basic        | `#B5830C` gold    | Can handle simple tasks independently.   |
+| 3     | Intermediate | `#1E9D57` green   | Productive day-to-day without help.      |
+| 4     | Strong       | `#3076E8` blue    | Deep, reliable command of the skill.     |
+| 5     | Expert       | `#4F46E5` indigo  | Sets direction; mentors others.          |
+
+- The meter fills `level` of 5 segments in that level's colour; remaining segments are empty (`--sk-empty #E7E3DA`). Each segment: `17×9px` (`15px` wide on mobile), `border-radius 3px`, `4px` gap.
+- **Reveal on hover / tap:** hovering (desktop) or tapping (mobile) a skill row **cross-fades the meter out and the level word in, in place** — `"{level} · {Label}"` in the level's colour (`DM Mono` 11px). The word occupies the same right-aligned slot as the bars, so the row never reflows. On tap it auto-reverts after **2.5s**.
+- The row is a real `<button>` (focusable, keyboard-operable; `aria-label="{name}: {Label}, level {n} of 5"`).
+- **Long names** truncate with an ellipsis (full text kept in `title` / `aria-label`); they never collide with the meter or the revealed word.
+- **"?" scale popover:** a small `?` button beside the SKILLS label opens a popover listing all five levels (segment swatch + bold `Sora` label, normal case + `DM Mono` flavor text). Closes on outside-click / Esc.
+- **Sort control** (right of the header): `Custom` (the order the user entered them) and `By level` (repeat clicks toggle highest-first ▾ / lowest-first ▴).
+- **Collapse past 10:** when a profile has more than **10** skills, only the first 10 render, followed by a `Show all {N} skills ▾` toggle (collapses back via `Show less`) — keeps long lists from becoming a long scroll.
 
 ##### Links chips
 ```
@@ -336,13 +358,30 @@ Both entry points navigate to the same `profile-edit` page.
 | 2 | Summary | Textarea (resizable) |
 | 3 | Professional Experience | Entry list with inline add/edit modal. Fields: Role\*, Company\*, Responsibilities\*, Date Started\* (MM/YYYY), Date Ended (MM/YYYY), "Currently working here" checkbox. |
 | 4 | Education | Entry list. Fields: Degree & Major\*, University\*, Year Completed\*. |
-| 5 | Skills | Pill tag input — type and press Enter/comma to add; × to remove each pill. |
+| 5 | Skills | Inline rows: skill **name** field + **level picker** (tap segments 1–5) + remove (×); an **Add skill** button appends a row. New skills start **unrated**, and **Save is gated** until every skill has a level. See [Skills editor](#skills-editor) below. |
 | 6 | Certifications | Entry list. Fields: Name\*, Issuing Body\*, Issuance Date\* (MM/YYYY), Expiry Date (MM/YYYY), Certificate ID. |
 | 7 | Awards | Entry list. Fields: Award Name\*, Issuing Body\*, Award Date (MM/YYYY), Details. |
 | 8 | Languages | Entry list. Fields: Language\*, Proficiency\* (dropdown: Beginner/Intermediate/Professional/Fluent). |
 | 9 | Links | Entry list. Fields: URL\* (http/https), Friendly Name. |
 
 \* = required field (validated on save)
+
+##### Skills editor
+
+The Skills section uses inline rows rather than an entry-overlay modal:
+
+```
+[ Skill name            ]  [1][2][3][4][5]   ×
+                            3 · Intermediate
+[ + Add skill ]
+```
+
+- Each row: a **name** text input, a **level picker** (five tappable segments numbered 1–5), and a **remove** (×) control.
+- **Level picker:** tapping segment `n` sets the level to `n` and fills segments 1…n in that level's colour; tapping the active level again clears it. Hovering previews the fill in a lighter tint. A caption below reads `"{n} · {Label}"`, or `"Tap to set a level"` when unset.
+- **Add skill** appends a new blank, **unrated** row.
+- **Validation gate:** a new skill must be given a level. Rows missing a level are highlighted (warning tint) and the footer shows `"Set a level for every skill to save · {n} missing"`. The **Save** button is disabled until every named skill has a level and no name is blank.
+- On narrow screens (< 560px) the level picker drops to its own line beneath the name field so the input keeps room.
+- The same **"?" scale popover** is available in the editor header.
 
 ### Entry overlay (add/edit modal)
 
@@ -363,6 +402,11 @@ Both entry points navigate to the same `profile-edit` page.
 | Tap bar segment (mobile)      | Shows inline label; auto-dismisses after 2s                       |
 | Tap legend item (mobile)      | Same as tapping corresponding bar segment                         |
 | Tap sub-section header (mob.) | Toggles collapse/expand with chevron animation                    |
+| Hover / tap skill row         | Cross-fades the proficiency meter to the `{level} · {Label}` word in place; tap auto-reverts after 2.5s |
+| Click "?" (skills)            | Opens the proficiency-scale popover; closes on outside-click / Esc |
+| Click "Custom" / "By level"   | Sorts skills by entered order, or by level (repeat clicks toggle highest- / lowest-first) |
+| Click "Show all / Show less"  | Expands / collapses the skills list past the 10-item limit         |
+| Tap a level segment (editor)  | Sets that skill's proficiency level (1–5); tapping the active level clears it |
 | Click "Go to Tracker"         | Navigates to Tracker page                                         |
 | Click "Archived applications" | Navigates to Tracker in the Archived view (`/?view=archived`)     |
 | Click "Edit Profile"          | Navigates to Edit Profile page                                    |
@@ -388,7 +432,7 @@ interface Profile {
   summary:        string;
   experience:     ExperienceEntry[];
   education:      EducationEntry[];
-  skills:         string[];           // array of skill name strings
+  skills:         SkillEntry[];        // each skill carries a 1–5 proficiency level
   certifications: CertificationEntry[];
   awards:         AwardEntry[];
   languages:      LanguageEntry[];
@@ -409,6 +453,13 @@ interface EducationEntry {
   university:    string;  // required
   yearCompleted: string;  // YYYY format, required
 }
+
+interface SkillEntry {
+  name:  string;                    // skill name, required
+  level: 1 | 2 | 3 | 4 | 5 | null;  // proficiency; null = unrated (editor only — must be set before save)
+}
+// Proficiency scale: 1 Beginner · 2 Basic · 3 Intermediate · 4 Strong · 5 Expert
+// (distinct from LanguageEntry.proficiency, which is its own enum)
 
 interface CertificationEntry {
   name:          string;  // required
@@ -435,6 +486,8 @@ interface LinkEntry {
   friendlyName: string;  // optional display label (falls back to hostname)
 }
 ```
+
+> **Migration (skill proficiency):** legacy profiles stored `skills` as `string[]`. On load, each string is normalised to `{ name, level: 2 }` (**2 · Basic**) so existing data renders immediately; users can re-rate on the next edit. Newly added skills start `level: null` (unrated) and cannot be saved until rated.
 
 ### Application counts (sourced from Tracker)
 ```ts
@@ -468,6 +521,7 @@ The Account section has no persisted model of its own. Its behaviour is derived 
 | `--navy`          | `#1A1A2E` | Topbar, headings, key numbers      |
 | `--indigo`        | `#4F46E5` | Primary buttons, active nav, avatar, Archived link|
 | `--indigo-hover`  | `#4338CA` | Primary button hover, Archived link hover |
+| `--sk-empty`      | `#E7E3DA` | Empty proficiency-meter segments   |
 | `--color-danger`  | `#c1121f` | Account destructive button + delete modal (hover `#a00e19`) |
 | `--t2`            | `#4B5563` | Body text, muted content           |
 | `--t3`            | `#9CA3AF` | Muted / secondary text             |
@@ -509,3 +563,4 @@ The Account section has no persisted model of its own. Its behaviour is derived 
 | 7 | Should the Calendar page have access to Profile data?                    | Open     |
 | 8 | How are archived applications surfaced on the Profile page?              | **Resolved** (028) — always-visible "Archived applications · N →" link in the Applications section; stats/chart exclude archived rows |
 | 9 | How does a user delete their account / clear their data?                 | **Resolved** (030) — mode-aware Account section (§4.5) with a gated confirmation modal; hosted deletes the account, local clears data, demo is disabled |
+| 10 | How are skills captured beyond flat tags?                               | **Resolved** — 1–5 proficiency scale; graded meter rows with hover/tap reveal, "?" scale popover, sort, and collapse-past-10 (§4.4 Skills), plus a gated inline editor (§5 Skills editor) |
