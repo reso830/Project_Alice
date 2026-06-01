@@ -3,6 +3,8 @@ import {
   computeAppCounts,
   computeStats,
   normaliseProfile,
+  SKILL_LEVELS,
+  SKILL_MAX,
   validateProfile,
 } from '../../src/models/profile.js';
 
@@ -55,7 +57,10 @@ describe('profile model', () => {
       firstName: 'Ana',
       lastName: 'Rivera',
       city: 'Taipei',
-      skills: ['JavaScript', 'CSS'],
+      skills: [
+        { name: 'JavaScript', level: 2 },
+        { name: 'CSS', level: 2 },
+      ],
       languages: [],
       experience: [],
     });
@@ -310,5 +315,103 @@ describe('profile model', () => {
       pending: 0,
       offer: 0,
     });
+  });
+});
+
+describe('skill proficiency', () => {
+  const namedProfile = (skills) => ({ firstName: 'Ana', lastName: 'Rivera', skills });
+
+  it('exposes a 1-5 proficiency scale and a max-count constant', () => {
+    expect(SKILL_LEVELS.map((entry) => entry.level)).toEqual([1, 2, 3, 4, 5]);
+    expect(SKILL_LEVELS.map((entry) => entry.label)).toEqual([
+      'Beginner', 'Basic', 'Intermediate', 'Strong', 'Expert',
+    ]);
+    expect(SKILL_MAX).toBe(50);
+  });
+
+  it('migrates legacy string skills to Basic (level 2) and drops empty strings', () => {
+    expect(normaliseProfile({ skills: [' JavaScript ', '', '   ', ' CSS '] }).skills)
+      .toEqual([
+        { name: 'JavaScript', level: 2 },
+        { name: 'CSS', level: 2 },
+      ]);
+  });
+
+  it('keeps valid object levels and preserves null/missing as unrated', () => {
+    expect(normaliseProfile({
+      skills: [
+        { name: 'Jira', level: 4 },
+        { name: 'Scrum', level: null },
+        { name: 'Figma' },
+      ],
+    }).skills).toEqual([
+      { name: 'Jira', level: 4 },
+      { name: 'Scrum', level: null },
+      { name: 'Figma', level: null },
+    ]);
+  });
+
+  it('coerces out-of-range or non-integer levels to the nearest valid 1-5 (not 2)', () => {
+    expect(normaliseProfile({
+      skills: [
+        { name: 'A', level: 6 },
+        { name: 'B', level: 0 },
+        { name: 'C', level: 3.7 },
+        { name: 'D', level: '4' },
+      ],
+    }).skills).toEqual([
+      { name: 'A', level: 5 },
+      { name: 'B', level: 1 },
+      { name: 'C', level: 4 },
+      { name: 'D', level: 4 },
+    ]);
+  });
+
+  it('preserves blank-name skill objects so validation can reject them', () => {
+    expect(normaliseProfile({ skills: [{ name: '  ', level: 3 }] }).skills)
+      .toEqual([{ name: '', level: 3 }]);
+  });
+
+  it('rejects an unrated skill (null level)', () => {
+    const result = validateProfile(namedProfile([{ name: 'Jira', level: null }]));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toMatchObject({ 'skills[0].level': 'Set a level for this skill.' });
+  });
+
+  it('rejects a blank skill name', () => {
+    const result = validateProfile(namedProfile([{ name: '', level: 3 }]));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toMatchObject({ 'skills[0].name': 'Skill name is required.' });
+  });
+
+  it('flags two blank-name rows individually, not as duplicates', () => {
+    const result = validateProfile(namedProfile([
+      { name: '', level: 3 },
+      { name: '', level: 3 },
+    ]));
+    expect(result.errors['skills[0].name']).toBe('Skill name is required.');
+    expect(result.errors['skills[1].name']).toBe('Skill name is required.');
+    expect(result.errors['skills.duplicate']).toBeUndefined();
+  });
+
+  it('rejects duplicate skill names case- and whitespace-insensitively', () => {
+    const result = validateProfile(namedProfile([
+      { name: 'JavaScript', level: 3 },
+      { name: '  javascript ', level: 5 },
+    ]));
+    expect(result.valid).toBe(false);
+    expect(result.errors['skills.duplicate']).toBeTruthy();
+  });
+
+  it('rejects more than the maximum number of skills', () => {
+    const skills = Array.from({ length: SKILL_MAX + 1 }, (_, i) => ({ name: `S${i}`, level: 3 }));
+    const result = validateProfile(namedProfile(skills));
+    expect(result.valid).toBe(false);
+    expect(result.errors['skills.max']).toBeTruthy();
+  });
+
+  it('accepts a fully-rated, unique skill list at the maximum count', () => {
+    const skills = Array.from({ length: SKILL_MAX }, (_, i) => ({ name: `S${i}`, level: 3 }));
+    expect(validateProfile(namedProfile(skills))).toEqual({ valid: true, errors: {} });
   });
 });
