@@ -19,8 +19,13 @@ vi.mock('../../src/data/authStore.js', () => ({
   getAccessToken: () => null,
 }));
 
+vi.mock('../../src/services/resumeApi.js', () => ({
+  parseResume: vi.fn(),
+}));
+
 import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
+import { parseResume } from '../../src/services/resumeApi.js';
 import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
 afterEach(() => {
@@ -106,8 +111,24 @@ function inputValue(input, value) {
   input.dispatchEvent(new window.Event('input', { bubbles: true }));
 }
 
+function typeText(getInput, value) {
+  for (const character of value) {
+    const input = getInput();
+    input.value += character;
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  }
+}
+
 function changeValue(input, value) {
   input.value = value;
+  input.dispatchEvent(new window.Event('change', { bubbles: true }));
+}
+
+function selectResumeFile(input, file) {
+  Object.defineProperty(input, 'files', {
+    configurable: true,
+    value: [file],
+  });
   input.dispatchEvent(new window.Event('change', { bubbles: true }));
 }
 
@@ -978,7 +999,7 @@ describe('ProfileEdit page', () => {
     expect(city.value).toBe('Seattle');
   });
 
-  it('Skills Add button opens overlay with staging input and empty pill area', async () => {
+  it('adds inline unrated skill rows and sets or clears a level', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -989,141 +1010,166 @@ describe('ProfileEdit page', () => {
 
     getHeaderAddButton(skills).click();
 
-    const overlay = document.querySelector('.entry-modal');
-    expect(overlay.querySelector('.skills-input-row input')).toBeTruthy();
-    expect(overlay.querySelectorAll('.skills-pills-wrap .skill-pill')).toHaveLength(0);
-    expect(skills.querySelector('.skills-input-row')).toBeNull();
-  });
-
-  it('staging a skill adds it as a pill inside the overlay only', async () => {
-    const container = createAppShell();
-
-    api.getProfile.mockResolvedValue(createProfile());
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    const skills = getCard(container, 'SKILLS');
-
-    getHeaderAddButton(skills).click();
-    const overlay = document.querySelector('.entry-modal');
-
-    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
-    getButton(overlay, 'Add').click();
-
-    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['Python×']);
-    expect(skills.textContent).not.toContain('Python');
-  });
-
-  it('pressing Enter in skill input stages the skill', async () => {
-    const container = createAppShell();
-
-    api.getProfile.mockResolvedValue(createProfile());
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    getHeaderAddButton(getCard(container, 'SKILLS')).click();
-    const overlay = document.querySelector('.entry-modal');
-    const input = overlay.querySelector('.skills-input-row input');
-
-    inputValue(input, 'Go');
-    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-
-    expect([...overlay.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['Go×']);
-  });
-
-  it('overlay Save commits staged skills to main form', async () => {
-    const container = createAppShell();
-
-    api.getProfile.mockResolvedValue(createProfile());
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    const skills = getCard(container, 'SKILLS');
-
-    getHeaderAddButton(skills).click();
-    const overlay = document.querySelector('.entry-modal');
-
-    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
-    getButton(overlay, 'Add').click();
-    getButton(overlay, 'Save').click();
+    let row = skills.querySelector('.skill-editor-row');
+    const nameInput = row.querySelector('.skill-editor-row__name input');
 
     expect(document.querySelector('.entry-modal')).toBeNull();
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['Python×']);
+    expect(nameInput.value).toBe('');
+    expect(row.querySelector('.skill-level-picker__caption').textContent).toBe('Tap to set a level');
+
+    inputValue(nameInput, 'Python');
+    row = skills.querySelector('.skill-editor-row');
+    row.querySelector('.skill-level-picker__segment[data-level="4"]').click();
+    row = skills.querySelector('.skill-editor-row');
+
+    expect(row.querySelectorAll('.skill-level-picker__segment.is-filled')).toHaveLength(4);
+    expect(row.querySelector('.skill-level-picker__caption').textContent).toBe('4 · Strong');
+
+    row.querySelector('.skill-level-picker__segment[data-level="4"]').click();
+    row = skills.querySelector('.skill-editor-row');
+    expect(row.querySelectorAll('.skill-level-picker__segment.is-filled')).toHaveLength(0);
+    expect(row.querySelector('.skill-level-picker__caption').textContent).toBe('Tap to set a level');
+  });
+
+  it('blocks Save for unrated skills and re-enables after every skill has a level', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const row = skills.querySelector('.skill-editor-row');
+
+    inputValue(row.querySelector('input'), 'Python');
+
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(row.classList.contains('has-warning')).toBe(true);
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toBe('Set a level for every skill to save · 1 missing');
+
+    row.querySelector('.skill-level-picker__segment[data-level="3"]').click();
+
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+    expect(skills.querySelector('.skill-editor-feedback')).toBeNull();
   });
 
-  it('duplicate skill is not staged', async () => {
-    const container = createAppShell();
-
-    api.getProfile.mockResolvedValue(createProfile({ skills: ['Python'] }));
-
-    await ProfileEdit.mount(container, { navigate: vi.fn() });
-
-    getHeaderAddButton(getCard(container, 'SKILLS')).click();
-    const overlay = document.querySelector('.entry-modal');
-
-    inputValue(overlay.querySelector('.skills-input-row input'), 'python');
-    getButton(overlay, 'Add').click();
-
-    expect(overlay.querySelectorAll('.skill-pill')).toHaveLength(0);
-  });
-
-  it('Cancel with staged skill triggers discard dialog', async () => {
+  it('preserves spaces while typing multi-word skill names character by character', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    getHeaderAddButton(getCard(container, 'SKILLS')).click();
-    const overlay = document.querySelector('.entry-modal');
+    const skills = getCard(container, 'SKILLS');
 
-    inputValue(overlay.querySelector('.skills-input-row input'), 'Python');
-    getButton(overlay, 'Add').click();
-    getButton(overlay, 'Cancel').click();
+    getHeaderAddButton(skills).click();
+    typeText(() => skills.querySelector('.skill-editor-row input'), 'Spring Boot');
 
-    expect(document.querySelector('.overlay-discard-dialog')).toBeTruthy();
+    expect(skills.querySelector('.skill-editor-row input').value).toBe('Spring Boot');
   });
 
-  it('Cancel with no staged skills closes overlay immediately', async () => {
+  it('preserves the caret when editing the middle of a skill name', async () => {
     const container = createAppShell();
 
-    api.getProfile.mockResolvedValue(createProfile());
+    api.getProfile.mockResolvedValue(createProfile({
+      skills: [{ name: 'Spring Boot', level: 3 }],
+    }));
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    getHeaderAddButton(getCard(container, 'SKILLS')).click();
-    getButton(document.querySelector('.entry-modal'), 'Cancel').click();
+    const skills = getCard(container, 'SKILLS');
+    const input = skills.querySelector('.skill-editor-row input');
 
-    expect(document.querySelector('.entry-modal')).toBeNull();
-    expect(document.querySelector('.overlay-discard-dialog')).toBeNull();
+    input.focus();
+    input.value = 'Spring Cloud Boot';
+    input.setSelectionRange(13, 13);
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+    const rerenderedInput = skills.querySelector('.skill-editor-row input');
+
+    expect(rerenderedInput.value).toBe('Spring Cloud Boot');
+    expect(rerenderedInput.selectionStart).toBe(13);
+  });
+
+  it('saves structured skill entries from inline rows', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+    api.saveProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const row = skills.querySelector('.skill-editor-row');
+
+    inputValue(row.querySelector('input'), '  Spring Boot  ');
+    row.querySelector('.skill-level-picker__segment[data-level="5"]').click();
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({
+      skills: [{ name: 'Spring Boot', level: 5 }],
+    }));
+  });
+
+  it('flags duplicate and blank skill names from model validation', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: [{ name: 'Python', level: 3 }] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
+    getHeaderAddButton(skills).click();
+    const [, duplicate] = skills.querySelectorAll('.skill-editor-row');
+
+    inputValue(duplicate.querySelector('input'), ' python ');
+    duplicate.querySelector('.skill-level-picker__segment[data-level="2"]').click();
+
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toContain('Duplicate skill: python.');
+
+    inputValue(duplicate.querySelector('input'), '');
+
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toContain('Skill name is required.');
   });
 
   it('removes saved skills while tracking dirty reversion', async () => {
     const container = createAppShell();
 
-    api.getProfile.mockResolvedValue(createProfile({ skills: ['TypeScript', 'React'] }));
+    api.getProfile.mockResolvedValue(createProfile({
+      skills: [
+        { name: 'TypeScript', level: 4 },
+        { name: 'React', level: 3 },
+      ],
+    }));
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     const skills = getCard(container, 'SKILLS');
 
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScript×', 'React×']);
+    expect([...skills.querySelectorAll('.skill-editor-row input')].map((input) => input.value))
+      .toEqual(['TypeScript', 'React']);
 
-    skills.querySelectorAll('.skill-pill__remove')[1].click();
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScript×']);
+    skills.querySelectorAll('.skill-editor-row__remove')[1].click();
+    expect([...skills.querySelectorAll('.skill-editor-row input')].map((input) => input.value))
+      .toEqual(['TypeScript']);
 
-    skills.querySelector('.skill-pill__remove').click();
-    expect(skills.querySelectorAll('.skill-pill')).toHaveLength(0);
+    skills.querySelector('.skill-editor-row__remove').click();
+    expect(skills.querySelectorAll('.skill-editor-row')).toHaveLength(0);
     expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
   });
 
-  it('stages multiple skills in one overlay session', async () => {
+  it('shows the skill scale popover in the editor', async () => {
     const container = createAppShell();
 
     api.getProfile.mockResolvedValue(createProfile());
@@ -1132,20 +1178,58 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
+    skills.querySelector('.skill-scale-trigger').click();
+
+    expect(skills.querySelector('.skill-scale-popover').hidden).toBe(false);
+    expect(skills.querySelector('.skill-scale-popover').textContent)
+      .toContain('Sets direction; mentors others.');
+  });
+
+  it('renders imported resume skills as unrated rows and blocks Save', async () => {
+    const container = createAppShell();
+    const file = new window.File(['resume'], 'resume.txt', { type: 'text/plain' });
+
+    api.getProfile.mockResolvedValue(createProfile());
+    parseResume.mockResolvedValue({ skills: ['Python'] });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const input = container.querySelector('.resume-import__input');
+    selectResumeFile(input, file);
+    getButton(container, 'Process Resume').click();
+    await flushPromises();
+
+    const skills = getCard(container, 'SKILLS');
+    const row = skills.querySelector('.skill-editor-row');
+
+    expect(row.querySelector('input').value).toBe('Python');
+    expect(row.querySelector('.skill-level-picker__caption').textContent).toBe('Tap to set a level');
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toBe('Set a level for every skill to save · 1 missing');
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+  });
+
+  it('shows inline feedback when the skill list exceeds 50 entries', async () => {
+    const container = createAppShell();
+    const skillsList = Array.from({ length: 50 }, (_, index) => ({
+      name: `Skill ${index + 1}`,
+      level: 2,
+    }));
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: skillsList }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+
     getHeaderAddButton(skills).click();
-    const overlay = document.querySelector('.entry-modal');
-    const input = overlay.querySelector('.skills-input-row input');
+    const extra = [...skills.querySelectorAll('.skill-editor-row')].at(-1);
+    inputValue(extra.querySelector('input'), 'Skill 51');
+    extra.querySelector('.skill-level-picker__segment[data-level="2"]').click();
 
-    inputValue(input, 'TypeScript');
-    getButton(overlay, 'Add').click();
-    inputValue(input, 'React');
-    input
-      .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-
-    getButton(overlay, 'Save').click();
-
-    expect([...skills.querySelectorAll('.skill-pill')].map((pill) => pill.textContent))
-      .toEqual(['TypeScript×', 'React×']);
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toContain('Remove some skills — max 50.');
   });
 
   it('adds languages through the entry overlay with validation and one-at-a-time guard', async () => {

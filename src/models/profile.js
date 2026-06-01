@@ -17,8 +17,8 @@ const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 export const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
 
 // Skill proficiency scale (feature 031). Distinct from PROFICIENCY_LEVELS above,
-// which is the language enum. The model owns the valid 1-5 range + labels;
-// segment colours and flavor text are display-only and live in the UI.
+// which is the language enum. The model owns the valid 1-5 range + shared labels;
+// segment colours stay in CSS.
 export const SKILL_LEVELS = [
   { level: 1, label: 'Beginner' },
   { level: 2, label: 'Basic' },
@@ -26,6 +26,13 @@ export const SKILL_LEVELS = [
   { level: 4, label: 'Strong' },
   { level: 5, label: 'Expert' },
 ];
+export const SKILL_FLAVOR = {
+  1: 'Aware of the basics; needs guidance.',
+  2: 'Can handle simple tasks independently.',
+  3: 'Productive day-to-day without help.',
+  4: 'Deep, reliable command of the skill.',
+  5: 'Sets direction; mentors others.',
+};
 export const SKILL_MAX = 50;
 const SKILL_MIGRATION_LEVEL = 2;
 
