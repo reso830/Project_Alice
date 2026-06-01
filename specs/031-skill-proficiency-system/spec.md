@@ -101,7 +101,7 @@ A user whose profile predates this feature opens the app and sees their skills i
 
 1. **Given** a stored profile with `skills: ["Jira", "Scrum"]`, **When** loaded, **Then** each normalises to `{ name, level: 2 }` and renders at Basic.
 2. **Given** a migrated skill, **When** the user opens the editor, **Then** it shows as rated (level 2) and can be re-rated and saved.
-3. **Given** a stored legacy skill string, or a stored skill object whose level is missing/out-of-range, **When** loaded, **Then** it normalises to the safe default (level 2) rather than being dropped. (Skills freshly added via resume import are handled separately — they arrive unrated; see FR-014.)
+3. **Given** a stored legacy skill **string**, **When** loaded, **Then** it normalises to `{ name, level: 2 }` (Basic) rather than being dropped. **And given** a stored skill **object** with an out-of-range/non-integer level, **When** loaded, **Then** the level is coerced to the nearest valid 1–5 (e.g. `6 → 5`, `0 → 1`, `3.7 → 4`) — **not** forced to 2; a missing/`null` level is preserved as unrated. (Skills freshly added via resume import are handled separately — they arrive unrated; see FR-014.)
 
 ### Edge Cases
 

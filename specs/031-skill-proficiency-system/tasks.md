@@ -56,7 +56,7 @@
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
 **What to do**:
-1. Add `normaliseSkillEntry(entry)` implementing the [data-model.md](data-model.md) matrix: bare non-empty **string** → `{ name, level: 2 }`; **empty/whitespace string → dropped** (migration junk); object with valid `level` 1–5 → kept; object with `level === null` → preserved unrated; object with out-of-range/non-integer level → coerced to nearest valid 1–5 (load-time); **blank-name object → KEPT as `{ name: '', level }`** (not dropped); non-object/non-string → dropped.
+1. Add `normaliseSkillEntry(entry)` implementing the [data-model.md](data-model.md) matrix: bare non-empty **string** → `{ name, level: 2 }`; **empty/whitespace string → dropped** (migration junk); object with valid `level` 1–5 → kept; object with `level === null` → preserved unrated; object with **missing/`undefined`/unparseable** level → treated as unrated `null` (only legacy strings default to 2); object with out-of-range/non-integer numeric level → coerced to the **nearest** valid 1–5 (load-time): `0→1`, `6→5`, `3.7→4`, `"4"→4` — **not** forced to 2; **blank-name object → KEPT as `{ name: '', level }`** (not dropped); non-object/non-string → dropped.
 2. Replace `profile.skills = normaliseStringArray(safe.skills)` (line ~225) with a `normaliseObjectArray`-style mapping over `normaliseSkillEntry`. **Do not add a blank-name filter** — blank-name objects must survive so `validateProfile` (which normalizes first, [profile.js:316](../../src/models/profile.js#L316)) can reject them (FR-004). This mirrors `normaliseExperienceEntry`, which keeps empty-field entries.
 
 **Expected behavior**: legacy `string[]` profiles render immediately at Basic; intentional `null` survives; malformed levels never persist; a blank-name object survives normalization so it can be flagged at save (it is not silently discarded).
@@ -110,7 +110,7 @@
 
 **Target file**: [tests/models/profile.test.js](../../tests/models/profile.test.js)
 
-**What to do**: add cases covering — string→`{name,2}` migration; **empty legacy string dropped**; `null` preserved; out-of-range/non-integer coercion at load; mixed-shape array; **blank-name object PRESERVED by normalize then REJECTED by validate** (not silently dropped — Finding 1); validate's only level error is `null` (a coerced object never triggers an "out of 1–5" error — Finding 2); validate rejects unrated/blank/duplicate/over-50; two blank rows yield two blank-name errors (not a duplicate); validate passes a fully-rated ≤50 list; `mergeResumeData` yields unrated imports and preserves existing levels on duplicates.
+**What to do**: add cases covering — string→`{name,2}` migration; **empty legacy string dropped**; `null` preserved; **missing/`undefined` object level → unrated `null`** (not 2); out-of-range/non-integer level coerced to **nearest** 1–5 at load (`6→5`, `0→1`, `3.7→4`) — not forced to 2; mixed-shape array; **blank-name object PRESERVED by normalize then REJECTED by validate** (not silently dropped — Finding 1); validate's only level error is `null` (a coerced object never triggers an "out of 1–5" error — Finding 2); validate rejects unrated/blank/duplicate/over-50; two blank rows yield two blank-name errors (not a duplicate); validate passes a fully-rated ≤50 list; `mergeResumeData` yields unrated imports and preserves existing levels on duplicates.
 
 **Expected behavior**: `npm run test:run` green; rules locked by tests (constitution: core validation must have automated tests).
 
