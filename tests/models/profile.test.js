@@ -367,6 +367,42 @@ describe('skill proficiency', () => {
     ]);
   });
 
+  it('treats empty, whitespace, boolean, or non-numeric object levels as unrated (null), not Beginner', () => {
+    expect(normaliseProfile({
+      skills: [
+        { name: 'A', level: '' },
+        { name: 'B', level: '   ' },
+        { name: 'C', level: false },
+        { name: 'D', level: [] },
+        { name: 'E', level: 'abc' },
+      ],
+    }).skills).toEqual([
+      { name: 'A', level: null },
+      { name: 'B', level: null },
+      { name: 'C', level: null },
+      { name: 'D', level: null },
+      { name: 'E', level: null },
+    ]);
+  });
+
+  it('rejects a skill whose level is an empty string (must not silently save as Beginner)', () => {
+    const result = validateProfile(namedProfile([{ name: 'Jira', level: '' }]));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toMatchObject({ 'skills[0].level': 'Set a level for this skill.' });
+  });
+
+  it('still coerces genuinely numeric levels, including numeric strings', () => {
+    expect(normaliseProfile({
+      skills: [
+        { name: 'A', level: '4' },
+        { name: 'B', level: ' 5 ' },
+      ],
+    }).skills).toEqual([
+      { name: 'A', level: 4 },
+      { name: 'B', level: 5 },
+    ]);
+  });
+
   it('preserves blank-name skill objects so validation can reject them', () => {
     expect(normaliseProfile({ skills: [{ name: '  ', level: 3 }] }).skills)
       .toEqual([{ name: '', level: 3 }]);

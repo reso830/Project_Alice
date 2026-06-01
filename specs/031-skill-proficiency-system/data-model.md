@@ -46,8 +46,8 @@ Applied per element of `skills[]` on every load and save:
 | `""` / whitespace string | **dropped** | Empty legacy string = migration junk (predates the feature; carries no name). |
 | `{ name: "Jira", level: 1..5 }` | kept as-is | Already valid. |
 | `{ name, level: null }` | `{ name, level: null }` | Intentional unrated (editor/import); preserved, gates save. |
-| `{ name }` (level missing/`undefined`/unparseable) | `{ name, level: null }` | Treated as unrated, not guessed — only legacy **strings** get the level-2 default. |
-| `{ name, level: 0 \| 6 \| 3.7 \| "4" }` | `{ name, level: <nearest valid int 1–5> }` | Malformed numeric level coerced to nearest 1–5 (load-time): `0→1`, `6→5`, `3.7→4`, `"4"→4`. **Not** forced to 2. Never persisted as-is. |
+| `{ name }` (level missing/`undefined`/`null`/`''`/whitespace/boolean/array/non-numeric string) | `{ name, level: null }` | Not a level → unrated, never guessed. Only **genuine numbers and non-empty numeric strings** are coerced; everything else stays `null` so it gates save (avoids `Number('') === 0 → 1`). Only legacy **strings** get the level-2 default. |
+| `{ name, level: 0 \| 6 \| 3.7 \| "4" \| " 5 " }` | `{ name, level: <nearest valid int 1–5> }` | Malformed **numeric** level coerced to nearest 1–5 (load-time): `0→1`, `6→5`, `3.7→4`, `"4"→4`. **Not** forced to 2. Never persisted as-is. |
 | `{ name: "" , level }` (blank-name object) | **kept** as `{ name: "", level }` | **Preserved, NOT dropped** — `validateProfile` normalizes before validating ([profile.js:316](../../src/models/profile.js#L316)), so the row must survive normalization for the blank-name save-gate (FR-004) to fire. Mirrors `normaliseExperienceEntry`, which keeps empty-field entries. Display skips blank-name rows defensively. |
 | non-object, non-string | dropped | Defensive. |
 

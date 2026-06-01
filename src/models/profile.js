@@ -161,11 +161,19 @@ function normaliseLinkEntry(entry) {
 }
 
 function coerceSkillLevel(value) {
-  if (value === null || value === undefined) {
+  // Only genuine numbers and non-empty numeric strings are coerced. Empty /
+  // whitespace strings, booleans, arrays, objects, and non-numeric strings are
+  // NOT levels — they stay unrated (null) so they gate save (FR-003/FR-010),
+  // rather than silently clamping `Number('') === 0` up to Beginner.
+  let numeric;
+
+  if (typeof value === 'number') {
+    numeric = value;
+  } else if (typeof value === 'string' && value.trim() !== '') {
+    numeric = Number(value);
+  } else {
     return null;
   }
-
-  const numeric = typeof value === 'number' ? value : Number(value);
 
   if (!Number.isFinite(numeric)) {
     return null;
