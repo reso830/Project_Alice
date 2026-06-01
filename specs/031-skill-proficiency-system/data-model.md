@@ -43,11 +43,14 @@ Applied per element of `skills[]` on every load and save:
 | Input element | Output | Rationale |
 |---|---|---|
 | `"Jira"` (bare string) | `{ name: "Jira", level: 2 }` | Legacy migration → Basic; never lock an existing user out of saving. |
-| `{ name, level: 1..5 }` | kept as-is | Already valid. |
+| `""` / whitespace string | **dropped** | Empty legacy string = migration junk (predates the feature; carries no name). |
+| `{ name: "Jira", level: 1..5 }` | kept as-is | Already valid. |
 | `{ name, level: null }` | `{ name, level: null }` | Intentional unrated (editor/import); preserved, gates save. |
-| `{ name, level: 0 \| 6 \| 3.7 \| "4" }` | `{ name, level: <nearest valid int 1–5> }` | Malformed stored value coerced; never persisted as-is. |
-| blank/missing `name` | dropped | Empty-name skills are not persisted (existing behaviour). |
+| `{ name, level: 0 \| 6 \| 3.7 \| "4" }` | `{ name, level: <nearest valid int 1–5> }` | Malformed stored value coerced (load-time); never persisted as-is. |
+| `{ name: "" , level }` (blank-name object) | **kept** as `{ name: "", level }` | **Preserved, NOT dropped** — `validateProfile` normalizes before validating ([profile.js:316](../../src/models/profile.js#L316)), so the row must survive normalization for the blank-name save-gate (FR-004) to fire. Mirrors `normaliseExperienceEntry`, which keeps empty-field entries. Display skips blank-name rows defensively. |
 | non-object, non-string | dropped | Defensive. |
+
+> **Load vs save.** Normalization (load) is *lenient*: it coerces malformed levels and drops only structural junk, so existing/imported data always renders. Validation (save) is *strict*: it rejects unrated/blank/duplicate/over-cap rows. Because validation runs on the normalized profile, normalization must **not** drop a row the user needs to see flagged.
 
 ## Validation rules (`validateProfile`, skills section)
 
@@ -57,10 +60,11 @@ Centralised in the model; covered by unit tests (constitution).
 |---|---|---|
 | Level required | a named skill has `level === null` | "Set a level for every skill to save · {n} missing" |
 | Non-blank name | a skill row has blank `name` | "Skill name is required." |
-| No duplicates | two names match (case-insensitive, collapsed whitespace) | "Duplicate skill: {name}." |
+| No duplicates | two **non-blank** names match (case-insensitive, collapsed whitespace) | "Duplicate skill: {name}." |
 | Max count | `skills.length > 50` | "Remove some skills — max 50." |
 
-Duplicate comparison reuses the existing `DUPLICATE_KEYS.skills` key (now reading `entry.name`).
+- **There is no "level out of 1–5" save error.** Out-of-range levels are coerced at load (see the normalization matrix), so by the time validation runs a level is always a valid 1–5 or `null`; the level check is therefore only the `null` (unrated) case. This keeps load and save tests from encoding opposite outcomes for the same input.
+- Duplicate comparison reuses the existing `DUPLICATE_KEYS.skills` key (now reading `entry.name`). Blank names produce a falsy key and are **not** treated as duplicates of each other (each blank row raises its own non-blank-name error instead). Two blank rows therefore yield two blank-name errors, not a duplicate error.
 
 ## Resume import (`mergeResumeData`)
 

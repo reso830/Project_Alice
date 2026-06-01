@@ -50,6 +50,11 @@ This scale is distinct from `LanguageEntry.proficiency` (Beginner / Intermediate
 
 - Q: When a skill is added via resume import, what proficiency level should it receive? → A: Unrated (`level: null`) — Save is gated until the user rates it; no auto-assignment (distinct from stored-data migration, which defaults to level 2 so existing users are never locked out).
 
+### Session 2026-06-01 (requirements review)
+
+- Q: `validateProfile` normalizes before validating ([profile.js:316](../../src/models/profile.js#L316)). If normalization drops blank-name skills, save-gating can never see them. Does normalization preserve invalid rows for validation? → A: Yes — normalization **preserves** skill objects with a blank name (as `{ name: '', level }`) so `validateProfile` can reject them with feedback, matching how experience/education entries already work. Only structurally-junk elements are dropped: non-object/non-string values, and empty/whitespace **legacy strings** (pre-feature migration junk). Display defensively skips any blank-name row (a blank-name skill can never be saved).
+- Q: Invalid level — coerced (migration) or a validation error (save)? Split load vs save. → A: **Load** (normalization): an out-of-range/non-integer level in a stored object is coerced to the nearest valid 1–5. **Save** (validation): the only level error is an unrated `null`; there is no "out of 1–5" save error, because post-normalization a level is always valid or `null`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Assign and edit proficiency when managing skills (Priority: P1)
@@ -101,10 +106,10 @@ A user whose profile predates this feature opens the app and sees their skills i
 ### Edge Cases
 
 - **Duplicate names**: a second skill whose name matches an existing one (case-insensitive, whitespace-normalised) is **blocked** in the editor — flagged, and Save is gated — consistent with the existing resume-merge dedupe key.
-- **Blank name**: a row with a blank name gates Save (existing behaviour: empty-name skills are not persisted).
+- **Blank name**: a row with a blank name is **flagged and gates Save** — it is not silently dropped. Normalization preserves the row (as `{ name: '', level }`) so `validateProfile` can reject it; only empty *legacy strings* are dropped as migration junk.
 - **Unrated on save**: any named skill without a level gates Save with a count of missing levels.
 - **Too many skills**: saving is rejected when the skill count exceeds the maximum (see FR-009); the user is told to remove some.
-- **Out-of-range / non-integer level** in a stored skill object: coerced to the nearest valid 1–5 integer; never persisted as-is. A `null` level is preserved as "unrated" (transient editor/import state), not coerced to a default.
+- **Out-of-range / non-integer level** in a stored skill object: coerced to the nearest valid 1–5 integer at **load** time; never persisted as-is. A `null` level is preserved as "unrated" (transient editor/import state), not coerced. At **save**, the only level error is an unrated `null` — coercion has already removed any out-of-range value (see Clarifications 2026-06-01).
 - **Legacy mixed array** (some strings, some objects): each element normalises independently — bare strings migrate to level 2, objects keep their valid/coerced level.
 - **Resume-imported skills**: arrive **unrated** (`level: null`), so the user must rate each before the next save (FR-014); the system never auto-assigns a level. An import that would push the total past the 50-skill maximum is blocked like a manual edit, and a duplicate of an existing skill is dropped (the existing level is kept) per the existing merge dedupe.
 
@@ -115,9 +120,9 @@ A user whose profile predates this feature opens the app and sees their skills i
 - **FR-001**: Each skill MUST be stored as a structured object `{ name: string, level: 1|2|3|4|5 }`. `name` is required and non-blank.
 - **FR-002**: Users MUST be able to assign a proficiency level (1–5) to a skill when adding it and change it later.
 - **FR-003**: Newly added skills MUST start **unrated** (`level: null`); a profile MUST NOT be savable while any named skill is unrated.
-- **FR-004**: The system MUST reject saving a profile that contains a skill with a blank name.
+- **FR-004**: The system MUST reject saving a profile that contains a skill with a blank name, with feedback — it MUST NOT silently drop the row. Normalization preserves blank-name skill objects so `validateProfile` can reject them (only empty legacy strings are dropped as migration junk).
 - **FR-005**: The system MUST prevent duplicate skill names within a profile, compared case-insensitively with collapsed whitespace.
-- **FR-006**: On load, the system MUST migrate legacy `skills: string[]` elements to `{ name, level: 2 }` (**Basic**) so existing data renders without loss; persisted skill names MUST be preserved exactly. A stored skill object with an out-of-range/non-integer level is coerced to the nearest valid level; a `null` level is preserved as "unrated" (transient editor/import state), not defaulted.
+- **FR-006**: On load, the system MUST migrate legacy `skills: string[]` elements to `{ name, level: 2 }` (**Basic**) so existing data renders without loss; persisted skill names MUST be preserved exactly. A stored skill object with an out-of-range/non-integer level is coerced to the nearest valid level (load-time only); a `null` level is preserved as "unrated" (transient editor/import state), not defaulted. Normalization MUST preserve blank-name skill objects (rather than dropping them) so save-validation can reject them per FR-004; only empty legacy strings are dropped.
 - **FR-007**: The Profile page MUST display each skill's level via a non-color-only indicator (a graded meter plus a textual `"{level} · {Label}"` reveal and accessible label), with a reference to the full scale.
 - **FR-008**: The skill editor and display MUST be operable by keyboard and labeled for assistive tech (skill rows are real buttons with `aria-label="{name}: {Label}, level {n} of 5"`; level pickers are reachable/operable).
 - **FR-009**: The system MUST reject saving when the number of skills exceeds the maximum of **50**, with a clear user-facing message; counts at or below 50 save normally.

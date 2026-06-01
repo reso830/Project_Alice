@@ -56,12 +56,12 @@
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
 **What to do**:
-1. Add `normaliseSkillEntry(entry)` implementing the [data-model.md](data-model.md) matrix: bare **string** → `{ name, level: 2 }`; object with valid `level` 1–5 → kept; object with `level === null` → preserved unrated; object with out-of-range/non-integer level → coerced to nearest valid 1–5; blank/missing name → dropped; non-object/non-string → dropped.
-2. Replace `profile.skills = normaliseStringArray(safe.skills)` (line ~225) with `normaliseObjectArray`-style mapping over `normaliseSkillEntry` that also drops blank-name entries.
+1. Add `normaliseSkillEntry(entry)` implementing the [data-model.md](data-model.md) matrix: bare non-empty **string** → `{ name, level: 2 }`; **empty/whitespace string → dropped** (migration junk); object with valid `level` 1–5 → kept; object with `level === null` → preserved unrated; object with out-of-range/non-integer level → coerced to nearest valid 1–5 (load-time); **blank-name object → KEPT as `{ name: '', level }`** (not dropped); non-object/non-string → dropped.
+2. Replace `profile.skills = normaliseStringArray(safe.skills)` (line ~225) with a `normaliseObjectArray`-style mapping over `normaliseSkillEntry`. **Do not add a blank-name filter** — blank-name objects must survive so `validateProfile` (which normalizes first, [profile.js:316](../../src/models/profile.js#L316)) can reject them (FR-004). This mirrors `normaliseExperienceEntry`, which keeps empty-field entries.
 
-**Expected behavior**: legacy `string[]` profiles render immediately at Basic; intentional `null` survives; malformed levels never persist.
+**Expected behavior**: legacy `string[]` profiles render immediately at Basic; intentional `null` survives; malformed levels never persist; a blank-name object survives normalization so it can be flagged at save (it is not silently discarded).
 
-**Constraints**: `name` trimmed via existing `cleanString`. Preserve insertion order (Custom sort relies on it). Do not coerce `null` to a number.
+**Constraints**: `name` trimmed via existing `cleanString`. Preserve insertion order (Custom sort relies on it). Do not coerce `null` to a number. The only element types dropped are empty legacy strings and non-object/non-string values.
 
 **Validation**: [tests/models/profile.test.js](../../tests/models/profile.test.js) — see 01.5.
 
@@ -74,11 +74,11 @@
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
 **What to do**:
-1. In `validateProfile`, add a `profile.skills.forEach` block producing keyed errors for: blank name (`skills[i].name`), unrated level (`skills[i].level` when `null`), and level out of 1–5.
-2. Add a profile-level duplicate check (case-insensitive, whitespace-collapsed) using the existing `DUPLICATE_KEYS.skills` — update it to read `entry.name` (it currently keys a bare string) and emit a `skills.duplicate` error.
+1. In `validateProfile`, add a `profile.skills.forEach` block producing keyed errors for: blank name (`skills[i].name`) and unrated level (`skills[i].level` when `null`). **Do not add an "out of 1–5" level error** — out-of-range levels are coerced at load (01.2), so post-normalization a level is only ever valid or `null`; encoding an out-of-range save error would contradict the coercion and make load/save tests expect opposite outcomes.
+2. Add a profile-level duplicate check (case-insensitive, whitespace-collapsed) using the existing `DUPLICATE_KEYS.skills` — update it to read `entry.name` (it currently keys a bare string) and emit a `skills.duplicate` error. Blank names yield a falsy key → **not** counted as duplicates of each other (each raises its own blank-name error).
 3. Add a count-cap error when `skills.length > SKILL_MAX` (key `skills.max`).
 
-**Expected behavior**: `validateProfile` returns `valid: false` with specific keys/messages for unrated, blank, duplicate, and over-cap skills.
+**Expected behavior**: `validateProfile` returns `valid: false` with specific keys/messages for unrated, blank, duplicate, and over-cap skills. The only level error is the unrated (`null`) case.
 
 **Constraints**: messages match [data-model.md](data-model.md) intent. Centralized in the model (FR-013) — the editor reads these errors, does not re-implement them.
 
@@ -110,7 +110,7 @@
 
 **Target file**: [tests/models/profile.test.js](../../tests/models/profile.test.js)
 
-**What to do**: add cases covering — string→`{name,2}` migration; `null` preserved; out-of-range/non-integer coercion; mixed-shape array; blank-name drop; validate rejects unrated/blank/duplicate/over-50; validate passes a fully-rated ≤50 list; `mergeResumeData` yields unrated imports and preserves existing levels on duplicates.
+**What to do**: add cases covering — string→`{name,2}` migration; **empty legacy string dropped**; `null` preserved; out-of-range/non-integer coercion at load; mixed-shape array; **blank-name object PRESERVED by normalize then REJECTED by validate** (not silently dropped — Finding 1); validate's only level error is `null` (a coerced object never triggers an "out of 1–5" error — Finding 2); validate rejects unrated/blank/duplicate/over-50; two blank rows yield two blank-name errors (not a duplicate); validate passes a fully-rated ≤50 list; `mergeResumeData` yields unrated imports and preserves existing levels on duplicates.
 
 **Expected behavior**: `npm run test:run` green; rules locked by tests (constitution: core validation must have automated tests).
 
@@ -137,7 +137,7 @@
 
 **Expected behavior**: P2 acceptance scenarios 1–5 render correctly; level is conveyed by meter **and** text (non-colour-only, FR-007/FR-008).
 
-**Constraints**: import `SKILL_LEVELS` from the model for labels; segment colours/flavor from the UI layer (02.2). No new dependencies. Empty skills array renders nothing (existing behaviour).
+**Constraints**: import `SKILL_LEVELS` from the model for labels; segment colours/flavor from the UI layer (02.2). No new dependencies. Empty skills array renders nothing (existing behaviour). **Defensively skip blank-name rows** — normalization preserves them for save-validation (01.2), but a blank-name skill can never be saved and must not render on the read-only profile.
 
 **Validation**: visual via [quickstart.md](quickstart.md) US-2; keyboard/aria walked in Phase 06.
 
