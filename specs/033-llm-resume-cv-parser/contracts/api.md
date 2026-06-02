@@ -91,7 +91,11 @@ Not an Alice endpoint — called from the browser with the **user's** key.
 
 - Neither `/extract` nor `/parse` persists the upload, the text, or any key
   (memory-only; no disk, no DB).
-- The OpenRouter key and resume content travel **only** browser → OpenRouter on
-  the AI path; Alice's server never receives the key.
+- The **OpenRouter key** never reaches Alice's server — it travels browser →
+  OpenRouter only (the LLM call is browser-direct).
+- **Resume content**: pasted text goes browser → OpenRouter directly; an uploaded
+  file passes through `/extract` for stateless, memory-only extraction, then its
+  text goes browser → OpenRouter. In all cases content is processed transiently
+  and is **never persisted** (no disk, no DB) — matching FR-010 / SC-006.
 - Hosted demo visitor (no JWT) → 401 on `/extract` and `/parse`.
 - Error responses never echo provider/library internals.

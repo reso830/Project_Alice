@@ -5,9 +5,9 @@
 
 ## Summary
 
-Add an AI-assisted resume parsing path that runs **entirely browser-direct**: the
+Add an AI-assisted resume parsing path whose **LLM call is browser-direct**: the
 user pastes resume text or uploads a file, the browser obtains raw text (paste =
-direct; upload = new stateless `POST /api/resume/extract`), then calls
+direct; upload = new stateless `POST /api/resume/extract`, memory-only), then calls
 **OpenRouter** with the user's **own key** (BYOK, stored only in their browser)
 to get structured JSON matching the existing profile schema. The JSON is
 sanitized by reusing `normaliseProfile`, merged into the Edit Profile form via the

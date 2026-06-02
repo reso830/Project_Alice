@@ -10,8 +10,12 @@ site; Profile-page settings section).
 ## R-1 — LLM call site: browser-direct vs server-proxy
 
 **Decision**: **Browser-direct to OpenRouter.** The browser calls OpenRouter's
-chat-completions endpoint directly using the user's own key. Alice's server never
-receives the key or the resume text on the AI path.
+chat-completions endpoint directly using the user's own key. The precise
+invariant: **Alice's server never receives the key**, and **resume content
+(uploaded files / pasted text) is processed transiently — memory-only, never
+persisted** (FR-010 / SC-006). Note that *uploaded files* still pass through the
+server's stateless extractor (below); only the **key** and the LLM call are
+strictly browser-only.
 
 - **Paste path**: text is already in the browser → sent straight to OpenRouter.
 - **Upload path**: the browser first POSTs the file to a new server endpoint
@@ -21,10 +25,14 @@ receives the key or the resume text on the AI path.
   browser. The browser then sends that text to OpenRouter.
 
 **Rationale**: Best honors the user's intent — key stored in their browser only,
-"their responsibility", server never stores it. Browser-direct means the key and
-the resume content never transit Alice's backend at all on the AI path; the only
-server involvement is stateless text extraction (which already happens today on
-the rule-based path with the same security model).
+"their responsibility", server never stores it. The **key** never transits Alice's
+backend on the AI path (it goes browser → OpenRouter only). Resume **content** is
+handled as follows: pasted text goes browser → OpenRouter directly (server not
+involved); an uploaded file transits the server **only** for stateless,
+memory-only text extraction (no persistence, no LLM, no key) — the same security
+model the rule-based path uses today — after which the extracted text goes
+browser → OpenRouter. So the content-side guarantee is "transient / not persisted,"
+not "never touches the server."
 
 **Alternatives considered**:
 - *Server-proxy* (browser → Alice server → OpenRouter): **rejected outright**, not

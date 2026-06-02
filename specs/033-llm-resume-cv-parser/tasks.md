@@ -267,7 +267,7 @@ editing a field clears its indicator; fallback shows none.
 
 **Purpose**: Quality gates spanning the feature.
 
-- [ ] T022 [P] Privacy review — confirm the key + resume content never reach Alice's server on the AI path; `/extract` and `/parse` persist nothing; key lives only in `localStorage`.
+- [ ] T022 [P] Privacy review — confirm the **key** never reaches Alice's server (browser-direct LLM call; key only in `localStorage`); confirm resume **content** is transient/memory-only and **never persisted** — pasted text goes browser→OpenRouter directly, uploaded files pass through `/extract` only for stateless extraction; `/extract` and `/parse` persist nothing (no disk, no DB). Matches FR-010 / SC-006.
   - Files: review `src/services/llmParser.js`, `src/services/resumeApi.js`, `src/data/aiSettings.js`, `server/routes/resume.js`.
   - Validation: written confirmation in the PR/notes; matches FR-010 / SC-006.
 - [ ] T023 👤 [P] Accessibility & responsive review — paste textarea, consent notice, settings section, AI badge: labels, keyboard, ≤640px layout, non-color-only.
