@@ -194,7 +194,7 @@ parse.
 - [ ] T016 [US2] Tests for the first-use consent gate (`tests/components/ResumeImport.test.js`)
   - Files: `tests/components/ResumeImport.test.js` (modify).
   - Behavior: key set but `!hasConsent()` → Process shows an explicit consent notice before any `llmParser` call; decline → `parseWithLlm` NOT called, rule-based/manual path available, nothing sent; accept → `aiSettings.setConsent` then `parseWithLlm` called; with consent already set, no re-prompt.
-  - Constraints: assert no network/LLM call occurs before consent.
+  - Constraints: assert no **LLM / OpenRouter / external-provider** call occurs before consent (`llmParser.parseWithLlm` not called). Note: Alice's own `/extract` for uploads MAY run before consent — it is not the gated external send (FR-011).
   - Validation: this file; must FAIL before T017.
   - Out-of-scope: settings-section UI (T015).
 
