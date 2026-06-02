@@ -24,7 +24,7 @@ Alice is evolving through four major phases:
 | Version | Theme | Status |
 |---|---|---|
 | 1.0.0 | Operational Core | ✅ Shipped (2026-05-29) |
-| 2.0.0 | Smart Intake & AI Assistance | Planned |
+| 2.0.0 | Smart Intake & AI Assistance | 🚧 In progress |
 | 3.0.0 | Preference & Insight Engine | Planned |
 | 4.0.0 | Job Hunt OS | Planned |
 
@@ -78,12 +78,13 @@ Alice is evolving through four major phases:
 - Expand compatibility intelligence
 
 ## Features
-- [ ]  031-skill-proficiency-system
-- [ ]  032-llm-resume-cv-parser
-- [ ]  033-llm-jd-parser
-- [ ]  034-compatibility-engine
-- [ ]  035-compatibility-insights-panel
-- [ ]  036-ats-resume-quality-checks
+- [x]  031-skill-proficiency-system  ·  shipped v1.1.0
+- [ ]  032-profile-schema-refactor
+- [ ]  033-llm-resume-cv-parser
+- [ ]  034-llm-jd-parser
+- [ ]  035-compatibility-engine
+- [ ]  036-compatibility-insights-panel
+- [ ]  037-ats-resume-quality-checks
 
 ---
 
