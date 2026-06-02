@@ -18,13 +18,40 @@ Out-of-scope). `[P]` = parallelizable (different files, no incomplete deps).
 **Architecture anchor**: browser-direct OpenRouter call (BYOK, browser-only key +
 consent); server only does stateless text extraction. See [research.md](./research.md) R-1…R-10.
 
+**Operator legend**: 👤 = task needs a human operator (running app, real browser,
+a real disposable OpenRouter key, or manual sign-off). Unmarked tasks are
+agent-executable (code + automated tests). The OpenRouter key used for any *live*
+test is operator-supplied; unit/component tests mock it.
+
+---
+
+## Phase Map
+
+| Phase | Theme | Tasks | Blocks | Operator? |
+|---|---|---|---|---|
+| 01 | **Setup** — browser→OpenRouter CORS de-risk spike | T001 | 02 | 👤 spike |
+| 02 | **Foundational** — `aiSettings`, `llmParser`, `/api/resume/extract`, `/parse` text mode, `resumeApi` (+ unit/server tests) | T002–T010 | 03–06 | — |
+| 03 | **US1 (P1) 🎯 MVP** — paste input + AI orchestration + Edit Profile merge | T011–T013 | 06 | — |
+| 04 | **US2 (P1)** — Profile-page key settings + one-time consent gate | T014–T017 | — | — |
+| 05 | **US3 (P2)** — rule-based fallback + truncation + no data loss | T018–T019 | — | — |
+| 06 | **US4 (P3)** — AI-field indicators (render + clear-on-edit) | T020–T021 | — | — |
+| 07 | **Polish** — privacy/a11y review, lint+test, quickstart | T022–T025 | 08 | 👤 T023, T025 |
+| 08 | **Release Prep (REQUIRED)** — version 1.2.0→1.3.0, CHANGELOG, README, REPO_MAP, roadmap, lockfile, docs sanity | T026–T033 | 09 | 👤 T033 |
+| 09 | **Browser Smoke Test (REQUIRED — UI)** — walk US1–US4 Independent Tests + mobile | T034–T038 | merge | 👤 all |
+
+**Sequencing notes:**
+- Phase 01 (spike) gates the architecture — do first; its outcome can switch Phase 02 to a server-proxy variant.
+- Phase 02 blocks all user stories (shared modules + endpoints). The four test→impl pairs + T010 are mutually `[P]`.
+- Same-file chains (NOT parallel): `ResumeImport.js` T012→T017→T019; `ProfileEdit.js` T013→T021.
+- Release Prep (08) is second-to-last; Browser Smoke (09) is last — constitution Amendment 1.3.0.
+
 ---
 
 ## Phase 01: Setup & De-risking
 
 **Purpose**: Resolve the one load-bearing assumption before building on it.
 
-- [ ] T001 De-risk the browser→OpenRouter CORS assumption (R-2)
+- [ ] T001 👤 De-risk the browser→OpenRouter CORS assumption (R-2)
   - Files: throwaway probe only (a temporary HTML/JS snippet or devtools `fetch`); append the outcome to [research.md](./research.md) under a new "## R-2 Spike result" note. No production code committed from this task.
   - Behavior: from (a) `http://localhost` dev origin and (b) a Vercel preview origin, perform a real `fetch` to `https://openrouter.ai/api/v1/chat/completions` with a disposable test key; confirm a non-CORS-blocked response (any 2xx/4xx that is *not* a CORS failure counts as "reachable").
   - Constraints: do not commit the test key; revoke it after. If either origin is CORS-blocked, STOP and switch the implementation to the server-proxy fallback (research R-1 alternative) — note the decision in research.md before proceeding. The spec is unaffected either way.
@@ -243,13 +270,13 @@ editing a field clears its indicator; fallback shows none.
 - [ ] T022 [P] Privacy review — confirm the key + resume content never reach Alice's server on the AI path; `/extract` and `/parse` persist nothing; key lives only in `localStorage`.
   - Files: review `src/services/llmParser.js`, `src/services/resumeApi.js`, `src/data/aiSettings.js`, `server/routes/resume.js`.
   - Validation: written confirmation in the PR/notes; matches FR-010 / SC-006.
-- [ ] T023 [P] Accessibility & responsive review — paste textarea, consent notice, settings section, AI badge: labels, keyboard, ≤640px layout, non-color-only.
+- [ ] T023 👤 [P] Accessibility & responsive review — paste textarea, consent notice, settings section, AI badge: labels, keyboard, ≤640px layout, non-color-only.
   - Files: `src/components/ResumeImport.js`, `src/pages/Profile.js`, `src/pages/ProfileEdit.js`, `src/styles/main.css`.
   - Validation: manual checklist; matches FR-022.
 - [ ] T024 Run full test + lint gates.
   - Behavior: `npm run test:run` and `npm run lint` clean (including unchanged resume suites: `resumeMerge`, `resumeParser`, `ResumeImport.demo`, `resumeApi.demo`).
   - Validation: both commands pass.
-- [ ] T025 Validate quickstart end-to-end against a running app (`specs/033-llm-resume-cv-parser/quickstart.md`).
+- [ ] T025 👤 Validate quickstart end-to-end against a running app (`specs/033-llm-resume-cv-parser/quickstart.md`).
   - Validation: each quickstart step works as written.
 
 ---
@@ -267,7 +294,7 @@ new user-facing feature → **MINOR** bump (→ `1.3.0`).
 - [ ] T030 `README.md` — Features bullet(s) for AI resume parsing (BYOK, browser-only key, opt-in); update `Current version` to `1.3.0`. No per-feature `specs/…` link under Further Reading.
 - [ ] T031 `docs/deployment.md` — short BYOK note: AI parsing is browser-side and adds **no server env vars / no runtime-mode change**; link `quickstart.md`. (No env-var table change.)
 - [ ] T032 `docs/REPO_MAP.md` — add entries for new files (`src/data/aiSettings.js`, `src/services/llmParser.js`, new tests) and the `/api/resume/extract` route; update `server/routes/resume.js` and `src/services/resumeApi.js` descriptions; add/confirm the Spec Packages row for `specs/033-llm-resume-cv-parser/`.
-- [ ] T033 Docs sanity check — `grep` `1.2.0` across `package.json`, `package-lock.json` (root only), `src/`, `README.md`, `CHANGELOG.md`, `docs/`; confirm remaining matches are only historical CHANGELOG headings / diff URLs / dependency versions; verify new cross-link paths exist; confirm the running app shows `1.3.0`.
+- [ ] T033 👤 Docs sanity check — `grep` `1.2.0` across `package.json`, `package-lock.json` (root only), `src/`, `README.md`, `CHANGELOG.md`, `docs/`; confirm remaining matches are only historical CHANGELOG headings / diff URLs / dependency versions; verify new cross-link paths exist; confirm the running app shows `1.3.0`.
 
 ---
 
@@ -277,11 +304,11 @@ new user-facing feature → **MINOR** bump (→ `1.3.0`).
 to-be-merged state. **Setup**: start `npm run dev` + the backend; sign in (not
 demo); have a real OpenRouter key and a sample resume ready.
 
-- [ ] T034 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7. Also run the SAME sample resume through the rule-based path (no key) and note, qualitatively, whether the AI path fills more fields more correctly (A1 / SC-001–SC-002 — observation only, not a pass/fail gate).
-- [ ] T035 [US2] Key & consent — enter key in the Profile settings section, reload (persists), trigger first parse (consent appears), decline (nothing sent) then accept (remembered). Verify US2 acceptance scenarios 1–7, including demo-mode unavailability.
-- [ ] T036 [US3] Graceful degradation — (a) no key → rule-based pre-fill; (b) bad key/forced failure → falls back with a friendly message; (c) both fail → retry + Continue Manually preserve form data; (d) very long resume → truncation notice. Verify US3 scenarios 1–5.
-- [ ] T037 [US4] AI indicators — confirm indicators on AI-populated fields, that editing clears them, and that a rule-based fallback shows none. Verify US4 scenarios 1–3.
-- [ ] T038 Mobile layout — DevTools ≤640px: paste input, consent notice, settings section, and AI badges stack/readable; all interactions work via touch/click.
+- [ ] T034 👤 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7. Also run the SAME sample resume through the rule-based path (no key) and note, qualitatively, whether the AI path fills more fields more correctly (A1 / SC-001–SC-002 — observation only, not a pass/fail gate).
+- [ ] T035 👤 [US2] Key & consent — enter key in the Profile settings section, reload (persists), trigger first parse (consent appears), decline (nothing sent) then accept (remembered). Verify US2 acceptance scenarios 1–7, including demo-mode unavailability.
+- [ ] T036 👤 [US3] Graceful degradation — (a) no key → rule-based pre-fill; (b) bad key/forced failure → falls back with a friendly message; (c) both fail → retry + Continue Manually preserve form data; (d) very long resume → truncation notice. Verify US3 scenarios 1–5.
+- [ ] T037 👤 [US4] AI indicators — confirm indicators on AI-populated fields, that editing clears them, and that a rule-based fallback shows none. Verify US4 scenarios 1–3.
+- [ ] T038 👤 Mobile layout — DevTools ≤640px: paste input, consent notice, settings section, and AI badges stack/readable; all interactions work via touch/click.
 
 **Runtime note (FR-019 / C1)**: the AI path is browser-direct and runtime-agnostic, but verify it at least in **local mode**; if a hosted preview is available, confirm the same flow there. The rule-based fallback already runs in both runtimes today.
 
