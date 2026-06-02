@@ -72,6 +72,17 @@ key configured).
 
 ---
 
+## Clarifications
+
+### Session 2026-06-02
+
+- Q: Which profile fields should the LLM extract — the brief's 7 areas only, or the full schema? → A: The **full profile schema** — the 7 areas (summary, **skills**, experience, certifications, education, awards, languages) **plus** the singular contact fields (firstName, lastName, email, phone, city) **and** links. The LLM must not extract fewer fields than the rule-based fallback.
+- Q: How should over-length input (beyond the provider/context limit) be handled? → A: **Truncate with notice** — send up to a safe length, parse what fits, and warn the user the resume was long so some tail content may not have been parsed; a draft is still produced.
+- Q: What happens to a field's "AI-generated" indicator when the user edits that field? → A: **Clears on edit** — modifying an AI-populated field immediately removes its indicator (the value is now user-authored).
+- Q: How long should Alice wait for the LLM before timing out and falling back? → A: **~30 seconds**, defined as a **single easily-adjustable constant** (default 30s) so the threshold can be tuned without code restructuring. Exceeding it triggers the rule-based fallback.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — AI-Assisted Parse and Review (Priority: P1)
@@ -111,9 +122,10 @@ edit + Save persists the reviewed values.
    it behaves identically to normal manual editing.
 6. **Given** pre-filled (unsaved) data, **When** the user clicks Save, **Then**
    the profile is saved exactly as if entered manually, and only then.
-7. **Given** the extraction areas in the brief, **When** parsing succeeds,
-   **Then** Alice attempts to populate: summary, skills, experience,
-   certifications, education, awards, and languages.
+7. **Given** the full profile schema, **When** parsing succeeds, **Then** Alice
+   attempts to populate: contact fields (firstName, lastName, email, phone,
+   city), summary, skills, experience, certifications, education, awards,
+   languages, and links.
 
 ---
 
@@ -205,16 +217,15 @@ fields remain fully editable.
 for the core extract-and-review loop to deliver value.
 
 **Independent Test**: Run an AI-assisted parse, confirm populated fields show a
-subtle AI indicator, edit one such field, and confirm the indicator behaves
-sensibly (e.g. clears or remains per defined behavior) and the field saves
-normally.
+subtle AI indicator, edit one such field, and confirm the indicator clears on
+edit and the field saves normally.
 
 **Acceptance Scenarios**:
 
 1. **Given** an AI-assisted parse succeeds, **When** the form pre-fills, **Then**
    AI-populated fields display a subtle, non-color-only indicator.
-2. **Given** a field has an AI indicator, **When** the user edits or saves it,
-   **Then** the field behaves identically to a manually entered field.
+2. **Given** a field has an AI indicator, **When** the user edits it, **Then** the
+   indicator clears and the field behaves identically to a manually entered field.
 3. **Given** parsing fell back to rule-based, **When** the form pre-fills, **Then**
    fields are not falsely labeled as AI-generated.
 
@@ -226,9 +237,9 @@ normally.
   fails validation, fall back to rule-based.
 - **Incomplete resumes**: missing sections produce empty fields, not fabricated
   values; the user can fill gaps manually.
-- **Extremely long resumes**: input exceeding provider/context limits must be
-  handled gracefully (truncate-with-notice or reject-with-message), never a raw
-  error.
+- **Extremely long resumes**: input exceeding provider/context limits is
+  truncated to a safe length and parsed with a visible notice (FR-020), never a
+  raw error.
 - **Unsupported file formats**: rejected with the existing actionable message;
   the paste path remains available.
 - **Hallucinated extractions**: the review-before-save flow and AI indicators are
@@ -256,9 +267,11 @@ normally.
 - **FR-003**: When a user-supplied API key is configured AND consent has been
   granted, System MUST send the raw text to the LLM (OpenRouter) in a **single**
   request and receive structured JSON.
-- **FR-004**: System MUST request/expect LLM output matching the existing profile
-  schema, covering: summary, skills, experience, certifications, education,
-  awards, and languages.
+- **FR-004**: System MUST request/expect LLM output matching the **full** existing
+  profile schema, covering: the singular contact fields (firstName, lastName,
+  email, phone, city), summary, skills, experience, certifications, education,
+  awards, languages, and links. The LLM MUST NOT extract fewer fields than the
+  rule-based fallback produces.
 - **FR-005**: System MUST validate the LLM output against the profile schema
   before it is used to pre-fill the form; structurally invalid output MUST NOT
   populate the form.
@@ -279,15 +292,18 @@ normally.
   for subsequent parses until the user clears it.
 - **FR-012**: When no key is configured or consent is not granted, System MUST
   fall back to the existing rule-based parser (current behavior preserved).
-- **FR-013**: When the LLM call fails (timeout, provider/network error) or returns
-  output failing validation, System MUST automatically fall back to the rule-based
-  parser.
+- **FR-013**: When the LLM call fails (provider/network error, or exceeds the
+  request timeout) or returns output failing validation, System MUST automatically
+  fall back to the rule-based parser. The timeout MUST be a single,
+  easily-adjustable constant (default ~30 seconds).
 - **FR-014**: When both the LLM and rule-based parsing fail, System MUST offer
   retry and manual continuation and MUST NOT lose data already in the form.
 - **FR-015**: System MUST show loading feedback during processing and disable the
   process action for the duration.
 - **FR-016**: System MUST mark AI-populated fields with a subtle, non-color-only
-  "AI-generated" indicator; all such fields MUST remain fully editable.
+  "AI-generated" indicator; all such fields MUST remain fully editable, and the
+  indicator MUST clear as soon as the user edits that field (the value is then
+  user-authored).
 - **FR-017**: System MUST present user-facing errors that are non-technical and
   MUST NOT leak provider or library internals (auth errors, stack traces, file
   offsets).
@@ -295,8 +311,10 @@ normally.
   mode (preserving existing demo gating).
 - **FR-019**: System MUST support the LLM path in both local and hosted runtimes
   when a key is configured.
-- **FR-020**: System MUST handle oversized/over-length input gracefully (e.g.
-  truncate-with-notice or a clear message) rather than surfacing a raw error.
+- **FR-020**: When input exceeds the provider/context limit, System MUST
+  **truncate to a safe length and parse what fits, showing the user a visible
+  notice** that the resume was long and some tail content may not have been
+  parsed — never a raw error, and still producing a reviewable draft.
 - **FR-021**: System MUST validate required fields, URLs when provided, dates, and
   status transitions before saving (existing profile validation applies to
   AI-populated data identically).
@@ -330,8 +348,10 @@ normally.
 - **SC-002**: Users spend less time correcting pre-filled data after an
   AI-assisted parse than after a rule-based parse (fewer manual edits to reach a
   saveable profile).
-- **SC-003**: A typical resume parse returns a populated, reviewable form within a
-  reasonable interactive wait, with continuous loading feedback throughout.
+- **SC-003**: A typical resume parse returns a populated, reviewable form within
+  ~30 seconds (the adjustable timeout ceiling), with continuous loading feedback
+  throughout; exceeding the timeout triggers the rule-based fallback rather than
+  an indefinite wait.
 - **SC-004**: 100% of LLM failures, invalid outputs, missing-key, and
   declined-consent cases result in a working fallback (rule-based or manual) with
   no data loss and no leaked provider/library internals.
