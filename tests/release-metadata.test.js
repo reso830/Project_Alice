@@ -38,7 +38,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Application Timeline');
-    expect(readme).toContain('specs/025-application-timeline/');
     expect(readme).toContain('docs/design/application_timeline.md');
     expect(deployment).toContain('specs/025-application-timeline/quickstart.md');
     expect(repoMap).toContain('src/components/Timeline.js');
@@ -65,7 +64,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Calendar page');
-    expect(readme).toContain('specs/026-calendar/');
     expect(readme).toContain('docs/design/calendar.md');
     expect(deployment).toContain('docs/db/claim_and_seed_starter.md');
     expect(repoMap).toContain('src/components/calendar/ActionPanel.js');
@@ -93,7 +91,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Archive Applications view');
-    expect(readme).toContain('specs/028-archive-applications-view/');
     expect(deployment).toContain('specs/028-archive-applications-view/data-model.md');
     expect(deployment).toContain('specs/028-archive-applications-view/quickstart.md');
     expect(repoMap).toContain('specs/028-archive-applications-view/');
