@@ -476,7 +476,8 @@ describe('profile storage split/join', () => {
       languages: [' English '],
     };
     const normalised = normaliseProfile(profile);
-    const { skills: _normalisedSkills, ...expectedDocument } = normalised;
+    const expectedDocument = { ...normalised };
+    delete expectedDocument.skills;
     const { document, skills } = splitProfileForStorage(profile);
 
     expect(document).not.toHaveProperty('skills');
@@ -538,7 +539,7 @@ describe('profile storage split/join', () => {
       lastName: ' Rivera ',
       skills: [{ name: ' Jira ', level: 4 }],
     };
-    const before = structuredClone(profile);
+    const before = globalThis.structuredClone(profile);
 
     splitProfileForStorage(profile);
 
