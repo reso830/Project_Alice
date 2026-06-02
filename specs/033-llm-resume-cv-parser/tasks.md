@@ -64,7 +64,7 @@ can be completed until these exist.
 - [ ] T005 [P] Implement the LLM parser service (`src/services/llmParser.js`)
   - Files: `src/services/llmParser.js` (new). Reuse: `src/models/profile.js` (`normaliseProfile`).
   - Behavior: export `DEFAULT_MODEL`, `LLM_TIMEOUT_MS = 30000`, `MAX_INPUT_CHARS` constants and `parseWithLlm(text, key)` → returns `{ draft, truncated }` or throws a typed error. Browser-direct `fetch` to OpenRouter (contracts §3); `AbortController` timeout; JSON-parse → must be plain object → `normaliseProfile` → must have extracted data, else throw (R-5).
-  - Constraints: single request (no chaining); timeout/model/max-length are single adjustable constants (Q4); never surface raw provider errors upward (caller maps to friendly text).
+  - Constraints: single request (no chaining); timeout/model/max-length are single adjustable constants (Q4); never surface raw provider errors upward (caller maps to friendly text); reuse a shared "has extracted data" check — extract the helper currently inline in `ResumeImport.js` (it isn't exported) or add a small local one; don't depend on the unexported version (I3).
   - Validation: `tests/services/llmParser.test.js` passes.
   - Out-of-scope: deciding when to call it (component concern); persistence.
 
@@ -92,7 +92,7 @@ can be completed until these exist.
 - [ ] T009 Extend `POST /api/resume/parse` with JSON text mode (`server/routes/resume.js`)
   - Files: `server/routes/resume.js` (modify). Reuse: `server/resume/parser.js` (`parseResumeText`).
   - Behavior: if `Content-Type` is JSON with `{ text }`, skip multer and run `parseResumeText(text)` → `{ data }`; otherwise keep the existing multipart path (contracts §2). Enforce a `TEXT_MAX` length guard.
-  - Constraints: single endpoint serves both modes; preserve all existing behavior/tests; generic errors.
+  - Constraints: single endpoint serves both modes; preserve all existing behavior/tests; generic errors; add the new `PAYLOAD_TOO_LARGE` code to the route's `ERROR_RESPONSES` map (I2) so the over-cap case returns a consistent envelope.
   - Validation: `tests/server/resume.text.test.js` + existing `tests/server/resume.test.js` pass.
   - Out-of-scope: AI logic.
 
@@ -118,15 +118,15 @@ Save persists reviewed values; no auto-save.
 
 - [ ] T011 [US1] Component tests for the AI parse path + paste input (`tests/components/ResumeImport.test.js`)
   - Files: `tests/components/ResumeImport.test.js` (modify). Mock: `llmParser`, `resumeApi`, `aiSettings`.
-  - Behavior: a paste textarea is present; with key+consent set, Process → `llmParser.parseWithLlm` called → `onSuccess(draft, aiFieldSet)` with the AI-field set populated; uploaded file routes through `resumeApi.extractText` then the LLM; no auto-save side effects.
+  - Behavior: a paste textarea is present; with key+consent set, Process → `llmParser.parseWithLlm` called → `onSuccess(draft, aiFieldSet)` with the AI-field set populated; uploaded file routes through `resumeApi.extractText` then the LLM; empty paste / empty file → blocked with a clear message and NO `extractText`/LLM call (C3); no auto-save side effects.
   - Constraints: no real network; assert `onSuccess` payload shape (draft + Set of field paths).
   - Validation: this file; must FAIL before T012.
   - Out-of-scope: failure/fallback cases (US3), consent prompt (US2), indicator rendering (US4).
 
 - [ ] T012 [US1] Add paste input + AI orchestration to ResumeImport (`src/components/ResumeImport.js`)
   - Files: `src/components/ResumeImport.js` (modify), `src/styles/main.css` (paste-input styles). Uses: `aiSettings`, `llmParser`, `resumeApi`.
-  - Behavior: render a labeled "paste resume text" textarea alongside the existing uploader; on Process: obtain raw text (paste = direct; upload = `extractText`); if `aiSettings.hasKey()` && `hasConsent()` → `parseWithLlm` → build the AI-field set from non-empty draft fields → `onSuccess(draft, aiFieldSet)`; if no key → rule-based baseline (`parseText`/`parseResume`) with an empty AI-field set.
-  - Constraints: keep existing loading messages/aria-busy; demo gating preserved (component already hides for non-`VISIBLE_STATUSES`); textarea labeled + keyboard accessible; no auto-save.
+  - Behavior: render a labeled "paste resume text" textarea alongside the existing uploader; on Process: guard against empty paste/empty file first (clear message, no downstream call — C3); obtain raw text (paste = direct; upload = `extractText`); if `aiSettings.hasKey()` && `hasConsent()` → `parseWithLlm` → build the AI-field set from non-empty draft fields → `onSuccess(draft, aiFieldSet)`; if no key → rule-based baseline (`parseText`/`parseResume`) with an empty AI-field set.
+  - Constraints: keep existing loading messages/aria-busy; demo gating preserved (component already hides for non-`VISIBLE_STATUSES`); textarea labeled + keyboard accessible; no auto-save. NOTE: the first-use **consent prompt** is added in T017 — until that lands, a key-but-no-consent user simply routes to the rule-based baseline here (US1 tests grant consent via the store).
   - Validation: `tests/components/ResumeImport.test.js` (T011) passes.
   - Out-of-scope: AI-failure fallback + truncation (US3), consent prompt (US2), indicators (US4).
 
@@ -134,7 +134,7 @@ Save persists reviewed values; no auto-save.
   - Files: `src/pages/ProfileEdit.js` (modify, around `renderResumeImportArea` line ~1271–1299).
   - Behavior: update `onSuccess` to accept `(parsedData, aiFieldSet)`; keep `mergeResumeData(_formState, parsedData)`; store the provided `aiFieldSet` in a module-level `_aiFields` (default empty Set) for later rendering.
   - Constraints: merged data must still save identically to manual entry; no schema/provenance leakage into saved profile.
-  - Validation: covered indirectly here; indicator rendering/tests land in US4 (T020/T021).
+  - Validation: covered indirectly here; indicator rendering/tests land in US4 (T020/T021). Add one assertion that an AI-filled draft, once merged, passes through the existing `validateProfile` at Save exactly like manually entered data (C2 / FR-021) — i.e. AI provenance does not bypass validation.
   - Out-of-scope: rendering the indicator (US4), settings UI (US2).
 
 **Checkpoint**: with a key set (via store), paste/upload produces a reviewable pre-filled form. MVP functional.
@@ -260,7 +260,7 @@ editing a field clears its indicator; fallback shows none.
 constitution Amendment 1.3.0. Current version: `1.2.0` (package.json) — this is a
 new user-facing feature → **MINOR** bump (→ `1.3.0`).
 
-- [ ] T026 Bump version to `1.3.0` in `package.json`; keep any in-app version display (`src/components/Footer.js` `APP_VERSION` if present) in sync; update any test pinning the literal version string.
+- [ ] T026 Bump version to `1.3.0` in `package.json`; confirm where the app renders its version (e.g. `src/components/Footer.js` `APP_VERSION`, or wherever it actually lives) and keep that in sync (R1); update any test pinning the literal version string.
 - [ ] T027 Sync `package-lock.json` root version fields (top-level `version` + `packages[""].version`) to `1.3.0`; leave dependency versions untouched (`npm install --package-lock-only` or surgical 2-line edit). The release-metadata test asserts these.
 - [ ] T028 `docs/feature_roadmap.md` — tick feature 033 `[x]` (note shipped `1.3.0`) and advance its theme/version row status if changed.
 - [ ] T029 `CHANGELOG.md` — add `## [1.3.0] — <merge-date>` above the previous entry; **Added** (AI resume parsing, BYOK key + consent, paste input, `/api/resume/extract`, `/parse` text mode), **Changed**/**Security** as applicable; update `[Unreleased]`/`[1.3.0]` diff links.
@@ -277,11 +277,13 @@ new user-facing feature → **MINOR** bump (→ `1.3.0`).
 to-be-merged state. **Setup**: start `npm run dev` + the backend; sign in (not
 demo); have a real OpenRouter key and a sample resume ready.
 
-- [ ] T034 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7.
+- [ ] T034 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7. Also run the SAME sample resume through the rule-based path (no key) and note, qualitatively, whether the AI path fills more fields more correctly (A1 / SC-001–SC-002 — observation only, not a pass/fail gate).
 - [ ] T035 [US2] Key & consent — enter key in the Profile settings section, reload (persists), trigger first parse (consent appears), decline (nothing sent) then accept (remembered). Verify US2 acceptance scenarios 1–7, including demo-mode unavailability.
 - [ ] T036 [US3] Graceful degradation — (a) no key → rule-based pre-fill; (b) bad key/forced failure → falls back with a friendly message; (c) both fail → retry + Continue Manually preserve form data; (d) very long resume → truncation notice. Verify US3 scenarios 1–5.
 - [ ] T037 [US4] AI indicators — confirm indicators on AI-populated fields, that editing clears them, and that a rule-based fallback shows none. Verify US4 scenarios 1–3.
 - [ ] T038 Mobile layout — DevTools ≤640px: paste input, consent notice, settings section, and AI badges stack/readable; all interactions work via touch/click.
+
+**Runtime note (FR-019 / C1)**: the AI path is browser-direct and runtime-agnostic, but verify it at least in **local mode**; if a hosted preview is available, confirm the same flow there. The rule-based fallback already runs in both runtimes today.
 
 ---
 
@@ -301,8 +303,11 @@ parallel.
 
 ## Implementation Strategy
 
-- **MVP**: Phase 01 + 02 + 03 (US1) + the key entry from US2 (T015) → a working
-  AI parse you can demo. Then US2 consent (T016/T017), US3 robustness, US4 polish.
+- **MVP**: Phase 01 + 02 + 03 (US1) + the key entry **and consent gate** from
+  US2 (T014–T017) → a working AI parse you can demo end-to-end through the UI.
+  (The consent gate T016/T017 is in the MVP because US1's AI path gates on
+  `hasConsent()` and T017 is the only UI that grants it — N1.) Then US3
+  robustness, US4 polish.
 - **Incremental**: each user-story phase is an independently testable increment;
   stop at any checkpoint to validate.
 

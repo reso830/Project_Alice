@@ -85,6 +85,11 @@ detection; skills arrive unrated (existing behavior, unchanged).
   notice that the resume was long and some tail content may be unparsed (FR-020).
   A draft is still produced; the rule-based fallback (no length cap) remains
   available on failure.
+- **Note (two distinct limits — do not conflate):** `MAX_INPUT_CHARS` (this
+  section) is the **browser-side LLM-input truncation** ceiling for the
+  OpenRouter call. `TEXT_MAX` (§5) is the **server-side cap** on the
+  `/api/resume/parse` JSON `{ text }` body for the rule-based fallback. They serve
+  different paths and may hold different values.
 
 ---
 
