@@ -37,9 +37,10 @@ env vars, local-first preserved.
 - **Local-first / privacy (the load-bearing check)**: The privacy clause forbids
   sending data to external services "unless a later specification explicitly
   requires it." **This spec is that explicit specification.** The external call is
-  BYOK, one-time-consented, browser-direct (key/content never touch Alice's
-  server), and fully optional — with no key the app behaves exactly as today
-  (rule-based). No analytics/tracking added. ✅
+  BYOK, one-time-consented, browser-direct (key never touches Alice's server;
+  uploaded content is transient/memory-only and never persisted), and fully
+  optional — with no key the app behaves exactly as today (rule-based). No
+  analytics/tracking added. ✅
 - **Simple, maintainable architecture**: two small browser modules
   (`aiSettings.js`, `llmParser.js`) separate business logic from UI; one thin
   server endpoint + one route branch. ✅

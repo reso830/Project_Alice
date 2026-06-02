@@ -143,9 +143,9 @@ run. It is a distinct, independently testable enabling slice.
 notice that the key is stored in the browser and is the user's responsibility.
 Paste a key and save; reload the page and confirm the key persists (browser-only)
 and is not transmitted to or stored by the app's server. Trigger the first parse
-and confirm an explicit consent notice appears before any content is sent;
-decline and confirm nothing is sent; accept and confirm the choice is remembered
-for subsequent parses.
+and confirm an explicit consent notice appears before any resume content is sent
+to the external provider (OpenRouter); decline and confirm nothing is sent to the
+provider; accept and confirm the choice is remembered for subsequent parses.
 
 **Acceptance Scenarios**:
 
@@ -155,8 +155,10 @@ for subsequent parses.
 2. **Given** the user enters and saves a key, **When** the page is reloaded,
    **Then** the key persists in the browser and the LLM path becomes available.
 3. **Given** the user has a key but has never consented, **When** they trigger a
-   parse, **Then** an explicit one-time consent notice is shown before any
-   content leaves the browser.
+   parse, **Then** an explicit one-time consent notice is shown before any resume
+   content is sent to the external provider (OpenRouter). (Uploaded files may
+   still pass through Alice's own stateless, memory-only extractor first — that is
+   not the third-party send the consent gates; see FR-011.)
 4. **Given** the consent notice, **When** the user declines, **Then** no resume
    content is sent to the provider and the user can still continue manually or
    via the rule-based fallback.
