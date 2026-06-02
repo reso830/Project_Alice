@@ -35,6 +35,44 @@ function makeClient(terminalValue) {
   return { client, chain, calls };
 }
 
+function makeRoundTripClient(initialProfile = null) {
+  const calls = [];
+  let storedRow = initialProfile === null
+    ? null
+    : { data: JSON.stringify(initialProfile) };
+  const chain = {
+    select: (...args) => {
+      calls.push({ method: 'select', args });
+      return chain;
+    },
+    upsert: (...args) => {
+      calls.push({ method: 'upsert', args });
+      storedRow = { data: args[0].data };
+      return chain;
+    },
+    eq: (...args) => {
+      calls.push({ method: 'eq', args });
+      return chain;
+    },
+    maybeSingle: (...args) => {
+      calls.push({ method: 'maybeSingle', args });
+      return Promise.resolve({ data: storedRow, error: null });
+    },
+    single: (...args) => {
+      calls.push({ method: 'single', args });
+      return Promise.resolve({ data: storedRow, error: null });
+    },
+  };
+  const client = {
+    from: vi.fn(() => {
+      calls.push({ method: 'from', args: ['profile'] });
+      return chain;
+    }),
+  };
+
+  return { client, calls };
+}
+
 function callsOf(calls, method) {
   return calls.filter((c) => c.method === method);
 }
@@ -200,6 +238,40 @@ describe('createSupabaseProfileRepository.upsert', () => {
     expect(result).toEqual(persisted);
     expect(result).not.toHaveProperty('user_id');
     expect(result).not.toHaveProperty('data');
+  });
+
+  it('round-trips structured skill entries unchanged through upsert and get', async () => {
+    const { client } = makeRoundTripClient();
+    const repo = createSupabaseProfileRepository(client, USER_ID);
+    const profile = {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      skills: [
+        { name: 'Analytical Engine', level: 5 },
+        { name: 'Documentation', level: 4 },
+      ],
+    };
+
+    const saved = await repo.upsert(profile);
+
+    expect(saved.skills).toEqual(profile.skills);
+    expect((await repo.get()).skills).toEqual(profile.skills);
+  });
+
+  it('migrates legacy string skills to Basic during upsert and get', async () => {
+    const { client } = makeRoundTripClient();
+    const repo = createSupabaseProfileRepository(client, USER_ID);
+    const saved = await repo.upsert({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      skills: [' Analytical Engine ', ' Documentation '],
+    });
+
+    expect(saved.skills).toEqual([
+      { name: 'Analytical Engine', level: 2 },
+      { name: 'Documentation', level: 2 },
+    ]);
+    expect((await repo.get()).skills).toEqual(saved.skills);
   });
 
   it('throws PostgREST errors', async () => {

@@ -16,8 +16,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Quick filters & sort** — filter by Status, Salary range, Compatibility range, Company, Favorites, Shift, Work Setup, and Location; stack multiple filters with AND logic; sort by Job ID, Status, Compatibility, Salary, or Company; filter state persists across reloads
 - **Quick actions** — change status, star applications, copy saved URLs, and archive directly from the card list
 - **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
-- **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections
-- **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; all six structured sections (Experience, Education, Certifications, Awards, Languages, Links) use modal/bottom-sheet overlays for Add and Edit with inline validation, focus trap, and discard guard; Skills use a staging overlay with deduplication; browser refresh guard warns on unsaved changes; navbar navigation intercepted when unsaved changes exist
+- **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections; Skills render as graded 1–5 proficiency meters with an in-place level reveal, scale reference, sort, and collapse-past-10
+- **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; six structured sections (Experience, Education, Certifications, Awards, Languages, Links) use modal/bottom-sheet overlays for Add and Edit with inline validation, focus trap, and discard guard; Skills use inline rows with a tappable 1–5 proficiency level picker (Save gated until every skill is rated, names are non-blank, and there are no duplicates); browser refresh guard warns on unsaved changes; navbar navigation intercepted when unsaved changes exist
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
@@ -214,7 +214,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.0.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.1.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
@@ -246,19 +246,9 @@ For a quick map of where to find things in the codebase, see [docs/REPO_MAP.md](
 
 - [docs/deployment.md](docs/deployment.md) — local + hosted deployment guide
 - [docs/hosted-smoke-test.md](docs/hosted-smoke-test.md) — pre-promotion hosted smoke-test checklist (Given/When/Then; runs after a hosted deploy before promoting to production)
-- [docs/REPO_MAP.md](docs/REPO_MAP.md) — file/folder navigation map for AI-assisted work
+- [docs/REPO_MAP.md](docs/REPO_MAP.md) — file/folder navigation map for AI-assisted work, including a **Spec Packages** index of every feature's `specs/###-…/` package (the per-feature spec links used to live here — they're consolidated there now)
+- [docs/feature_roadmap.md](docs/feature_roadmap.md) — product roadmap, version themes, and feature status
 - [docs/AI_WORKFLOW_GUIDE.md](docs/AI_WORKFLOW_GUIDE.md) — local two-agent AI pipeline reference
 - [docs/features/](docs/features/) — feature briefs that seed Speckit specs
-- [docs/design/](docs/design/) — visual and UX design notes
-- [specs/025-application-timeline/](specs/025-application-timeline/) — Application Timeline specification package
-- [docs/design/application_timeline.md](docs/design/application_timeline.md) — Application Timeline interaction and visual design
-- [specs/026-calendar/](specs/026-calendar/) — Calendar page specification package
-- [docs/design/calendar.md](docs/design/calendar.md) — Calendar page interaction and visual design
-- [specs/028-archive-applications-view/](specs/028-archive-applications-view/) — Archive Applications view specification package
-- [specs/029-loading-async-states/](specs/029-loading-async-states/) — Loading & async states specification package
-- [docs/design/loading.md](docs/design/loading.md) — Loading channels, skeleton vocabulary, inline-error and button-busy contracts
-- [specs/018-auth-user-access/spec.md](specs/018-auth-user-access/spec.md) — hosted-auth feature specification
-- [specs/018-auth-user-access/plan.md](specs/018-auth-user-access/plan.md) — architecture and implementation plan
-- [specs/018-auth-user-access/quickstart.md](specs/018-auth-user-access/quickstart.md) — operator install steps for Supabase setup
-- [specs/018-auth-user-access/data-model.md](specs/018-auth-user-access/data-model.md) — `allowed_emails` schema and trigger contract
-- [specs/021-hosted-resume-import-security/contracts/api.md](specs/021-hosted-resume-import-security/contracts/api.md) — resume import security model (021)
+- [docs/design/](docs/design/) — visual and UX design notes; per-screen design specs:
+  - [application_timeline.md](docs/design/application_timeline.md) · [calendar.md](docs/design/calendar.md) · [loading.md](docs/design/loading.md) · [profile_page.md](docs/design/profile_page.md) (incl. skill proficiency §4.4 / §5)

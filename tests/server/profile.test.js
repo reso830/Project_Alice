@@ -64,7 +64,10 @@ describe('profile API', () => {
         firstName: 'Ana',
         lastName: 'Rivera',
         email: 'ana@example.com',
-        skills: ['JavaScript', 'CSS'],
+        skills: [
+          { name: 'JavaScript', level: 2 },
+          { name: 'CSS', level: 2 },
+        ],
       });
       expect(fetched.body).toEqual(saved.body);
     });

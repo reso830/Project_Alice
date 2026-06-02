@@ -1,7 +1,16 @@
 import { ResumeImport } from '../components/ResumeImport.js';
 import { Toast } from '../components/Toast.js';
 import * as authStore from '../data/authStore.js';
-import { mergeResumeData, normaliseProfile, PROFICIENCY_LEVELS, validateProfile } from '../models/profile.js';
+import {
+  getSkillLabel,
+  mergeResumeData,
+  normaliseProfile,
+  PROFICIENCY_LEVELS,
+  SKILL_FLAVOR,
+  SKILL_LEVELS,
+  SKILL_MAX,
+  validateProfile,
+} from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import { buildProfileEditSkeleton } from '../utils/skeletons.js';
@@ -18,13 +27,13 @@ let _basicInfoFields = {};
 let _discardKeyHandler = null;
 let _discardAction = null;
 let _openOverlay = null;
-let _renderSkillsBody = () => {};
 let _beforeUnloadHandler = null;
 let _highlightImport = false;
 let _importDone = false;
 let _importArea = null;
 let _mountGeneration = 0;
 let _saveBindings = [];
+let _skillPopoverCleanup = [];
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -92,11 +101,27 @@ function isDirty() {
   return JSON.stringify(_formState) !== JSON.stringify(_initialState);
 }
 
+function getSkillErrors() {
+  if (!_formState) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(validateProfile(_formState).errors)
+      .filter(([key]) => key.startsWith('skills')),
+  );
+}
+
+function hasSkillErrors() {
+  return Object.keys(getSkillErrors()).length > 0;
+}
+
 function updateControlsState() {
   const dirty = isDirty();
+  const skillBlocked = hasSkillErrors();
 
   for (const button of document.querySelectorAll('.page-controls__save')) {
-    button.disabled = !dirty || _saving;
+    button.disabled = !dirty || _saving || skillBlocked;
     if (!_saving) {
       button.textContent = 'Save';
     }
@@ -188,13 +213,20 @@ function clearBasicInfoErrors() {
   }
 }
 
-function createEditCard(title, { onAdd } = {}) {
+function createEditCard(title, { onAdd, headerAction } = {}) {
   const card = createElement('section', 'section-card edit-card');
   const header = createElement('div', 'section-card__header');
   const label = createElement('div', 'section-label', title);
+  const labelGroup = createElement('div', 'section-card__label-group');
   const body = createElement('div', 'edit-card__body');
 
-  header.append(label);
+  // Group the label with its inline header action (e.g. the skills "?" scale
+  // popover) so the action sits beside the label, not floating in the middle.
+  labelGroup.append(label);
+  if (headerAction) {
+    labelGroup.append(headerAction);
+  }
+  header.append(labelGroup);
   if (onAdd) {
     header.append(createButton('Add', 'profile-btn profile-btn--primary', onAdd));
   }
@@ -209,6 +241,12 @@ function normalizeWhitespace(value) {
 
 function commitListChange() {
   updateControlsState();
+}
+
+function cleanupSkillPopovers() {
+  for (const cleanup of _skillPopoverCleanup.splice(0)) {
+    cleanup();
+  }
 }
 
 function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
@@ -497,113 +535,251 @@ function renderSummaryCard(page) {
   page.append(card);
 }
 
-function openSkillsOverlay() {
-  if (_openOverlay !== null) {
-    return;
-  }
+function renderSkillsCard(page) {
+  cleanupSkillPopovers();
 
-  const staged = [];
+  function renderScalePopover() {
+    const wrap = createElement('div', 'skill-scale');
+    const trigger = createButton('?', 'skill-scale-trigger', (event) => {
+      event.stopPropagation();
+      popover.hidden = !popover.hidden;
+    }, 'Show skill proficiency scale');
+    const popover = createElement('div', 'skill-scale-popover');
 
-  function renderStagedPills(pillWrap) {
-    pillWrap.replaceChildren();
+    popover.hidden = true;
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'Skill proficiency scale');
 
-    for (const skill of staged) {
-      const pill = createElement('span', 'skill-pill', skill);
-      const remove = createButton('×', 'skill-pill__remove', () => {
-        const index = staged.indexOf(skill);
+    for (const { level, label } of SKILL_LEVELS) {
+      const item = createElement('div', 'skill-scale-popover__item');
+      const swatch = createElement('span', `skill-scale-popover__swatch skill-level-${level}`);
+      const text = createElement('span', 'skill-scale-popover__text');
 
-        staged.splice(index, 1);
-        renderStagedPills(pillWrap);
-      });
-
-      pill.append(remove);
-      pillWrap.append(pill);
+      swatch.setAttribute('aria-hidden', 'true');
+      text.append(
+        createElement('strong', 'skill-scale-popover__label', label),
+        createElement('span', 'skill-scale-popover__flavor', SKILL_FLAVOR[level]),
+      );
+      item.append(swatch, text);
+      popover.append(item);
     }
+
+    const onDocumentClick = (event) => {
+      if (!wrap.contains(event.target)) {
+        popover.hidden = true;
+      }
+    };
+    const onDocumentKeydown = (event) => {
+      if (event.key === 'Escape') {
+        popover.hidden = true;
+      }
+    };
+
+    document.addEventListener('click', onDocumentClick);
+    document.addEventListener('keydown', onDocumentKeydown);
+    _skillPopoverCleanup.push(() => {
+      document.removeEventListener('click', onDocumentClick);
+      document.removeEventListener('keydown', onDocumentKeydown);
+    });
+
+    wrap.append(trigger, popover);
+    return wrap;
   }
 
-  function buildSkillsForm(formEl) {
-    const inputRow = createElement('div', 'skills-input-row');
-    const input = document.createElement('input');
-    const add = createButton('Add', 'profile-btn profile-btn--outline', () => {
-      const skill = normalizeWhitespace(input.value);
-      const existingSkills = _formState.skills.map((existing) => existing.toLowerCase());
-      const stagedSkills = staged.map((existing) => existing.toLowerCase());
+  // No header "Add" button — the skills card uses the inline "+ Add skill"
+  // control in the body (design §5). The header carries only the "?" popover.
+  const { card, body } = createEditCard('SKILLS', {
+    headerAction: renderScalePopover(),
+  });
 
-      if (validateRequired(skill)) {
+  function getDuplicateIndexes() {
+    const seen = new Map();
+    const duplicates = new Set();
+
+    _formState.skills.forEach((skill, index) => {
+      const key = normalizeWhitespace(skill.name ?? '').toLowerCase();
+
+      if (!key) {
         return;
       }
 
-      if (!existingSkills.includes(skill.toLowerCase()) && !stagedSkills.includes(skill.toLowerCase())) {
-        staged.push(skill);
-        input.value = '';
-        renderStagedPills(pillWrap);
-      }
-    });
-    const pillWrap = createElement('div', 'skills-pills-wrap');
-
-    input.type = 'text';
-    input.className = 'edit-field__control';
-    input.setAttribute('aria-label', 'Skill');
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        add.click();
+      if (seen.has(key)) {
+        duplicates.add(seen.get(key));
+        duplicates.add(index);
+      } else {
+        seen.set(key, index);
       }
     });
 
-    inputRow.append(input, add);
-    formEl.append(inputRow, pillWrap);
-
-    return {
-      validate: () => true,
-      getData: () => staged,
-      isDirty: () => staged.length > 0,
-    };
+    return duplicates;
   }
 
-  function mergeSkills(data) {
-    const existing = new Set(_formState.skills.map((skill) => skill.toLowerCase()));
+  function buildFeedback(errors) {
+    const messages = [];
+    const missingLevels = Object.keys(errors)
+      .filter((key) => key.match(/^skills\[\d+\]\.level$/)).length;
 
-    for (const skill of data) {
-      if (!existing.has(skill.toLowerCase())) {
-        _formState.skills.push(skill);
-        existing.add(skill.toLowerCase());
+    if (missingLevels > 0) {
+      messages.push(`Set a level for every skill to save · ${missingLevels} missing`);
+    }
+
+    for (const [key, message] of Object.entries(errors)) {
+      if (key.endsWith('.name') || key === 'skills.duplicate' || key === 'skills.max') {
+        messages.push(message);
       }
     }
 
-    commitListChange();
-    _renderSkillsBody();
+    return [...new Set(messages)];
   }
 
-  createEntryOverlay('Add Skills', buildSkillsForm, {
-    onSave: (data) => mergeSkills(data),
-  });
-}
+  function renderLevelPicker(skill, index, errors) {
+    const picker = createElement('div', 'skill-level-picker');
+    const segments = createElement('div', 'skill-level-picker__segments');
+    const caption = createElement('div', 'skill-level-picker__caption');
 
-function renderSkillsCard(page) {
-  const { card, body } = createEditCard('SKILLS', { onAdd: () => openSkillsOverlay() });
+    // Paint the picker for an "effective" level — the saved level, or a hover /
+    // keyboard-focus preview. Segments 1..eff fill UNIFORMLY in eff's colour
+    // (e.g. hover 5 -> 1-5 purple; hover 2 on a level-4 skill -> 1-2 gold,
+    // 3-4 cleared) and the caption mirrors it in the same colour (#5, #7).
+    function paint(eff) {
+      for (let n = 1; n <= 5; n += 1) {
+        picker.classList.remove(`skill-level-${n}`);
+      }
+      if (eff !== null) {
+        picker.classList.add(`skill-level-${eff}`);
+      }
+      [...segments.children].forEach((seg, i) => {
+        seg.classList.toggle('is-filled', eff !== null && i + 1 <= eff);
+      });
+      caption.textContent = eff === null
+        ? 'Tap to set a level'
+        : `${eff} · ${getSkillLabel(eff)}`;
+    }
 
-  function render() {
-    const pills = createElement('div', 'skills-pills-wrap');
+    for (const { level, label } of SKILL_LEVELS) {
+      const segment = createButton(String(level), 'skill-level-picker__segment', () => {
+        _formState.skills[index].level = _formState.skills[index].level === level ? null : level;
+        commitListChange();
+        render(index, level);
+      }, `${skill.name || 'Skill'}: set ${label}, level ${level} of 5`);
+
+      segment.dataset.level = String(level);
+      segment.addEventListener('mouseenter', () => paint(level));
+      segments.append(segment);
+    }
+
+    segments.addEventListener('mouseleave', () => paint(skill.level));
+    segments.addEventListener('focusin', (event) => {
+      const focused = Number(event.target?.dataset?.level);
+      if (focused) {
+        paint(focused);
+      }
+    });
+    segments.addEventListener('focusout', () => paint(skill.level));
+
+    if (errors[`skills[${index}].level`]) {
+      picker.classList.add('has-warning');
+    }
+
+    paint(skill.level);
+    picker.append(segments, caption);
+    return picker;
+  }
+
+  function render(focusIndex = null, focusLevel = null, selection = null) {
+    const rows = createElement('div', 'skill-editor-list');
+    const errors = getSkillErrors();
+    const duplicateIndexes = getDuplicateIndexes();
 
     body.replaceChildren();
 
-    for (const skill of _formState.skills) {
-      const pill = createElement('span', 'skill-pill');
-      const remove = createButton('×', 'skill-pill__remove', () => {
-        _formState.skills = _formState.skills.filter((existing) => existing !== skill);
+    _formState.skills.forEach((skill, index) => {
+      const row = createElement('div', 'skill-editor-row');
+      // Visible per-row "Skill name" labels are repetitive and break the row's
+      // vertical alignment; keep the label for screen readers (sr-only via the
+      // row class) and guide sighted users with a placeholder instead.
+      const field = createField('Skill name', skill.name ?? '', false, { placeholder: 'Skill name' });
+      const remove = createButton('×', 'skill-editor-row__remove', () => {
+        _formState.skills.splice(index, 1);
         commitListChange();
         render();
+      }, 'Remove skill');
+
+      field.wrapper.classList.add('skill-editor-row__name');
+      field.input.addEventListener('input', () => {
+        const nextSelection = {
+          end: field.input.selectionEnd,
+          start: field.input.selectionStart,
+        };
+
+        _formState.skills[index].name = field.input.value;
+        commitListChange();
+        render(index, null, nextSelection);
       });
+      if (errors[`skills[${index}].name`]) {
+        setFieldError(field, errors[`skills[${index}].name`]);
+      }
 
-      pill.append(createElement('span', null, skill), remove);
-      pills.append(pill);
+      if (
+        errors[`skills[${index}].name`]
+        || errors[`skills[${index}].level`]
+        || duplicateIndexes.has(index)
+      ) {
+        row.classList.add('has-warning');
+      }
+
+      row.append(field.wrapper, renderLevelPicker(skill, index, errors), remove);
+      rows.append(row);
+    });
+
+    body.append(rows);
+
+    const atCap = _formState.skills.length >= SKILL_MAX;
+    const add = createButton('+ Add skill', 'profile-btn profile-btn--outline skill-editor-add', () => {
+      if (_formState.skills.length >= SKILL_MAX) {
+        return;
+      }
+      _formState.skills.push({ name: '', level: null });
+      commitListChange();
+      render(_formState.skills.length - 1);
+    });
+    add.disabled = atCap;
+    if (atCap) {
+      add.title = `Maximum ${SKILL_MAX} skills`;
     }
+    body.append(add);
 
-    body.append(pills);
+    const messages = buildFeedback(errors);
+    if (atCap && !errors['skills.max']) {
+      // At exactly the cap there is no validation error, but the disabled Add
+      // needs a visible reason — surface it in the same red feedback block as
+      // the missing-info messages.
+      messages.push(`Maximum ${SKILL_MAX} skills reached.`);
+    }
+    if (messages.length > 0) {
+      const feedback = createElement('div', 'skill-editor-feedback', messages.join(' '));
+
+      feedback.setAttribute('role', 'alert');
+      body.append(feedback);
+    }
+    updateControlsState();
+
+    if (focusIndex !== null) {
+      const row = body.querySelectorAll('.skill-editor-row')[focusIndex];
+
+      if (focusLevel !== null) {
+        row?.querySelector(`.skill-level-picker__segment[data-level="${focusLevel}"]`)?.focus();
+      } else {
+        const input = row?.querySelector('input');
+
+        input?.focus();
+        if (selection && input) {
+          input.setSelectionRange(selection.start, selection.end);
+        }
+      }
+    }
   }
 
-  _renderSkillsBody = render;
   render();
   page.append(card);
 }
@@ -1197,7 +1373,8 @@ async function handleSave() {
 
   removeSectionValidationError();
 
-  const validation = validateProfile(_formState);
+  const payload = normaliseProfile(_formState);
+  const validation = validateProfile(payload);
 
   if (!validation.valid) {
     surfaceValidationErrors(validation.errors);
@@ -1208,8 +1385,9 @@ async function handleSave() {
   setSavingControlsBusy(true);
 
   try {
-    await saveProfile(_formState);
-    _initialState = deepClone(_formState);
+    await saveProfile(payload);
+    _formState = deepClone(payload);
+    _initialState = deepClone(payload);
     updateControlsState();
     _navigate('profile');
     Toast.show('Profile saved.', 'success');
@@ -1325,6 +1503,7 @@ export async function mount(container, { navigate, highlightImport = false } = {
 
 export function unmount() {
   _openOverlay?.close();
+  cleanupSkillPopovers();
   if (_beforeUnloadHandler) {
     window.removeEventListener('beforeunload', _beforeUnloadHandler);
     _beforeUnloadHandler = null;
@@ -1348,7 +1527,6 @@ export function unmount() {
   _basicInfoFields = {};
   _discardAction = null;
   _openOverlay = null;
-  _renderSkillsBody = () => {};
   _importArea?.destroy?.();
   _importArea = null;
   for (const binding of _saveBindings) {

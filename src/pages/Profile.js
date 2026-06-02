@@ -1,5 +1,14 @@
 import { deleteAccount, getAll, getProfile } from '../services/api.js';
-import { computeAppCounts, computeStats, STATUS_COLORS, STATUS_LABELS } from '../models/profile.js';
+import {
+  computeAppCounts,
+  computeStats,
+  getSkillLabel,
+  normaliseProfile,
+  SKILL_FLAVOR,
+  SKILL_LEVELS,
+  STATUS_COLORS,
+  STATUS_LABELS,
+} from '../models/profile.js';
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
 import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
@@ -12,6 +21,8 @@ import { getSafeExternalHref } from '../utils/url.js';
 let _container = null;
 let _dismissTimer = null;
 let _tooltip = null;
+const _cleanupHandlers = [];
+const _skillRevealTimers = new Set();
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -376,14 +387,30 @@ function renderBasicInfo(profile) {
   return basic;
 }
 
-function renderSubSection(label, contentEl) {
+function renderSubSection(label, contentEl, actionsEl = null, labelAdornment = null) {
   const section = createElement('div', 'profile-subsection');
-  const labelRow = createElement('div', 'profile-subsection__label', label);
+  const labelRow = createElement('div', 'profile-subsection__label');
+  const labelText = createElement('span', 'profile-subsection__label-text', label);
+  const labelLead = createElement('span', 'profile-subsection__label-lead');
+  const labelActions = createElement('span', 'profile-subsection__label-actions');
   const chevron = createElement('span', 'subsection-chevron', '›');
   const content = createElement('div', 'profile-subsection__content');
 
   chevron.setAttribute('aria-hidden', 'true');
-  labelRow.append(chevron);
+  // Keep the label and its inline adornment grouped on the left (the label row
+  // is space-between, so the adornment must sit inside the lead group — not as
+  // a third flex child — or it floats into the middle).
+  labelLead.append(labelText);
+  if (labelAdornment) {
+    labelAdornment.addEventListener('click', (event) => event.stopPropagation());
+    labelLead.append(labelAdornment);
+  }
+  if (actionsEl) {
+    actionsEl.addEventListener('click', (event) => event.stopPropagation());
+    labelActions.append(actionsEl);
+  }
+  labelActions.append(chevron);
+  labelRow.append(labelLead, labelActions);
   labelRow.addEventListener('click', () => {
     section.classList.toggle('is-collapsed');
   });
@@ -391,6 +418,25 @@ function renderSubSection(label, contentEl) {
   section.append(labelRow, content);
 
   return section;
+}
+
+function cleanupTransientState() {
+  if (_dismissTimer) {
+    clearTimeout(_dismissTimer);
+    _dismissTimer = null;
+  }
+
+  for (const cleanup of _cleanupHandlers.splice(0)) {
+    cleanup();
+  }
+
+  for (const timer of _skillRevealTimers) {
+    clearTimeout(timer);
+  }
+  _skillRevealTimers.clear();
+
+  _tooltip?.remove();
+  _tooltip = null;
 }
 
 function renderSummary(profile, container) {
@@ -446,18 +492,182 @@ function renderEducation(profile, container) {
   container.append(renderSubSection('EDUCATION', list));
 }
 
-function renderPills(label, values, container) {
-  if (!Array.isArray(values) || values.length === 0) {
+function renderSkillScalePopover() {
+  const popover = createElement('div', 'skill-scale-popover');
+
+  popover.hidden = true;
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', 'Skill proficiency scale');
+
+  for (const { level, label } of SKILL_LEVELS) {
+    const item = createElement('div', 'skill-scale-popover__item');
+    const swatch = createElement('span', `skill-scale-popover__swatch skill-level-${level}`);
+    const text = createElement('span', 'skill-scale-popover__text');
+
+    swatch.setAttribute('aria-hidden', 'true');
+    text.append(
+      createElement('strong', 'skill-scale-popover__label', label),
+      createElement('span', 'skill-scale-popover__flavor', SKILL_FLAVOR[level]),
+    );
+    item.append(swatch, text);
+    popover.append(item);
+  }
+
+  return popover;
+}
+
+function renderSkillRow(skill) {
+  const label = getSkillLabel(skill.level);
+  const row = document.createElement('button');
+  const name = createElement('span', 'skill-meter-row__name', skill.name);
+  const value = createElement('span', 'skill-meter-row__value');
+  const meter = createElement('span', 'skill-meter');
+  const levelText = createElement('span', 'skill-meter-row__level', `${skill.level} · ${label}`);
+
+  row.type = 'button';
+  // skill-level-{n} on the row sets --skill-level-color for BOTH the meter fill
+  // and the revealed level word (so the word is in the level's colour).
+  row.className = `skill-meter-row skill-level-${skill.level}`;
+  row.setAttribute('aria-label', `${skill.name}: ${label}, level ${skill.level} of 5`);
+  name.title = skill.name;
+
+  for (let segment = 1; segment <= 5; segment += 1) {
+    const part = createElement('span', 'skill-meter__segment');
+
+    if (segment <= skill.level) {
+      part.classList.add('is-filled');
+    }
+
+    part.setAttribute('aria-hidden', 'true');
+    meter.append(part);
+  }
+
+  row.addEventListener('mouseenter', () => row.classList.add('is-revealed'));
+  row.addEventListener('mouseleave', () => row.classList.remove('is-revealed'));
+  row.addEventListener('click', () => {
+    row.classList.add('is-revealed');
+
+    const timer = setTimeout(() => {
+      row.classList.remove('is-revealed');
+      _skillRevealTimers.delete(timer);
+    }, 2500);
+
+    _skillRevealTimers.add(timer);
+  });
+
+  value.append(meter, levelText);
+  row.append(name, value);
+
+  return row;
+}
+
+function sortSkills(skills, mode, direction) {
+  const withIndex = skills.map((skill, index) => ({ skill, index }));
+
+  if (mode === 'level') {
+    withIndex.sort((a, b) => {
+      const levelDelta = direction === 'desc'
+        ? b.skill.level - a.skill.level
+        : a.skill.level - b.skill.level;
+
+      return levelDelta || a.index - b.index;
+    });
+  }
+
+  return withIndex.map((entry) => entry.skill);
+}
+
+function renderSkills(profile, container) {
+  const skills = normaliseProfile({ skills: profile.skills }).skills
+    .filter((skill) => skill.name && skill.level !== null);
+
+  if (skills.length === 0) {
     return;
   }
 
-  const pills = createElement('div', 'pill-row');
+  let sortMode = 'custom';
+  let sortDirection = 'desc';
+  let expanded = false;
+  const wrapper = createElement('div', 'skills-display');
+  const controls = createElement('div', 'skills-display__controls');
+  const scaleWrap = createElement('div', 'skill-scale');
+  const scaleButton = createButton('?', 'skill-scale-trigger', (event) => {
+    event.stopPropagation();
+    popover.hidden = !popover.hidden;
+  });
+  const popover = renderSkillScalePopover();
+  const customButton = createButton('Custom', 'skill-sort-btn is-active', () => {
+    sortMode = 'custom';
+    customButton.classList.add('is-active');
+    levelButton.classList.remove('is-active');
+    renderList();
+  });
+  const levelButton = createButton('By level ▾', 'skill-sort-btn', () => {
+    if (sortMode === 'level') {
+      sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+    } else {
+      sortMode = 'level';
+      sortDirection = 'desc';
+    }
 
-  for (const value of values) {
-    pills.append(createElement('span', 'pill-tag', value));
+    customButton.classList.remove('is-active');
+    levelButton.classList.add('is-active');
+    levelButton.textContent = sortDirection === 'desc' ? 'By level ▾' : 'By level ▴';
+    renderList();
+  });
+  const list = createElement('div', 'skill-meter-list');
+  const toggle = createButton('', 'skill-list-toggle', () => {
+    expanded = !expanded;
+    renderList();
+  });
+
+  function closePopover() {
+    popover.hidden = true;
   }
 
-  container.append(renderSubSection(label, pills));
+  function renderList() {
+    const visibleSkills = sortSkills(skills, sortMode, sortDirection);
+    const shouldCollapse = visibleSkills.length > 10;
+    const renderedSkills = shouldCollapse && !expanded
+      ? visibleSkills.slice(0, 10)
+      : visibleSkills;
+
+    list.replaceChildren(...renderedSkills.map(renderSkillRow));
+    toggle.hidden = !shouldCollapse;
+    toggle.textContent = expanded ? 'Show less' : `Show all ${visibleSkills.length} skills ▾`;
+  }
+
+  const onDocumentClick = (event) => {
+    if (!scaleWrap.contains(event.target)) {
+      closePopover();
+    }
+  };
+  const onDocumentKeydown = (event) => {
+    if (event.key === 'Escape') {
+      closePopover();
+    }
+  };
+
+  scaleButton.setAttribute('aria-label', 'Show skill proficiency scale');
+  customButton.dataset.sort = 'custom';
+  levelButton.dataset.sort = 'level';
+  scaleWrap.append(scaleButton, popover);
+  // Sort controls live INSIDE the section body so they collapse with the
+  // content on mobile (and don't crowd the collapse chevron). The "?" sits
+  // beside the SKILLS label as an inline adornment. A "Sort" lead label anchors
+  // the row so the buttons don't float against empty space.
+  const sortLabel = createElement('span', 'skills-display__controls-label', 'Sort');
+  controls.append(sortLabel, customButton, levelButton);
+  wrapper.append(controls, list, toggle);
+  document.addEventListener('click', onDocumentClick);
+  document.addEventListener('keydown', onDocumentKeydown);
+  _cleanupHandlers.push(() => {
+    document.removeEventListener('click', onDocumentClick);
+    document.removeEventListener('keydown', onDocumentKeydown);
+  });
+  renderList();
+
+  container.append(renderSubSection('SKILLS', wrapper, null, scaleWrap));
 }
 
 function renderCertifications(profile, container) {
@@ -562,7 +772,7 @@ function renderPopulatedProfile(section, profile) {
   renderSummary(profile, content);
   renderExperience(profile, content);
   renderEducation(profile, content);
-  renderPills('SKILLS', profile.skills, content);
+  renderSkills(profile, content);
   renderCertifications(profile, content);
   renderAwards(profile, content);
   renderLanguages(profile, content);
@@ -670,6 +880,8 @@ function renderAccountSection(page, { navigate, container } = {}) {
 }
 
 export async function mount(container, { navigate } = {}) {
+  cleanupTransientState();
+
   const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
   const page = createElement('div', 'profile-page');
 
@@ -701,17 +913,12 @@ export async function mount(container, { navigate } = {}) {
 }
 
 export function unmount() {
-  if (_dismissTimer) {
-    clearTimeout(_dismissTimer);
-    _dismissTimer = null;
-  }
+  cleanupTransientState();
 
   if (_container) {
     _container.replaceChildren();
   }
 
-  _tooltip?.remove();
-  _tooltip = null;
   _container = null;
 }
 

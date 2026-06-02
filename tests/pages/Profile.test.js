@@ -268,6 +268,170 @@ describe('Profile page', () => {
     expect(navigate).toHaveBeenCalledWith('profile-edit');
   });
 
+  it('renders structured skill proficiency rows with accessible meter details', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      skills: [
+        { name: 'Jira', level: 4 },
+        { name: '', level: 5 },
+      ],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const section = getSubsection(container, 'SKILLS');
+    const rows = [...section.querySelectorAll('.skill-meter-row')];
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].getAttribute('aria-label')).toBe('Jira: Strong, level 4 of 5');
+    expect(rows[0].querySelector('.skill-meter-row__name').getAttribute('title')).toBe('Jira');
+    expect(rows[0].querySelectorAll('.skill-meter__segment')).toHaveLength(5);
+    expect(rows[0].querySelectorAll('.skill-meter__segment.is-filled')).toHaveLength(4);
+    expect(rows[0].querySelector('.skill-meter-row__level').textContent).toBe('4 · Strong');
+    // skill-level-{n} on the row drives the level colour for BOTH the meter fill
+    // and the revealed word (so the word matches the level's colour).
+    expect(rows[0].classList.contains('skill-level-4')).toBe(true);
+  });
+
+  it('uses model normalization before displaying skills', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      skills: [
+        { name: 'Over Range', level: 6 },
+        { name: 'Unrated', level: null },
+      ],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const rows = [...container.querySelectorAll('.skill-meter-row')];
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].getAttribute('aria-label')).toBe('Over Range: Expert, level 5 of 5');
+    expect(rows[0].querySelectorAll('.skill-meter__segment.is-filled')).toHaveLength(5);
+  });
+
+  it('reveals skill level text on hover or tap without changing row count', async () => {
+    vi.useFakeTimers();
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      skills: [{ name: 'Scrum', level: 2 }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const row = container.querySelector('.skill-meter-row');
+
+    row.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    expect(row.classList.contains('is-revealed')).toBe(true);
+    expect(container.querySelectorAll('.skill-meter-row')).toHaveLength(1);
+
+    row.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+    expect(row.classList.contains('is-revealed')).toBe(false);
+
+    row.click();
+    expect(row.classList.contains('is-revealed')).toBe(true);
+
+    vi.advanceTimersByTime(2500);
+    expect(row.classList.contains('is-revealed')).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('shows the skill scale popover and closes it with Escape', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      skills: [{ name: 'Scrum', level: 2 }],
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const scaleButton = container.querySelector('.skill-scale-trigger');
+    scaleButton.click();
+
+    const popover = container.querySelector('.skill-scale-popover');
+
+    expect(popover.hidden).toBe(false);
+    expect(popover.textContent).toContain('Beginner');
+    expect(popover.textContent).toContain('Sets direction; mentors others.');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(popover.hidden).toBe(true);
+  });
+
+  it('cleans up skill popover document listeners before an in-place remount', async () => {
+    const container = document.createElement('main');
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    api.getProfile
+      .mockResolvedValueOnce({
+        firstName: 'Alex',
+        lastName: 'Rivera',
+        skills: [{ name: 'Scrum', level: 2 }],
+      })
+      .mockResolvedValueOnce({
+        firstName: 'Alex',
+        lastName: 'Rivera',
+        skills: [],
+      });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    expect(removeSpy).toHaveBeenCalledWith('click', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+    removeSpy.mockRestore();
+  });
+
+  it('sorts skills by level and collapses long skill lists', async () => {
+    const container = document.createElement('main');
+    const skills = Array.from({ length: 12 }, (_, index) => ({
+      name: `Skill ${index + 1}`,
+      level: (index % 5) + 1,
+    }));
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      skills,
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    expect(container.querySelectorAll('.skill-meter-row')).toHaveLength(10);
+    expect(container.querySelector('.skill-list-toggle').textContent).toBe('Show all 12 skills ▾');
+
+    container.querySelector('.skill-sort-btn[data-sort="level"]').click();
+    expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 5');
+
+    container.querySelector('.skill-sort-btn[data-sort="level"]').click();
+    expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 1');
+
+    container.querySelector('.skill-list-toggle').click();
+    expect(container.querySelectorAll('.skill-meter-row')).toHaveLength(12);
+    expect(container.querySelector('.skill-list-toggle').textContent).toBe('Show less');
+
+    container.querySelector('.skill-sort-btn[data-sort="custom"]').click();
+    expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 1');
+  });
+
   it('handles application load failures without blocking profile rendering', async () => {
     const container = document.createElement('main');
 

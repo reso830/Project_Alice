@@ -9,14 +9,20 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.0.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.0.0');
-    expect(APP_VERSION).toBe('v1.0.0');
+  it('keeps the 1.1.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.1.0');
+    expect(APP_VERSION).toBe('v1.1.0');
 
-    expect(read('README.md')).toContain('Current version: **1.0.0**');
+    const lock = JSON.parse(read('package-lock.json'));
+    expect(lock.version).toBe('1.1.0');
+    expect(lock.packages['']?.version).toBe('1.1.0');
+
+    expect(read('README.md')).toContain('Current version: **1.1.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.0.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.1.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0');
     expect(read('CHANGELOG.md')).toContain('[1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0');
     expect(read('CHANGELOG.md')).toContain('[0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0');
     expect(read('CHANGELOG.md')).toContain('[0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0');
@@ -32,7 +38,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Application Timeline');
-    expect(readme).toContain('specs/025-application-timeline/');
     expect(readme).toContain('docs/design/application_timeline.md');
     expect(deployment).toContain('specs/025-application-timeline/quickstart.md');
     expect(repoMap).toContain('src/components/Timeline.js');
@@ -59,7 +64,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Calendar page');
-    expect(readme).toContain('specs/026-calendar/');
     expect(readme).toContain('docs/design/calendar.md');
     expect(deployment).toContain('docs/db/claim_and_seed_starter.md');
     expect(repoMap).toContain('src/components/calendar/ActionPanel.js');
@@ -87,7 +91,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Archive Applications view');
-    expect(readme).toContain('specs/028-archive-applications-view/');
     expect(deployment).toContain('specs/028-archive-applications-view/data-model.md');
     expect(deployment).toContain('specs/028-archive-applications-view/quickstart.md');
     expect(repoMap).toContain('specs/028-archive-applications-view/');

@@ -46,11 +46,25 @@ describe('resume merge rules', () => {
   });
 
   it('appends collection entries without replacing existing entries', () => {
-    const result = mergeResumeData(baseProfile({ skills: ['JS'] }), {
+    const result = mergeResumeData(baseProfile({ skills: [{ name: 'JS', level: 4 }] }), {
       skills: ['Python'],
     });
 
-    expect(result.skills).toEqual(['JS', 'Python']);
+    expect(result.skills).toEqual([
+      { name: 'JS', level: 4 },
+      { name: 'Python', level: null },
+    ]);
+  });
+
+  it('imports parsed skills as unrated (level null), never auto-rated', () => {
+    const result = mergeResumeData(baseProfile({ skills: [] }), {
+      skills: ['Go', 'Rust'],
+    });
+
+    expect(result.skills).toEqual([
+      { name: 'Go', level: null },
+      { name: 'Rust', level: null },
+    ]);
   });
 
   it('blocks duplicate experience entries by company, role, and dateStarted', () => {
@@ -73,12 +87,12 @@ describe('resume merge rules', () => {
     expect(result.experience).toHaveLength(2);
   });
 
-  it('deduplicates skills case-insensitively', () => {
-    const result = mergeResumeData(baseProfile({ skills: ['JavaScript'] }), {
+  it('deduplicates skills case-insensitively and keeps the existing level', () => {
+    const result = mergeResumeData(baseProfile({ skills: [{ name: 'JavaScript', level: 5 }] }), {
       skills: ['javascript'],
     });
 
-    expect(result.skills).toEqual(['JavaScript']);
+    expect(result.skills).toEqual([{ name: 'JavaScript', level: 5 }]);
   });
 
   it('deduplicates education entries', () => {
@@ -127,7 +141,7 @@ describe('resume merge rules', () => {
   });
 
   it('does not mutate current profile or parsed data', () => {
-    const currentProfile = baseProfile({ skills: ['JS'] });
+    const currentProfile = baseProfile({ skills: [{ name: 'JS', level: 2 }] });
     const parsedData = { skills: ['Python'] };
     const currentSnapshot = globalThis.structuredClone(currentProfile);
     const parsedSnapshot = globalThis.structuredClone(parsedData);
@@ -140,7 +154,7 @@ describe('resume merge rules', () => {
   });
 
   it('handles null or undefined parsed data without throwing', () => {
-    const currentProfile = baseProfile({ firstName: 'Alice', skills: ['JS'] });
+    const currentProfile = baseProfile({ firstName: 'Alice', skills: [{ name: 'JS', level: 2 }] });
 
     expect(mergeResumeData(currentProfile, null)).toEqual(currentProfile);
     expect(mergeResumeData(currentProfile, undefined)).toEqual(currentProfile);

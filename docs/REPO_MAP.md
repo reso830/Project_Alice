@@ -70,7 +70,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | Path | Purpose |
 |------|---------|
 | `src/models/application.js` | Client-side field validation + `STATUS_CONFIG` (colors, labels per status) · `SHIFT_VALUES` · `WORK_SETUP_VALUES` · `normalizeApplication()` · TimelineEntry helpers · `applyStatusChange(app, status, options)` · `STATUS_DISPLAY_PRIORITY` · `TERMINAL_STATES` |
-| `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` |
+| `src/models/profile.js` | Profile validation, normalisation, stat computation, `PROFICIENCY_LEVELS` (language enum). Feature 031: structured skills (`{ name, level }`) with the 1–5 proficiency scale (`SKILL_LEVELS`, `SKILL_FLAVOR`, `SKILL_MAX`, `getSkillLabel`); `normaliseSkillEntry` migrates legacy `string[]` → level 2 and coerces/validates levels; `mergeResumeData` imports skills unrated |
 | `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
 | `shared/util/date.js` | `isValidISODate(value)` — round-trip parse that rejects impossible dates like `2030-02-30`. Re-exported by `src/utils/date.js` for the client (form/timeline) and imported by `server/middleware/requestDate.js` for server-side `X-Client-Date` validation (#43) |
 
@@ -230,6 +230,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/028-archive-applications-view/` | Archive Applications view feature spec package — view-switcher toolbar chip, archived card variant, read-only Application Overlay archived mode, `unarchive` operation, `archived_date` column, Profile entry-point link, demo-mode archived seeds, and exclusion of archived rows from active workflow surfaces |
 | `specs/029-loading-async-states/` | Loading & async states feature spec package — six loading channels (`initial-load` / `refresh` / `save` / `parse` / `mutation` / `transition`), shared `asyncUI.js` + `skeletons.js` utilities, inline-error recovery, button-busy + peer-lockout contracts, view-switcher chip `aria-busy`, demo-mode parity regression suite |
 | `specs/030-delete-profile-data/` | Delete Profile & User Data feature spec package — `DELETE /api/account`, service-role admin delete + cascade, server-side password re-verification, local `confirm`-gated clear, Account section on Profile, `DeleteAccountModal`, cross-device session revalidation (`handleAuthFailure`), and v1.0.0 release prep |
+| `specs/031-skill-proficiency-system/` | Skill proficiency feature spec package — structured `{ name, level }` skills with a 1–5 scale (`SKILL_LEVELS`), normalise-on-load migration (legacy `string[]` → Basic), centralized validation (unrated / blank / duplicate / max-50), graded-meter Profile display with reveal/sort/collapse, inline level-picker editor, demo + persistence parity, and v1.1.0 release prep |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
 

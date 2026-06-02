@@ -16,18 +16,32 @@ const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 export const PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Professional', 'Fluent'];
 
-function cleanString(value) {
-  return typeof value === 'string' ? value.trim() : '';
+// Skill proficiency scale (feature 031). Distinct from PROFICIENCY_LEVELS above,
+// which is the language enum. The model owns the valid 1-5 range + shared labels;
+// segment colours stay in CSS.
+export const SKILL_LEVELS = [
+  { level: 1, label: 'Beginner' },
+  { level: 2, label: 'Basic' },
+  { level: 3, label: 'Intermediate' },
+  { level: 4, label: 'Strong' },
+  { level: 5, label: 'Expert' },
+];
+export const SKILL_FLAVOR = {
+  1: 'Aware of the basics; needs guidance.',
+  2: 'Can handle simple tasks independently.',
+  3: 'Productive day-to-day without help.',
+  4: 'Deep, reliable command of the skill.',
+  5: 'Sets direction; mentors others.',
+};
+export const SKILL_MAX = 50;
+const SKILL_MIGRATION_LEVEL = 2;
+
+export function getSkillLabel(level) {
+  return SKILL_LEVELS.find((entry) => entry.level === level)?.label ?? '';
 }
 
-function normaliseStringArray(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map(cleanString)
-    .filter(Boolean);
+function cleanString(value) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function isPlainObject(value) {
@@ -153,6 +167,48 @@ function normaliseLinkEntry(entry) {
   };
 }
 
+function coerceSkillLevel(value) {
+  // Only genuine numbers and non-empty numeric strings are coerced. Empty /
+  // whitespace strings, booleans, arrays, objects, and non-numeric strings are
+  // NOT levels — they stay unrated (null) so they gate save (FR-003/FR-010),
+  // rather than silently clamping `Number('') === 0` up to Beginner.
+  let numeric;
+
+  if (typeof value === 'number') {
+    numeric = value;
+  } else if (typeof value === 'string' && value.trim() !== '') {
+    numeric = Number(value);
+  } else {
+    return null;
+  }
+
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(numeric)));
+}
+
+function normaliseSkillEntry(entry) {
+  if (typeof entry === 'string') {
+    const name = cleanString(entry);
+
+    // Empty/whitespace legacy strings are migration junk → dropped.
+    return name ? { name, level: SKILL_MIGRATION_LEVEL } : null;
+  }
+
+  if (!isPlainObject(entry)) {
+    return null;
+  }
+
+  // Blank-name objects are KEPT (name: '') so validateProfile can reject them
+  // (FR-004) — validation normalises first, so the row must survive here.
+  return {
+    name: cleanString(entry.name),
+    level: coerceSkillLevel(entry.level),
+  };
+}
+
 function isValidMonthYear(value) {
   const match = cleanString(value).match(MONTH_YEAR_PATTERN);
 
@@ -222,7 +278,7 @@ export function normaliseProfile(data = {}) {
 
   profile.experience = normaliseObjectArray(safe.experience, normaliseExperienceEntry);
   profile.education = normaliseObjectArray(safe.education, normaliseEducationEntry);
-  profile.skills = normaliseStringArray(safe.skills);
+  profile.skills = normaliseObjectArray(safe.skills, normaliseSkillEntry);
   profile.certifications = normaliseObjectArray(safe.certifications, normaliseCertificationEntry);
   profile.awards = normaliseObjectArray(safe.awards, normaliseAwardEntry);
   profile.languages = normaliseObjectArray(safe.languages, normaliseLanguageEntry);
@@ -260,7 +316,7 @@ const DUPLICATE_KEYS = {
     entry?.name,
     entry?.issuingBody,
   ].map(normalizeDuplicatePart).join('|'),
-  skills: normalizeDuplicatePart,
+  skills: (entry) => normalizeDuplicatePart(typeof entry === 'string' ? entry : entry?.name),
   languages: (entry) => normalizeDuplicatePart(entry?.language),
   links: (entry) => normalizeDuplicateUrl(entry?.url),
   awards: (entry) => [
@@ -298,9 +354,23 @@ export function mergeResumeData(currentProfile, parsedData) {
       mergedProfile[field] = [];
     }
 
-    const parsedEntries = Array.isArray(safeParsedData[field])
+    let parsedEntries = Array.isArray(safeParsedData[field])
       ? cloneValue(safeParsedData[field])
       : [];
+
+    if (field === 'skills') {
+      // Imported skills arrive UNRATED (level: null) — never auto-estimated
+      // (FR-010/FR-014). Map names to `{ name, level: null }` so they are
+      // preserved as unrated (not migrated to Basic like a bare string).
+      parsedEntries = parsedEntries
+        .map((parsed) => {
+          const name = typeof parsed === 'string' ? cleanString(parsed) : cleanString(parsed?.name);
+
+          return name ? { name, level: null } : null;
+        })
+        .filter(Boolean);
+    }
+
     const getDuplicateKey = DUPLICATE_KEYS[field];
 
     for (const parsedEntry of parsedEntries) {
@@ -398,6 +468,34 @@ export function validateProfile(data = {}) {
       errors[`links[${index}].url`] = 'URL must be a valid http or https URL.';
     }
   });
+
+  const seenSkillNames = new Set();
+
+  profile.skills.forEach((entry, index) => {
+    if (!entry.name) {
+      // Blank-name rows are flagged individually (never silently dropped) and
+      // never counted as duplicates of one another (falsy key).
+      errors[`skills[${index}].name`] = 'Skill name is required.';
+    } else {
+      const key = normalizeDuplicatePart(entry.name);
+
+      if (seenSkillNames.has(key)) {
+        errors['skills.duplicate'] = `Duplicate skill: ${entry.name}.`;
+      } else {
+        seenSkillNames.add(key);
+      }
+    }
+
+    // Out-of-range levels are coerced at load, so the only level error is the
+    // unrated (null) case — see data-model.md "Load vs save".
+    if (entry.level === null) {
+      errors[`skills[${index}].level`] = 'Set a level for this skill.';
+    }
+  });
+
+  if (profile.skills.length > SKILL_MAX) {
+    errors['skills.max'] = `Remove some skills — max ${SKILL_MAX}.`;
+  }
 
   return {
     valid: Object.keys(errors).length === 0,

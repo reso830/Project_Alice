@@ -7,9 +7,20 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-01
+
+Skill Proficiency — profile skills gain a structured 1–5 proficiency level, captured in a lightweight inline editor and shown on the Profile as graded meter rows with an in-place level reveal, a scale reference, sorting, and collapse-past-10. Existing profiles migrate automatically with no data loss. (031-skill-proficiency-system)
+
 ### Added
 
+- **Skill proficiency levels** — each profile skill now carries a 1–5 level (1 Beginner · 2 Basic · 3 Intermediate · 4 Strong · 5 Expert). The model owns the scale and validation; segment colours live in CSS. (031-skill-proficiency-system)
+- **Skills display** — the Profile Skills section renders one row per skill with a 5-segment graded meter; hovering or tapping a row cross-fades the meter to the `{level} · {Label}` word in place (no reflow, auto-reverts after a tap), a "?" opens a proficiency-scale popover, a sort control toggles Custom / By level (highest- / lowest-first), and lists over 10 collapse behind "Show all {N} skills". Rows are real buttons with `aria-label="{name}: {Label}, level {n} of 5"` — level is conveyed by text and shape, never colour alone. (031-skill-proficiency-system)
+- **Inline skills editor** — the Profile editor replaces the staging overlay with inline rows (name field + tappable 1–5 level picker + remove) and an "Add skill" button; new skills start unrated. Save is gated until every named skill has a level and no name is blank or duplicate, with a footer reporting how many levels are still missing. The same "?" scale popover is available in the editor. (031-skill-proficiency-system)
 - **Vercel Speed Insights** — the hosted Vercel deployment now reports anonymized Core Web Vitals (LCP, CLS, INP, etc.) to Vercel Speed Insights via `@vercel/speed-insights`, injected once on app bootstrap. The package only sends data from the production Vercel deployment; in local/dev (e.g. a GitHub checkout) it no-ops and logs to the console, so the local-first principle is preserved. It measures page-level performance only — never application data, no cookies, no PII. Explicitly enabled per the constitution's privacy clause (recorded in `constitution.md`). Requires enabling the Speed Insights tab in the Vercel dashboard to collect data.
+
+### Changed
+
+- **Profile `skills` are now structured `{ name, level }` objects** (previously a flat `string[]`). Legacy string skills migrate to level 2 (Basic) on load, and resume-imported skills arrive unrated — both with no data loss. The change is confined to the profile JSON blob, so no database migration is required and both local (SQLite) and hosted (Supabase) modes are unaffected at the schema level. (031-skill-proficiency-system)
 
 ## [1.0.0] — 2026-05-29
 
@@ -837,7 +848,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0
 [0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/reso830/Project_Alice/compare/v0.13.3...v0.14.0

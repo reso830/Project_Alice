@@ -59,7 +59,22 @@ export const DEMO_PROFILE = {
     },
   ],
 
-  skills: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'PostgreSQL', 'SQLite', 'Docker', 'AWS', 'Git'],
+  skills: [
+    { name: 'JavaScript', level: 5 },
+    { name: 'TypeScript', level: 5 },
+    { name: 'React', level: 4 },
+    { name: 'Node.js', level: 4 },
+    { name: 'Python', level: 3 },
+    { name: 'PostgreSQL', level: 4 },
+    { name: 'SQLite', level: 3 },
+    { name: 'Docker', level: 3 },
+    { name: 'AWS', level: 2 },
+    { name: 'Git', level: 5 },
+    { name: 'GraphQL', level: 3 },
+    { name: 'Kubernetes', level: 2 },
+    { name: 'Figma', level: 1 },
+    { name: 'Jest', level: 4 },
+  ],
 
   languages: [
     { language: 'English', proficiency: 'Fluent' },
