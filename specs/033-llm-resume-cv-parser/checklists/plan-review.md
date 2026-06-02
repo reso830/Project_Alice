@@ -31,7 +31,8 @@
 ## Risks acknowledged
 
 - [x] OpenRouter browser CORS is the load-bearing assumption (R-2) — early spike
-  required; documented server-proxy fallback if it fails.
+  required. Browser-direct is firm (contracts §4); if the spike fails, STOP and
+  escalate — a server-proxy is not a silent fallback (needs an explicit amendment).
 - [x] Key in `localStorage` XSS exposure — inherent to BYOK browser storage,
   disclosed to user; app uses no `innerHTML`.
 - [x] Free-model availability/latency — configurable model constant + 30s timeout

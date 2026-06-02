@@ -40,7 +40,7 @@ test is operator-supplied; unit/component tests mock it.
 | 09 | **Browser Smoke Test (REQUIRED — UI)** — walk US1–US4 Independent Tests + mobile | T034–T038 | merge | 👤 all |
 
 **Sequencing notes:**
-- Phase 01 (spike) gates the architecture — do first; its outcome can switch Phase 02 to a server-proxy variant.
+- Phase 01 (spike) gates the architecture — do first. Browser-direct is firm; if the spike fails, STOP and escalate (a proxy needs an explicit spec/contracts/consent amendment), do not silently pivot.
 - Phase 02 blocks all user stories (shared modules + endpoints). The four test→impl pairs + T010 are mutually `[P]`.
 - Same-file chains (NOT parallel): `ResumeImport.js` T012→T017→T019; `ProfileEdit.js` T013→T021.
 - Release Prep (08) is second-to-last; Browser Smoke (09) is last — constitution Amendment 1.3.0.
@@ -54,7 +54,7 @@ test is operator-supplied; unit/component tests mock it.
 - [ ] T001 👤 De-risk the browser→OpenRouter CORS assumption (R-2)
   - Files: throwaway probe only (a temporary HTML/JS snippet or devtools `fetch`); append the outcome to [research.md](./research.md) under a new "## R-2 Spike result" note. No production code committed from this task.
   - Behavior: from (a) `http://localhost` dev origin and (b) a Vercel preview origin, perform a real `fetch` to `https://openrouter.ai/api/v1/chat/completions` with a disposable test key; confirm a non-CORS-blocked response (any 2xx/4xx that is *not* a CORS failure counts as "reachable").
-  - Constraints: do not commit the test key; revoke it after. If either origin is CORS-blocked, STOP and switch the implementation to the server-proxy fallback (research R-1 alternative) — note the decision in research.md before proceeding. The spec is unaffected either way.
+  - Constraints: do not commit the test key; revoke it after. Browser-direct is a FIRM requirement (contracts §4: "Alice's server never receives the key"). If either origin is CORS-blocked, **STOP and escalate** — do NOT switch to a server-proxy here; a proxy would break contracts §4 and requires an explicit spec/contracts/consent amendment with user approval first. Record the spike outcome in research.md.
   - Validation: documented spike result in research.md (reachable / blocked + chosen path).
   - Out-of-scope: any `src/` or `server/` changes.
 
@@ -344,6 +344,7 @@ parallel.
 - Write each test task first; confirm FAIL before its impl task.
 - Commit after each task or logical pair.
 - No new runtime dependency; no schema change; no new server env var.
-- If the T001 spike shows CORS is blocked, switch to the server-proxy variant
-  (research R-1) before Phase 02 — task targets shift to a server LLM route, but
-  the phase/story structure is unchanged.
+- Browser-direct is a firm requirement (contracts §4). If the T001 spike shows
+  CORS is blocked, STOP and escalate before Phase 02 — a server-proxy would break
+  contracts §4 and may not be adopted without an explicit spec/contracts/consent
+  amendment and user approval.

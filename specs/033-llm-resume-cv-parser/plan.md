@@ -136,13 +136,15 @@ branch. No new top-level directories.
 **Why browser-direct** (R-1/R-2): honors "key in your browser, your
 responsibility, server never sees it." Server only does stateless text extraction
 (already its job today). Load-bearing assumption: OpenRouter browser CORS — spike
-first; server-proxy is the documented fallback if it fails (no spec change).
+first. Browser-direct is a **firm requirement** (contracts §4: server never
+receives the key); if the spike fails, STOP and escalate — a server-proxy would
+require an explicit spec/contracts/consent amendment and is not a silent fallback.
 
 ## Risks & Tradeoffs
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| OpenRouter blocks browser CORS (local and/or Vercel origin) | Feature can't run browser-direct | **Spike first**; documented server-proxy fallback (R-2); spec unaffected |
+| OpenRouter blocks browser CORS (local and/or Vercel origin) | Feature can't run browser-direct | **Spike first** (T001). Browser-direct is firm; if blocked, STOP and escalate — adopting a server-proxy needs an explicit spec/contracts/consent amendment + approval (not a silent fallback) |
 | API key readable in `localStorage` (XSS) | Key theft | Inherent to BYOK browser storage; disclosed to user; app uses `createElement`/`textContent`, no `innerHTML`; no 3rd-party scripts beyond perf-only Speed Insights |
 | Free model unavailable / slow / non-JSON | Failed parse | Configurable model constant; 30s timeout; JSON sanitize; rule-based fallback |
 | LLM hallucination / wrong fields | Bad pre-fill | Review-before-save; AI indicators; `normaliseProfile` drops malformed; required-field validation at save |
@@ -203,8 +205,9 @@ first; server-proxy is the documented fallback if it fails (no spec change).
 
 ### Explicitly out of scope
 - Profile schema changes; DB migrations.
-- Operator/server-side API key; server-proxy LLM call (fallback only if CORS
-  spike fails).
+- Operator/server-side API key; server-proxy LLM call (browser-direct is firm —
+  a proxy is out of scope and would require an explicit spec/contracts/consent
+  amendment).
 - Multi-step / chained AI calls; conversational editing; resume rewriting.
 - Permanent resume/text storage; auto-save.
 - New server environment variables or runtime modes.

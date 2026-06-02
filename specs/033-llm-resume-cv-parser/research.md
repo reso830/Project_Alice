@@ -27,13 +27,18 @@ server involvement is stateless text extraction (which already happens today on
 the rule-based path with the same security model).
 
 **Alternatives considered**:
-- *Server-proxy* (browser → Alice server → OpenRouter): rejected as the default
-  because the key would transit our backend, weakening the privacy story the user
-  explicitly chose. Kept as a documented fallback if R-2 (CORS) proves
-  unworkable.
+- *Server-proxy* (browser → Alice server → OpenRouter): **rejected outright**, not
+  kept as a silent fallback. It makes Alice's server *receive* the key, which
+  violates the hard invariant in [contracts/api.md](./contracts/api.md) §4
+  ("Alice's server never receives the key") and the privacy posture the user
+  explicitly chose. Browser-direct is therefore a **firm requirement**, not a
+  preference. Adopting a proxy later would require an explicit amendment to the
+  spec (FR-009/FR-010), contracts §4, and the consent disclosure — with user
+  approval — and is out of scope here.
 
 **Risk / open dependency**: browser-direct relies on OpenRouter accepting
-cross-origin requests from the browser (see R-2).
+cross-origin requests from the browser (see R-2). If that proves false, it is an
+escalation point (see R-2), not a silent pivot.
 
 ---
 
@@ -49,9 +54,10 @@ key is supported. This is the linchpin enabling R-1.
 
 **Validation required during implementation**: an early spike confirming a real
 browser `fetch` to OpenRouter succeeds from both `localhost` (local mode) and the
-deployed Vercel origin (hosted). If CORS is blocked on either origin, fall back to
-the **server-proxy** variant (R-1 alternative) without changing the spec — the
-spec only constrains the outcome (no server-side persistence of key/content).
+deployed Vercel origin (hosted). If CORS is blocked on either origin, **STOP and
+escalate** — do NOT silently switch to a server-proxy. Browser-direct is a firm
+requirement (R-1); a proxy would break contracts §4 and requires an explicit
+spec/contracts/consent amendment with user approval before it could be adopted.
 
 **Hosted CSP note**: confirm the production deployment sends no `Content-Security-Policy`
 `connect-src` that would block `https://openrouter.ai`. Today the app sets no
