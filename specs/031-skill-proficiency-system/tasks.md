@@ -32,7 +32,7 @@
 
 ## Phase 01 — Model
 
-### [ ] Task 01.1 — `SKILL_LEVELS` scale constant
+### [x] Task 01.1 — `SKILL_LEVELS` scale constant
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -51,7 +51,7 @@
 
 ---
 
-### [ ] Task 01.2 — `normaliseSkillEntry` + wire into `normaliseProfile`
+### [x] Task 01.2 — `normaliseSkillEntry` + wire into `normaliseProfile`
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -69,7 +69,7 @@
 
 ---
 
-### [ ] Task 01.3 — Skill validation rules + duplicate key
+### [x] Task 01.3 — Skill validation rules + duplicate key
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -88,7 +88,7 @@
 
 ---
 
-### [ ] Task 01.4 — `mergeResumeData` imports skills unrated
+### [x] Task 01.4 — `mergeResumeData` imports skills unrated
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -106,7 +106,7 @@
 
 ---
 
-### [ ] Task 01.5 — Model unit tests
+### [x] Task 01.5 — Model unit tests
 
 **Target file**: [tests/models/profile.test.js](../../tests/models/profile.test.js)
 
@@ -124,7 +124,7 @@
 
 ## Phase 02 — Display (Profile page)
 
-### [ ] Task 02.1 — `renderSkills` on the Profile page
+### [x] Task 02.1 — `renderSkills` on the Profile page
 
 **Target file**: [src/pages/Profile.js](../../src/pages/Profile.js)
 
@@ -145,7 +145,7 @@
 
 ---
 
-### [ ] Task 02.2 — Skill display styles
+### [x] Task 02.2 — Skill display styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -163,7 +163,7 @@
 
 ## Phase 03 — Editor (Profile edit page)
 
-### [ ] Task 03.1 — Inline level-picker rows
+### [x] Task 03.1 — Inline level-picker rows
 
 **Target file**: [src/pages/ProfileEdit.js](../../src/pages/ProfileEdit.js)
 
@@ -183,7 +183,7 @@
 
 ---
 
-### [ ] Task 03.2 — Save gating + inline feedback
+### [x] Task 03.2 — Save gating + inline feedback
 
 **Target files**: [src/pages/ProfileEdit.js](../../src/pages/ProfileEdit.js)
 
@@ -201,7 +201,7 @@
 
 ---
 
-### [ ] Task 03.3 — "?" scale popover + import wiring
+### [x] Task 03.3 — "?" scale popover + import wiring
 
 **Target file**: [src/pages/ProfileEdit.js](../../src/pages/ProfileEdit.js)
 
@@ -219,7 +219,7 @@
 
 ---
 
-### [ ] Task 03.4 — Editor styles
+### [x] Task 03.4 — Editor styles
 
 **Target file**: [src/styles/main.css](../../src/styles/main.css)
 
@@ -237,7 +237,7 @@
 
 ## Phase 04 — Demo seed + persistence
 
-### [ ] Task 04.1 — Convert demo profile skills
+### [x] Task 04.1 — Convert demo profile skills
 
 **Target file**: [src/data/demoSeed.js](../../src/data/demoSeed.js)
 
@@ -253,7 +253,7 @@
 
 ---
 
-### [ ] Task 04.2 — Persistence round-trip tests
+### [x] Task 04.2 — Persistence round-trip tests
 
 **Target files**: [tests/server/repositories/profile.test.js](../../tests/server/repositories/profile.test.js), `tests/server/repositories/supabase/profile.test.js`
 
@@ -271,7 +271,7 @@
 
 ## Phase 05 — Release Prep (REQUIRED)
 
-### [ ] Task 05.1 — Version bump
+### [x] Task 05.1 — Version bump
 
 **Target files**: [package.json](../../package.json), [src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js)
 
@@ -283,7 +283,7 @@
 
 ---
 
-### [ ] Task 05.2 — CHANGELOG, README, REPO_MAP, docs sanity
+### [x] Task 05.2 — CHANGELOG, README, REPO_MAP, docs sanity
 
 **Target files**: [CHANGELOG.md](../../CHANGELOG.md), [README.md](../../README.md), [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 
@@ -301,7 +301,7 @@
 
 ## Phase 06 — Browser Smoke Test (REQUIRED — UI feature)
 
-### [ ] Task 06.1 — Walk the Independent Tests against merge state
+### [x] Task 06.1 — Walk the Independent Tests against merge state
 
 **What to do**: in a real browser against the to-be-merged build, walk:
 - **US-1 (P1)**: add a skill, confirm unrated + Save blocked; set/clear a level; save; reload editor → persists; trigger blank / duplicate / 51-skill gates.
