@@ -34,7 +34,7 @@
 
 ## Phase 01 — Model
 
-### [ ] Task 01.1 — `splitProfileForStorage` helper
+### [x] Task 01.1 — `splitProfileForStorage` helper
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -53,7 +53,7 @@
 
 ---
 
-### [ ] Task 01.2 — `joinProfileWithSkills` helper
+### [x] Task 01.2 — `joinProfileWithSkills` helper
 
 **Target file**: [src/models/profile.js](../../src/models/profile.js)
 
@@ -71,7 +71,7 @@
 
 ---
 
-### [ ] Task 01.3 — Model unit tests for split/join
+### [x] Task 01.3 — Model unit tests for split/join
 
 **Target file**: [tests/models/profile.test.js](../../tests/models/profile.test.js)
 
@@ -93,7 +93,7 @@
 
 ## Phase 02 — Local (SQLite)
 
-### [ ] Task 02.1 — `profile_skill` table in `initSchema`
+### [x] Task 02.1 — `profile_skill` table in `initSchema`
 
 **Target file**: [server/db.js](../../server/db.js)
 
@@ -112,7 +112,7 @@
 
 ---
 
-### [ ] Task 02.2 — Rewrite SQLite `getProfile` / `saveProfile`
+### [x] Task 02.2 — Rewrite SQLite `getProfile` / `saveProfile`
 
 **Target file**: [server/db/profile.js](../../server/db/profile.js)
 
@@ -130,7 +130,7 @@
 
 ---
 
-### [ ] Task 02.3 — Local lazy-on-read migration
+### [x] Task 02.3 — Local lazy-on-read migration
 
 **Target file**: [server/db/profile.js](../../server/db/profile.js)
 
@@ -148,7 +148,7 @@
 
 ---
 
-### [ ] Task 02.4 — SQLite adapter tests
+### [x] Task 02.4 — SQLite adapter tests
 
 **Target file**: [tests/server/repositories/profile.test.js](../../tests/server/repositories/profile.test.js)
 
@@ -167,7 +167,7 @@
 
 ---
 
-### [ ] Task 02.5 — Verify local seed CLI against the new table
+### [x] Task 02.5 — Verify local seed CLI against the new table
 
 **Target files**: [server/db-seed-profile.js](../../server/db-seed-profile.js) (inspect; adjust only if needed)
 
@@ -187,7 +187,7 @@
 
 ## Phase 03 — Hosted (Supabase)
 
-### [ ] Task 03.1 — Finalize hosted migration SQL + RPC
+### [x] Task 03.1 — Finalize hosted migration SQL + RPC
 
 **Target file**: [specs/032-profile-schema-refactor/data-model.md](data-model.md) §3 (canonical SQL — already drafted; confirm correctness)
 
@@ -205,7 +205,7 @@
 
 ---
 
-### [ ] Task 03.2 — Rewrite Supabase adapter get/upsert
+### [x] Task 03.2 — Rewrite Supabase adapter get/upsert
 
 **Target file**: [server/repositories/supabase/profile.js](../../server/repositories/supabase/profile.js)
 
@@ -223,7 +223,7 @@
 
 ---
 
-### [ ] Task 03.3 — Hosted lazy migration + `assertHostedSchema` probe
+### [x] Task 03.3 — Hosted lazy migration + `assertHostedSchema` probe
 
 **Target files**: [server/repositories/supabase/profile.js](../../server/repositories/supabase/profile.js), [server/health.js](../../server/health.js)
 
@@ -241,7 +241,7 @@
 
 ---
 
-### [ ] Task 03.4 — Supabase adapter tests
+### [x] Task 03.4 — Supabase adapter tests
 
 **Target file**: [tests/server/repositories/supabase/profile.test.js](../../tests/server/repositories/supabase/profile.test.js)
 
@@ -259,7 +259,7 @@
 
 ## Phase 04 — Cross-cutting verification
 
-### [ ] Task 04.1 — Route integration tests
+### [x] Task 04.1 — Route integration tests
 
 **Target file**: [tests/server/profile.test.js](../../tests/server/profile.test.js)
 
@@ -275,7 +275,7 @@
 
 ---
 
-### [ ] Task 04.2 — Demo parity verification
+### [x] Task 04.2 — Demo parity verification
 
 **Target files**: [tests/data/demoStore.test.js](../../tests/data/demoStore.test.js) (verify), [src/data/demoStore.js](../../src/data/demoStore.js) (inspect only)
 
@@ -293,7 +293,7 @@
 
 ---
 
-### [ ] Task 04.3 — Full suite + lint
+### [x] Task 04.3 — Full suite + lint
 
 **Target**: whole repo (verification only)
 
@@ -307,7 +307,7 @@
 
 ## Phase 05 — Release Prep (REQUIRED)
 
-### [ ] Task 05.1 — Version + changelog + package-lock
+### [x] Task 05.1 — Version + changelog + package-lock
 
 **Target files**: [package.json](../../package.json), [package-lock.json](../../package-lock.json), [CHANGELOG.md](../../CHANGELOG.md)
 
@@ -319,7 +319,7 @@
 
 ---
 
-### [ ] Task 05.2 — Docs: deployment, REPO_MAP, README, roadmap
+### [x] Task 05.2 — Docs: deployment, REPO_MAP, README, roadmap
 
 **Target files**: [docs/deployment.md](../../docs/deployment.md), [docs/REPO_MAP.md](../../docs/REPO_MAP.md), [README.md](../../README.md), [docs/feature_roadmap.md](../../docs/feature_roadmap.md)
 
