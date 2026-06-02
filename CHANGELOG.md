@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-02
+
+Profile Schema Refactor — profile skills are promoted from an array embedded in the profile JSON document to a dedicated, per-profile `profile_skill` store, in both local (SQLite) and hosted (Supabase) modes. The store is the sole source of truth for skills; reads reassemble them into the profile so the whole-profile API contract and the Profile/Profile-Edit UI are unchanged, and existing profiles migrate automatically on first read with no data loss. This readies the schema for the upcoming compatibility, ATS, and AI-parsing features. No user-visible behavior change. (032-profile-schema-refactor)
+
+### Added
+
+- **`profile_skill` store** — a new per-profile skill table in both backends, with `skill_name` + `proficiency` columns, a per-profile index, and a case-insensitive unique index on `(profile, skill_name)` as a no-duplicate backstop. Hosted mode adds RLS mirroring `profile` plus an atomic `save_profile_with_skills(p_data, p_skills)` RPC, and the boot-time hosted schema check now probes `profile_skill`. Hosted operators must apply the migration SQL from [`specs/032-profile-schema-refactor/data-model.md §3`](specs/032-profile-schema-refactor/data-model.md) before deploying a v1.2.0+ build. (032-profile-schema-refactor)
+
+### Changed
+
+- **Profile skills are now stored as first-class `profile_skill` rows** instead of inside the profile JSON document, in both persistence modes. Reads reassemble the embedded `{ name, level }` array (ordered by insertion), and saves replace a profile's skill rows transactionally — locally via a SQLite transaction, hosted via the `save_profile_with_skills` RPC. Skills are removed from the profile document; the public profile read/write contract and the UI are unchanged. (032-profile-schema-refactor)
+- **Existing profiles auto-migrate on first read** — embedded skills move into the new store idempotently, reusing feature 031's normalization (legacy `string[]` → Basic, junk dropped, duplicates collapsed). Only the `skills` key is stripped from the document, so non-skill fields are preserved verbatim. No operator data step and no user action required. (032-profile-schema-refactor)
+
 ## [1.1.0] — 2026-06-01
 
 Skill Proficiency — profile skills gain a structured 1–5 proficiency level, captured in a lightweight inline editor and shown on the Profile as graded meter rows with an in-place level reveal, a scale reference, sorting, and collapse-past-10. Existing profiles migrate automatically with no data loss. (031-skill-proficiency-system)
@@ -848,7 +861,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0
 [0.15.0]: https://github.com/reso830/Project_Alice/compare/v0.14.0...v0.15.0
