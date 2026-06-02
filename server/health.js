@@ -20,6 +20,12 @@ const PROBES = [
     failOn: [UNDEFINED_COLUMN],
     docPath: 'specs/028-archive-applications-view/data-model.md §1.3',
   },
+  {
+    table: 'profile_skill',
+    column: 'user_id',
+    failOn: [UNDEFINED_TABLE, UNDEFINED_COLUMN],
+    docPath: 'specs/032-profile-schema-refactor/data-model.md §3',
+  },
 ];
 
 function migrationHint(table, column, docPath) {

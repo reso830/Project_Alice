@@ -50,6 +50,19 @@ function makeLogger() {
   };
 }
 
+function allProbeResponses(overrideByIndex = {}) {
+  return Array.from({ length: 6 }, (_, index) => overrideByIndex[index] ?? { error: null });
+}
+
+const ALL_PROBE_TABLES = [
+  'applications',
+  'profile',
+  'user_seed_state',
+  'applications',
+  'applications',
+  'profile_skill',
+];
+
 describe('assertHostedSchema', () => {
   beforeEach(() => {
     createClient.mockReset();
@@ -101,7 +114,7 @@ describe('assertHostedSchema', () => {
       const original = process.env.SKIP_HOSTED_SCHEMA_CHECK;
       process.env.SKIP_HOSTED_SCHEMA_CHECK = '1';
       try {
-        setupClient([{ error: null }, { error: null }, { error: null }, { error: null }, { error: null }]);
+        setupClient(allProbeResponses());
         await assertHostedSchema({
           isHosted: true,
           supabase: { url: 'https://x.supabase.co', anonKey: 'k' },
@@ -140,19 +153,13 @@ describe('assertHostedSchema', () => {
   describe('successful boot', () => {
     it('resolves silently and logs info when all probes return 200', async () => {
       const logger = makeLogger();
-      const { fromCalls } = setupClient([
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-      ]);
+      const { fromCalls } = setupClient(allProbeResponses());
 
       await expect(
         assertHostedSchema(hostedConfig(), { logger }),
       ).resolves.toBeUndefined();
 
-      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state', 'applications', 'applications']);
+      expect(fromCalls).toEqual(ALL_PROBE_TABLES);
       expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringMatching(/all probes passed/),
@@ -160,7 +167,7 @@ describe('assertHostedSchema', () => {
     });
 
     it('constructs the anon-key client without auth session persistence', async () => {
-      setupClient([{ error: null }, { error: null }, { error: null }, { error: null }, { error: null }]);
+      setupClient(allProbeResponses());
       await assertHostedSchema(hostedConfig());
 
       expect(createClient).toHaveBeenCalledWith(
@@ -234,30 +241,42 @@ describe('assertHostedSchema', () => {
     });
 
     it('throws on 42703 for applications.archived_date with the 028 data-model hint', async () => {
-      setupClient([
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: { code: '42703', message: 'column archived_date does not exist' } },
-      ]);
+      setupClient(allProbeResponses({
+        4: { error: { code: '42703', message: 'column archived_date does not exist' } },
+      }));
 
       await expect(
         assertHostedSchema(hostedConfig()),
       ).rejects.toThrow(/applications\.archived_date.*specs\/028-archive-applications-view\/data-model\.md/s);
     });
 
+    it('throws on 42P01 for profile_skill with the 032 data-model hint', async () => {
+      setupClient(allProbeResponses({
+        5: { error: { code: '42P01', message: 'relation profile_skill does not exist' } },
+      }));
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(/profile_skill.*specs\/032-profile-schema-refactor\/data-model\.md/s);
+    });
+
+    it('throws on 42703 for profile_skill.user_id with the 032 data-model hint', async () => {
+      setupClient(allProbeResponses({
+        5: { error: { code: '42703', message: 'column user_id does not exist' } },
+      }));
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(/profile_skill\.user_id.*specs\/032-profile-schema-refactor\/data-model\.md/s);
+    });
+
     it('does NOT fail on 42703 for user_seed_state (contract: only table-missing triggers hard fail)', async () => {
       // user_id is the PK on user_seed_state, so 42703 is implausible; if
       // it happens, treat as transient/unknown and continue.
       const logger = makeLogger();
-      setupClient([
-        { error: null },
-        { error: null },
-        { error: { code: '42703', message: 'unusual: user_id missing on user_seed_state' } },
-        { error: null },
-        { error: null },
-      ]);
+      setupClient(allProbeResponses({
+        2: { error: { code: '42703', message: 'unusual: user_id missing on user_seed_state' } },
+      }));
 
       await expect(
         assertHostedSchema(hostedConfig(), { logger }),
@@ -281,13 +300,9 @@ describe('assertHostedSchema', () => {
   describe('soft failures (warn and continue)', () => {
     it('logs warning and continues on 5xx-like errors', async () => {
       const logger = makeLogger();
-      setupClient([
-        { error: { code: 'XX000', message: 'PostgREST transient' } },
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-      ]);
+      setupClient(allProbeResponses({
+        0: { error: { code: 'XX000', message: 'PostgREST transient' } },
+      }));
 
       await expect(
         assertHostedSchema(hostedConfig(), { logger }),
@@ -300,13 +315,9 @@ describe('assertHostedSchema', () => {
 
     it('logs warning when error has no code (network error shape)', async () => {
       const logger = makeLogger();
-      setupClient([
-        { error: { message: 'fetch failed' } },
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-      ]);
+      setupClient(allProbeResponses({
+        0: { error: { message: 'fetch failed' } },
+      }));
 
       await expect(
         assertHostedSchema(hostedConfig(), { logger }),
@@ -317,18 +328,14 @@ describe('assertHostedSchema', () => {
 
     it('still proceeds to remaining probes after a soft failure', async () => {
       const logger = makeLogger();
-      const { fromCalls } = setupClient([
-        { error: { code: 'XX000', message: 'transient' } },
-        { error: null },
-        { error: null },
-        { error: null },
-        { error: null },
-      ]);
+      const { fromCalls } = setupClient(allProbeResponses({
+        0: { error: { code: 'XX000', message: 'transient' } },
+      }));
 
       await assertHostedSchema(hostedConfig(), { logger });
 
       // All probes ran despite the first one's soft failure.
-      expect(fromCalls).toEqual(['applications', 'profile', 'user_seed_state', 'applications', 'applications']);
+      expect(fromCalls).toEqual(ALL_PROBE_TABLES);
     });
   });
 

@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   computeAppCounts,
   computeStats,
+  dedupeSkillsForStorage,
+  joinProfileWithSkills,
   normaliseProfile,
   SKILL_LEVELS,
   SKILL_MAX,
+  skillNameKey,
+  splitProfileForStorage,
   validateProfile,
 } from '../../src/models/profile.js';
 
@@ -449,5 +453,112 @@ describe('skill proficiency', () => {
   it('accepts a fully-rated, unique skill list at the maximum count', () => {
     const skills = Array.from({ length: SKILL_MAX }, (_, i) => ({ name: `S${i}`, level: 3 }));
     expect(validateProfile(namedProfile(skills))).toEqual({ valid: true, errors: {} });
+  });
+});
+
+describe('profile storage split/join', () => {
+  const roundTrip = (profile) => {
+    const { document, skills } = splitProfileForStorage(profile);
+
+    return joinProfileWithSkills(document, skills);
+  };
+
+  it('splits a profile into a skill-free document and normalised skills', () => {
+    const profile = {
+      firstName: ' Ana ',
+      lastName: ' Rivera ',
+      city: ' Taipei ',
+      summary: ' Product builder ',
+      skills: [
+        { name: ' Jira ', level: '4' },
+        ' CSS ',
+      ],
+      languages: [' English '],
+    };
+    const normalised = normaliseProfile(profile);
+    const { skills: _normalisedSkills, ...expectedDocument } = normalised;
+    const { document, skills } = splitProfileForStorage(profile);
+
+    expect(document).not.toHaveProperty('skills');
+    expect(skills).toEqual(normalised.skills);
+    expect(document).toEqual(expectedDocument);
+  });
+
+  it('round-trips a profile with skills back to the normalised embedded shape', () => {
+    const profile = {
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      skills: [
+        { name: 'JavaScript', level: 5 },
+        { name: 'Product Strategy', level: 4 },
+      ],
+    };
+
+    expect(roundTrip(profile)).toEqual(normaliseProfile(profile));
+  });
+
+  it('round-trips a profile with no skills back to the normalised embedded shape', () => {
+    const profile = {
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      summary: 'No skills yet',
+    };
+
+    expect(roundTrip(profile)).toEqual(normaliseProfile(profile));
+  });
+
+  it('round-trips legacy string skills through the Basic migration level', () => {
+    const profile = {
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      skills: [' JavaScript ', '', ' CSS '],
+    };
+
+    expect(roundTrip(profile)).toEqual(normaliseProfile(profile));
+    expect(roundTrip(profile).skills).toEqual([
+      { name: 'JavaScript', level: 2 },
+      { name: 'CSS', level: 2 },
+    ]);
+  });
+
+  it('joins undefined or null skills as an empty skills array', () => {
+    expect(joinProfileWithSkills({ firstName: 'Ana' }, undefined)).toEqual({
+      firstName: 'Ana',
+      skills: [],
+    });
+    expect(joinProfileWithSkills({ firstName: 'Ana' }, null)).toEqual({
+      firstName: 'Ana',
+      skills: [],
+    });
+  });
+
+  it('does not mutate the input profile while splitting', () => {
+    const profile = {
+      firstName: ' Ana ',
+      lastName: ' Rivera ',
+      skills: [{ name: ' Jira ', level: 4 }],
+    };
+    const before = structuredClone(profile);
+
+    splitProfileForStorage(profile);
+
+    expect(profile).toEqual(before);
+  });
+
+  it('dedupes storage skills with the shared skill-name key', () => {
+    expect(skillNameKey(' Node   JS ')).toBe('node js');
+
+    const skills = [
+      { name: 'React', level: 5 },
+      { name: ' react ', level: 2 },
+      { name: '  ', level: 3 },
+      { name: 'Node  JS', level: 4 },
+      { name: 'node js', level: 1 },
+    ];
+
+    expect(dedupeSkillsForStorage(skills)).toEqual([
+      { name: 'React', level: 5 },
+      { name: 'Node  JS', level: 4 },
+    ]);
   });
 });

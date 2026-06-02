@@ -1,5 +1,9 @@
 import { PROFILE_COLUMNS_WITHOUT_USER_ID } from '../../db/columns.js';
-import { normaliseProfile } from '../../../src/models/profile.js';
+import {
+  dedupeSkillsForStorage,
+  joinProfileWithSkills,
+  splitProfileForStorage,
+} from '../../../src/models/profile.js';
 
 const SELECT_PROJECTION = PROFILE_COLUMNS_WITHOUT_USER_ID.join(',');
 
@@ -35,6 +39,28 @@ function parseProfileData(value) {
  * @returns {import('../profile.js').ProfileRepository}
  */
 export function createSupabaseProfileRepository(client, userId) {
+  async function saveProfileWithSkills(document, skills) {
+    const { error } = await client.rpc('save_profile_with_skills', {
+      p_data: document,
+      p_skills: skills,
+    });
+    if (error) throw error;
+  }
+
+  async function readSkillRows() {
+    const { data: rows, error } = await client
+      .from('profile_skill')
+      .select('skill_name, proficiency')
+      .eq('user_id', userId)
+      .order('id', { ascending: true });
+    if (error) throw error;
+
+    return (rows ?? []).map((row) => ({
+      name: row.skill_name,
+      level: row.proficiency,
+    }));
+  }
+
   async function get() {
     const { data: row, error } = await client
       .from('profile')
@@ -43,25 +69,29 @@ export function createSupabaseProfileRepository(client, userId) {
       .maybeSingle();
     if (error) throw error;
     if (!row) return null;
-    return parseProfileData(row.data);
+
+    const document = parseProfileData(row.data);
+    if (!document) return null;
+
+    if (Object.prototype.hasOwnProperty.call(document, 'skills')) {
+      const { skills } = splitProfileForStorage(document);
+      const cleanedSkills = dedupeSkillsForStorage(skills);
+      const { skills: _embeddedSkills, ...strippedDocument } = document;
+
+      await saveProfileWithSkills(strippedDocument, cleanedSkills);
+
+      return joinProfileWithSkills(strippedDocument, cleanedSkills);
+    }
+
+    return joinProfileWithSkills(document, await readSkillRows());
   }
 
   async function upsert(profile) {
-    const normalised = normaliseProfile(profile);
-    const { data: row, error } = await client
-      .from('profile')
-      .upsert(
-        {
-          user_id: userId,
-          data: JSON.stringify(normalised),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' },
-      )
-      .select(SELECT_PROJECTION)
-      .single();
-    if (error) throw error;
-    return parseProfileData(row.data);
+    const { document, skills } = splitProfileForStorage(profile);
+
+    await saveProfileWithSkills(document, skills);
+
+    return get();
   }
 
   return { get, upsert };

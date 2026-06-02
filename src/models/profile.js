@@ -287,6 +287,24 @@ export function normaliseProfile(data = {}) {
   return profile;
 }
 
+export function splitProfileForStorage(profile = {}) {
+  const { skills, ...document } = normaliseProfile(profile);
+
+  return {
+    document,
+    skills,
+  };
+}
+
+export function joinProfileWithSkills(document = {}, skills = []) {
+  const safeDocument = isPlainObject(document) ? document : {};
+
+  return {
+    ...safeDocument,
+    skills: Array.isArray(skills) ? skills : [],
+  };
+}
+
 function cloneValue(value) {
   return typeof globalThis.structuredClone === 'function'
     ? globalThis.structuredClone(value)
@@ -295,6 +313,28 @@ function cloneValue(value) {
 
 function normalizeDuplicatePart(value) {
   return cleanString(value).replace(/\s+/g, ' ').toLowerCase();
+}
+
+export function skillNameKey(value) {
+  return normalizeDuplicatePart(value);
+}
+
+export function dedupeSkillsForStorage(skills = []) {
+  const seen = new Set();
+  const cleaned = [];
+
+  for (const skill of Array.isArray(skills) ? skills : []) {
+    const key = skillNameKey(skill?.name);
+
+    if (!key || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    cleaned.push(skill);
+  }
+
+  return cleaned;
 }
 
 function normalizeDuplicateUrl(value) {
@@ -316,7 +356,7 @@ const DUPLICATE_KEYS = {
     entry?.name,
     entry?.issuingBody,
   ].map(normalizeDuplicatePart).join('|'),
-  skills: (entry) => normalizeDuplicatePart(typeof entry === 'string' ? entry : entry?.name),
+  skills: (entry) => skillNameKey(typeof entry === 'string' ? entry : entry?.name),
   languages: (entry) => normalizeDuplicatePart(entry?.language),
   links: (entry) => normalizeDuplicateUrl(entry?.url),
   awards: (entry) => [
@@ -477,7 +517,7 @@ export function validateProfile(data = {}) {
       // never counted as duplicates of one another (falsy key).
       errors[`skills[${index}].name`] = 'Skill name is required.';
     } else {
-      const key = normalizeDuplicatePart(entry.name);
+      const key = skillNameKey(entry.name);
 
       if (seenSkillNames.has(key)) {
         errors['skills.duplicate'] = `Duplicate skill: ${entry.name}.`;
