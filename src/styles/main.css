@@ -217,6 +217,13 @@ body {
   margin-bottom: 18px;
 }
 
+.section-card__label-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .edit-card__body {
   display: flex;
   flex-direction: column;
@@ -379,7 +386,7 @@ textarea.edit-field__control {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto auto;
   gap: 12px;
-  align-items: start;
+  align-items: center;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
   padding: 8px;
@@ -392,6 +399,25 @@ textarea.edit-field__control {
 
 .skill-editor-row__name {
   min-width: 0;
+}
+
+/* Per-row name label is sr-only — the placeholder guides sighted users, and the
+   wrapping <label> still names the input for assistive tech. */
+.skill-editor-row__name .edit-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skill-editor-add:disabled {
+  opacity: .5;
+  cursor: not-allowed;
 }
 
 .skill-editor-row__remove {
@@ -442,17 +468,19 @@ textarea.edit-field__control {
   cursor: pointer;
 }
 
-.skill-level-picker__segment.is-filled,
-.skill-level-picker__segment:hover,
-.skill-level-picker__segment:focus-visible {
+.skill-level-picker__segment.is-filled {
   background: var(--skill-level-color);
   color: #FFFFFF;
-  outline: none;
+}
+
+.skill-level-picker__segment:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 1px;
 }
 
 .skill-level-picker__caption {
   min-height: 14px;
-  color: var(--t3);
+  color: var(--skill-level-color, var(--t3));
   font-family: var(--font-mono);
   font-size: 11px;
   text-align: right;
@@ -1297,6 +1325,13 @@ textarea.edit-field__control {
   text-transform: uppercase;
 }
 
+.profile-subsection__label-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .profile-subsection__label-actions {
   display: inline-flex;
   align-items: center;
@@ -1394,8 +1429,16 @@ textarea.edit-field__control {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
+  margin-bottom: 10px;
+}
+
+.skills-display__controls-label {
+  margin-right: 2px;
+  color: var(--t3);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .skill-scale {
@@ -1441,8 +1484,8 @@ textarea.edit-field__control {
   position: absolute;
   z-index: calc(var(--z-modal) + 1);
   top: calc(100% + 6px);
-  right: 0;
-  width: min(300px, 82vw);
+  left: 0;
+  width: min(300px, 88vw);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
@@ -1483,13 +1526,17 @@ textarea.edit-field__control {
   color: var(--navy);
   font-family: var(--font-ui);
   font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
 }
 
 .skill-scale-popover__flavor {
   color: var(--t3);
   font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 400;
   line-height: 1.4;
+  text-transform: none;
 }
 
 .skill-meter-list {
@@ -1561,6 +1608,8 @@ textarea.edit-field__control {
   position: absolute;
   inset: 0 0 auto auto;
   min-width: 94px;
+  padding-left: 10px;
+  background: var(--surface);
   color: var(--skill-level-color);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1583,7 +1632,6 @@ textarea.edit-field__control {
   margin-top: 8px;
   padding: 4px 8px;
   color: var(--indigo);
-  font-weight: 600;
 }
 
 .skill-list-toggle:hover,
@@ -1699,6 +1747,13 @@ textarea.edit-field__control {
 
   .skill-meter__segment {
     width: 15px;
+  }
+
+  /* The "?" sits ~60px in from the card edge (after the SKILLS label), so cap
+     the popover width to the space remaining to the viewport's right edge —
+     otherwise it overflows on ultra-narrow screens (e.g. 344px Z Fold). */
+  .skill-scale-popover {
+    width: min(300px, calc(100vw - 100px));
   }
 
   .resume-import__actions .profile-btn {

@@ -387,21 +387,30 @@ function renderBasicInfo(profile) {
   return basic;
 }
 
-function renderSubSection(label, contentEl, actionsEl = null) {
+function renderSubSection(label, contentEl, actionsEl = null, labelAdornment = null) {
   const section = createElement('div', 'profile-subsection');
   const labelRow = createElement('div', 'profile-subsection__label');
   const labelText = createElement('span', 'profile-subsection__label-text', label);
+  const labelLead = createElement('span', 'profile-subsection__label-lead');
   const labelActions = createElement('span', 'profile-subsection__label-actions');
   const chevron = createElement('span', 'subsection-chevron', '›');
   const content = createElement('div', 'profile-subsection__content');
 
   chevron.setAttribute('aria-hidden', 'true');
+  // Keep the label and its inline adornment grouped on the left (the label row
+  // is space-between, so the adornment must sit inside the lead group — not as
+  // a third flex child — or it floats into the middle).
+  labelLead.append(labelText);
+  if (labelAdornment) {
+    labelAdornment.addEventListener('click', (event) => event.stopPropagation());
+    labelLead.append(labelAdornment);
+  }
   if (actionsEl) {
     actionsEl.addEventListener('click', (event) => event.stopPropagation());
     labelActions.append(actionsEl);
   }
   labelActions.append(chevron);
-  labelRow.append(labelText, labelActions);
+  labelRow.append(labelLead, labelActions);
   labelRow.addEventListener('click', () => {
     section.classList.toggle('is-collapsed');
   });
@@ -512,11 +521,13 @@ function renderSkillRow(skill) {
   const row = document.createElement('button');
   const name = createElement('span', 'skill-meter-row__name', skill.name);
   const value = createElement('span', 'skill-meter-row__value');
-  const meter = createElement('span', `skill-meter skill-level-${skill.level}`);
+  const meter = createElement('span', 'skill-meter');
   const levelText = createElement('span', 'skill-meter-row__level', `${skill.level} · ${label}`);
 
   row.type = 'button';
-  row.className = 'skill-meter-row';
+  // skill-level-{n} on the row sets --skill-level-color for BOTH the meter fill
+  // and the revealed level word (so the word is in the level's colour).
+  row.className = `skill-meter-row skill-level-${skill.level}`;
   row.setAttribute('aria-label', `${skill.name}: ${label}, level ${skill.level} of 5`);
   name.title = skill.name;
 
@@ -641,8 +652,13 @@ function renderSkills(profile, container) {
   customButton.dataset.sort = 'custom';
   levelButton.dataset.sort = 'level';
   scaleWrap.append(scaleButton, popover);
-  controls.append(scaleWrap, customButton, levelButton);
-  wrapper.append(list, toggle);
+  // Sort controls live INSIDE the section body so they collapse with the
+  // content on mobile (and don't crowd the collapse chevron). The "?" sits
+  // beside the SKILLS label as an inline adornment. A "Sort" lead label anchors
+  // the row so the buttons don't float against empty space.
+  const sortLabel = createElement('span', 'skills-display__controls-label', 'Sort');
+  controls.append(sortLabel, customButton, levelButton);
+  wrapper.append(controls, list, toggle);
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onDocumentKeydown);
   _cleanupHandlers.push(() => {
@@ -651,7 +667,7 @@ function renderSkills(profile, container) {
   });
   renderList();
 
-  container.append(renderSubSection('SKILLS', wrapper, controls));
+  container.append(renderSubSection('SKILLS', wrapper, null, scaleWrap));
 }
 
 function renderCertifications(profile, container) {

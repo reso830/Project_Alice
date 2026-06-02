@@ -70,6 +70,10 @@ export const DEMO_PROFILE = {
     { name: 'Docker', level: 3 },
     { name: 'AWS', level: 2 },
     { name: 'Git', level: 5 },
+    { name: 'GraphQL', level: 3 },
+    { name: 'Kubernetes', level: 2 },
+    { name: 'Figma', level: 1 },
+    { name: 'Jest', level: 4 },
   ],
 
   languages: [

@@ -8,6 +8,7 @@ import {
   PROFICIENCY_LEVELS,
   SKILL_FLAVOR,
   SKILL_LEVELS,
+  SKILL_MAX,
   validateProfile,
 } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
@@ -216,12 +217,16 @@ function createEditCard(title, { onAdd, headerAction } = {}) {
   const card = createElement('section', 'section-card edit-card');
   const header = createElement('div', 'section-card__header');
   const label = createElement('div', 'section-label', title);
+  const labelGroup = createElement('div', 'section-card__label-group');
   const body = createElement('div', 'edit-card__body');
 
-  header.append(label);
+  // Group the label with its inline header action (e.g. the skills "?" scale
+  // popover) so the action sits beside the label, not floating in the middle.
+  labelGroup.append(label);
   if (headerAction) {
-    header.append(headerAction);
+    labelGroup.append(headerAction);
   }
+  header.append(labelGroup);
   if (onAdd) {
     header.append(createButton('Add', 'profile-btn profile-btn--primary', onAdd));
   }
@@ -581,12 +586,9 @@ function renderSkillsCard(page) {
     return wrap;
   }
 
+  // No header "Add" button — the skills card uses the inline "+ Add skill"
+  // control in the body (design §5). The header carries only the "?" popover.
   const { card, body } = createEditCard('SKILLS', {
-    onAdd: () => {
-      _formState.skills.push({ name: '', level: null });
-      commitListChange();
-      render();
-    },
     headerAction: renderScalePopover(),
   });
 
@@ -633,29 +635,53 @@ function renderSkillsCard(page) {
   function renderLevelPicker(skill, index, errors) {
     const picker = createElement('div', 'skill-level-picker');
     const segments = createElement('div', 'skill-level-picker__segments');
-    const captionText = skill.level === null
-      ? 'Tap to set a level'
-      : `${skill.level} · ${getSkillLabel(skill.level)}`;
-    const caption = createElement('div', 'skill-level-picker__caption', captionText);
+    const caption = createElement('div', 'skill-level-picker__caption');
+
+    // Paint the picker for an "effective" level — the saved level, or a hover /
+    // keyboard-focus preview. Segments 1..eff fill UNIFORMLY in eff's colour
+    // (e.g. hover 5 -> 1-5 purple; hover 2 on a level-4 skill -> 1-2 gold,
+    // 3-4 cleared) and the caption mirrors it in the same colour (#5, #7).
+    function paint(eff) {
+      for (let n = 1; n <= 5; n += 1) {
+        picker.classList.remove(`skill-level-${n}`);
+      }
+      if (eff !== null) {
+        picker.classList.add(`skill-level-${eff}`);
+      }
+      [...segments.children].forEach((seg, i) => {
+        seg.classList.toggle('is-filled', eff !== null && i + 1 <= eff);
+      });
+      caption.textContent = eff === null
+        ? 'Tap to set a level'
+        : `${eff} · ${getSkillLabel(eff)}`;
+    }
 
     for (const { level, label } of SKILL_LEVELS) {
-      const segment = createButton(String(level), `skill-level-picker__segment skill-level-${level}`, () => {
+      const segment = createButton(String(level), 'skill-level-picker__segment', () => {
         _formState.skills[index].level = _formState.skills[index].level === level ? null : level;
         commitListChange();
         render(index, level);
       }, `${skill.name || 'Skill'}: set ${label}, level ${level} of 5`);
 
       segment.dataset.level = String(level);
-      if (skill.level !== null && level <= skill.level) {
-        segment.classList.add('is-filled');
-      }
+      segment.addEventListener('mouseenter', () => paint(level));
       segments.append(segment);
     }
+
+    segments.addEventListener('mouseleave', () => paint(skill.level));
+    segments.addEventListener('focusin', (event) => {
+      const focused = Number(event.target?.dataset?.level);
+      if (focused) {
+        paint(focused);
+      }
+    });
+    segments.addEventListener('focusout', () => paint(skill.level));
 
     if (errors[`skills[${index}].level`]) {
       picker.classList.add('has-warning');
     }
 
+    paint(skill.level);
     picker.append(segments, caption);
     return picker;
   }
@@ -669,7 +695,10 @@ function renderSkillsCard(page) {
 
     _formState.skills.forEach((skill, index) => {
       const row = createElement('div', 'skill-editor-row');
-      const field = createField('Skill name', skill.name ?? '');
+      // Visible per-row "Skill name" labels are repetitive and break the row's
+      // vertical alignment; keep the label for screen readers (sr-only via the
+      // row class) and guide sighted users with a placeholder instead.
+      const field = createField('Skill name', skill.name ?? '', false, { placeholder: 'Skill name' });
       const remove = createButton('×', 'skill-editor-row__remove', () => {
         _formState.skills.splice(index, 1);
         commitListChange();
@@ -705,14 +734,28 @@ function renderSkillsCard(page) {
 
     body.append(rows);
 
+    const atCap = _formState.skills.length >= SKILL_MAX;
     const add = createButton('+ Add skill', 'profile-btn profile-btn--outline skill-editor-add', () => {
+      if (_formState.skills.length >= SKILL_MAX) {
+        return;
+      }
       _formState.skills.push({ name: '', level: null });
       commitListChange();
       render(_formState.skills.length - 1);
     });
+    add.disabled = atCap;
+    if (atCap) {
+      add.title = `Maximum ${SKILL_MAX} skills`;
+    }
     body.append(add);
 
     const messages = buildFeedback(errors);
+    if (atCap && !errors['skills.max']) {
+      // At exactly the cap there is no validation error, but the disabled Add
+      // needs a visible reason — surface it in the same red feedback block as
+      // the missing-info messages.
+      messages.push(`Maximum ${SKILL_MAX} skills reached.`);
+    }
     if (messages.length > 0) {
       const feedback = createElement('div', 'skill-editor-feedback', messages.join(' '));
 

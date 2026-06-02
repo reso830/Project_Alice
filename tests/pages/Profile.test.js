@@ -292,6 +292,9 @@ describe('Profile page', () => {
     expect(rows[0].querySelectorAll('.skill-meter__segment')).toHaveLength(5);
     expect(rows[0].querySelectorAll('.skill-meter__segment.is-filled')).toHaveLength(4);
     expect(rows[0].querySelector('.skill-meter-row__level').textContent).toBe('4 · Strong');
+    // skill-level-{n} on the row drives the level colour for BOTH the meter fill
+    // and the revealed word (so the word matches the level's colour).
+    expect(rows[0].classList.contains('skill-level-4')).toBe(true);
   });
 
   it('uses model normalization before displaying skills', async () => {

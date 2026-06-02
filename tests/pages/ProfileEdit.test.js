@@ -653,7 +653,8 @@ describe('ProfileEdit page', () => {
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    for (const title of ['PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'CERTIFICATIONS', 'AWARDS', 'LANGUAGES', 'LINKS']) {
+    // SKILLS uses an inline "+ Add skill" control (design §5), not a header Add.
+    for (const title of ['PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'AWARDS', 'LANGUAGES', 'LINKS']) {
       const add = getHeaderAddButton(getCard(container, title));
 
       expect(add).toBeTruthy();
@@ -1008,7 +1009,7 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
-    getHeaderAddButton(skills).click();
+    skills.querySelector('.skill-editor-add').click();
 
     let row = skills.querySelector('.skill-editor-row');
     const nameInput = row.querySelector('.skill-editor-row__name input');
@@ -1031,6 +1032,30 @@ describe('ProfileEdit page', () => {
     expect(row.querySelector('.skill-level-picker__caption').textContent).toBe('Tap to set a level');
   });
 
+  it('previews a cumulative fill in the hovered level colour, then restores on leave', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: [{ name: 'React', level: 4 }] }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const picker = getCard(container, 'SKILLS').querySelector('.skill-level-picker');
+    const segments = picker.querySelector('.skill-level-picker__segments');
+
+    picker.querySelector('.skill-level-picker__segment[data-level="2"]')
+      .dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
+
+    expect(picker.querySelectorAll('.skill-level-picker__segment.is-filled')).toHaveLength(2);
+    expect(picker.classList.contains('skill-level-2')).toBe(true);
+    expect(picker.querySelector('.skill-level-picker__caption').textContent).toBe('2 · Basic');
+
+    segments.dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
+
+    expect(picker.querySelectorAll('.skill-level-picker__segment.is-filled')).toHaveLength(4);
+    expect(picker.classList.contains('skill-level-4')).toBe(true);
+    expect(picker.querySelector('.skill-level-picker__caption').textContent).toBe('4 · Strong');
+  });
+
   it('blocks Save for unrated skills and re-enables after every skill has a level', async () => {
     const container = createAppShell();
 
@@ -1040,7 +1065,7 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
-    getHeaderAddButton(skills).click();
+    skills.querySelector('.skill-editor-add').click();
     const row = skills.querySelector('.skill-editor-row');
 
     inputValue(row.querySelector('input'), 'Python');
@@ -1065,7 +1090,7 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
-    getHeaderAddButton(skills).click();
+    skills.querySelector('.skill-editor-add').click();
     typeText(() => skills.querySelector('.skill-editor-row input'), 'Spring Boot');
 
     expect(skills.querySelector('.skill-editor-row input').value).toBe('Spring Boot');
@@ -1105,7 +1130,7 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
-    getHeaderAddButton(skills).click();
+    skills.querySelector('.skill-editor-add').click();
     const row = skills.querySelector('.skill-editor-row');
 
     inputValue(row.querySelector('input'), '  Spring Boot  ');
@@ -1127,7 +1152,7 @@ describe('ProfileEdit page', () => {
 
     const skills = getCard(container, 'SKILLS');
 
-    getHeaderAddButton(skills).click();
+    skills.querySelector('.skill-editor-add').click();
     const [, duplicate] = skills.querySelectorAll('.skill-editor-row');
 
     inputValue(duplicate.querySelector('input'), ' python ');
@@ -1209,7 +1234,7 @@ describe('ProfileEdit page', () => {
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
-  it('shows inline feedback when the skill list exceeds 50 entries', async () => {
+  it('disables "+ Add skill" once the 50-skill cap is reached', async () => {
     const container = createAppShell();
     const skillsList = Array.from({ length: 50 }, (_, index) => ({
       name: `Skill ${index + 1}`,
@@ -1221,11 +1246,30 @@ describe('ProfileEdit page', () => {
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
     const skills = getCard(container, 'SKILLS');
+    const add = skills.querySelector('.skill-editor-add');
 
-    getHeaderAddButton(skills).click();
-    const extra = [...skills.querySelectorAll('.skill-editor-row')].at(-1);
-    inputValue(extra.querySelector('input'), 'Skill 51');
-    extra.querySelector('.skill-level-picker__segment[data-level="2"]').click();
+    expect(add.disabled).toBe(true);
+    expect(skills.querySelector('.skill-editor-feedback').textContent)
+      .toContain('Maximum 50 skills reached.');
+
+    add.click();
+    expect(skills.querySelectorAll('.skill-editor-row')).toHaveLength(50);
+  });
+
+  it('shows inline feedback when the skill list exceeds 50 entries', async () => {
+    const container = createAppShell();
+    // Over-cap is only reachable by seeded/imported data — the Add button is
+    // disabled at 50 — so seed 51 directly to exercise the max-count feedback.
+    const skillsList = Array.from({ length: 51 }, (_, index) => ({
+      name: `Skill ${index + 1}`,
+      level: 2,
+    }));
+
+    api.getProfile.mockResolvedValue(createProfile({ skills: skillsList }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
 
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
     expect(skills.querySelector('.skill-editor-feedback').textContent)
