@@ -13,6 +13,10 @@ describe('release metadata', () => {
     expect(pkg.version).toBe('1.1.0');
     expect(APP_VERSION).toBe('v1.1.0');
 
+    const lock = JSON.parse(read('package-lock.json'));
+    expect(lock.version).toBe('1.1.0');
+    expect(lock.packages['']?.version).toBe('1.1.0');
+
     expect(read('README.md')).toContain('Current version: **1.1.0**');
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
