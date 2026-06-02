@@ -51,7 +51,7 @@ test is operator-supplied; unit/component tests mock it.
 
 **Purpose**: Resolve the one load-bearing assumption before building on it.
 
-- [ ] T001 👤 De-risk the browser→OpenRouter CORS assumption (R-2)
+- [x] T001 👤 De-risk the browser→OpenRouter CORS assumption (R-2) — **PASS** (2026-06-02, local origin; see research.md "R-2 Spike result")
   - Files: throwaway probe only (a temporary HTML/JS snippet or devtools `fetch`); append the outcome to [research.md](./research.md) under a new "## R-2 Spike result" note. No production code committed from this task.
   - Behavior: from (a) `http://localhost` dev origin and (b) a Vercel preview origin, perform a real `fetch` to `https://openrouter.ai/api/v1/chat/completions` with a disposable test key; confirm a non-CORS-blocked response (any 2xx/4xx that is *not* a CORS failure counts as "reachable").
   - Constraints: do not commit the test key; revoke it after. Browser-direct is a FIRM requirement (contracts §4: "Alice's server never receives the key"). If either origin is CORS-blocked, **STOP and escalate** — do NOT switch to a server-proxy here; a proxy would break contracts §4 and requires an explicit spec/contracts/consent amendment with user approval first. Record the spike outcome in research.md.

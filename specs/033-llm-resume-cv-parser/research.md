@@ -71,6 +71,15 @@ spec/contracts/consent amendment with user approval before it could be adopted.
 `connect-src` that would block `https://openrouter.ai`. Today the app sets no
 restrictive CSP; if one is added later it must allow the OpenRouter origin.
 
+**R-2 Spike result (2026-06-02) — PASS**: A browser `fetch` from the localhost
+dev origin to `https://openrouter.ai/api/v1/chat/completions` returned an HTTP
+`401` JSON body **in the browser** (no CORS block) → cross-origin requests are
+allowed; **browser-direct (R-1) is viable, no escalation needed.** (The 401 was
+"Missing Authentication header" because the probe omitted the `Bearer ` prefix —
+the implementation uses `Authorization: Bearer <key>` per contracts §3; not a CORS
+issue.) OpenRouter returns origin-agnostic permissive CORS, so this holds for the
+deployed origin too — confirm opportunistically during the hosted smoke test.
+
 ---
 
 ## R-3 — Model strategy
