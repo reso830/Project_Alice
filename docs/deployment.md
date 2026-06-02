@@ -64,10 +64,24 @@ Legacy archived rows (those archived before this migration) retain
 `archived_date = NULL` and surface as `Archived ${lastStatusUpdate}` in
 the card date-stamp — no data fix is required.
 
+Feature **032-profile-schema-refactor** promotes profile skills into a
+dedicated `public.profile_skill` table (one row per skill) with RLS
+mirroring `profile`, a case-insensitive unique index, and an atomic
+`save_profile_with_skills(p_data, p_skills)` RPC. Apply the SQL block
+from
+[`specs/032-profile-schema-refactor/data-model.md §3`](../specs/032-profile-schema-refactor/data-model.md)
+after the 028 migration and before promoting a v1.2.0+ hosted deploy.
+The block is idempotent (`CREATE TABLE IF NOT EXISTS` + `DROP POLICY IF
+EXISTS` + `CREATE OR REPLACE FUNCTION`) and safe to re-run. No data
+backfill step is required: existing profiles migrate their embedded
+skills into the table automatically on first read (idempotent, no user
+action). Operator walkthrough:
+[`specs/032-profile-schema-refactor/quickstart.md §2`](../specs/032-profile-schema-refactor/quickstart.md).
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
 probes against `applications` (including `applications.timeline`),
-`profile`, and `user_seed_state`. If the
+`profile`, `profile_skill`, and `user_seed_state`. If the
 migration has not been applied:
 - The server logs a descriptive error naming the missing column or
   table (e.g. `[hosted-schema] missing artifact: public.applications.user_id`).
@@ -189,6 +203,12 @@ ordered procedure and the pass/fail framing.
    - [ ] For v0.13.0+ hosted deploys, apply the 026 Calendar
      starter-RPC v3 body from
      [`docs/db/claim_and_seed_starter.md`](../docs/db/claim_and_seed_starter.md).
+   - [ ] For v0.14.0+ hosted deploys, apply the 028 archive
+     `archived_date` column migration from
+     [`specs/028-archive-applications-view/data-model.md §1.3`](../specs/028-archive-applications-view/data-model.md).
+   - [ ] For v1.2.0+ hosted deploys, apply the 032 `profile_skill`
+     table + RLS + `save_profile_with_skills` RPC from
+     [`specs/032-profile-schema-refactor/data-model.md §3`](../specs/032-profile-schema-refactor/data-model.md).
 
 3. **Install the allowlist trigger.**
    - [ ] Follow

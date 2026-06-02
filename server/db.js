@@ -55,6 +55,19 @@ export function initSchema(targetDb = db) {
       data        TEXT    NOT NULL,
       updated_at  TEXT    NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS profile_skill (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id  INTEGER NOT NULL DEFAULT 1 REFERENCES profile(id) ON DELETE CASCADE,
+      skill_name  TEXT    NOT NULL,
+      proficiency INTEGER NOT NULL CHECK (proficiency BETWEEN 1 AND 5)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_profile_skill_profile
+      ON profile_skill(profile_id);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_skill_unique
+      ON profile_skill(profile_id, lower(skill_name));
   `);
 
   ensureColumn(targetDb, 'applications', 'archived', 'INTEGER NOT NULL DEFAULT 0');

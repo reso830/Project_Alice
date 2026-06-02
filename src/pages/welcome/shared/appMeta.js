@@ -3,7 +3,7 @@
 // list short and add via this module rather than re-introducing per-component
 // constants.
 
-export const APP_VERSION = 'v1.1.0';
+export const APP_VERSION = 'v1.2.0';
 
 export const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 

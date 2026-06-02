@@ -282,4 +282,85 @@ describe('profile API', () => {
     reopened.close();
     testDb.cleanup();
   });
+
+  it('embeds structured skills with their levels and order on GET (post-refactor parity)', async () => {
+    await withServer(async (baseUrl) => {
+      const skills = [
+        { name: 'JavaScript', level: 5 },
+        { name: 'CSS', level: 3 },
+        { name: 'SQLite', level: 2 },
+      ];
+
+      const saved = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ firstName: 'Ana', lastName: 'Rivera', skills }),
+      });
+      const fetched = await request(baseUrl, '/api/profile');
+
+      expect(saved.status).toBe(200);
+      // Skills are reassembled from rows into the embedded array, same order.
+      expect(saved.body.data.skills).toEqual(skills);
+      // A fresh GET shows persistence with the identical embedded shape.
+      expect(fetched.body.data.skills).toEqual(skills);
+    });
+  });
+
+  it('still enforces 031 skill validation rules through the API without writing', async () => {
+    await withServer(async (baseUrl, db) => {
+      const base = { firstName: 'Ana', lastName: 'Rivera' };
+
+      const unrated = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ ...base, skills: [{ name: 'React' }] }),
+      });
+      const blank = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ ...base, skills: [{ name: '   ', level: 3 }] }),
+      });
+      const duplicate = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...base,
+          skills: [{ name: 'React', level: 3 }, { name: ' react ', level: 4 }],
+        }),
+      });
+      const tooMany = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...base,
+          skills: Array.from({ length: 51 }, (_, index) => ({
+            name: `Skill ${index}`,
+            level: 3,
+          })),
+        }),
+      });
+
+      expect(unrated.status).toBe(400);
+      expect(unrated.body.error.code).toBe('VALIDATION_ERROR');
+      expect(unrated.body.error.fields).toHaveProperty('skills[0].level');
+      expect(blank.body.error.fields).toHaveProperty('skills[0].name');
+      expect(duplicate.body.error.fields).toHaveProperty('skills.duplicate');
+      expect(tooMany.body.error.fields).toHaveProperty('skills.max');
+
+      // None of the rejected payloads were persisted.
+      expect(getProfile(db)).toBeNull();
+    });
+  });
+
+  it('exposes only GET and PUT on /api/profile — no new skill routes (FR-012)', async () => {
+    await withServer(async (baseUrl) => {
+      // Raw fetch (not the JSON helper): Express's default 404 returns HTML.
+      const post = await globalThis.fetch(`${baseUrl}/api/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const del = await globalThis.fetch(`${baseUrl}/api/profile`, { method: 'DELETE' });
+      const skillsRoute = await globalThis.fetch(`${baseUrl}/api/profile/skills`);
+
+      expect(post.status).toBe(404);
+      expect(del.status).toBe(404);
+      expect(skillsRoute.status).toBe(404);
+    });
+  });
 });
