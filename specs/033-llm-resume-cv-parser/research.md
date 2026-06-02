@@ -85,10 +85,11 @@ deployed origin too — confirm opportunistically during the hosted smoke test.
 ## R-3 — Model strategy
 
 **Decision**: Use a single chat-completion request to a **configurable default
-model** targeting OpenRouter's free/open tier. The model id is a single
-easily-editable constant (e.g. `DEFAULT_MODEL` in the browser LLM service), with
-an example default of a free instruct model such as
-`meta-llama/llama-3.3-70b-instruct:free`. Request structured JSON via a strict
+model** targeting OpenRouter's free/open tier. The chosen default is
+**`meta-llama/llama-3.3-70b-instruct:free`** (free tier; reached OpenRouter
+cleanly in the R-2 spike), held as a single easily-editable `DEFAULT_MODEL`
+constant in the browser LLM service so it can be swapped without code
+restructuring if the free roster shifts. Request structured JSON via a strict
 system prompt and (where supported) `response_format: { type: 'json_object' }`.
 
 **Rationale**: The brief requires OpenRouter + open/free models and "avoid

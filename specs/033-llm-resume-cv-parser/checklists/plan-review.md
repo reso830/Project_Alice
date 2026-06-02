@@ -48,5 +48,9 @@
 
 ## Open items for `/speckit.tasks`
 
-- [ ] Confirm CORS spike is sequenced first (de-risks the whole feature).
-- [ ] Decide exact `DEFAULT_MODEL` id at implementation time (free-tier current).
+- [x] CORS spike sequenced first (T001) **and executed — PASS** (2026-06-02,
+  browser-direct confirmed; see research.md "R-2 Spike result").
+- [x] `DEFAULT_MODEL` decided: **`meta-llama/llama-3.3-70b-instruct:free`** (free
+  tier; reached OpenRouter cleanly in the spike). It is a single adjustable
+  constant in `llmParser.js` (R-3), so it can be changed without code
+  restructuring if the free-tier roster shifts.
