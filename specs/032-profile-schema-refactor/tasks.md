@@ -337,7 +337,7 @@
 
 ## Phase 06 — Browser Smoke Test (REQUIRED — transparent-contract proof)
 
-### [ ] Task 06.1 — Walk the Independent Tests in a real browser
+### [X] Task 06.1 — Walk the Independent Tests in a real browser
 
 **Target**: running app (local mode at minimum; hosted if a Supabase project is available), against the to-be-merged state.
 
