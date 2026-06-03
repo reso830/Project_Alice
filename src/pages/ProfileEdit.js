@@ -22,6 +22,7 @@ let _navigate = () => {};
 let _subheader = null;
 let _formState = null;
 let _initialState = null;
+let _aiFields = new Set();
 let _saving = false;
 let _basicInfoFields = {};
 let _discardKeyHandler = null;
@@ -34,6 +35,9 @@ let _importArea = null;
 let _mountGeneration = 0;
 let _saveBindings = [];
 let _skillPopoverCleanup = [];
+
+const AI_STRING_FIELDS = ['firstName', 'lastName', 'city', 'email', 'phone', 'summary'];
+const AI_ARRAY_FIELDS = ['experience', 'education', 'skills', 'certifications', 'awards', 'languages', 'links'];
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -145,7 +149,74 @@ function setSavingControlsBusy(isSaving) {
   }
 }
 
-function createField(label, value = '', multiline = false, { required = false, placeholder = '' } = {}) {
+function createAiFieldBadge() {
+  const badge = createElement('span', 'ai-field-badge', 'AI');
+
+  badge.setAttribute('aria-label', 'AI-generated field');
+  badge.title = 'AI-generated field';
+
+  return badge;
+}
+
+function clearAiIndicator(path, scope) {
+  if (!path) {
+    return;
+  }
+
+  _aiFields.delete(path);
+  scope?.querySelector('.ai-field-badge')?.remove();
+}
+
+function appendAiIndicator(target, path, scope) {
+  if (!path || !_aiFields.has(path)) {
+    return;
+  }
+
+  target.append(createAiFieldBadge());
+  target.classList.add('has-ai-field');
+  scope?.classList.add('has-ai-field');
+}
+
+function cleanAiString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getMergedAiFieldSet(previousState, parsedData, mergedState, draftAiFields) {
+  const sourceFields = draftAiFields instanceof Set ? draftAiFields : new Set();
+  const appliedFields = new Set();
+
+  if (sourceFields.size === 0) {
+    return appliedFields;
+  }
+
+  for (const field of AI_STRING_FIELDS) {
+    if (
+      sourceFields.has(field)
+      && !cleanAiString(previousState?.[field])
+      && cleanAiString(parsedData?.[field])
+      && cleanAiString(mergedState?.[field])
+    ) {
+      appliedFields.add(field);
+    }
+  }
+
+  for (const field of AI_ARRAY_FIELDS) {
+    if (![...sourceFields].some((path) => path.startsWith(`${field}[`))) {
+      continue;
+    }
+
+    const previousLength = Array.isArray(previousState?.[field]) ? previousState[field].length : 0;
+    const mergedLength = Array.isArray(mergedState?.[field]) ? mergedState[field].length : 0;
+
+    for (let index = previousLength; index < mergedLength; index += 1) {
+      appliedFields.add(`${field}[${index}]`);
+    }
+  }
+
+  return appliedFields;
+}
+
+function createField(label, value = '', multiline = false, { required = false, placeholder = '', aiPath = '' } = {}) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
   const input = document.createElement(multiline ? 'textarea' : 'input');
@@ -162,6 +233,9 @@ function createField(label, value = '', multiline = false, { required = false, p
   } else {
     input.type = 'text';
   }
+  appendAiIndicator(labelEl, aiPath, wrapper);
+  input.addEventListener('input', () => clearAiIndicator(aiPath, wrapper));
+  input.addEventListener('change', () => clearAiIndicator(aiPath, wrapper));
   error.hidden = true;
   wrapper.append(labelEl, input, error);
 
@@ -249,13 +323,16 @@ function cleanupSkillPopovers() {
   }
 }
 
-function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
+function createStructuredEntryRow(display, { onEdit, onRemove, aiPath = '' } = {}) {
   const row = createElement('div', 'entry-row entry-row--structured');
   const content = createElement('div', 'entry-row__content');
   const actions = createElement('div', 'entry-row__actions');
 
   if (display.title) {
-    content.append(createElement('div', 'profile-entry__title', display.title));
+    const title = createElement('div', 'profile-entry__title', display.title);
+
+    appendAiIndicator(title, aiPath, row);
+    content.append(title);
   }
 
   if (display.meta) {
@@ -270,7 +347,10 @@ function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
     actions.append(createIconButton(
       createSvgIcon('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z'),
       'entry-row__edit',
-      onEdit,
+      () => {
+        clearAiIndicator(aiPath, row);
+        onEdit();
+      },
       'Edit entry',
     ));
   }
@@ -278,7 +358,10 @@ function createStructuredEntryRow(display, { onEdit, onRemove } = {}) {
   actions.append(createIconButton(
     createSvgIcon('M5 5l14 14M19 5 5 19'),
     'entry-row__remove',
-    onRemove,
+    () => {
+      clearAiIndicator(aiPath, row);
+      onRemove();
+    },
     'Remove entry',
   ));
   row.append(content, actions);
@@ -461,6 +544,7 @@ function getLinkLabel(url, friendlyName = '') {
 
 function updateField(fieldName, value) {
   _formState[fieldName] = value;
+  _aiFields.delete(fieldName);
   setFieldError(_basicInfoFields[fieldName], '');
   updateControlsState();
 }
@@ -508,11 +592,11 @@ function renderPageControls() {
 function renderBasicInfoCard(page) {
   const { card, body } = createEditCard('BASIC INFO');
   const grid = createElement('div', 'edit-fields-grid');
-  const firstName = createField('First Name', _formState.firstName, false, { required: true });
-  const lastName = createField('Last Name', _formState.lastName, false, { required: true });
-  const city = createField('City/Location', _formState.city);
-  const email = createField('Email', _formState.email);
-  const phone = createField('Phone', _formState.phone);
+  const firstName = createField('First Name', _formState.firstName, false, { required: true, aiPath: 'firstName' });
+  const lastName = createField('Last Name', _formState.lastName, false, { required: true, aiPath: 'lastName' });
+  const city = createField('City/Location', _formState.city, false, { aiPath: 'city' });
+  const email = createField('Email', _formState.email, false, { aiPath: 'email' });
+  const phone = createField('Phone', _formState.phone, false, { aiPath: 'phone' });
 
   city.wrapper.classList.add('edit-field--full');
   _basicInfoFields = { firstName, lastName, city, email, phone };
@@ -528,7 +612,7 @@ function renderBasicInfoCard(page) {
 
 function renderSummaryCard(page) {
   const { card, body } = createEditCard('SUMMARY');
-  const summary = createField('Summary', _formState.summary, true);
+  const summary = createField('Summary', _formState.summary, true, { aiPath: 'summary' });
 
   summary.input.addEventListener('input', () => updateField('summary', summary.input.value));
   body.append(summary.wrapper);
@@ -658,6 +742,7 @@ function renderSkillsCard(page) {
 
     for (const { level, label } of SKILL_LEVELS) {
       const segment = createButton(String(level), 'skill-level-picker__segment', () => {
+        clearAiIndicator(`skills[${index}]`, picker.closest('.skill-editor-row'));
         _formState.skills[index].level = _formState.skills[index].level === level ? null : level;
         commitListChange();
         render(index, level);
@@ -698,8 +783,12 @@ function renderSkillsCard(page) {
       // Visible per-row "Skill name" labels are repetitive and break the row's
       // vertical alignment; keep the label for screen readers (sr-only via the
       // row class) and guide sighted users with a placeholder instead.
-      const field = createField('Skill name', skill.name ?? '', false, { placeholder: 'Skill name' });
+      const field = createField('Skill name', skill.name ?? '', false, {
+        placeholder: 'Skill name',
+        aiPath: `skills[${index}]`,
+      });
       const remove = createButton('×', 'skill-editor-row__remove', () => {
+        _aiFields.delete(`skills[${index}]`);
         _formState.skills.splice(index, 1);
         commitListChange();
         render();
@@ -836,6 +925,7 @@ function renderLanguagesCard(page) {
         title: entry.language,
         meta: entry.proficiency,
       }, {
+        aiPath: `languages[${index}]`,
         onEdit: () => openEditLanguageOverlay(entry, index, render),
         onRemove: () => {
           _formState.languages.splice(index, 1);
@@ -913,6 +1003,7 @@ function renderCertificationsCard(page) {
         title: entry.name,
         meta: [entry.issuingBody, entry.issuanceDate, entry.expiryDate].filter(Boolean).join(' | '),
       }, {
+        aiPath: `certifications[${index}]`,
         onEdit: () => openEditCertificationOverlay(entry, index, render),
         onRemove: () => {
           _formState.certifications.splice(index, 1);
@@ -980,14 +1071,15 @@ function renderEducationCard(page) {
     body.replaceChildren();
 
     for (const entry of sortEducation(_formState.education)) {
+      const index = _formState.education.indexOf(entry);
+
       body.append(createStructuredEntryRow({
         title: entry.degreeMajor,
         meta: [entry.university, entry.yearCompleted].filter(Boolean).join(' | '),
       }, {
-        onEdit: () => openEditEducationOverlay(entry, _formState.education.indexOf(entry), render),
+        aiPath: `education[${index}]`,
+        onEdit: () => openEditEducationOverlay(entry, index, render),
         onRemove: () => {
-          const index = _formState.education.indexOf(entry);
-
           _formState.education.splice(index, 1);
           commitListChange();
           render();
@@ -1096,6 +1188,7 @@ function renderExperienceCard(page) {
     body.replaceChildren();
 
     for (const entry of sortExperience(_formState.experience)) {
+      const index = _formState.experience.indexOf(entry);
       const endDate = entry.currentWork ? 'Present' : entry.dateEnded;
 
       body.append(createStructuredEntryRow({
@@ -1106,10 +1199,9 @@ function renderExperienceCard(page) {
         ].filter(Boolean).join(' | '),
         desc: entry.responsibilities,
       }, {
-        onEdit: () => openEditExperienceOverlay(entry, _formState.experience.indexOf(entry), render),
+        aiPath: `experience[${index}]`,
+        onEdit: () => openEditExperienceOverlay(entry, index, render),
         onRemove: () => {
-          const index = _formState.experience.indexOf(entry);
-
           _formState.experience.splice(index, 1);
           commitListChange();
           render();
@@ -1171,6 +1263,7 @@ function renderLinksCard(page) {
         title: getLinkLabel(entry.url, entry.friendlyName),
         meta: entry.url,
       }, {
+        aiPath: `links[${index}]`,
         onEdit: () => openEditLinkOverlay(entry, index, render),
         onRemove: () => {
           _formState.links.splice(index, 1);
@@ -1241,6 +1334,7 @@ function renderAwardsCard(page) {
         meta: [entry.issuingBody, entry.date].filter(Boolean).join(' | '),
         desc: entry.details,
       }, {
+        aiPath: `awards[${index}]`,
         onEdit: () => openEditAwardOverlay(entry, index, render),
         onRemove: () => {
           _formState.awards.splice(index, 1);
@@ -1280,11 +1374,18 @@ function renderResumeImportArea(page) {
 
   const generation = _mountGeneration;
   const importArea = ResumeImport.create({
-    onSuccess: (parsedData) => {
+    onSuccess: (parsedData, aiFieldSet = new Set(), meta = {}) => {
       if (!_container || _mountGeneration !== generation) return;
       _importDone = true;
-      _formState = mergeResumeData(_formState, parsedData);
+      const previousState = _formState;
+      const mergedState = mergeResumeData(_formState, parsedData);
+
+      _formState = mergedState;
+      _aiFields = getMergedAiFieldSet(previousState, parsedData, mergedState, aiFieldSet);
       renderEditPage(_container);
+      if (meta.notice) {
+        Toast.show(meta.notice, 'info');
+      }
     },
     onDismiss: () => {},
   });
@@ -1388,6 +1489,7 @@ async function handleSave() {
     await saveProfile(payload);
     _formState = deepClone(payload);
     _initialState = deepClone(payload);
+    _aiFields.clear();
     updateControlsState();
     _navigate('profile');
     Toast.show('Profile saved.', 'success');
@@ -1489,6 +1591,7 @@ export async function mount(container, { navigate, highlightImport = false } = {
 
   _formState = deepClone(normaliseProfile(profile ?? {}));
   _initialState = deepClone(_formState);
+  _aiFields = new Set();
   renderSubheader();
   renderEditPage(container);
 
@@ -1523,6 +1626,7 @@ export function unmount() {
   _navigate = () => {};
   _formState = null;
   _initialState = null;
+  _aiFields = new Set();
   _saving = false;
   _basicInfoFields = {};
   _discardAction = null;

@@ -44,4 +44,22 @@ describe('services/resumeApi.js — demo mode throws DEMO_FEATURE_UNAVAILABLE', 
     }
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('extractText(file) rejects with the demo-unavailable shape and does not call fetch', async () => {
+    const { extractText } = await import('../../src/services/resumeApi.js');
+    await expect(extractText(new globalThis.File([], 'r.pdf'))).rejects.toEqual({
+      code: 'DEMO_FEATURE_UNAVAILABLE',
+      message: 'Resume import is available after signing in.',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('parseText(text) rejects with the demo-unavailable shape and does not call fetch', async () => {
+    const { parseText } = await import('../../src/services/resumeApi.js');
+    await expect(parseText('Jane Smith')).rejects.toEqual({
+      code: 'DEMO_FEATURE_UNAVAILABLE',
+      message: 'Resume import is available after signing in.',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

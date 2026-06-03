@@ -18,6 +18,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Pagination** — 3-page sliding window with first/last anchors; hidden when 10 or fewer records; page preserved across archives and reloads
 - **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), and a full profile card with collapsible subsections; Skills render as graded 1–5 proficiency meters with an in-place level reveal, scale reference, sort, and collapse-past-10
 - **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; six structured sections (Experience, Education, Certifications, Awards, Languages, Links) use modal/bottom-sheet overlays for Add and Edit with inline validation, focus trap, and discard guard; Skills use inline rows with a tappable 1–5 proficiency level picker (Save gated until every skill is rated, names are non-blank, and there are no duplicates); browser refresh guard warns on unsaved changes; navbar navigation intercepted when unsaved changes exist
+- **AI resume parsing (BYOK)** — optionally parse a pasted or uploaded resume with an LLM (via OpenRouter) into structured profile fields for review before saving. Bring-your-own-key: the OpenRouter key is stored only in your browser and the call is made browser-direct, so it never reaches Alice's server; it is opt-in (one-time consent) and falls back to the existing rule-based parser when no key is set or the call fails. AI-populated fields are badged until edited. See [`specs/033-llm-resume-cv-parser/quickstart.md`](specs/033-llm-resume-cv-parser/quickstart.md). (033-llm-resume-cv-parser)
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
@@ -214,7 +215,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.2.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.3.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

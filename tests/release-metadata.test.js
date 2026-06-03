@@ -9,20 +9,22 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.2.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.2.0');
-    expect(APP_VERSION).toBe('v1.2.0');
+  it('keeps the 1.3.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.3.0');
+    expect(APP_VERSION).toBe('v1.3.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.2.0');
-    expect(lock.packages['']?.version).toBe('1.2.0');
+    expect(lock.version).toBe('1.3.0');
+    expect(lock.packages['']?.version).toBe('1.3.0');
 
-    expect(read('README.md')).toContain('Current version: **1.2.0**');
+    expect(read('README.md')).toContain('Current version: **1.3.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.3.0] — 2026-06-03');
     expect(read('CHANGELOG.md')).toContain('## [1.2.0] — 2026-06-02');
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.2.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.3.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0');
     expect(read('CHANGELOG.md')).toContain('[1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0');
     expect(read('CHANGELOG.md')).toContain('[1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0');
     expect(read('CHANGELOG.md')).toContain('[1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0');

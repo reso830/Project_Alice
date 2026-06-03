@@ -7,6 +7,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-06-03
+
+LLM Resume / CV Parser — resume import gains an optional AI-assisted path. Users can paste resume text or upload a file and have it parsed by an LLM (via OpenRouter) into structured profile fields for review before saving. The feature is bring-your-own-key (BYOK): the OpenRouter key is stored only in the user's browser and the LLM call is made browser-direct, so the key never reaches Alice's server. It is opt-in (one-time consent before any external send) and degrades gracefully — with no key, declined consent, or any LLM failure/timeout it falls back to the existing rule-based parser, and resume content is never persisted. Local-first is preserved: the app runs and resume import still works from a plain checkout with no key. (033-llm-resume-cv-parser)
+
+### Added
+
+- **AI-assisted resume parsing (BYOK)** — paste resume text or upload a PDF/DOCX/TXT and parse it with an LLM into the full profile schema (contact fields, summary, skills, experience, education, certifications, awards, languages, links). The call goes browser-direct to OpenRouter using the user's own key; output is validated/normalised before pre-filling the Edit Profile form for manual review. Nothing is auto-saved. (033-llm-resume-cv-parser)
+- **AI settings on the Profile page** — an "AI Resume Parsing" section to save/clear an OpenRouter key (stored in the browser only, with a clear "your responsibility" notice) and view/clear consent. Unavailable in demo mode. (033-llm-resume-cv-parser)
+- **One-time consent gate** — before resume content is first sent to OpenRouter, an explicit notice is shown; declining keeps everything local (rule-based / manual), accepting is remembered. (033-llm-resume-cv-parser)
+- **AI-generated field indicators** — fields populated by the LLM show a subtle, non-color-only "AI" badge that clears when the field is edited; rule-based imports show none. (033-llm-resume-cv-parser)
+- **`POST /api/resume/extract`** — stateless, memory-only endpoint returning the raw extracted text of an uploaded resume (no key, no LLM, no persistence) so the browser can send it to OpenRouter. (033-llm-resume-cv-parser)
+- **Neutral `info` toast type** — `Toast.show(msg, 'info')` renders with neutral styling, distinct from success/error. (033-llm-resume-cv-parser)
+
+### Changed
+
+- **Resume import now offers AI parsing with automatic rule-based fallback** — `POST /api/resume/parse` also accepts a JSON `{ text }` body (for pasted text), and the importer falls back to rule-based parsing on missing key, declined consent, or any LLM failure/timeout, with a notice when a long resume is truncated. Existing upload + merge behaviour is unchanged. (033-llm-resume-cv-parser)
+
+### Security
+
+- **API key and resume content never persist server-side** — the OpenRouter key lives only in the browser's `localStorage` and is sent only to OpenRouter; uploaded files pass through `/extract` for stateless, memory-only extraction; neither the key nor resume content is written to disk or database. (033-llm-resume-cv-parser)
+
 ## [1.2.0] — 2026-06-02
 
 Profile Schema Refactor — profile skills are promoted from an array embedded in the profile JSON document to a dedicated, per-profile `profile_skill` store, in both local (SQLite) and hosted (Supabase) modes. The store is the sole source of truth for skills; reads reassemble them into the profile so the whole-profile API contract and the Profile/Profile-Edit UI are unchanged, and existing profiles migrate automatically on first read with no data loss. This readies the schema for the upcoming compatibility, ATS, and AI-parsing features. No user-visible behavior change. (032-profile-schema-refactor)
@@ -861,7 +882,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/reso830/Project_Alice/compare/v0.15.0...v1.0.0

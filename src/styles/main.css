@@ -237,9 +237,29 @@ body {
 }
 
 .edit-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--t2);
   font-size: 12px;
   font-weight: 600;
+}
+
+.ai-field-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 16px;
+  padding: 0 5px;
+  border: 1px solid #B8C7FF;
+  border-radius: 4px;
+  background: #EEF3FF;
+  color: #31509F;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .edit-field__control {
@@ -1203,7 +1223,8 @@ textarea.edit-field__control {
 .resume-import__filename,
 .resume-import__status,
 .resume-import__error,
-.resume-import__error-message {
+.resume-import__error-message,
+.resume-import__paste-label {
   margin: 0;
   font-family: var(--font-ui);
   font-size: 12px;
@@ -1220,9 +1241,79 @@ textarea.edit-field__control {
   overflow-wrap: anywhere;
 }
 
+.resume-import__paste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resume-import__paste-label {
+  color: var(--t2);
+  font-weight: 700;
+}
+
+.resume-import__paste-input {
+  width: 100%;
+  min-height: 128px;
+  resize: vertical;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: #FFFFFF;
+  color: var(--t1);
+  font: 13px/1.5 var(--font-ui);
+}
+
+.resume-import__paste-input:focus {
+  border-color: var(--indigo);
+  outline: 2px solid rgba(79, 70, 229, .18);
+  outline-offset: 1px;
+}
+
 .resume-import__status {
   color: var(--indigo);
   font-weight: 700;
+}
+
+.resume-import__consent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #C7D2FE;
+  border-radius: var(--r-sm);
+  padding: 14px;
+  background: #F8FAFF;
+}
+
+.resume-import__consent-title,
+.resume-import__consent-copy {
+  margin: 0;
+  font-family: var(--font-ui);
+}
+
+.resume-import__consent-title {
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resume-import__consent-copy {
+  color: var(--t2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.resume-import__notice {
+  margin: 0;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: #EFF6FF;
+  color: var(--t2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .resume-import__disclaimer {
@@ -4134,6 +4225,38 @@ textarea.modal-inline-control {
 
 .account-section__btn {
   align-self: flex-start;
+}
+
+.ai-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-settings-section__field {
+  max-width: 460px;
+}
+
+.ai-settings-section__note,
+.ai-settings-section__status {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ai-settings-section__note {
+  color: var(--color-text);
+}
+
+.ai-settings-section__status {
+  color: var(--t2);
+  font-weight: 600;
+}
+
+.ai-settings-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .delete-modal-backdrop {
