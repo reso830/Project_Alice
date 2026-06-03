@@ -126,7 +126,7 @@ function expectAiBadge(target) {
   const badge = target.querySelector('.ai-field-badge');
 
   expect(badge).not.toBeNull();
-  expect(badge.textContent).toBe('AI');
+  expect(badge.querySelector('img')).not.toBeNull();
   expect(badge.getAttribute('aria-label')).toBe('AI-generated field');
   expect(badge.title).toBe('AI-generated field');
 }

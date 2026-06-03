@@ -249,17 +249,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 16px;
-  padding: 0 5px;
-  border: 1px solid #B8C7FF;
-  border-radius: 4px;
-  background: #EEF3FF;
+  margin-left: 0.4em;
   color: #31509F;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.ai-field-badge img {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .edit-field__control {

@@ -1,5 +1,6 @@
 import { ResumeImport } from '../components/ResumeImport.js';
 import { Toast } from '../components/Toast.js';
+import aiSparkle from '../assets/AI_sparkle.png';
 import * as authStore from '../data/authStore.js';
 import {
   getSkillLabel,
@@ -150,10 +151,16 @@ function setSavingControlsBusy(isSaving) {
 }
 
 function createAiFieldBadge() {
-  const badge = createElement('span', 'ai-field-badge', 'AI');
+  const badge = createElement('span', 'ai-field-badge');
+  const icon = document.createElement('img');
 
+  icon.src = aiSparkle;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+  badge.setAttribute('role', 'img');
   badge.setAttribute('aria-label', 'AI-generated field');
   badge.title = 'AI-generated field';
+  badge.append(icon);
 
   return badge;
 }

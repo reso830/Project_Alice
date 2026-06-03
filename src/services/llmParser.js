@@ -56,10 +56,18 @@ function parseAssistantJson(content) {
 
 function buildSystemPrompt() {
   return [
-    'Return only JSON matching Alice profile fields.',
-    'Use keys: firstName, lastName, email, phone, city, summary, skills, experience, education, certifications, awards, languages, links.',
-    'Do not fabricate missing facts. Omit unknown values or use empty strings/arrays.',
-    'Use MM/YYYY dates when month is known; use YYYY for education yearCompleted.',
+    'You extract a resume into JSON for the Alice profile. Return ONLY a JSON object — no prose, no markdown fences.',
+    'Top-level keys: firstName, lastName, email, phone, city, summary (strings); and arrays experience, education, skills, certifications, awards, languages, links.',
+    'Each array item MUST use exactly these keys:',
+    'experience: {"role","company","responsibilities","dateStarted","dateEnded","currentWork"} — responsibilities is a single string (join bullets with newlines); currentWork is a boolean.',
+    'education: {"degreeMajor","university","yearCompleted"}.',
+    'certifications: {"name","issuingBody","certificateId","issuanceDate","expiryDate"}.',
+    'awards: {"awardName","issuingBody","details","date"}.',
+    'languages: {"language","proficiency"} — proficiency is one of Beginner, Intermediate, Professional, Fluent.',
+    'links: {"url","friendlyName"}.',
+    'skills: an array of plain strings (skill names only).',
+    'Dates use MM/YYYY when the month is known; education yearCompleted is a 4-digit year. For a current role set currentWork true and dateEnded "".',
+    'Do not fabricate missing facts — omit unknown values or use empty strings/arrays.',
   ].join(' ');
 }
 
