@@ -7,6 +7,33 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-06-06
+
+Profile Page Refresh — the Profile experience now brings AI configuration,
+guided setup, smart import, provenance, and account controls into one coherent
+flow. Users configure BYOK OpenRouter settings from the Profile page, choose
+Smart or Manual entry when starting from an empty profile, import into existing
+profiles from the new Import Bar, review exactly what changed before saving,
+and can undo an import before persistence. Local-first is preserved: keys stay
+browser-local, AI calls remain browser-direct, and no server env vars, runtime
+modes, or database schemas change. (034-profile-page-refresh)
+
+### Added
+
+- **Unified Settings card** — Profile now combines AI Settings and Account controls in one Settings area, with browser-local OpenRouter key storage, model selection, connection testing, master enablement, and per-feature toggles for CV, JD, and compatibility assistance. Saving a key is the consent boundary; deleting it withdraws AI access. (034-profile-page-refresh)
+- **Guided Setup and Import flow** — empty profiles offer Smart entry or Manual entry; existing profiles expose an Import Bar with paste/upload smart input. Smart imports are gated by AI settings and keep manual entry available. (034-profile-page-refresh)
+- **Ask-first AI-unavailable dialogs** — AI failures and unavailable states surface reason-specific choices, including Settings navigation, Retry where appropriate, and an explicit Use basic parser path instead of silently falling through. (034-profile-page-refresh)
+- **Import provenance and Undo** — imported fields carry AI-filled or Auto-filled provenance until edited, freshly changed rows briefly flash with reduced-motion-safe handling, and a toast action can undo the import before the profile is saved. (034-profile-page-refresh)
+
+### Changed
+
+- **Resume import now uses the selected model slug** from AI Settings and treats the master AI toggle plus the CV feature toggle as the execution gate. (034-profile-page-refresh)
+- **Profile documentation and release metadata now point to v1.4.0** and the Profile Page Refresh implementation package. (034-profile-page-refresh)
+
+### Security
+
+- **No new deployer surface** — the Profile Page Refresh adds no environment variables, schema migrations, server-side keys, or external analytics. OpenRouter keys remain in browser `localStorage` and are sent only to OpenRouter from the browser. (034-profile-page-refresh)
+
 ## [1.3.0] — 2026-06-03
 
 LLM Resume / CV Parser — resume import gains an optional AI-assisted path. Users can paste resume text or upload a file and have it parsed by an LLM (via OpenRouter) into structured profile fields for review before saving. The feature is bring-your-own-key (BYOK): the OpenRouter key is stored only in the user's browser and the LLM call is made browser-direct, so the key never reaches Alice's server. It is opt-in (one-time consent before any external send) and degrades gracefully — with no key, declined consent, or any LLM failure/timeout it falls back to the existing rule-based parser, and resume content is never persisted. Local-first is preserved: the app runs and resume import still works from a plain checkout with no key. (033-llm-resume-cv-parser)
@@ -882,7 +909,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0

@@ -32,6 +32,11 @@ function accountButton(container) {
   return container.querySelector('.account-section__btn');
 }
 
+function getSection(container, label) {
+  return [...container.querySelectorAll('.section-card')]
+    .find((section) => section.querySelector('.section-label')?.textContent === label);
+}
+
 async function mountProfile(status) {
   authState.status = status;
   const container = document.createElement('main');
@@ -44,6 +49,8 @@ describe('Profile — Account section', () => {
     const container = await mountProfile('authenticated');
     const btn = accountButton(container);
 
+    expect(getSection(container, 'SETTINGS')).not.toBeNull();
+    expect(getSection(container, 'ACCOUNT')).toBeUndefined();
     expect(btn).not.toBeNull();
     expect(btn.textContent).toBe('Delete account');
     expect(btn.disabled).toBe(false);

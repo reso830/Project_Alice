@@ -9,21 +9,23 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.3.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.3.0');
-    expect(APP_VERSION).toBe('v1.3.0');
+  it('keeps the 1.4.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.4.0');
+    expect(APP_VERSION).toBe('v1.4.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.3.0');
-    expect(lock.packages['']?.version).toBe('1.3.0');
+    expect(lock.version).toBe('1.4.0');
+    expect(lock.packages['']?.version).toBe('1.4.0');
 
-    expect(read('README.md')).toContain('Current version: **1.3.0**');
+    expect(read('README.md')).toContain('Current version: **1.4.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.4.0] — 2026-06-06');
     expect(read('CHANGELOG.md')).toContain('## [1.3.0] — 2026-06-03');
     expect(read('CHANGELOG.md')).toContain('## [1.2.0] — 2026-06-02');
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.3.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.4.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0');
     expect(read('CHANGELOG.md')).toContain('[1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0');
     expect(read('CHANGELOG.md')).toContain('[1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0');
     expect(read('CHANGELOG.md')).toContain('[1.1.0]: https://github.com/reso830/Project_Alice/compare/v1.0.0...v1.1.0');
@@ -34,6 +36,30 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('[0.13.2]: https://github.com/reso830/Project_Alice/compare/v0.13.1...v0.13.2');
     expect(read('CHANGELOG.md')).toContain('[0.13.1]: https://github.com/reso830/Project_Alice/compare/v0.13.0...v0.13.1');
     expect(read('CHANGELOG.md')).toContain('[0.13.0]: https://github.com/reso830/Project_Alice/compare/v0.12.0...v0.13.0');
+  });
+
+  it('documents the Profile Page Refresh release surfaces with deployment notes', () => {
+    const readme = read('README.md');
+    const deployment = read('docs/deployment.md');
+    const repoMap = read('docs/REPO_MAP.md');
+
+    expect(readme).toContain('unified Settings');
+    expect(readme).toContain('guided Setup and Import flow');
+    expect(deployment).toContain('034-profile-page-refresh');
+    expect(deployment).toContain('No deployment action is required');
+    expect(repoMap).toContain('browser-only AI Settings');
+    expect(repoMap).toContain('ask-first AI-unavailable dialogs');
+    expect(repoMap).toContain('parseWithLlm(text, key, model)');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 034-profile-page-refresh  ·  shipped v1.4.0');
+
+    for (const path of [
+      'specs/034-profile-page-refresh',
+      'docs/features/034-profile-page-refresh.md',
+      'docs/design/profile_page.md',
+      'docs/design/edit_profile_page.md',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
   });
 
   it('documents the application Timeline release surfaces with resolvable links', () => {

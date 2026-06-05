@@ -27,11 +27,15 @@ vi.mock('../../src/services/resumeApi.js', () => ({
 
 vi.mock('../../src/data/aiSettings.js', () => ({
   getKey: vi.fn(),
+  getFeature: vi.fn(),
+  getModel: vi.fn(),
   hasKey: vi.fn(),
-  hasConsent: vi.fn(),
+  isEnabled: vi.fn(),
 }));
 
 vi.mock('../../src/services/llmParser.js', () => ({
+  REASON_CODES: {},
+  mapErrorToReason: vi.fn(() => 'rate_limit'),
   parseWithLlm: vi.fn(),
 }));
 
@@ -48,8 +52,10 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  aiSettings.isEnabled.mockReturnValue(true);
+  aiSettings.getFeature.mockImplementation((key) => key === 'cv');
+  aiSettings.getModel.mockReturnValue('openrouter/model-slug');
   aiSettings.hasKey.mockReturnValue(false);
-  aiSettings.hasConsent.mockReturnValue(false);
   aiSettings.getKey.mockReturnValue('');
 });
 
@@ -104,8 +110,19 @@ function getSaveButton(container) {
 }
 
 function inputValue(input, value) {
-  input.value = value;
-  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  let target = input;
+
+  if (!target) {
+    document.querySelector('.profile-import-bar__toggle')?.click();
+    const pasteTab = [...document.querySelectorAll('.profile-import-bar .resume-import button')]
+      .find((button) => button.textContent === 'Paste text');
+
+    pasteTab?.click();
+    target = document.querySelector('.resume-import__paste-input');
+  }
+
+  target.value = value;
+  target.dispatchEvent(new window.Event('input', { bubbles: true }));
 }
 
 async function flushPromises() {
@@ -131,6 +148,10 @@ function expectAiBadge(target) {
   expect(badge.title).toBe('AI-generated field');
 }
 
+function getSectionProvenance(card) {
+  return card.querySelector('.section-provenance')?.textContent ?? '';
+}
+
 function getEntryByTitle(card, title) {
   return [...card.querySelectorAll('.entry-row')]
     .find((row) => row.querySelector('.profile-entry__title')?.textContent?.includes(title));
@@ -143,7 +164,6 @@ describe('ProfileEdit AI field indicators', () => {
     api.getProfile.mockResolvedValue(createProfile());
     api.saveProfile.mockResolvedValue(createProfile());
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: {
@@ -163,7 +183,7 @@ describe('ProfileEdit AI field indicators', () => {
     });
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
-    await importPastedResume(container, 'Jane Doe resume');
+    await importPastedResume(container, 'Jane Doe resume with enough detail');
 
     const basicInfo = getCard(container, 'BASIC INFO');
     const summary = getCard(container, 'SUMMARY');
@@ -210,7 +230,6 @@ describe('ProfileEdit AI field indicators', () => {
       }],
     }));
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: {
@@ -229,7 +248,7 @@ describe('ProfileEdit AI field indicators', () => {
     });
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
-    await importPastedResume(container, 'Jane Doe resume');
+    await importPastedResume(container, 'Jane Doe resume with enough detail');
 
     const basicInfo = getCard(container, 'BASIC INFO');
     const summary = getCard(container, 'SUMMARY');
@@ -257,8 +276,10 @@ describe('ProfileEdit AI field indicators', () => {
     });
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
-    await importPastedResume(container, 'Rule Based resume');
+    await importPastedResume(container, 'Rule Based resume with enough detail');
 
     expect(container.querySelector('.ai-field-badge')).toBeNull();
+    expect(getSectionProvenance(getCard(container, 'BASIC INFO'))).toContain('Auto-filled');
+    expect(getSectionProvenance(getCard(container, 'SUMMARY'))).toContain('Auto-filled');
   });
 });

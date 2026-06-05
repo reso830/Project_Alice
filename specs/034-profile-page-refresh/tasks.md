@@ -57,7 +57,7 @@ tests mock it.
 **Purpose**: The browser-local source of truth every other phase reads. Rewrite
 `aiSettings` to the §7 shape with a one-way migration from 033's key/consent.
 
-- [ ] T001 Update unit tests for the AI settings store (`tests/data/aiSettings.test.js`)
+- [X] T001 Update unit tests for the AI settings store (`tests/data/aiSettings.test.js`)
   - Files: `tests/data/aiSettings.test.js` (extend existing).
   - Behavior: assert the new shape against a mocked `localStorage` —
     `isEnabled/setEnabled`, `getKey/setKey/clearKey/hasKey` (saving a key = consent),
@@ -72,7 +72,7 @@ tests mock it.
   - Validation: this file; must FAIL before T002.
   - Out-of-scope: any DOM/UI; the live `validateKey` network call (Phase 02).
 
-- [ ] T002 Implement the AI settings store rewrite + migration (`src/data/aiSettings.js`)
+- [X] T002 Implement the AI settings store rewrite + migration (`src/data/aiSettings.js`)
   - Files: `src/data/aiSettings.js` (modify).
   - Behavior: persist `alice.ai.openrouterKey` (reused), `alice.ai.enabled`,
     `alice.ai.model`, `alice.ai.features`; expose the helpers in T001; retire
@@ -92,7 +92,7 @@ tests mock it.
 **Purpose**: Let the parser take a model slug, add a cheap key-validation call, and
 centralise the error→reason-code mapping used by both Test and the import dialog.
 
-- [ ] T003 [P] Update LLM parser tests — model param, `validateKey`, reason map (`tests/services/llmParser.test.js`)
+- [X] T003 [P] Update LLM parser tests — model param, `validateKey`, reason map (`tests/services/llmParser.test.js`)
   - Files: `tests/services/llmParser.test.js` (extend).
   - Behavior: with mocked `fetch`/timers — `parseWithLlm(text, key, model)` sends the
     passed `model` (and defaults to `DEFAULT_MODEL` when omitted, preserving 033
@@ -104,7 +104,7 @@ centralise the error→reason-code mapping used by both Test and the import dial
   - Validation: this file; must FAIL before T004.
   - Out-of-scope: dialog rendering (Phase 07).
 
-- [ ] T004 [P] Implement parser model param + `validateKey` + reason map (`src/services/llmParser.js`)
+- [X] T004 [P] Implement parser model param + `validateKey` + reason map (`src/services/llmParser.js`)
   - Files: `src/services/llmParser.js` (modify).
   - Behavior: change signature to `parseWithLlm(text, key, model = DEFAULT_MODEL)`;
     add `validateKey(key, model?)` (one cheap authenticated request with the existing
@@ -121,7 +121,7 @@ centralise the error→reason-code mapping used by both Test and the import dial
 **Purpose**: Replace the two separate AI/Account cards with one **Settings** card
 holding the §4.5.1 AI sub-group and the relocated §4.5.2 Account sub-group.
 
-- [ ] T005 [US7] Page tests for the unified Settings card (`tests/pages/profile.aiSettings.test.js`, `tests/pages/Profile.account.test.js`)
+- [X] T005 [US7] Page tests for the unified Settings card (`tests/pages/profile.aiSettings.test.js`, `tests/pages/Profile.account.test.js`)
   - Files: `tests/pages/profile.aiSettings.test.js` (extend), `tests/pages/Profile.account.test.js` (extend), `tests/pages/Profile.test.js` (adjust if it asserts the old two-card layout).
   - Behavior: exactly one `Settings` card with two labelled sub-groups
     (ARTIFICIAL INTELLIGENCE + ACCOUNT); the old "AI RESUME PARSING" standalone card
@@ -136,7 +136,7 @@ holding the §4.5.1 AI sub-group and the relocated §4.5.2 Account sub-group.
   - Validation: these files; must FAIL before T006.
   - Out-of-scope: edit-page flow; CSS values.
 
-- [ ] T006 [US7] Implement the unified Settings card (`src/pages/Profile.js`)
+- [X] T006 [US7] Implement the unified Settings card (`src/pages/Profile.js`)
   - Files: `src/pages/Profile.js` (modify): replace `renderAiSettingsSection` +
     `renderAccountSection` with a single `renderSettingsSection` composing an AI
     sub-group (master toggle, connection panel: key + show/hide + Test + Replace +
@@ -151,7 +151,7 @@ holding the §4.5.1 AI sub-group and the relocated §4.5.2 Account sub-group.
   - Validation: T005 files pass.
   - Out-of-scope: `ProfileEdit`/`ResumeImport`; reduced-motion CSS.
 
-- [ ] T007 [P] Settings card styles (`src/styles/main.css`)
+- [X] T007 [P] Settings card styles (`src/styles/main.css`)
   - Files: `src/styles/main.css` (modify).
   - Behavior: styles per design §4.5 — `.section-card` Settings header, `.set-group`
     sub-groups + dividers, `.master-row`+`.sw` master toggle, `.conn-panel` inset +
@@ -169,7 +169,7 @@ holding the §4.5.1 AI sub-group and the relocated §4.5.2 Account sub-group.
 **Purpose**: The read-only page is already shipped (031/028). Lock it in; only fix
 a gap if found.
 
-- [ ] T008 [P] [US1][US3][US8] Verify read-only Profile render tests (`tests/pages/Profile.test.js`)
+- [X] T008 [P] [US1][US3][US8] Verify read-only Profile render tests (`tests/pages/Profile.test.js`)
   - Files: `tests/pages/Profile.test.js` (extend/verify).
   - Behavior: confirm skills proficiency rows + Sort (Custom / By level ▾▴) +
     collapse-past-10 + scale popover render; mobile sub-section collapse; archived
@@ -188,7 +188,7 @@ a gap if found.
 **Purpose**: Make the existing basic import obey the new settings model (consent
 folded into the key, model slug, master + CV gating) and add the AI-off deep-link.
 
-- [ ] T009 [US5] Tests for import reconcile (`tests/components/ResumeImport.test.js`, `tests/components/ResumeImport.demo.test.js`)
+- [X] T009 [US5] Tests for import reconcile (`tests/components/ResumeImport.test.js`, `tests/components/ResumeImport.demo.test.js`)
   - Files: `tests/components/ResumeImport.test.js` (extend), `tests/components/ResumeImport.demo.test.js` (extend).
   - Behavior: the separate consent dialog ("Send resume text to OpenRouter?") is
     GONE; the AI path runs only when `isEnabled() && getFeature('cv') && hasKey()`;
@@ -199,7 +199,7 @@ folded into the key, model slug, master + CV gating) and add the AI-off deep-lin
   - Validation: these files; must FAIL before T010.
   - Out-of-scope: mode gate / failure dialogs (Phases 06–07).
 
-- [ ] T010 [US5] Reconcile `ResumeImport.js` to the new settings (`src/components/ResumeImport.js`)
+- [X] T010 [US5] Reconcile `ResumeImport.js` to the new settings (`src/components/ResumeImport.js`)
   - Files: `src/components/ResumeImport.js` (modify).
   - Behavior: remove `shouldAskForConsent`/consent notice; gate the AI path on
     `aiSettings.isEnabled() && aiSettings.getFeature('cv') && aiSettings.hasKey()`;
@@ -209,7 +209,7 @@ folded into the key, model slug, master + CV gating) and add the AI-off deep-lin
   - Validation: T009 files pass.
   - Out-of-scope: gate/dialog/provenance.
 
-- [ ] T011 [US5] Update `ProfileEdit.js` consent/import wiring (`src/pages/ProfileEdit.js`)
+- [X] T011 [US5] Update `ProfileEdit.js` consent/import wiring (`src/pages/ProfileEdit.js`)
   - Files: `src/pages/ProfileEdit.js` (modify).
   - Behavior: remove any `hasConsent` references; ensure the import entry point reads
     the new settings; keep `highlightImport` and discard protection intact. Prepares
@@ -225,7 +225,7 @@ folded into the key, model slug, master + CV gating) and add the AI-off deep-lin
 **Purpose**: Net-new entry flow — split-card gate for first-time setup; collapsed
 Import Bar for existing profiles.
 
-- [ ] T012 [US5] Tests for mode gate + Import Bar (`tests/pages/ProfileEdit.test.js`)
+- [X] T012 [US5] Tests for mode gate + Import Bar (`tests/pages/ProfileEdit.test.js`)
   - Files: `tests/pages/ProfileEdit.test.js` (extend).
   - Behavior: opening with **no profile** shows the split-card gate over an empty
     form; **Manual entry** / dismiss (X/Esc/backdrop) → blank form; **Smart entry** →
@@ -236,7 +236,7 @@ Import Bar for existing profiles.
   - Validation: this file; must FAIL before T013/T014.
   - Out-of-scope: parse success/failure handling (Phase 07).
 
-- [ ] T013 [US5] Implement the split-card mode gate (`src/pages/ProfileEdit.js`, `src/components/ResumeImport.js`)
+- [X] T013 [US5] Implement the split-card mode gate (`src/pages/ProfileEdit.js`, `src/components/ResumeImport.js`)
   - Files: `src/pages/ProfileEdit.js` (modify), `src/components/ResumeImport.js` (modify).
   - Behavior: at mount, if the profile is empty show the gate (§3.2) — Smart entry
     (AI sparkle, "Fastest") vs Manual entry; dismiss defaults to manual; Smart →
@@ -246,7 +246,7 @@ Import Bar for existing profiles.
   - Validation: T012 passes.
   - Out-of-scope: failure dialogs / provenance.
 
-- [ ] T014 [US5] Implement the existing-profile Import Bar (`src/pages/ProfileEdit.js`)
+- [X] T014 [US5] Implement the existing-profile Import Bar (`src/pages/ProfileEdit.js`)
   - Files: `src/pages/ProfileEdit.js` (modify).
   - Behavior: collapsed Import Bar above Basic Info (§3.5); expands to reveal the
     smart input inline (chevron rotates); AI-off → non-expandable lock + Settings link.
@@ -254,7 +254,7 @@ Import Bar for existing profiles.
   - Validation: T012 passes.
   - Out-of-scope: merge/Undo (Phase 07).
 
-- [ ] T015 [P] Gate + Import Bar + smart-input styles (`src/styles/main.css`)
+- [X] T015 [P] Gate + Import Bar + smart-input styles (`src/styles/main.css`)
   - Files: `src/styles/main.css` (modify).
   - Behavior: split-card gate (backdrop blur, `--indigo-soft` wash on Smart card,
     stack < 600px), Import Bar (indigo-outline + wash + chevron), smart-input
@@ -270,7 +270,7 @@ Import Bar for existing profiles.
 **Purpose**: The safety-critical parts — ask-first failures with reason codes,
 basic-vs-AI provenance, append + Undo, no partial writes.
 
-- [ ] T016 [US5] Tests for failure/provenance/merge (`tests/pages/ProfileEdit.test.js`, `tests/pages/profileEdit.aiIndicators.test.js`)
+- [X] T016 [US5] Tests for failure/provenance/merge (`tests/pages/ProfileEdit.test.js`, `tests/pages/profileEdit.aiIndicators.test.js`)
   - Files: `tests/pages/ProfileEdit.test.js` (extend), `tests/pages/profileEdit.aiIndicators.test.js` (extend).
   - Behavior: AI-unavailable → ask-first dialog showing the correct **code chip +
     cause** (per reason); wait-reasons offer **Try AI again**, settings-reasons offer
@@ -285,7 +285,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: these files; must FAIL before T017–T019.
   - Out-of-scope: live network.
 
-- [ ] T017 [US5] Implement failure dialogs (`src/pages/ProfileEdit.js`, `src/components/ResumeImport.js`)
+- [X] T017 [US5] Implement failure dialogs (`src/pages/ProfileEdit.js`, `src/components/ResumeImport.js`)
   - Files: `src/pages/ProfileEdit.js` (modify), `src/components/ResumeImport.js` (modify).
   - Behavior: ask-first AI-unavailable dialog + unreadable dead-end dialog driven by
     `llmParser` reason codes (T004); recovery actions per `fix` class; "Use basic
@@ -294,7 +294,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: T016 passes.
   - Out-of-scope: provenance styling.
 
-- [ ] T018 [US5] Implement basic-vs-AI provenance markers (`src/pages/ProfileEdit.js`)
+- [X] T018 [US5] Implement basic-vs-AI provenance markers (`src/pages/ProfileEdit.js`)
   - Files: `src/pages/ProfileEdit.js` (modify).
   - Behavior: section-level pills — `✦ AI FILLED` (sparkle, indigo) for AI fills,
     `⚙ Auto-filled` (neutral, no sparkle) for basic fills; first-time marks all
@@ -304,7 +304,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: T016 passes.
   - Out-of-scope: CSS values (T020).
 
-- [ ] T019 [US5] Implement append merge + pre-import snapshot + Undo (`src/pages/ProfileEdit.js`)
+- [X] T019 [US5] Implement append merge + pre-import snapshot + Undo (`src/pages/ProfileEdit.js`)
   - Files: `src/pages/ProfileEdit.js` (modify).
   - Behavior: first-time → fill all from `ParsedProfile`; existing → `mergeResumeData`
     append (lists append, Summary as new paragraph, singular Basic Info only-if-empty,
@@ -314,7 +314,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: T016 passes.
   - Out-of-scope: dialog rendering (T017).
 
-- [ ] T020 [P] Dialog + provenance + flash styles (`src/styles/main.css`)
+- [X] T020 [P] Dialog + provenance + flash styles (`src/styles/main.css`)
   - Files: `src/styles/main.css` (modify).
   - Behavior: ask-first (indigo cloud-off) + unreadable (amber) dialogs, reason
     **code chip** (solid-red rounded-rect on soft-red inset), provenance pills
@@ -327,7 +327,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
 
 ## Phase 08: Reduced-motion, responsive polish, green build
 
-- [ ] T021 [P] Reduced-motion coverage for new animations (`src/styles/main.css`)
+- [X] T021 [P] Reduced-motion coverage for new animations (`src/styles/main.css`)
   - Files: `src/styles/main.css` (modify).
   - Behavior: extend the existing `@media (prefers-reduced-motion: reduce)` block so
     the skill-meter cross-fade, `epfFlash`, and bottom-sheet slide present without
@@ -337,16 +337,22 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: manual in Phase 10; assert the rule exists.
   - Out-of-scope: new animations beyond those above.
 
-- [ ] T022 👤 Responsive + reduced-motion spot-check
+- [X] T022 👤 Responsive + reduced-motion spot-check
   - Files: none (manual against `npm run dev`).
   - Behavior: verify Settings card has no overflow at ≤344px (saved-key row wraps);
     gate/Import Bar/dialogs reflow on tablet/mobile; with OS reduce-motion on,
     transitions are suppressed and states reachable.
   - Constraints: real browser; record findings.
   - Validation: noted here; blocks Release Prep if a breakpoint regresses.
+  - Result: 2026-06-05 headless Chrome spot-check passed. Settings at 344px had
+    no horizontal overflow (`pageOverflow=0`, saved-key/action containers no
+    overflow); first-time gate at 390px reflowed to one column with no overflow;
+    Import Bar + AI failure dialog at 768px had no overflow and showed `HTTP 429`;
+    reduced-motion at 390px produced `0s` skill-meter transitions and no bottom-sheet
+    animation.
   - Out-of-scope: code changes (file any as a fix task).
 
-- [ ] T023 Lint + full test suite green
+- [X] T023 Lint + full test suite green
   - Files: repo-wide.
   - Behavior: `npm run lint` clean; `npm run test:run` green (incl. demo variants).
   - Constraints: fix only feature-related failures; no unrelated churn.
@@ -359,21 +365,21 @@ basic-vs-AI provenance, append + Undo, no partial writes.
 
 **Purpose**: Constitution Amendment 1.1.0/1.3.0 second-to-last phase.
 
-- [ ] T024 Version bump 1.3.0 → 1.4.0 (`package.json`, `package-lock.json`, `src/pages/welcome/shared/appMeta.js`)
+- [x] T024 Version bump 1.3.0 → 1.4.0 (`package.json`, `package-lock.json`, `src/pages/welcome/shared/appMeta.js`)
   - Files: `package.json` (version), `package-lock.json` (root `version` + the root package entry), `src/pages/welcome/shared/appMeta.js` (in-app version display).
   - Behavior: bump all three to `1.4.0` consistently.
   - Constraints: do not run a full `npm install` solely to bump; edit the root version fields only.
   - Validation: `tests/release-metadata.test.js` passes (see T030).
   - Out-of-scope: dependency upgrades.
 
-- [ ] T025 CHANGELOG entry (`CHANGELOG.md`)
+- [x] T025 CHANGELOG entry (`CHANGELOG.md`)
   - Files: `CHANGELOG.md`.
   - Behavior: add a `1.4.0` section summarising the Settings §4.5 redesign, the
     full smart-import flow (gate/provenance/Undo/reason codes), and reduced-motion.
   - Validation: T030.
   - Out-of-scope: unrelated history edits.
 
-- [ ] T026 README updates (`README.md`)
+- [x] T026 README updates (`README.md`)
   - Files: `README.md`.
   - Behavior: document the new user-facing surface — unified Settings (BYOK key,
     model, feature toggles), and the guided Setup/Import flow.
@@ -381,7 +387,7 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: T031 docs sanity.
   - Out-of-scope: deployment specifics.
 
-- [ ] T027 REPO_MAP check (`docs/REPO_MAP.md`)
+- [x] T027 REPO_MAP check (`docs/REPO_MAP.md`)
   - Files: `docs/REPO_MAP.md`.
   - Behavior: 034 modifies existing files (no new dirs expected). Confirm and update
     only if a new file/asset was introduced; otherwise refresh the module notes for
@@ -389,30 +395,32 @@ basic-vs-AI provenance, append + Undo, no partial writes.
   - Validation: T031.
   - Out-of-scope: large restructures.
 
-- [ ] T028 Feature roadmap tick (`docs/feature_roadmap.md`)
+- [x] T028 Feature roadmap tick (`docs/feature_roadmap.md`)
   - Files: `docs/feature_roadmap.md`.
   - Behavior: mark 034 Profile Page Refresh delivered.
   - Validation: T031.
   - Out-of-scope: future-feature planning.
 
-- [ ] T029 Deployment docs sanity (`docs/deployment.md`)
+- [x] T029 Deployment docs sanity (`docs/deployment.md`)
   - Files: `docs/deployment.md` (likely no change).
   - Behavior: 034 adds no env vars / runtime modes (browser-local only) — confirm and
     note "no change", or add a line if anything shifted.
   - Validation: T031.
+  - Result: confirmed no env vars, runtime modes, schema migrations, or deployment action; deployment docs now state the no-change surface for 034.
   - Out-of-scope: infra changes.
 
-- [ ] T030 Release-metadata test sync (`tests/release-metadata.test.js`)
+- [x] T030 Release-metadata test sync (`tests/release-metadata.test.js`)
   - Files: `tests/release-metadata.test.js`.
   - Behavior: update expected version/CHANGELOG assertions to `1.4.0`.
   - Validation: `npm run test:run` green.
   - Out-of-scope: unrelated tests.
 
-- [ ] T031 👤 Docs sanity check
+- [x] T031 👤 Docs sanity check
   - Files: docs touched above.
   - Behavior: read-through for accuracy/links; version consistent across package.json,
     lockfile, appMeta, CHANGELOG.
   - Validation: signed off here.
+  - Result: `npm run test:run -- tests/release-metadata.test.js`, `npm run test:run`, and `npm run lint` pass on 2026-06-06.
   - Out-of-scope: code.
 
 ---

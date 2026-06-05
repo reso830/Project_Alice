@@ -23,12 +23,26 @@ vi.mock('../../src/services/resumeApi.js', () => ({
 
 vi.mock('../../src/data/aiSettings.js', () => ({
   getKey: vi.fn(),
+  getFeature: vi.fn(),
+  getModel: vi.fn(),
   hasKey: vi.fn(),
-  hasConsent: vi.fn(),
-  setConsent: vi.fn(),
+  isEnabled: vi.fn(),
 }));
 
 vi.mock('../../src/services/llmParser.js', () => ({
+  REASON_CODES: {
+    rate_limit: {
+      code: 'HTTP 429',
+      message: 'Rate limit reached — too many requests in a short time.',
+      fix: 'wait',
+    },
+    NO_TEXT: {
+      code: 'NO_TEXT',
+      message: 'No machine-readable text found — the file looks scanned or image-only.',
+      fix: 'dead-end',
+    },
+  },
+  mapErrorToReason: vi.fn((error) => error?.reason ?? 'rate_limit'),
   parseWithLlm: vi.fn(),
 }));
 
@@ -47,10 +61,11 @@ function setAuthState(state) {
 beforeEach(() => {
   authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
   authStoreMocks.subscribers.clear();
+  aiSettings.isEnabled.mockReturnValue(true);
+  aiSettings.getFeature.mockImplementation((key) => key === 'cv');
+  aiSettings.getModel.mockReturnValue('openrouter/model-slug');
   aiSettings.hasKey.mockReturnValue(false);
-  aiSettings.hasConsent.mockReturnValue(false);
   aiSettings.getKey.mockReturnValue('');
-  aiSettings.setConsent.mockReset();
   extractText.mockReset();
   parseResume.mockReset();
   parseText.mockReset();
@@ -239,10 +254,10 @@ describe('ResumeImport — auth-state gating', () => {
     expect(root.querySelector(`label[for="${textarea.id}"]`)?.textContent).toBe('Paste resume text');
   });
 
-  it('routes pasted text through the LLM when key and consent are present', async () => {
+  it('routes pasted text through the LLM when AI, CV, and key are enabled', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
+    aiSettings.getModel.mockReturnValue('custom/model');
     parseWithLlm.mockResolvedValue({
       draft: {
         firstName: 'Jane',
@@ -258,7 +273,7 @@ describe('ResumeImport — auth-state gating', () => {
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe\nTypeScript', 'openrouter-key');
+    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe\nTypeScript', 'openrouter-key', 'custom/model');
     expect(parseText).not.toHaveBeenCalled();
     expect(parseResume).not.toHaveBeenCalled();
     expect(extractText).not.toHaveBeenCalled();
@@ -277,8 +292,8 @@ describe('ResumeImport — auth-state gating', () => {
 
   it('extracts uploaded file text before routing through the LLM', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
+    aiSettings.getModel.mockReturnValue('custom/file-model');
     extractText.mockResolvedValue('extracted resume text');
     parseWithLlm.mockResolvedValue({
       draft: {
@@ -294,7 +309,7 @@ describe('ResumeImport — auth-state gating', () => {
     await flushPromises();
 
     expect(extractText).toHaveBeenCalledWith(file);
-    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key');
+    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key', 'custom/file-model');
     expect(parseResume).not.toHaveBeenCalled();
     expect(parseText).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith(
@@ -382,31 +397,8 @@ describe('ResumeImport — auth-state gating', () => {
     expect(onSuccess.mock.calls[0][1].size).toBe(0);
   });
 
-  it('shows consent before the first external LLM call when a key is present', async () => {
+  it('does not show a separate consent prompt when a key is present', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(false);
-    aiSettings.getKey.mockReturnValue('openrouter-key');
-    const root = ResumeImport.create();
-
-    pasteResumeText(root, 'Jane Doe resume');
-    root.querySelector('.profile-btn--primary').click();
-    await flushPromises(6);
-
-    expect(root.querySelector('.resume-import__consent')).not.toBeNull();
-    expect(root.querySelector('.resume-import__consent')?.textContent)
-      .toContain('OpenRouter');
-    expect(root.querySelector('.resume-import__consent')?.textContent)
-      .toContain('resume text');
-    expect(parseWithLlm).not.toHaveBeenCalled();
-    expect(parseText).not.toHaveBeenCalled();
-    expect(extractText).not.toHaveBeenCalled();
-  });
-
-  it('accepting consent remembers it and proceeds with the LLM parse', async () => {
-    aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent
-      .mockReturnValueOnce(false)
-      .mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: { summary: 'AI summary' },
@@ -417,13 +409,11 @@ describe('ResumeImport — auth-state gating', () => {
 
     pasteResumeText(root, 'Jane Doe resume');
     root.querySelector('.profile-btn--primary').click();
-    await flushPromises(4);
-
-    root.querySelector('.resume-import__consent-accept').click();
     await flushPromises();
 
-    expect(aiSettings.setConsent).toHaveBeenCalledTimes(1);
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key');
+    expect(root.querySelector('.resume-import__consent')).toBeNull();
+    expect(root.textContent).not.toContain('Send resume text to OpenRouter?');
+    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key', 'openrouter/model-slug');
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'AI summary' },
       expect.any(Set),
@@ -431,52 +421,44 @@ describe('ResumeImport — auth-state gating', () => {
     );
   });
 
-  it('declining consent uses the rule-based parser without sending to the LLM', async () => {
+  it('renders a Settings affordance instead of parsing when AI is off', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(false);
-    parseText.mockResolvedValue({ summary: 'Rule-based after decline' });
-    const onSuccess = vi.fn();
-    const root = ResumeImport.create({ onSuccess });
+    aiSettings.isEnabled.mockReturnValue(false);
+    const navigate = vi.fn();
+    const root = ResumeImport.create({ navigate });
 
     pasteResumeText(root, 'Jane Doe resume');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
-    root.querySelector('.resume-import__consent-decline').click();
-    await flushPromises();
+    const settingsLink = root.querySelector('.resume-import__settings-link');
 
-    expect(aiSettings.setConsent).not.toHaveBeenCalled();
+    expect(settingsLink).not.toBeNull();
+    expect(settingsLink.textContent).toBe('Enable AI in Settings →');
     expect(parseWithLlm).not.toHaveBeenCalled();
-    expect(parseText).toHaveBeenCalledWith('Jane Doe resume');
-    expect(onSuccess).toHaveBeenCalledWith(
-      { summary: 'Rule-based after decline' },
-      expect.any(Set),
-      expect.objectContaining({ notice: undefined }),
-    );
-    expect(onSuccess.mock.calls[0][1].size).toBe(0);
+    expect(parseText).not.toHaveBeenCalled();
+
+    settingsLink.click();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
   });
 
-  it('skips the consent prompt after consent is already set', async () => {
+  it('renders a Settings affordance instead of parsing when CV parsing is off', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
-    aiSettings.getKey.mockReturnValue('openrouter-key');
-    parseWithLlm.mockResolvedValue({
-      draft: { summary: 'AI summary' },
-      truncated: false,
-    });
+    aiSettings.getFeature.mockImplementation(() => false);
     const root = ResumeImport.create();
 
     pasteResumeText(root, 'Jane Doe resume');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
-    expect(root.querySelector('.resume-import__consent')).toBeNull();
-    expect(parseWithLlm).toHaveBeenCalledTimes(1);
+    expect(root.querySelector('.resume-import__settings-link')?.textContent).toBe('Enable AI in Settings →');
+    expect(parseWithLlm).not.toHaveBeenCalled();
+    expect(parseText).not.toHaveBeenCalled();
   });
 
-  it('falls back to rule-based parsing when the LLM fails without leaking provider details', async () => {
+  it('asks before rule-based parsing when the LLM fails without leaking provider details', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockRejectedValue(new Error('OpenRouter 502 provider_timeout stack trace'));
     parseText.mockResolvedValue({ summary: 'Rule-based fallback summary' });
@@ -487,24 +469,29 @@ describe('ResumeImport — auth-state gating', () => {
     root.querySelector('.profile-btn--primary').click();
     await flushPromises(4);
 
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key');
+    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key', 'openrouter/model-slug');
+    expect(parseText).not.toHaveBeenCalled();
+    expect(root.textContent).toContain('Smart parsing is unavailable right now');
+    expect(root.textContent).toContain('HTTP 429');
+    expect(root.textContent).not.toContain('OpenRouter 502');
+    expect(root.textContent).not.toContain('provider_timeout');
+
+    [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
+    await flushPromises(4);
+
     expect(parseText).toHaveBeenCalledWith('Jane Doe resume');
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'Rule-based fallback summary' },
       expect.any(Set),
       expect.objectContaining({
-        notice: 'AI parsing was unavailable, so Alice used the rule-based importer.',
+        source: 'basic',
       }),
     );
     expect(onSuccess.mock.calls[0][1].size).toBe(0);
-    expect(root.textContent).toContain('AI parsing was unavailable, so Alice used the rule-based importer.');
-    expect(root.textContent).not.toContain('OpenRouter 502');
-    expect(root.textContent).not.toContain('provider_timeout');
   });
 
-  it('falls back from an uploaded-file LLM failure using the extracted text', async () => {
+  it('uses the extracted text for basic parsing after an uploaded-file LLM failure', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     extractText.mockResolvedValue('extracted resume text');
     parseWithLlm.mockRejectedValue(new Error('provider raw failure'));
@@ -517,27 +504,29 @@ describe('ResumeImport — auth-state gating', () => {
     await flushPromises(4);
 
     expect(extractText).toHaveBeenCalledWith(file);
-    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key');
+    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key', 'openrouter/model-slug');
+    expect(parseText).not.toHaveBeenCalled();
+
+    [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
+    await flushPromises(4);
+
     expect(parseText).toHaveBeenCalledWith('extracted resume text');
     expect(parseResume).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'File fallback summary' },
       expect.any(Set),
       expect.objectContaining({
-        notice: 'AI parsing was unavailable, so Alice used the rule-based importer.',
+        source: 'basic',
       }),
     );
     expect(onSuccess.mock.calls[0][1].size).toBe(0);
   });
 
-  it('shows retry and Continue Manually when both AI and rule-based parsing fail without losing input', async () => {
+  it('shows ask-first recovery actions without losing pasted input', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockRejectedValue(new Error('provider raw failure'));
-    parseText
-      .mockRejectedValueOnce(new Error('rule raw failure'))
-      .mockResolvedValueOnce({ summary: 'Retry fallback summary' });
+    parseText.mockResolvedValue({ summary: 'Basic parser summary' });
     const onDismiss = vi.fn();
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onDismiss, onSuccess });
@@ -546,31 +535,30 @@ describe('ResumeImport — auth-state gating', () => {
     root.querySelector('.profile-btn--primary').click();
     await flushPromises(4);
 
-    expect(root.querySelector('.inline-error__message')?.textContent)
-      .toBe("Couldn't parse the resume. Try again.");
+    expect(root.querySelector('.resume-import-failure__title')?.textContent)
+      .toBe('Smart parsing is unavailable right now');
     expect(root.textContent).not.toContain('provider raw failure');
-    expect(root.textContent).not.toContain('rule raw failure');
-    expect(root.textContent).toContain('Continue Manually');
+    expect(root.textContent).toContain('Use basic parser');
+    expect(root.textContent).toContain('Try AI again');
+    expect(root.textContent).toContain('Cancel');
 
-    root.querySelector('.inline-error__retry').click();
+    [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
     await flushPromises(4);
 
-    expect(parseText).toHaveBeenLastCalledWith('Jane Doe retry resume');
+    expect(parseText).toHaveBeenCalledWith('Jane Doe retry resume');
     expect(onSuccess).toHaveBeenCalledWith(
-      { summary: 'Retry fallback summary' },
+      { summary: 'Basic parser summary' },
       expect.any(Set),
       expect.objectContaining({
-        notice: 'AI parsing was unavailable, so Alice used the rule-based importer.',
+        source: 'basic',
       }),
     );
 
-    root.querySelector('.inline-error__retry')?.click();
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it('shows a truncation notice when the LLM reports truncated input', async () => {
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: { summary: 'AI summary from long resume' },

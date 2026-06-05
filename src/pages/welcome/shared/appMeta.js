@@ -1,9 +1,8 @@
 // Centralized app-level metadata for chrome (footer + welcome mini footer).
-// Phase 19's version bump touches only this file + package.json — keep the
-// list short and add via this module rather than re-introducing per-component
-// constants.
+// Release bumps touch this file, package.json, and package-lock.json. Keep app
+// chrome constants here rather than re-introducing per-component versions.
 
-export const APP_VERSION = 'v1.3.0';
+export const APP_VERSION = 'v1.4.0';
 
 export const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 

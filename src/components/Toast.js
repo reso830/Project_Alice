@@ -21,7 +21,7 @@ function dismiss() {
   }, 180);
 }
 
-export function show(message, type) {
+export function show(message, type, options = {}) {
   if (_activeToast) {
     clearTimeout(_timer);
     _activeToast.remove();
@@ -38,6 +38,18 @@ export function show(message, type) {
   text.textContent = message;
 
   toast.append(dot, text);
+  if (options.actionLabel && typeof options.onAction === 'function') {
+    const action = document.createElement('button');
+
+    action.type = 'button';
+    action.className = 'toast-action';
+    action.textContent = options.actionLabel;
+    action.addEventListener('click', () => {
+      options.onAction();
+      dismiss();
+    });
+    toast.append(action);
+  }
   document.body.append(toast);
   _activeToast = toast;
   _timer = setTimeout(dismiss, 2400);

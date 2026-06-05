@@ -18,6 +18,14 @@ function makeResponse({ ok = true, status = 200, content }) {
   };
 }
 
+function makeValidationResponse({ ok = true, status = 200 } = {}) {
+  return {
+    ok,
+    status,
+    json: () => Promise.resolve({ data: [] }),
+  };
+}
+
 beforeEach(async () => {
   vi.resetModules();
   llmParser = await import('../../src/services/llmParser.js');
@@ -72,6 +80,19 @@ describe('llmParser', () => {
       }),
       truncated: false,
     });
+  });
+
+  it('uses a caller-provided model slug while preserving the default model fallback', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse({
+      content: JSON.stringify({ firstName: 'Jane' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await llmParser.parseWithLlm('Resume text', 'sk-or-test', 'anthropic/claude-sonnet-4');
+    await llmParser.parseWithLlm('Resume text', 'sk-or-test');
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe('anthropic/claude-sonnet-4');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe(llmParser.DEFAULT_MODEL);
   });
 
   it('truncates over-length input and reports truncation', async () => {
@@ -137,5 +158,74 @@ describe('llmParser', () => {
     await vi.advanceTimersByTimeAsync(llmParser.LLM_TIMEOUT_MS);
 
     await expectation;
+  });
+
+  it('validates a key without issuing a resume parse request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(makeValidationResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(llmParser.validateKey('sk-or-test', 'openai/gpt-4o-mini')).resolves.toEqual({
+      ok: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).not.toBe('https://openrouter.ai/api/v1/chat/completions');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer sk-or-test',
+      },
+    });
+  });
+
+  it.each([
+    [429, 'rate_limit'],
+    [408, 'timeout'],
+    [503, 'server'],
+    [401, 'invalid_key'],
+    [403, 'invalid_key'],
+    [402, 'quota'],
+    [418, 'rate_limit'],
+  ])('maps validation HTTP %s to %s', async (status, reason) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeValidationResponse({
+      ok: false,
+      status,
+    })));
+
+    await expect(llmParser.validateKey('sk-or-test')).resolves.toEqual({
+      ok: false,
+      reason,
+    });
+  });
+
+  it('maps validation network and timeout failures to reason codes', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockRejectedValueOnce(new TypeError('Network failed'))
+      .mockRejectedValueOnce(Object.assign(new Error('Aborted'), { name: 'AbortError' })));
+
+    await expect(llmParser.validateKey('sk-or-test')).resolves.toEqual({
+      ok: false,
+      reason: 'network',
+    });
+    await expect(llmParser.validateKey('sk-or-test')).resolves.toEqual({
+      ok: false,
+      reason: 'timeout',
+    });
+  });
+
+  it.each([
+    [429, 'rate_limit'],
+    [408, 'timeout'],
+    [503, 'server'],
+    [401, 'invalid_key'],
+    [403, 'invalid_key'],
+    [402, 'quota'],
+    ['NO_TEXT', 'NO_TEXT'],
+    ['LLM_EMPTY_RESPONSE', 'NO_TEXT'],
+    ['LLM_TIMEOUT', 'timeout'],
+    ['LLM_NETWORK_ERROR', 'network'],
+    [418, 'rate_limit'],
+  ])('maps %s to shared reason %s', (input, reason) => {
+    expect(llmParser.mapErrorToReason(input)).toBe(reason);
   });
 });
