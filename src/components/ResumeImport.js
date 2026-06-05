@@ -193,6 +193,10 @@ export const ResumeImport = {
       const message = validateFile(file);
 
       if (message) {
+        // Clear any previously-valid selection so an invalid pick can't leave a
+        // stale `selectedFile` that Process would silently use (Codex P2).
+        selectedFile = null;
+        input.value = '';
         showError(message);
         renderIdle();
         return;

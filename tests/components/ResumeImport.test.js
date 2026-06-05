@@ -320,6 +320,29 @@ describe('ResumeImport — auth-state gating', () => {
     expect(parseResume).not.toHaveBeenCalled();
   });
 
+  it('clears a stale valid selection when a later file is invalid (Codex P2)', async () => {
+    const onSuccess = vi.fn();
+    const root = ResumeImport.create({ onSuccess });
+
+    // A valid file is selected first...
+    selectFile(root, makeResumeFile('good.txt'));
+    // ...then an unsupported file is chosen, which must not leave the old one armed.
+    selectFile(root, new window.File(['x'], 'bad.exe', { type: 'application/octet-stream' }));
+
+    expect(root.querySelector('.resume-import__error').hidden).toBe(false);
+
+    // Process with an empty paste box must NOT silently process the stale file.
+    root.querySelector('.profile-btn--primary').click();
+    await flushPromises();
+
+    expect(root.querySelector('.resume-import__error')?.textContent)
+      .toBe('Paste resume text or choose a PDF, DOCX, or TXT resume file.');
+    expect(parseResume).not.toHaveBeenCalled();
+    expect(parseText).not.toHaveBeenCalled();
+    expect(parseWithLlm).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
   it('routes pasted text through rule-based parsing when no key is present', async () => {
     parseText.mockResolvedValue({ summary: 'Rule-based paste' });
     const onSuccess = vi.fn();

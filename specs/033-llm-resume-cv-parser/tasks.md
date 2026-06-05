@@ -270,13 +270,13 @@ editing a field clears its indicator; fallback shows none.
 - [x] T022 [P] Privacy review — confirm the **key** never reaches Alice's server (browser-direct LLM call; key only in `localStorage`); confirm resume **content** is transient/memory-only and **never persisted** — pasted text goes browser→OpenRouter directly, uploaded files pass through `/extract` only for stateless extraction; `/extract` and `/parse` persist nothing (no disk, no DB). Matches FR-010 / SC-006.
   - Files: review `src/services/llmParser.js`, `src/services/resumeApi.js`, `src/data/aiSettings.js`, `server/routes/resume.js`.
   - Validation: written confirmation in the PR/notes; matches FR-010 / SC-006.
-- [ ] T023 👤 [P] Accessibility & responsive review — paste textarea, consent notice, settings section, AI badge: labels, keyboard, ≤640px layout, non-color-only.
+- [x] T023 👤 [P] Accessibility & responsive review — paste textarea, consent notice, settings section, AI badge: labels, keyboard, ≤640px layout, non-color-only. **Done** — labelled inputs + keyboard verified (automated + smoke), non-color-only sparkle badge, ≤640px confirmed via T038. Residual (INFO): consent notice uses `role="dialog"` without a focus trap — deferred to the profile-page UI work.
   - Files: `src/components/ResumeImport.js`, `src/pages/Profile.js`, `src/pages/ProfileEdit.js`, `src/styles/main.css`.
   - Validation: manual checklist; matches FR-022.
 - [x] T024 Run full test + lint gates.
   - Behavior: `npm run test:run` and `npm run lint` clean (including unchanged resume suites: `resumeMerge`, `resumeParser`, `ResumeImport.demo`, `resumeApi.demo`).
   - Validation: both commands pass.
-- [ ] T025 👤 Validate quickstart end-to-end against a running app (`specs/033-llm-resume-cv-parser/quickstart.md`).
+- [x] T025 👤 Validate quickstart end-to-end against a running app (`specs/033-llm-resume-cv-parser/quickstart.md`). **Done** — quickstart flow walked in the smoke session (key setup → paste + upload parse → review → Save → fallback + truncation). Residual: exercised with the `owl-alpha` test model rather than the shipped free default (which rate-limits).
   - Validation: each quickstart step works as written.
 
 ---
@@ -294,7 +294,7 @@ new user-facing feature → **MINOR** bump (→ `1.3.0`).
 - [x] T030 `README.md` — Features bullet(s) for AI resume parsing (BYOK, browser-only key, opt-in); update `Current version` to `1.3.0`. No per-feature `specs/…` link under Further Reading.
 - [x] T031 `docs/deployment.md` — short BYOK note: AI parsing is browser-side and adds **no server env vars / no runtime-mode change**; link `quickstart.md`. (No env-var table change.)
 - [x] T032 `docs/REPO_MAP.md` — add entries for new files (`src/data/aiSettings.js`, `src/services/llmParser.js`, new tests) and the `/api/resume/extract` route; update `server/routes/resume.js` and `src/services/resumeApi.js` descriptions; add/confirm the Spec Packages row for `specs/033-llm-resume-cv-parser/`.
-- [ ] T033 👤 Docs sanity check — `grep` `1.2.0` across `package.json`, `package-lock.json` (root only), `src/`, `README.md`, `CHANGELOG.md`, `docs/`; confirm remaining matches are only historical CHANGELOG headings / diff URLs / dependency versions; verify new cross-link paths exist; confirm the running app shows `1.3.0`.
+- [x] T033 👤 Docs sanity check — `grep` `1.2.0` across `package.json`, `package-lock.json` (root only), `src/`, `README.md`, `CHANGELOG.md`, `docs/`; confirm remaining matches are only historical CHANGELOG headings / diff URLs / dependency versions; verify new cross-link paths exist; confirm the running app shows `1.3.0`. **Done** — only historical `1.2.0` matches remain (CHANGELOG headings/diff links, 032 shipped-version notes, `v1.2.0+` migration thresholds); new cross-links resolve; footer confirmed showing `v1.3.0`.
 
 ---
 
@@ -304,11 +304,13 @@ new user-facing feature → **MINOR** bump (→ `1.3.0`).
 to-be-merged state. **Setup**: start `npm run dev` + the backend; sign in (not
 demo); have a real OpenRouter key and a sample resume ready.
 
-- [ ] T034 👤 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7. Also run the SAME sample resume through the rule-based path (no key) and note, qualitatively, whether the AI path fills more fields more correctly (A1 / SC-001–SC-002 — observation only, not a pass/fail gate).
-- [ ] T035 👤 [US2] Key & consent — enter key in the Profile settings section, reload (persists), trigger first parse (consent appears), decline (nothing sent) then accept (remembered). Verify US2 acceptance scenarios 1–7, including demo-mode unavailability.
-- [ ] T036 👤 [US3] Graceful degradation — (a) no key → rule-based pre-fill; (b) bad key/forced failure → falls back with a friendly message; (c) both fail → retry + Continue Manually preserve form data; (d) very long resume → truncation notice. Verify US3 scenarios 1–5.
-- [ ] T037 👤 [US4] AI indicators — confirm indicators on AI-populated fields, that editing clears them, and that a rule-based fallback shows none. Verify US4 scenarios 1–3.
-- [ ] T038 👤 Mobile layout — DevTools ≤640px: paste input, consent notice, settings section, and AI badges stack/readable; all interactions work via touch/click.
+- [x] T034 👤 [US1] AI parse & review — set key, paste a resume, Process, confirm fields pre-fill with AI indicators and Save persists reviewed values; no auto-save. Verify US1 acceptance scenarios 1–7. Also run the SAME sample resume through the rule-based path (no key) and note, qualitatively, whether the AI path fills more fields more correctly (A1 / SC-001–SC-002 — observation only, not a pass/fail gate). **Pass** (smoke session: paste + upload/DOCX, loading, merge, edit, Save-persists, no auto-save, A1 observed).
+- [x] T035 👤 [US2] Key & consent — enter key in the Profile settings section, reload (persists), trigger first parse (consent appears), decline (nothing sent) then accept (remembered). Verify US2 acceptance scenarios 1–7, including demo-mode unavailability. **Pass** (key persists across reload; consent gate accept/decline/remembered; demo gating verified by automated tests).
+- [x] T036 👤 [US3] Graceful degradation — (a) no key → rule-based pre-fill; (b) bad key/forced failure → falls back with a friendly message; (c) both fail → retry + Continue Manually preserve form data; (d) very long resume → truncation notice. Verify US3 scenarios 1–5. **Pass** (all four cases walked; no internals leaked; form data preserved).
+- [x] T037 👤 [US4] AI indicators — confirm indicators on AI-populated fields, that editing clears them, and that a rule-based fallback shows none. Verify US4 scenarios 1–3. **Pass**.
+- [x] T038 👤 Mobile layout — DevTools ≤640px: paste input, consent notice, settings section, and AI badges stack/readable; all interactions work via touch/click. **Pass** (single-column stacking, all controls tappable at ≤640px).
+
+**Smoke-pass residual risk:** the walk was performed with the `owl-alpha` test model because the shipped free default (`meta-llama/llama-3.3-70b-instruct:free`) rate-limits (429). The shipped default exercises the **identical** browser-direct code path (verified by the mocked `llmParser` unit tests) and its failure mode degrades to rule-based (walked in T036), but its live AI happy-path was not run end-to-end. Accepted: tracked as the model-reliability INFO finding, addressed by the planned configurable-model follow-up. Settings-related flows (T035) will get a quick re-walk when the profile-page/configurable-model feature reworks that UI.
 
 **Runtime note (FR-019 / C1)**: the AI path is browser-direct and runtime-agnostic, but verify it at least in **local mode**; if a hosted preview is available, confirm the same flow there. The rule-based fallback already runs in both runtimes today.
 
