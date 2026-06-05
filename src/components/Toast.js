@@ -1,5 +1,11 @@
 let _activeToast = null;
 let _timer = null;
+const TOAST_DOT_COLORS = {
+  success: '#22C55E',
+  info: '#F59E0B',
+  failure: '#EF4444',
+  error: '#EF4444',
+};
 
 function dismiss() {
   if (!_activeToast) {
@@ -28,7 +34,7 @@ export function show(message, type) {
 
   toast.className = 'toast';
   dot.className = 'toast-dot';
-  dot.style.backgroundColor = type === 'success' ? '#22C55E' : '#EF4444';
+  dot.style.backgroundColor = TOAST_DOT_COLORS[type] ?? TOAST_DOT_COLORS.error;
   text.textContent = message;
 
   toast.append(dot, text);

@@ -17,11 +17,21 @@ const ERROR_RESPONSES = {
     code: 'VALIDATION_ERROR',
     message: 'No resume file provided.',
   },
+  TEXT_VALIDATION_ERROR: {
+    code: 'VALIDATION_ERROR',
+    message: 'Resume text is required.',
+  },
+  PAYLOAD_TOO_LARGE: {
+    code: 'PAYLOAD_TOO_LARGE',
+    message: 'Resume text exceeds the size limit.',
+  },
   PARSE_FAILED: {
     code: 'PARSE_FAILED',
     message: 'Could not read this resume. Try a different file.',
   },
 };
+
+const TEXT_MAX = 50_000;
 
 function sendError(res, status, error) {
   return res.status(status).json({ error });
@@ -49,7 +59,65 @@ export function createResumeRouter({ requireAuth, seedHostedUserIfNeeded } = {})
     router.use(seedHostedUserIfNeeded);
   }
 
+  async function handleExtract(req, res, next) {
+    upload.single('resume')(req, res, async (uploadError) => {
+      if (uploadError instanceof multer.MulterError) {
+        if (uploadError.code === 'LIMIT_FILE_SIZE') {
+          return sendError(res, 400, ERROR_RESPONSES.FILE_TOO_LARGE);
+        }
+        console.error('[resume.parse]', {
+          error: uploadError.message,
+          code: uploadError.code,
+          path: req.originalUrl?.split('?')[0] ?? req.path,
+        });
+        return sendError(res, 400, ERROR_RESPONSES.VALIDATION_ERROR);
+      }
+
+      if (uploadError) {
+        return next(uploadError);
+      }
+
+      if (!req.file) {
+        return sendError(res, 400, ERROR_RESPONSES.VALIDATION_ERROR);
+      }
+
+      try {
+        const text = await extractText(req.file.buffer, req.file.mimetype, req.file.originalname);
+        return res.status(200).json({ data: { text } });
+      } catch (error) {
+        if (isUnsupportedFileType(error)) {
+          return sendError(res, 400, ERROR_RESPONSES.UNSUPPORTED_FILE_TYPE);
+        }
+
+        console.error('[resume.extract]', {
+          error: error?.message ?? 'unknown',
+          stack: error?.stack,
+          nameSha8: hashFilename(req.file?.originalname),
+          mimetype: req.file?.mimetype,
+          path: req.originalUrl?.split('?')[0] ?? req.path,
+        });
+        return sendError(res, 400, ERROR_RESPONSES.PARSE_FAILED);
+      }
+    });
+  }
+
+  router.post('/extract', handleExtract);
+
   router.post('/parse', (req, res, next) => {
+    if (req.is('application/json')) {
+      const text = typeof req.body?.text === 'string' ? req.body.text : '';
+
+      if (!text.trim()) {
+        return sendError(res, 400, ERROR_RESPONSES.TEXT_VALIDATION_ERROR);
+      }
+
+      if (text.length > TEXT_MAX) {
+        return sendError(res, 400, ERROR_RESPONSES.PAYLOAD_TOO_LARGE);
+      }
+
+      return res.status(200).json({ data: parseResumeText(text) });
+    }
+
     upload.single('resume')(req, res, async (uploadError) => {
       if (uploadError instanceof multer.MulterError) {
         if (uploadError.code === 'LIMIT_FILE_SIZE') {

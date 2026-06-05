@@ -13,6 +13,7 @@ import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
 import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
+import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
@@ -879,6 +880,72 @@ function renderAccountSection(page, { navigate, container } = {}) {
   page.append(section);
 }
 
+function renderAiSettingsSection(page) {
+  const mode = resolveAccountMode();
+  const { section } = createSection('AI RESUME PARSING');
+  const body = createElement('div', 'ai-settings-section');
+
+  if (mode === 'demo') {
+    body.append(createElement(
+      'p',
+      'ai-settings-section__note',
+      'AI resume parsing is available after signing in.',
+    ));
+    section.append(body);
+    page.append(section);
+    return;
+  }
+
+  const keyField = createElement('label', 'edit-field ai-settings-section__field');
+  const keyLabel = createElement('span', 'edit-field__label', 'OpenRouter API key');
+  const keyInput = document.createElement('input');
+  const notice = createElement(
+    'p',
+    'ai-settings-section__note',
+    'Your key is stored only in this browser. Using an OpenRouter key is your responsibility.',
+  );
+  const keyStatus = createElement(
+    'p',
+    'ai-settings-section__status',
+    aiSettings.hasKey() ? 'Key saved in this browser' : 'No key saved',
+  );
+  const consentStatus = createElement(
+    'p',
+    'ai-settings-section__status',
+    aiSettings.hasConsent() ? 'Consent granted' : 'Consent not granted',
+  );
+  const actions = createElement('div', 'ai-settings-section__actions');
+  const save = createButton('Save Key', 'profile-btn profile-btn--primary', () => {
+    aiSettings.setKey(keyInput.value.trim());
+    keyInput.value = '';
+    Toast.show('AI resume parsing key saved.', 'success');
+    keyStatus.textContent = aiSettings.hasKey() ? 'Key saved in this browser' : 'No key saved';
+  });
+  const clearKey = createButton('Clear Key', 'profile-btn profile-btn--outline', () => {
+    aiSettings.clearKey();
+    keyInput.value = '';
+    keyStatus.textContent = 'No key saved';
+    Toast.show('AI resume parsing key cleared.', 'success');
+  });
+  const clearConsent = createButton('Clear Consent', 'profile-btn profile-btn--outline', () => {
+    aiSettings.clearConsent();
+    consentStatus.textContent = 'Consent not granted';
+    Toast.show('AI resume parsing consent cleared.', 'success');
+  });
+
+  keyInput.id = 'ai-openrouter-key';
+  keyInput.type = 'password';
+  keyInput.autocomplete = 'off';
+  keyInput.className = 'edit-field__control';
+  keyInput.placeholder = aiSettings.hasKey() ? 'Key saved' : 'Paste OpenRouter key';
+  keyField.setAttribute('for', 'ai-openrouter-key');
+  keyField.append(keyLabel, keyInput);
+  actions.append(save, clearKey, clearConsent);
+  body.append(keyField, notice, keyStatus, consentStatus, actions);
+  section.append(body);
+  page.append(section);
+}
+
 export async function mount(container, { navigate } = {}) {
   cleanupTransientState();
 
@@ -909,6 +976,7 @@ export async function mount(container, { navigate } = {}) {
   }
 
   renderProfileSection(page, profile, safeNavigate);
+  renderAiSettingsSection(page);
   renderAccountSection(page, { navigate: safeNavigate, container });
 }
 

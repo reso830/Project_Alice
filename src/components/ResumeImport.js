@@ -1,6 +1,8 @@
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
+import * as aiSettings from '../data/aiSettings.js';
+import { parseWithLlm } from '../services/llmParser.js';
 import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
-import { parseResume } from '../services/resumeApi.js';
+import { extractText, parseResume, parseText } from '../services/resumeApi.js';
 
 // Exported (feature 020) so the demo test can assert
 // `!VISIBLE_STATUSES.has(DEMO_STATUS)` as a design-by-contract guard.
@@ -25,6 +27,7 @@ const PROCESSING_MESSAGES = [
   'Extracting experience...',
   'Building profile...',
 ];
+let pasteInputId = 0;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -86,6 +89,40 @@ function hasExtractedData(parsedData) {
   });
 }
 
+function hasMeaningfulValue(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).some(hasMeaningfulValue);
+  }
+
+  return value !== null && value !== undefined && value !== '';
+}
+
+function buildAiFieldSet(draft) {
+  const fields = new Set();
+
+  if (!draft || typeof draft !== 'object') {
+    return fields;
+  }
+
+  for (const [field, value] of Object.entries(draft)) {
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => {
+        if (hasMeaningfulValue(entry)) {
+          fields.add(`${field}[${index}]`);
+        }
+      });
+    } else if (hasMeaningfulValue(value)) {
+      fields.add(field);
+    }
+  }
+
+  return fields;
+}
+
 function supportsDesktopDrop() {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(pointer: fine)').matches;
@@ -104,15 +141,15 @@ export const ResumeImport = {
 
     function applyVisibility() {
       root.hidden = !authVisible || completed;
+      if (!authVisible) {
+        root.replaceChildren(input);
+      }
     }
 
-    applyVisibility();
-    const unsubscribe = subscribeAuth((state) => {
-      authVisible = isAuthVisible(state);
-      applyVisibility();
-    });
     const input = document.createElement('input');
     const error = createElement('p', 'resume-import__error');
+    const paste = document.createElement('textarea');
+    const pasteId = `resume-import-paste-${pasteInputId += 1}`;
     let selectedFile = null;
     let processingIndex = 0;
     let processingTimer = null;
@@ -122,7 +159,19 @@ export const ResumeImport = {
     input.className = 'resume-import__input';
     input.setAttribute('aria-label', 'Choose resume file');
     input.hidden = true;
+    paste.id = pasteId;
+    paste.className = 'resume-import__paste-input';
+    paste.rows = 6;
+    paste.placeholder = 'Paste resume text here';
     error.hidden = true;
+    applyVisibility();
+    const unsubscribe = subscribeAuth((state) => {
+      authVisible = isAuthVisible(state);
+      applyVisibility();
+      if (authVisible && root.children.length === 1) {
+        renderIdle();
+      }
+    });
 
     function clearProcessingTimer() {
       if (processingTimer) {
@@ -136,10 +185,18 @@ export const ResumeImport = {
       error.hidden = !message;
     }
 
+    function getPastedText() {
+      return paste.value.trim();
+    }
+
     function selectFile(file) {
       const message = validateFile(file);
 
       if (message) {
+        // Clear any previously-valid selection so an invalid pick can't leave a
+        // stale `selectedFile` that Process would silently use (Codex P2).
+        selectedFile = null;
+        input.value = '';
         showError(message);
         renderIdle();
         return;
@@ -156,6 +213,16 @@ export const ResumeImport = {
       applyVisibility();
       root.setAttribute('aria-busy', 'false');
       root.replaceChildren(input);
+    }
+
+    function createPasteField() {
+      const wrapper = createElement('div', 'resume-import__paste');
+      const label = createElement('label', 'resume-import__paste-label', 'Paste resume text');
+
+      label.setAttribute('for', pasteId);
+      wrapper.append(label, paste);
+
+      return wrapper;
     }
 
     function createDropZone() {
@@ -188,12 +255,26 @@ export const ResumeImport = {
 
     function renderIdle() {
       renderShell('resume-import--idle');
+      if (!authVisible) {
+        return;
+      }
       const disclaimer = createElement(
         'p',
         'resume-import__disclaimer',
         'Auto-parsing may not be perfect — review all imported fields before saving.',
       );
-      root.append(createHeader(), createDropZone(), disclaimer, error);
+      const actions = createElement('div', 'resume-import__actions');
+      const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {
+        processBinding.run().catch(() => {});
+      });
+      const processBinding = bindBusyButton({
+        button: process,
+        action: processSelectedInput,
+        silent: true,
+      });
+
+      actions.append(process);
+      root.append(createHeader(), createDropZone(), createPasteField(), actions, disclaimer, error);
     }
 
     function renderSelected() {
@@ -207,12 +288,12 @@ export const ResumeImport = {
       });
       const processBinding = bindBusyButton({
         button: process,
-        action: processSelectedFile,
+        action: processSelectedInput,
         silent: true,
       });
 
       actions.append(chooseAgain, process);
-      root.append(fileName, actions, error);
+      root.append(fileName, createPasteField(), actions, error);
     }
 
     function renderProcessing() {
@@ -235,17 +316,118 @@ export const ResumeImport = {
       return status;
     }
 
-    async function processSelectedFile() {
+    function appendNotice(message) {
+      if (!message) {
+        return;
+      }
+
+      const notice = createElement('p', 'resume-import__notice', message);
+
+      notice.setAttribute('role', 'status');
+      root.append(notice);
+    }
+
+    function shouldAskForConsent() {
+      return aiSettings.hasKey() && !aiSettings.hasConsent();
+    }
+
+    function renderConsentNotice() {
+      renderShell('resume-import--consent');
+
+      const notice = createElement('div', 'resume-import__consent');
+      const title = createElement('p', 'resume-import__consent-title', 'Send resume text to OpenRouter?');
+      const copy = createElement(
+        'p',
+        'resume-import__consent-copy',
+        'Alice will send the resume text to OpenRouter for AI parsing. Your key stays in this browser.',
+      );
+      const actions = createElement('div', 'resume-import__actions');
+      const accept = createButton('Send to OpenRouter', 'profile-btn profile-btn--primary resume-import__consent-accept', () => {
+        aiSettings.setConsent();
+        processSelectedInput().catch(() => {});
+      });
+      const decline = createButton('Use Rule-Based Import', 'profile-btn profile-btn--outline resume-import__consent-decline', () => {
+        processSelectedInput({ forceRuleBased: true }).catch(() => {});
+      });
+
+      notice.setAttribute('role', 'dialog');
+      notice.setAttribute('aria-label', 'AI resume parsing consent');
+      actions.append(accept, decline);
+      notice.append(title, copy, actions);
+      root.append(notice);
+    }
+
+    async function runRuleBasedParser(rawText = '') {
+      const pastedText = getPastedText();
+      const text = rawText || pastedText;
+
+      return {
+        parsedData: text
+          ? await parseText(text)
+          : await parseResume(selectedFile),
+        aiFieldSet: new Set(),
+      };
+    }
+
+    async function runParser({ forceRuleBased = false } = {}) {
+      const pastedText = getPastedText();
+
+      if (!selectedFile && !pastedText) {
+        showError('Paste resume text or choose a PDF, DOCX, or TXT resume file.');
+        return null;
+      }
+
+      if (!forceRuleBased && aiSettings.hasKey() && aiSettings.hasConsent()) {
+        const rawText = pastedText || await extractText(selectedFile);
+
+        try {
+          const result = await parseWithLlm(rawText, aiSettings.getKey());
+
+          return {
+            parsedData: result.draft,
+            aiFieldSet: buildAiFieldSet(result.draft),
+            notice: result.truncated
+              ? 'The resume was long, so some content may not be parsed.'
+              : '',
+          };
+        } catch {
+          return {
+            ...await runRuleBasedParser(rawText),
+            notice: 'AI parsing was unavailable, so Alice used the rule-based importer.',
+          };
+        }
+      }
+
+      return runRuleBasedParser();
+    }
+
+    async function processSelectedInput({ forceRuleBased = false } = {}) {
+      if (!selectedFile && !getPastedText()) {
+        showError('Paste resume text or choose a PDF, DOCX, or TXT resume file.');
+        return null;
+      }
+
+      if (!forceRuleBased && shouldAskForConsent()) {
+        renderConsentNotice();
+        return null;
+      }
+
       const status = renderProcessing();
 
       try {
-        const parsedData = await parseResume(selectedFile);
+        const result = await runParser({ forceRuleBased });
         clearProcessingTimer();
+        if (!result) {
+          return null;
+        }
+        const { parsedData, aiFieldSet, notice } = result;
+
         if (!hasExtractedData(parsedData)) {
           throw new Error('No resume data extracted.');
         }
 
-        onSuccess(parsedData);
+        appendNotice(notice);
+        onSuccess(parsedData, aiFieldSet, { notice });
         completed = true;
         applyVisibility();
         return parsedData;
@@ -256,7 +438,7 @@ export const ResumeImport = {
           target: status,
           message: "Couldn't parse the resume. Try again.",
           onRetry: () => {
-            processSelectedFile().catch(() => {});
+            processSelectedInput().catch(() => {});
           },
         });
         const dismiss = createButton('Continue Manually', 'profile-btn profile-btn--outline', () => {
@@ -270,6 +452,7 @@ export const ResumeImport = {
     }
 
     input.addEventListener('change', () => selectFile(input.files?.[0]));
+    paste.addEventListener('input', () => showError(''));
     renderIdle();
     root.destroy = () => {
       clearProcessingTimer();

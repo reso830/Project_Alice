@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/services/api.js', () => ({
   getProfile: vi.fn(),
@@ -20,11 +20,25 @@ vi.mock('../../src/data/authStore.js', () => ({
 }));
 
 vi.mock('../../src/services/resumeApi.js', () => ({
+  extractText: vi.fn(),
+  parseText: vi.fn(),
   parseResume: vi.fn(),
+}));
+
+vi.mock('../../src/data/aiSettings.js', () => ({
+  getKey: vi.fn(),
+  hasKey: vi.fn(),
+  hasConsent: vi.fn(),
+}));
+
+vi.mock('../../src/services/llmParser.js', () => ({
+  parseWithLlm: vi.fn(),
 }));
 
 import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
+import * as aiSettings from '../../src/data/aiSettings.js';
+import { parseWithLlm } from '../../src/services/llmParser.js';
 import { parseResume } from '../../src/services/resumeApi.js';
 import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
@@ -32,6 +46,12 @@ afterEach(() => {
   ProfileEdit.unmount();
   document.body.replaceChildren();
   vi.clearAllMocks();
+});
+
+beforeEach(() => {
+  aiSettings.hasKey.mockReturnValue(false);
+  aiSettings.hasConsent.mockReturnValue(false);
+  aiSettings.getKey.mockReturnValue('');
 });
 
 function createProfile(overrides = {}) {
@@ -1232,6 +1252,72 @@ describe('ProfileEdit page', () => {
     expect(skills.querySelector('.skill-editor-feedback').textContent)
       .toBe('Set a level for every skill to save · 1 missing');
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+  });
+
+  it('validates an AI-filled draft through the normal Save path', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ firstName: '', lastName: '' }));
+    api.saveProfile.mockResolvedValue(createProfile());
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.hasConsent.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockResolvedValue({
+      draft: {
+        firstName: 'Jane',
+        lastName: 'Doe',
+        summary: 'AI-filled profile summary.',
+      },
+      truncated: false,
+    });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const textarea = container.querySelector('.resume-import__paste-input');
+    textarea.value = 'Jane Doe resume';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process Resume').click();
+    await flushPromises();
+
+    getSaveButton(getTopControls(container)).click();
+    await flushPromises();
+
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      summary: 'AI-filled profile summary.',
+    }));
+    expect(container.querySelector('.field-error:not([hidden])')).toBeNull();
+  });
+
+  it('surfaces import notices after the ResumeImport area re-renders away', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ firstName: '', lastName: '' }));
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.hasConsent.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockResolvedValue({
+      draft: {
+        firstName: 'Jane',
+        lastName: 'Doe',
+      },
+      truncated: true,
+    });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const textarea = container.querySelector('.resume-import__paste-input');
+    textarea.value = 'Very long resume';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process Resume').click();
+    await flushPromises();
+
+    expect(container.querySelector('.resume-import')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith(
+      'The resume was long, so some content may not be parsed.',
+      'info',
+    );
   });
 
   it('disables "+ Add skill" once the 50-skill cap is reached', async () => {

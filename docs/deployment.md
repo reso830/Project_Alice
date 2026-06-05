@@ -407,6 +407,16 @@ purpose of hosted-mode required checks. The Vite plugin
 `assertHostedFrontendEnv` performs the same check at build time for the three
 `VITE_*` vars — a production build fails closed if any are missing.
 
+### AI resume parsing (BYOK) — no new env vars
+
+The AI resume parser (feature 033, v1.3.0) is **bring-your-own-key and
+browser-side**: each user supplies their own OpenRouter API key, which is stored
+only in their browser and sent browser-direct to OpenRouter. It introduces **no
+new server environment variables** and **no runtime-mode change** — operators
+configure nothing, and the key never reaches Alice's server. With no key the app
+falls back to the existing rule-based parser, so local-first is preserved. See
+[`specs/033-llm-resume-cv-parser/quickstart.md`](../specs/033-llm-resume-cv-parser/quickstart.md).
+
 ---
 
 ## Environment Variable Checklist
