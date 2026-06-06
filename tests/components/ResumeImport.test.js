@@ -269,11 +269,15 @@ describe('ResumeImport — auth-state gating', () => {
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onSuccess });
 
-    pasteResumeText(root, 'Jane Doe\nTypeScript');
+    pasteResumeText(root, 'Jane Doe\nTypeScript platform engineering resume');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe\nTypeScript', 'openrouter-key', 'custom/model');
+    expect(parseWithLlm).toHaveBeenCalledWith(
+      'Jane Doe\nTypeScript platform engineering resume',
+      'openrouter-key',
+      'custom/model',
+    );
     expect(parseText).not.toHaveBeenCalled();
     expect(parseResume).not.toHaveBeenCalled();
     expect(extractText).not.toHaveBeenCalled();
@@ -294,7 +298,7 @@ describe('ResumeImport — auth-state gating', () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     aiSettings.getModel.mockReturnValue('custom/file-model');
-    extractText.mockResolvedValue('extracted resume text');
+    extractText.mockResolvedValue('extracted resume text with profile details');
     parseWithLlm.mockResolvedValue({
       draft: {
         summary: 'Imported from a file',
@@ -309,7 +313,11 @@ describe('ResumeImport — auth-state gating', () => {
     await flushPromises();
 
     expect(extractText).toHaveBeenCalledWith(file);
-    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key', 'custom/file-model');
+    expect(parseWithLlm).toHaveBeenCalledWith(
+      'extracted resume text with profile details',
+      'openrouter-key',
+      'custom/file-model',
+    );
     expect(parseResume).not.toHaveBeenCalled();
     expect(parseText).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith(
@@ -318,6 +326,57 @@ describe('ResumeImport — auth-state gating', () => {
       expect.objectContaining({ notice: '' }),
     );
     expect(onSuccess.mock.calls[0][1].has('summary')).toBe(true);
+  });
+
+  it('shows the NO_TEXT dead-end and skips the LLM when uploaded file extraction is empty', async () => {
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    extractText.mockResolvedValue('');
+    parseWithLlm.mockResolvedValue({
+      draft: { firstName: 'Alice' },
+      truncated: false,
+    });
+    const onSuccess = vi.fn();
+    const root = ResumeImport.create({ onSuccess });
+    const file = selectFile(root, new window.File(['scanned'], 'scanned.pdf', { type: 'application/pdf' }));
+
+    root.querySelector('.profile-btn--primary').click();
+    await flushPromises(4);
+
+    expect(extractText).toHaveBeenCalledWith(file);
+    expect(parseWithLlm).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(root.querySelector('.resume-import-failure__title')?.textContent)
+      .toBe("We couldn't read that résumé");
+    expect(root.textContent).toContain('NO_TEXT');
+    expect(root.textContent).toContain('Try again');
+    expect(root.textContent).toContain('Use a different file');
+    expect(root.textContent).toContain('Cancel');
+    expect(root.textContent).not.toContain('Use basic parser');
+  });
+
+  it('shows the NO_TEXT dead-end and skips the LLM when pasted text is below the smart-import threshold', async () => {
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockResolvedValue({
+      draft: { firstName: 'Alice' },
+      truncated: false,
+    });
+    const onSuccess = vi.fn();
+    const root = ResumeImport.create({ onSuccess });
+
+    pasteResumeText(root, 'Jane Doe resume');
+    root.querySelector('.profile-btn--primary').click();
+    await flushPromises(4);
+
+    expect(extractText).not.toHaveBeenCalled();
+    expect(parseWithLlm).not.toHaveBeenCalled();
+    expect(parseText).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(root.querySelector('.resume-import-failure__title')?.textContent)
+      .toBe("We couldn't read that résumé");
+    expect(root.textContent).toContain('NO_TEXT');
+    expect(root.textContent).not.toContain('Use basic parser');
   });
 
   it('blocks empty paste with no file before calling any parser', async () => {
@@ -407,13 +466,17 @@ describe('ResumeImport — auth-state gating', () => {
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onSuccess });
 
-    pasteResumeText(root, 'Jane Doe resume');
+    pasteResumeText(root, 'Jane Doe resume with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
     expect(root.querySelector('.resume-import__consent')).toBeNull();
     expect(root.textContent).not.toContain('Send resume text to OpenRouter?');
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key', 'openrouter/model-slug');
+    expect(parseWithLlm).toHaveBeenCalledWith(
+      'Jane Doe resume with platform engineering details',
+      'openrouter-key',
+      'openrouter/model-slug',
+    );
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'AI summary' },
       expect.any(Set),
@@ -427,7 +490,7 @@ describe('ResumeImport — auth-state gating', () => {
     const navigate = vi.fn();
     const root = ResumeImport.create({ navigate });
 
-    pasteResumeText(root, 'Jane Doe resume');
+    pasteResumeText(root, 'Jane Doe resume with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
@@ -448,7 +511,7 @@ describe('ResumeImport — auth-state gating', () => {
     aiSettings.getFeature.mockImplementation(() => false);
     const root = ResumeImport.create();
 
-    pasteResumeText(root, 'Jane Doe resume');
+    pasteResumeText(root, 'Jane Doe resume with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
@@ -465,11 +528,15 @@ describe('ResumeImport — auth-state gating', () => {
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onSuccess });
 
-    pasteResumeText(root, 'Jane Doe resume');
+    pasteResumeText(root, 'Jane Doe resume with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises(4);
 
-    expect(parseWithLlm).toHaveBeenCalledWith('Jane Doe resume', 'openrouter-key', 'openrouter/model-slug');
+    expect(parseWithLlm).toHaveBeenCalledWith(
+      'Jane Doe resume with platform engineering details',
+      'openrouter-key',
+      'openrouter/model-slug',
+    );
     expect(parseText).not.toHaveBeenCalled();
     expect(root.textContent).toContain('Smart parsing is unavailable right now');
     expect(root.textContent).toContain('HTTP 429');
@@ -479,7 +546,7 @@ describe('ResumeImport — auth-state gating', () => {
     [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
     await flushPromises(4);
 
-    expect(parseText).toHaveBeenCalledWith('Jane Doe resume');
+    expect(parseText).toHaveBeenCalledWith('Jane Doe resume with platform engineering details');
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'Rule-based fallback summary' },
       expect.any(Set),
@@ -493,7 +560,7 @@ describe('ResumeImport — auth-state gating', () => {
   it('uses the extracted text for basic parsing after an uploaded-file LLM failure', async () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
-    extractText.mockResolvedValue('extracted resume text');
+    extractText.mockResolvedValue('extracted resume text with profile details');
     parseWithLlm.mockRejectedValue(new Error('provider raw failure'));
     parseText.mockResolvedValue({ summary: 'File fallback summary' });
     const onSuccess = vi.fn();
@@ -504,13 +571,17 @@ describe('ResumeImport — auth-state gating', () => {
     await flushPromises(4);
 
     expect(extractText).toHaveBeenCalledWith(file);
-    expect(parseWithLlm).toHaveBeenCalledWith('extracted resume text', 'openrouter-key', 'openrouter/model-slug');
+    expect(parseWithLlm).toHaveBeenCalledWith(
+      'extracted resume text with profile details',
+      'openrouter-key',
+      'openrouter/model-slug',
+    );
     expect(parseText).not.toHaveBeenCalled();
 
     [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
     await flushPromises(4);
 
-    expect(parseText).toHaveBeenCalledWith('extracted resume text');
+    expect(parseText).toHaveBeenCalledWith('extracted resume text with profile details');
     expect(parseResume).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'File fallback summary' },
@@ -531,7 +602,7 @@ describe('ResumeImport — auth-state gating', () => {
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onDismiss, onSuccess });
 
-    pasteResumeText(root, 'Jane Doe retry resume');
+    pasteResumeText(root, 'Jane Doe retry resume with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises(4);
 
@@ -545,7 +616,7 @@ describe('ResumeImport — auth-state gating', () => {
     [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser').click();
     await flushPromises(4);
 
-    expect(parseText).toHaveBeenCalledWith('Jane Doe retry resume');
+    expect(parseText).toHaveBeenCalledWith('Jane Doe retry resume with platform engineering details');
     expect(onSuccess).toHaveBeenCalledWith(
       { summary: 'Basic parser summary' },
       expect.any(Set),
@@ -567,7 +638,7 @@ describe('ResumeImport — auth-state gating', () => {
     const onSuccess = vi.fn();
     const root = ResumeImport.create({ onSuccess });
 
-    pasteResumeText(root, 'Very long resume text');
+    pasteResumeText(root, 'Very long resume text with platform engineering details');
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 

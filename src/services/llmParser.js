@@ -138,7 +138,8 @@ function parseAssistantJson(content) {
 
 function buildSystemPrompt() {
   return [
-    'You extract a resume into JSON for the Alice profile. Return ONLY a JSON object — no prose, no markdown fences.',
+    'You extract a resume into JSON for the user\'s profile. Return ONLY a JSON object — no prose, no markdown fences.',
+    'If the input contains no résumé content, return every field empty: empty strings for string fields and empty arrays for array fields.',
     'Top-level keys: firstName, lastName, email, phone, city, summary (strings); and arrays experience, education, skills, certifications, awards, languages, links.',
     'Each array item MUST use exactly these keys:',
     'experience: {"role","company","responsibilities","dateStarted","dateEnded","currentWork"} — responsibilities is a single string (join bullets with newlines); currentWork is a boolean.',

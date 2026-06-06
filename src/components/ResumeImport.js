@@ -27,6 +27,7 @@ const PROCESSING_MESSAGES = [
   'Extracting experience...',
   'Building profile...',
 ];
+const MIN_MACHINE_READABLE_TEXT_CHARS = 20;
 let pasteInputId = 0;
 
 function createElement(tag, className, text) {
@@ -87,6 +88,10 @@ function hasExtractedData(parsedData) {
 
     return value !== null && value !== '';
   });
+}
+
+function hasEnoughMachineReadableText(text) {
+  return String(text ?? '').replace(/\s/g, '').length > MIN_MACHINE_READABLE_TEXT_CHARS;
 }
 
 function hasMeaningfulValue(value) {
@@ -534,6 +539,13 @@ export const ResumeImport = {
 
       if (!forceRuleBased && canUseAiParser()) {
         const rawText = pastedText || await extractText(selectedFile);
+
+        if (!hasEnoughMachineReadableText(rawText)) {
+          return {
+            reason: 'NO_TEXT',
+            rawText,
+          };
+        }
 
         try {
           const result = await parseWithLlm(rawText, aiSettings.getKey(), aiSettings.getModel());

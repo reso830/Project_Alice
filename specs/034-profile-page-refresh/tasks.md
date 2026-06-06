@@ -430,33 +430,60 @@ basic-vs-AI provenance, append + Undo, no partial writes.
 **Purpose**: Walk each user story's Independent Test in a real browser against the
 to-be-merged state (constitution Amendment 1.3.0), using quickstart.md.
 
-- [ ] T032 👤 [US1][US7][US8] Read-only Profile + Settings smoke
+- [X] T032 👤 [US1][US7][US8] Read-only Profile + Settings smoke
   - Behavior: profile-exists + empty states render; skills meters/sort/collapse/popover;
     archived link navigates; **one** Settings card with AI + Account sub-groups; master
     gating; status pill (save/Test/Replace/Delete); model datalist; CV on, JD/Compat
     disabled; Account mode-aware; returning-033-user auto-enabled.
   - Validation: noted; screenshots optional.
+  - Result: 2026-06-06 PASS — (.1) seeded profile rendered skills meters/sort/collapse/
+    popover, archived link navigated, single Settings card with master gating, status
+    pill + Save/Test/Replace/Delete, model datalist, CV on / JD-Compat disabled,
+    Account mode-correct; (.2) cleared profile showed empty state + Set Up Profile;
+    (.3) returning-033 browser (key + granted consent) auto-enabled with master ON,
+    key preserved, CV on, no re-entry/consent prompt.
 
-- [ ] T033 👤 [US5] First-time setup smoke
+- [X] T033 👤 [US5] First-time setup smoke
   - Behavior: empty profile → Set Up Profile → split-card gate → Smart entry → upload/
     paste → Process → fill all → ✦ AI FILLED on sections; Manual path → blank form.
   - Validation: noted.
+  - Result: 2026-06-06 PASS (functional) — empty profile → Set Up Profile → split-card
+    gate; Smart entry → smart input → Process filled the form with ✦ AI FILLED on
+    populated sections; Manual entry / dismiss → blank form. Operator noted UI/polish
+    gripes (non-blocking) to be discussed separately; functionality passes.
 
-- [ ] T034 👤 [US5] Existing-profile import + Undo smoke
+- [X] T034 👤 [US5] Existing-profile import + Undo smoke
   - Behavior: Edit Profile → Import Bar → expand → Process → append (nothing
     overwritten) → only touched sections tagged → Undo restores prior state.
   - Validation: noted.
+  - Result: 2026-06-06 PASS — existing profile opened to the form with a collapsed
+    Smart import bar (no gate); expand → Process appended new entries without
+    overwriting/reordering existing ones (Summary appended as a new paragraph, singular
+    Basic Info filled only if empty), only touched sections tagged ✦ AI FILLED, imported
+    skills unrated; Undo restored the exact pre-import state.
 
-- [ ] T035 👤 [US5] Failure paths + AI-off smoke (operator-supplied key)
+- [X] T035 👤 [US5] Failure paths + AI-off smoke (operator-supplied key)
   - Behavior: trigger AI-unavailable → ask-first dialog with reason chip → Use basic
     parser → ⚙ Auto-filled; unreadable file → NO_TEXT dead-end; AI off/CV off → Smart
     entry + Import Bar disabled with "Enable AI in Settings →" deep-link.
   - Validation: noted.
+  - Result: 2026-06-06 PASS — (A) invalid key → ask-first dialog with HTTP 401 chip +
+    "Update key in Settings →" (not retry); "Use basic parser" filled ⚙ Auto-filled.
+    (C) AI off/CV off → Smart entry + Import Bar disabled with working "Enable AI in
+    Settings →" deep-link. (B) initially FAILED — image-only PDF skipped NO_TEXT and the
+    LLM hallucinated firstName:"Alice" (system-prompt leak); fixed (empty-text guard in
+    ResumeImport.runParser before the LLM call + buildSystemPrompt hardening) and
+    re-verified: image-based résumé → NO_TEXT dead-end, text-based résumé still parses.
 
-- [ ] T036 👤 [US2][US6] Mobile + reduced-motion + discard smoke
+- [X] T036 👤 [US2][US6] Mobile + reduced-motion + discard smoke
   - Behavior: mobile sub-section collapse; Settings no overflow ≤344px; OS reduce-motion
     suppresses transitions; dirty Back/Cancel → discard-confirmation.
   - Validation: noted; blocks merge if any fails.
+  - Result: 2026-06-06 PASS (functional) — mobile sub-section collapse works (desktop
+    stays expanded); Settings card no horizontal overflow at ≤344px (saved-key row
+    wraps); reduce-motion suppressed skill reveal / import flash / bottom-sheet with
+    states still reachable; dirty Back/Cancel showed the discard-confirmation. Operator
+    noted a visual bug (non-blocking, details to follow) to be addressed separately.
 
 ---
 
