@@ -296,6 +296,42 @@ describe('ResumeImport — auth-state gating', () => {
     expect(overlay.textContent).toContain('Extracting your experience, skills, and details');
   });
 
+  it('clears a selected file when switching to paste mode so stale file data is not parsed', () => {
+    const root = ResumeImport.create({ smartInput: true, showHeader: true });
+
+    selectFile(root, makeResumeFile('Old_Resume.pdf'));
+    expect(root.querySelector('.resume-import__selected-file')).not.toBeNull();
+    expect(root.querySelector('.resume-import__process').disabled).toBe(false);
+
+    [...root.querySelectorAll('.resume-import__mode')]
+      .find((button) => button.textContent === 'Paste text')
+      .click();
+
+    // File dropped: no selected-file card, and Process stays disabled with an empty paste box.
+    expect(root.querySelector('.resume-import__selected-file')).toBeNull();
+    expect(root.querySelector('.resume-import__process').disabled).toBe(true);
+  });
+
+  it('shows a recoverable error overlay when smart parsing throws unexpectedly', async () => {
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    extractText.mockRejectedValue(new Error('corrupt file'));
+    const root = ResumeImport.create({ smartInput: true, showHeader: true, onDismiss: vi.fn() });
+
+    selectFile(root, makeResumeFile('Corrupt.pdf'));
+    root.querySelector('.resume-import__process').click();
+    await flushPromises(4);
+
+    const inlineError = root.querySelector('.inline-error');
+
+    // Before the fix renderProcessing returned undefined, so renderInlineError threw
+    // and the spinner stayed stuck. The overlay must now host a recoverable error.
+    expect(inlineError).not.toBeNull();
+    expect(inlineError.textContent).toContain("Couldn't parse the resume.");
+    expect([...root.querySelectorAll('button')].some((b) => b.textContent === 'Continue Manually')).toBe(true);
+    expect(root.querySelector('.resume-import-processing__spinner')).toBeNull();
+  });
+
   it('routes pasted text through the LLM when AI, CV, and key are enabled', async () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');

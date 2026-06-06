@@ -281,10 +281,15 @@ export const ResumeImport = {
     function createModeTabs() {
       const tabs = createElement('div', 'resume-import__mode-tabs');
       const upload = createButton('Upload file', `resume-import__mode${activeMode === 'file' ? ' is-active' : ''}`, () => {
+        // Drop any stale pasted text so file mode only ever processes the file.
+        paste.value = '';
         activeMode = 'file';
         renderIdle();
       });
       const pasteMode = createButton('Paste text', `resume-import__mode${activeMode === 'paste' ? ' is-active' : ''}`, () => {
+        // Drop any previously selected file so paste mode only processes the box.
+        selectedFile = null;
+        input.value = '';
         activeMode = 'paste';
         renderIdle();
         paste.focus();
@@ -459,7 +464,7 @@ export const ResumeImport = {
         panel.append(spinner, title, detail);
         overlay.append(panel);
         root.append(overlay);
-        return;
+        return overlay;
       }
 
       const status = createElement('div', 'resume-import__status', PROCESSING_MESSAGES[0]);
