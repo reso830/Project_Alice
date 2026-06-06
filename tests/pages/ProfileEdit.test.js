@@ -27,11 +27,31 @@ vi.mock('../../src/services/resumeApi.js', () => ({
 
 vi.mock('../../src/data/aiSettings.js', () => ({
   getKey: vi.fn(),
+  getFeature: vi.fn(),
+  getModel: vi.fn(),
   hasKey: vi.fn(),
-  hasConsent: vi.fn(),
+  isEnabled: vi.fn(),
 }));
 
 vi.mock('../../src/services/llmParser.js', () => ({
+  REASON_CODES: {
+    rate_limit: {
+      code: 'HTTP 429',
+      message: 'Rate limit reached — too many requests in a short time.',
+      fix: 'wait',
+    },
+    invalid_key: {
+      code: 'HTTP 401',
+      message: 'Invalid API key — your AI provider key was rejected.',
+      fix: 'settings',
+    },
+    NO_TEXT: {
+      code: 'NO_TEXT',
+      message: 'No machine-readable text found — the file looks scanned or image-only.',
+      fix: 'dead-end',
+    },
+  },
+  mapErrorToReason: vi.fn((error) => error?.reason ?? error?.code ?? 'rate_limit'),
   parseWithLlm: vi.fn(),
 }));
 
@@ -39,7 +59,7 @@ import { Toast } from '../../src/components/Toast.js';
 import * as api from '../../src/services/api.js';
 import * as aiSettings from '../../src/data/aiSettings.js';
 import { parseWithLlm } from '../../src/services/llmParser.js';
-import { parseResume } from '../../src/services/resumeApi.js';
+import { parseResume, parseText } from '../../src/services/resumeApi.js';
 import { createEntryOverlay, ProfileEdit } from '../../src/pages/ProfileEdit.js';
 
 afterEach(() => {
@@ -49,8 +69,10 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  aiSettings.isEnabled.mockReturnValue(true);
+  aiSettings.getFeature.mockImplementation((key) => key === 'cv');
+  aiSettings.getModel.mockReturnValue('openrouter/model-slug');
   aiSettings.hasKey.mockReturnValue(false);
-  aiSettings.hasConsent.mockReturnValue(false);
   aiSettings.getKey.mockReturnValue('');
 });
 
@@ -119,6 +141,31 @@ function getButton(container, label) {
   return [...container.querySelectorAll('button')]
     .filter((button) => button.textContent === label)
     .at(-1);
+}
+
+function getGateCard(kind) {
+  return document.querySelector(`.profile-entry-gate__card--${kind}`);
+}
+
+function getSectionProvenance(card) {
+  return card.querySelector('.section-provenance')?.textContent ?? '';
+}
+
+function chooseGateCard(kind) {
+  getGateCard(kind).querySelector('.profile-entry-gate__choose').click();
+}
+
+function expandSmartImport(container) {
+  const toggle = container.querySelector('.profile-import-bar__toggle');
+
+  toggle.click();
+  const importArea = container.querySelector('.profile-import-bar .resume-import');
+  const pasteTab = [...importArea.querySelectorAll('button')]
+    .find((button) => button.textContent === 'Paste text');
+
+  pasteTab?.click();
+
+  return container.querySelector('.profile-import-bar .resume-import');
 }
 
 function getHeaderAddButton(card) {
@@ -571,17 +618,152 @@ describe('ProfileEdit page', () => {
     expect(getFieldInput(basic, 'Email').value).toBe('');
     expect(getFieldInput(basic, 'Phone').value).toBe('');
     expect(getFieldInput(summary, 'Summary').value).toBe('');
+    expect(document.querySelector('.profile-entry-gate')).not.toBeNull();
   });
 
-  it('scrolls to the top when the resume import area is highlighted', async () => {
+  it('shows the split-card gate for first-time setup and Manual entry dismisses to the blank form', async () => {
     const container = createAppShell();
-    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     api.getProfile.mockResolvedValue(null);
 
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const gate = document.querySelector('.profile-entry-gate');
+
+    expect(gate).not.toBeNull();
+    expect(gate.getAttribute('role')).toBe('dialog');
+    expect(gate.textContent).toContain("Let's build your profile.");
+    expect(gate.textContent).toContain('Smart entry');
+    expect(gate.textContent).toContain('Fastest');
+    expect(gate.textContent).toContain('Manual entry');
+    expect(getGateCard('smart').querySelector('.profile-entry-gate__icon img')).not.toBeNull();
+    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon img')).toBeNull();
+    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon svg')).not.toBeNull();
+    expect(getCard(container, 'BASIC INFO')).not.toBeNull();
+    expect(document.activeElement).toBe(getGateCard('smart').querySelector('.profile-entry-gate__choose'));
+
+    chooseGateCard('manual');
+
+    expect(document.querySelector('.profile-entry-gate')).toBeNull();
+    expect(getFieldInput(getCard(container, 'BASIC INFO'), 'First Name').value).toBe('');
+  });
+
+  it('dismisses the first-time gate with Escape or backdrop as Manual entry', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(null);
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(document.querySelector('.profile-entry-gate')).toBeNull();
+
+    ProfileEdit.unmount();
+    const nextContainer = createAppShell();
+    api.getProfile.mockResolvedValue(null);
+
+    await ProfileEdit.mount(nextContainer, { navigate: vi.fn() });
+
+    const gate = document.querySelector('.profile-entry-gate');
+    gate.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(document.querySelector('.profile-entry-gate')).toBeNull();
+  });
+
+  it('opens the smart input modal from the first-time Smart entry card', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(null);
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    chooseGateCard('smart');
+
+    const modal = document.querySelector('.profile-smart-modal');
+
+    expect(document.querySelector('.profile-entry-gate')).toBeNull();
+    expect(modal).not.toBeNull();
+    expect(modal.textContent).toContain('Import from your resume');
+    expect(modal.querySelector('.resume-import--smart')).not.toBeNull();
+    expect(modal.textContent).toContain('Upload file');
+    expect(modal.textContent).toContain('Paste text');
+  });
+
+  it('shows a collapsed Import Bar for an existing profile and expands inline', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const bar = container.querySelector('.profile-import-bar');
+    const toggle = bar.querySelector('.profile-import-bar__toggle');
+
+    expect(document.querySelector('.profile-entry-gate')).toBeNull();
+    expect(bar).not.toBeNull();
+    expect(container.querySelector('.profile-edit-page').firstElementChild).toBe(bar);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(bar.querySelector('.resume-import')).toBeNull();
+
+    toggle.click();
+    const expandedBar = container.querySelector('.profile-import-bar');
+    const expandedToggle = expandedBar.querySelector('.profile-import-bar__toggle');
+
+    expect(expandedToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(expandedBar.classList).toContain('is-expanded');
+    expect(expandedBar.querySelector('.resume-import--smart')).not.toBeNull();
+  });
+
+  it('disables Smart entry and the Import Bar with a Settings deep-link when AI is off', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    aiSettings.isEnabled.mockReturnValue(false);
+    api.getProfile.mockResolvedValue(null);
+
+    await ProfileEdit.mount(container, { navigate });
+
+    const smartCard = getGateCard('smart');
+    const manualCard = getGateCard('manual');
+
+    expect(smartCard.classList).toContain('is-disabled');
+    expect(smartCard.querySelector('.profile-entry-gate__choose')).toBeNull();
+    expect(smartCard.querySelector('.profile-entry-gate__settings-link').textContent).toBe('Enable AI in Settings →');
+    expect(manualCard.querySelector('.profile-entry-gate__choose').disabled).toBe(false);
+
+    smartCard.querySelector('.profile-entry-gate__settings-link').click();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+
+    ProfileEdit.unmount();
+    const existingContainer = createAppShell();
+    navigate.mockClear();
+    aiSettings.isEnabled.mockReturnValue(false);
+    api.getProfile.mockResolvedValue(createProfile());
+
+    await ProfileEdit.mount(existingContainer, { navigate });
+
+    const bar = existingContainer.querySelector('.profile-import-bar');
+
+    expect(bar.classList).toContain('is-disabled');
+    expect(bar.querySelector('.profile-import-bar__toggle')).toBeNull();
+    expect(bar.querySelector('.profile-import-bar__settings-link').textContent).toBe('Enable AI in Settings →');
+
+    bar.querySelector('.profile-import-bar__settings-link').click();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+  });
+
+  it('scrolls to the top when the import bar is highlighted', async () => {
+    const container = createAppShell();
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    api.getProfile.mockResolvedValue(createProfile());
+
     await ProfileEdit.mount(container, { navigate: vi.fn(), highlightImport: true });
 
-    expect(container.querySelector('.resume-import--highlight')).toBeTruthy();
+    expect(container.querySelector('.profile-import-bar--highlight')).toBeTruthy();
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
 
     scrollTo.mockRestore();
@@ -630,7 +812,6 @@ describe('ProfileEdit page', () => {
 
     expect([...container.querySelectorAll('.section-label')].map((label) => label.textContent))
       .toEqual([
-        'RESUME IMPORT',
         'BASIC INFO',
         'SUMMARY',
         'PROFESSIONAL EXPERIENCE',
@@ -1239,9 +1420,10 @@ describe('ProfileEdit page', () => {
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const input = container.querySelector('.resume-import__input');
+    const importArea = expandSmartImport(container);
+    const input = importArea.querySelector('.resume-import__input');
     selectResumeFile(input, file);
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const skills = getCard(container, 'SKILLS');
@@ -1260,7 +1442,6 @@ describe('ProfileEdit page', () => {
     api.getProfile.mockResolvedValue(createProfile({ firstName: '', lastName: '' }));
     api.saveProfile.mockResolvedValue(createProfile());
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: {
@@ -1273,10 +1454,11 @@ describe('ProfileEdit page', () => {
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const textarea = container.querySelector('.resume-import__paste-input');
-    textarea.value = 'Jane Doe resume';
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Jane Doe resume with enough detail to parse';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     getSaveButton(getTopControls(container)).click();
@@ -1295,7 +1477,6 @@ describe('ProfileEdit page', () => {
 
     api.getProfile.mockResolvedValue(createProfile({ firstName: '', lastName: '' }));
     aiSettings.hasKey.mockReturnValue(true);
-    aiSettings.hasConsent.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     parseWithLlm.mockResolvedValue({
       draft: {
@@ -1307,10 +1488,11 @@ describe('ProfileEdit page', () => {
 
     await ProfileEdit.mount(container, { navigate: vi.fn() });
 
-    const textarea = container.querySelector('.resume-import__paste-input');
-    textarea.value = 'Very long resume';
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Very long resume with enough detail to parse';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     expect(container.querySelector('.resume-import')).toBeNull();
@@ -1318,6 +1500,173 @@ describe('ProfileEdit page', () => {
       'The resume was long, so some content may not be parsed.',
       'info',
     );
+  });
+
+  it('asks before using the basic parser when AI is unavailable and leaves the form unchanged until confirmed', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({ firstName: '', lastName: '' }));
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockRejectedValue({ reason: 'rate_limit' });
+    parseText.mockResolvedValue({
+      firstName: 'Basic',
+      lastName: 'Parser',
+      summary: 'Filled after explicit fallback.',
+    });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Resume content long enough for the smart input gate';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process resume').click();
+    await flushPromises();
+
+    const dialog = document.querySelector('.resume-import-failure');
+
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain('Smart parsing is unavailable right now');
+    expect(dialog.textContent).toContain('HTTP 429');
+    expect(dialog.textContent).toContain('Rate limit reached');
+    expect(getButton(dialog, 'Try AI again')).not.toBeNull();
+    expect(getButton(dialog, 'Use basic parser')).not.toBeNull();
+    expect(getFieldInput(getCard(container, 'BASIC INFO'), 'First Name').value).toBe('');
+
+    getButton(dialog, 'Use basic parser').click();
+    await flushPromises();
+
+    expect(getFieldInput(getCard(container, 'BASIC INFO'), 'First Name').value).toBe('Basic');
+    expect(getSectionProvenance(getCard(container, 'BASIC INFO'))).toContain('Auto-filled');
+    expect(container.querySelector('.ai-field-badge')).toBeNull();
+  });
+
+  it('routes settings-related AI failures to Settings instead of retry', async () => {
+    const container = createAppShell();
+    const navigate = vi.fn();
+
+    api.getProfile.mockResolvedValue(createProfile());
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockRejectedValue({ reason: 'invalid_key' });
+
+    await ProfileEdit.mount(container, { navigate });
+
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Resume content long enough for the smart input gate';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process resume').click();
+    await flushPromises();
+
+    const dialog = document.querySelector('.resume-import-failure');
+
+    expect(dialog.textContent).toContain('HTTP 401');
+    expect(getButton(dialog, 'Try AI again')).toBeUndefined();
+    getButton(dialog, 'Update key in Settings →').click();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+  });
+
+  it('shows an unreadable-file dead-end without basic fallback actions', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile());
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockResolvedValue({ draft: {}, truncated: false });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Scanned resume content with no usable fields';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process resume').click();
+    await flushPromises();
+
+    const dialog = document.querySelector('.resume-import-failure--dead-end');
+
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain("We couldn't read that résumé");
+    expect(dialog.textContent).toContain('NO_TEXT');
+    expect(getButton(dialog, 'Use basic parser')).toBeUndefined();
+    expect(getButton(dialog, 'Cancel')).not.toBeNull();
+  });
+
+  it('appends existing-profile imports, marks touched sections, and Undo restores the snapshot', async () => {
+    const container = createAppShell();
+    const before = createProfile({
+      firstName: 'Ana',
+      lastName: 'Rivera',
+      summary: 'Existing summary.',
+      experience: [{
+        role: 'Existing Engineer',
+        company: 'OldCo',
+        responsibilities: 'Kept existing work in place.',
+        dateStarted: '01/2023',
+        dateEnded: '12/2023',
+        currentWork: false,
+      }],
+    });
+
+    api.getProfile.mockResolvedValue(before);
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    parseWithLlm.mockResolvedValue({
+      draft: {
+        firstName: 'Jane',
+        summary: 'Imported summary.',
+        experience: [{
+          role: 'Imported Engineer',
+          company: 'NewCo',
+          responsibilities: 'Added imported work.',
+          dateStarted: '01/2024',
+          dateEnded: '02/2025',
+          currentWork: false,
+        }],
+        skills: ['Python'],
+      },
+      truncated: false,
+    });
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const importArea = expandSmartImport(container);
+    const textarea = importArea.querySelector('.resume-import__paste-input');
+    textarea.value = 'Jane Doe resume with enough detail to append';
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    getButton(container, 'Process resume').click();
+    await flushPromises();
+
+    const summary = getCard(container, 'SUMMARY');
+    const experience = getCard(container, 'PROFESSIONAL EXPERIENCE');
+    const skills = getCard(container, 'SKILLS');
+    const undoOptions = Toast.show.mock.calls.find((call) => call[2]?.actionLabel === 'Undo')?.[2];
+
+    expect(getFieldInput(getCard(container, 'BASIC INFO'), 'First Name').value).toBe('Ana');
+    expect(getFieldInput(summary, 'Summary').value).toBe('Existing summary.\n\nImported summary.');
+    expect([...experience.querySelectorAll('.profile-entry__title')].map((el) => el.textContent))
+      .toEqual(expect.arrayContaining(['Existing Engineer', 'Imported Engineer']));
+    expect(skills.querySelector('.skill-level-picker__caption').textContent).toBe('Tap to set a level');
+    expect(getField(summary, 'Summary').classList).toContain('epfFlash');
+    expect([...experience.querySelectorAll('.entry-row')]
+      .find((row) => row.textContent.includes('Imported Engineer')).classList)
+      .toContain('epfFlash');
+    expect(skills.querySelector('.skill-editor-row').classList).toContain('epfFlash');
+    expect(getSectionProvenance(summary)).toContain('AI FILLED');
+    expect(getSectionProvenance(experience)).toContain('AI FILLED');
+    expect(getSectionProvenance(skills)).toContain('AI FILLED');
+    expect(getSectionProvenance(getCard(container, 'BASIC INFO'))).toBe('');
+    expect(undoOptions).toEqual(expect.objectContaining({ actionLabel: 'Undo' }));
+
+    undoOptions.onAction();
+
+    expect(getFieldInput(getCard(container, 'SUMMARY'), 'Summary').value).toBe('Existing summary.');
+    expect([...getCard(container, 'PROFESSIONAL EXPERIENCE').querySelectorAll('.profile-entry__title')].map((el) => el.textContent))
+      .toEqual(['Existing Engineer']);
+    expect(getCard(container, 'SKILLS').querySelectorAll('.skill-editor-row')).toHaveLength(0);
   });
 
   it('disables "+ Add skill" once the 50-skill cap is reached', async () => {

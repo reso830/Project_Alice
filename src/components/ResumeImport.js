@@ -1,7 +1,8 @@
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
 import * as aiSettings from '../data/aiSettings.js';
-import { parseWithLlm } from '../services/llmParser.js';
+import { mapErrorToReason, parseWithLlm, REASON_CODES } from '../services/llmParser.js';
 import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
+import { createSvgIcon } from '../utils/icons.js';
 import { extractText, parseResume, parseText } from '../services/resumeApi.js';
 
 // Exported (feature 020) so the demo test can assert
@@ -27,6 +28,10 @@ const PROCESSING_MESSAGES = [
   'Extracting experience...',
   'Building profile...',
 ];
+const MIN_MACHINE_READABLE_TEXT_CHARS = 20;
+const UPLOAD_ICON_PATH = 'M12 16V5m0 0 4 4m-4-4-4 4M5 19h14';
+const FILE_ICON_PATH = 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4';
+const SPARKLE_ICON_PATH = 'M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Zm6 10 .9 2.1L21 16l-2.1.9L18 19l-.9-2.1L15 16l2.1-.9L18 13Z';
 let pasteInputId = 0;
 
 function createElement(tag, className, text) {
@@ -52,6 +57,18 @@ function createButton(label, className, onClick) {
   button.addEventListener('click', onClick);
 
   return button;
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 KB';
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getExtension(file) {
@@ -87,6 +104,10 @@ function hasExtractedData(parsedData) {
 
     return value !== null && value !== '';
   });
+}
+
+function hasEnoughMachineReadableText(text) {
+  return String(text ?? '').replace(/\s/g, '').length > MIN_MACHINE_READABLE_TEXT_CHARS;
 }
 
 function hasMeaningfulValue(value) {
@@ -134,7 +155,15 @@ function stopEvent(event) {
 }
 
 export const ResumeImport = {
-  create({ onSuccess = () => {}, onDismiss = () => {} } = {}) {
+  create({
+    onSuccess = () => {},
+    onDismiss = () => {},
+    onBack = onDismiss,
+    navigate = () => {},
+    smartInput = false,
+    title = 'Resume Import',
+    showHeader = true,
+  } = {}) {
     const root = createElement('section', 'resume-import');
     let authVisible = isAuthVisible(getAuthState());
     let completed = false;
@@ -153,6 +182,10 @@ export const ResumeImport = {
     let selectedFile = null;
     let processingIndex = 0;
     let processingTimer = null;
+    let activeMode = 'file';
+    let pendingBasicText = '';
+    let processButtons = new Set();
+    const showBackButton = smartInput && showHeader;
 
     input.type = 'file';
     input.accept = '.pdf,.docx,.txt';
@@ -162,7 +195,7 @@ export const ResumeImport = {
     paste.id = pasteId;
     paste.className = 'resume-import__paste-input';
     paste.rows = 6;
-    paste.placeholder = 'Paste resume text here';
+    paste.placeholder = smartInput ? 'Paste the full text of your resume here...' : 'Paste resume text here';
     error.hidden = true;
     applyVisibility();
     const unsubscribe = subscribeAuth((state) => {
@@ -189,6 +222,35 @@ export const ResumeImport = {
       return paste.value.trim();
     }
 
+    function hasProcessInput() {
+      if (selectedFile) {
+        return true;
+      }
+
+      const text = getPastedText();
+      return smartInput ? text.length > 20 : Boolean(text);
+    }
+
+    function updateProcessButtons() {
+      for (const button of processButtons) {
+        button.disabled = smartInput && !hasProcessInput();
+      }
+    }
+
+    function createProcessButton(action) {
+      const process = createButton(smartInput ? 'Process resume' : 'Process Resume', 'profile-btn profile-btn--primary resume-import__process', () => {
+        action();
+      });
+
+      if (smartInput) {
+        process.prepend(createSvgIcon(SPARKLE_ICON_PATH));
+      }
+      processButtons.add(process);
+      updateProcessButtons();
+
+      return process;
+    }
+
     function selectFile(file) {
       const message = validateFile(file);
 
@@ -209,10 +271,35 @@ export const ResumeImport = {
 
     function renderShell(stateClass) {
       clearProcessingTimer();
-      root.className = `resume-import ${stateClass}`;
+      processButtons = new Set();
+      root.className = `resume-import ${stateClass}${smartInput ? ' resume-import--smart' : ''}`;
       applyVisibility();
       root.setAttribute('aria-busy', 'false');
       root.replaceChildren(input);
+    }
+
+    function createModeTabs() {
+      const tabs = createElement('div', 'resume-import__mode-tabs');
+      const upload = createButton('Upload file', `resume-import__mode${activeMode === 'file' ? ' is-active' : ''}`, () => {
+        // Drop any stale pasted text so file mode only ever processes the file.
+        paste.value = '';
+        activeMode = 'file';
+        renderIdle();
+      });
+      const pasteMode = createButton('Paste text', `resume-import__mode${activeMode === 'paste' ? ' is-active' : ''}`, () => {
+        // Drop any previously selected file so paste mode only processes the box.
+        selectedFile = null;
+        input.value = '';
+        activeMode = 'paste';
+        renderIdle();
+        paste.focus();
+      });
+
+      upload.setAttribute('aria-pressed', String(activeMode === 'file'));
+      pasteMode.setAttribute('aria-pressed', String(activeMode === 'paste'));
+      tabs.append(upload, pasteMode);
+
+      return tabs;
     }
 
     function createPasteField() {
@@ -227,12 +314,24 @@ export const ResumeImport = {
 
     function createDropZone() {
       const zone = createButton(
-        'Import profile information from your resume',
+        smartInput ? '' : 'Import profile information from your resume',
         'resume-import__dropzone',
         () => input.click(),
       );
 
-      zone.append(createElement('span', 'resume-import__hint', 'PDF, DOCX, or TXT up to 5 MB'));
+      if (smartInput) {
+        const title = createElement('span', 'resume-import__drop-title');
+        const browse = createElement('span', 'resume-import__browse-link', 'browse');
+
+        title.append('Drag & drop your resume, or ', browse);
+        zone.append(
+          createSvgIcon(UPLOAD_ICON_PATH),
+          title,
+          createElement('span', 'resume-import__drop-meta', 'PDF  .  DOCX  .  or  TXT  .  up to 5 MB'),
+        );
+      } else {
+        zone.append(createElement('span', 'resume-import__hint', 'PDF, DOCX, or TXT up to 5 MB'));
+      }
 
       if (supportsDesktopDrop()) {
         zone.addEventListener('dragover', stopEvent);
@@ -248,7 +347,7 @@ export const ResumeImport = {
     function createHeader() {
       const header = createElement('div', 'resume-import__header');
 
-      header.append(createElement('div', 'section-label', 'RESUME IMPORT'));
+      header.append(createElement('div', 'section-label', title.toUpperCase()));
 
       return header;
     }
@@ -264,7 +363,8 @@ export const ResumeImport = {
         'Auto-parsing may not be perfect — review all imported fields before saving.',
       );
       const actions = createElement('div', 'resume-import__actions');
-      const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {
+      const back = showBackButton ? createButton('Back', 'profile-btn profile-btn--outline resume-import__back', onBack) : null;
+      const process = createProcessButton(() => {
         processBinding.run().catch(() => {});
       });
       const processBinding = bindBusyButton({
@@ -272,18 +372,44 @@ export const ResumeImport = {
         action: processSelectedInput,
         silent: true,
       });
+      const content = [];
 
+      if (back) {
+        actions.append(back);
+      }
       actions.append(process);
-      root.append(createHeader(), createDropZone(), createPasteField(), actions, disclaimer, error);
+      if (showHeader) {
+        content.push(createHeader());
+      }
+      if (smartInput) {
+        content.push(createModeTabs(), activeMode === 'file' ? createDropZone() : createPasteField());
+      } else {
+        content.push(createDropZone(), createPasteField());
+      }
+      if (smartInput) {
+        root.append(...content, disclaimer, actions, error);
+      } else {
+        root.append(...content, actions, disclaimer, error);
+      }
     }
 
     function renderSelected() {
       renderShell('resume-import--selected');
 
       const fileName = createElement('p', 'resume-import__filename', selectedFile.name);
+      const fileCard = createElement('div', 'resume-import__selected-file');
+      const fileIcon = createElement('span', 'resume-import__file-icon');
+      const fileCopy = createElement('div', 'resume-import__file-copy');
+      const fileMeta = createElement('p', 'resume-import__file-meta', `${formatFileSize(selectedFile.size)}  ·  ready to parse`);
+      const removeFile = createButton('×', 'resume-import__remove-file', () => {
+        selectedFile = null;
+        input.value = '';
+        renderIdle();
+      });
       const actions = createElement('div', 'resume-import__actions');
       const chooseAgain = createButton('Choose Different File', 'profile-btn profile-btn--outline', () => input.click());
-      const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {
+      const back = showBackButton ? createButton('Back', 'profile-btn profile-btn--outline resume-import__back', onBack) : null;
+      const process = createProcessButton(() => {
         processBinding.run().catch(() => {});
       });
       const processBinding = bindBusyButton({
@@ -292,13 +418,54 @@ export const ResumeImport = {
         silent: true,
       });
 
-      actions.append(chooseAgain, process);
-      root.append(fileName, createPasteField(), actions, error);
+      if (smartInput) {
+        fileIcon.append(createSvgIcon(FILE_ICON_PATH));
+        removeFile.setAttribute('aria-label', 'Remove selected resume file');
+        fileCopy.append(fileName, fileMeta);
+        fileCard.append(fileIcon, fileCopy, removeFile);
+        if (back) {
+          actions.append(back);
+        }
+        actions.append(process);
+        root.append(
+          ...(showHeader ? [createHeader()] : []),
+          createModeTabs(),
+          fileCard,
+          createElement('p', 'resume-import__disclaimer', "Auto-parsing isn't perfect — you can review & edit everything before saving."),
+          actions,
+          error,
+        );
+      } else {
+        actions.append(chooseAgain, process);
+        root.append(
+          ...(showHeader ? [createHeader()] : []),
+          fileName,
+          createPasteField(),
+          actions,
+          error,
+        );
+      }
     }
 
     function renderProcessing() {
       renderShell('resume-import--processing');
       root.setAttribute('aria-busy', 'true');
+
+      if (smartInput) {
+        const overlay = createElement('div', 'resume-import-processing');
+        const panel = createElement('div', 'resume-import-processing__panel');
+        const spinner = createElement('span', 'resume-import-processing__spinner');
+        const title = createElement('p', 'resume-import-processing__title', 'Reading your resume...');
+        const detail = createElement('p', 'resume-import-processing__detail', 'Extracting your experience, skills, and details');
+
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-live', 'polite');
+        spinner.setAttribute('aria-hidden', 'true');
+        panel.append(spinner, title, detail);
+        overlay.append(panel);
+        root.append(overlay);
+        return overlay;
+      }
 
       const status = createElement('div', 'resume-import__status', PROCESSING_MESSAGES[0]);
       const process = createButton('Process Resume', 'profile-btn profile-btn--primary', () => {});
@@ -327,32 +494,111 @@ export const ResumeImport = {
       root.append(notice);
     }
 
-    function shouldAskForConsent() {
-      return aiSettings.hasKey() && !aiSettings.hasConsent();
+    function getReason(reasonKey) {
+      return REASON_CODES[reasonKey] ?? REASON_CODES.rate_limit;
     }
 
-    function renderConsentNotice() {
-      renderShell('resume-import--consent');
+    function getFileContext() {
+      return selectedFile?.name ?? 'Pasted résumé text';
+    }
 
-      const notice = createElement('div', 'resume-import__consent');
-      const title = createElement('p', 'resume-import__consent-title', 'Send resume text to OpenRouter?');
+    function renderReasonLine(reasonKey) {
+      const reason = getReason(reasonKey);
+      const line = createElement('p', 'resume-import-failure__reason');
+      const code = createElement('span', 'resume-import-failure__code', reason.code);
+      const message = createElement('span', 'resume-import-failure__message', reason.message);
+
+      line.append(code, message);
+      return line;
+    }
+
+    function renderFailureDialog(reasonKey) {
+      const reason = getReason(reasonKey);
+      const isDeadEnd = reason.fix === 'dead-end';
+      const dialog = createElement(
+        'div',
+        `resume-import-failure${isDeadEnd ? ' resume-import-failure--dead-end' : ''}`,
+      );
+      const title = createElement(
+        'p',
+        'resume-import-failure__title',
+        isDeadEnd ? "We couldn't read that résumé" : 'Smart parsing is unavailable right now',
+      );
       const copy = createElement(
         'p',
-        'resume-import__consent-copy',
-        'Alice will send the resume text to OpenRouter for AI parsing. Your key stays in this browser.',
+        'resume-import-failure__copy',
+        isDeadEnd
+          ? 'A text-based PDF or pasting the text usually works better.'
+          : 'You can switch to the basic parser and review the results before saving.',
       );
-      const actions = createElement('div', 'resume-import__actions');
-      const accept = createButton('Send to OpenRouter', 'profile-btn profile-btn--primary resume-import__consent-accept', () => {
-        aiSettings.setConsent();
+      const file = createElement('span', 'resume-import-failure__file', getFileContext());
+      const actions = createElement('div', 'resume-import-failure__actions');
+      const tryAgain = createButton('Try again', 'profile-btn profile-btn--outline', () => {
         processSelectedInput().catch(() => {});
       });
-      const decline = createButton('Use Rule-Based Import', 'profile-btn profile-btn--outline resume-import__consent-decline', () => {
-        processSelectedInput({ forceRuleBased: true }).catch(() => {});
+
+      if (isDeadEnd) {
+        const different = createButton('Use a different file', 'profile-btn profile-btn--primary', () => {
+          selectedFile = null;
+          input.value = '';
+          renderIdle();
+        });
+        const cancel = createButton('Cancel', 'profile-btn profile-btn--outline', () => {
+          onDismiss();
+        });
+
+        actions.append(tryAgain, different, cancel);
+      } else {
+        const basic = createButton('Use basic parser', 'profile-btn profile-btn--primary', () => {
+          processSelectedInput({ forceRuleBased: true }).catch(() => {});
+        });
+
+        actions.append(basic);
+        if (reason.fix === 'settings') {
+          actions.append(createButton('Update key in Settings →', 'profile-btn profile-btn--outline', () => {
+            navigate('profile', { focusSettings: true });
+          }));
+        } else {
+          actions.append(createButton('Try AI again', 'profile-btn profile-btn--outline', () => {
+            processSelectedInput().catch(() => {});
+          }));
+        }
+        actions.append(createButton('Cancel', 'profile-btn profile-btn--outline', () => {
+          onDismiss();
+        }));
+      }
+
+      dialog.setAttribute('role', 'alertdialog');
+      dialog.append(title, copy, file, renderReasonLine(reasonKey), actions);
+      root.replaceChildren(input, dialog);
+      root.setAttribute('aria-busy', 'false');
+    }
+
+    function isAiFeatureDisabled() {
+      return !aiSettings.isEnabled() || !aiSettings.getFeature('cv');
+    }
+
+    function canUseAiParser() {
+      return !isAiFeatureDisabled() && aiSettings.hasKey();
+    }
+
+    function renderSettingsAffordance() {
+      renderShell('resume-import--settings-required');
+
+      const notice = createElement('div', 'resume-import__settings-required');
+      const title = createElement('p', 'resume-import__settings-title', 'AI resume parsing is off');
+      const copy = createElement(
+        'p',
+        'resume-import__settings-copy',
+        'Resume import is paused until AI features and resume parsing are enabled.',
+      );
+      const actions = createElement('div', 'resume-import__actions');
+      const settings = createButton('Enable AI in Settings →', 'profile-btn profile-btn--outline resume-import__settings-link', () => {
+        navigate('profile', { focusSettings: true });
       });
 
-      notice.setAttribute('role', 'dialog');
-      notice.setAttribute('aria-label', 'AI resume parsing consent');
-      actions.append(accept, decline);
+      notice.setAttribute('role', 'status');
+      actions.append(settings);
       notice.append(title, copy, actions);
       root.append(notice);
     }
@@ -377,28 +623,39 @@ export const ResumeImport = {
         return null;
       }
 
-      if (!forceRuleBased && aiSettings.hasKey() && aiSettings.hasConsent()) {
+      if (!forceRuleBased && canUseAiParser()) {
         const rawText = pastedText || await extractText(selectedFile);
 
+        if (!hasEnoughMachineReadableText(rawText)) {
+          return {
+            reason: 'NO_TEXT',
+            rawText,
+          };
+        }
+
         try {
-          const result = await parseWithLlm(rawText, aiSettings.getKey());
+          const result = await parseWithLlm(rawText, aiSettings.getKey(), aiSettings.getModel());
 
           return {
             parsedData: result.draft,
             aiFieldSet: buildAiFieldSet(result.draft),
+            source: 'ai',
             notice: result.truncated
               ? 'The resume was long, so some content may not be parsed.'
               : '',
           };
-        } catch {
+        } catch (error) {
           return {
-            ...await runRuleBasedParser(rawText),
-            notice: 'AI parsing was unavailable, so Alice used the rule-based importer.',
+            reason: mapErrorToReason(error),
+            rawText,
           };
         }
       }
 
-      return runRuleBasedParser();
+      return {
+        ...await runRuleBasedParser(),
+        source: 'basic',
+      };
     }
 
     async function processSelectedInput({ forceRuleBased = false } = {}) {
@@ -407,27 +664,39 @@ export const ResumeImport = {
         return null;
       }
 
-      if (!forceRuleBased && shouldAskForConsent()) {
-        renderConsentNotice();
+      if (!forceRuleBased && isAiFeatureDisabled()) {
+        renderSettingsAffordance();
         return null;
+      }
+
+      if (!forceRuleBased) {
+        pendingBasicText = '';
       }
 
       const status = renderProcessing();
 
       try {
-        const result = await runParser({ forceRuleBased });
+        const result = forceRuleBased
+          ? { ...await runRuleBasedParser(pendingBasicText), source: 'basic' }
+          : await runParser({ forceRuleBased });
         clearProcessingTimer();
         if (!result) {
+          return null;
+        }
+        if (result.reason) {
+          pendingBasicText = result.rawText ?? '';
+          renderFailureDialog(result.reason);
           return null;
         }
         const { parsedData, aiFieldSet, notice } = result;
 
         if (!hasExtractedData(parsedData)) {
-          throw new Error('No resume data extracted.');
+          renderFailureDialog('NO_TEXT');
+          return null;
         }
 
         appendNotice(notice);
-        onSuccess(parsedData, aiFieldSet, { notice });
+        onSuccess(parsedData, aiFieldSet, { notice, source: result.source });
         completed = true;
         applyVisibility();
         return parsedData;
@@ -452,7 +721,10 @@ export const ResumeImport = {
     }
 
     input.addEventListener('change', () => selectFile(input.files?.[0]));
-    paste.addEventListener('input', () => showError(''));
+    paste.addEventListener('input', () => {
+      showError('');
+      updateProcessButtons();
+    });
     renderIdle();
     root.destroy = () => {
       clearProcessingTimer();

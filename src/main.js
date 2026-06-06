@@ -283,7 +283,7 @@ function navigate(page, options = {}) {
     Calendar.mount(appRoot);
     _currentUnmount = Calendar.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot, { navigate });
+    Profile.mount(appRoot, { navigate, ...options });
     _currentUnmount = Profile.unmount;
   } else if (page === 'profile-edit') {
     ProfileEdit.mount(appRoot, { navigate, ...options });

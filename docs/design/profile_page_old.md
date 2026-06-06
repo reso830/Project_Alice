@@ -1,9 +1,5 @@
 # Profile Page — Design Specification
-**Project Alice** · Last updated: June 4, 2026
-
-> **Doc split (June 4, 2026):** the Edit / Setup Profile page now has its own
-> specification — see **[`edit_profile_page.md`](edit_profile_page.md)**. This
-> document covers the read-only **Profile** page only. §5 below is a pointer.
+**Project Alice** · Last updated: May 30, 2026
 
 ---
 
@@ -16,10 +12,8 @@
    - 4.2 [Welcome Heading](#42-welcome-heading)
    - 4.3 [Applications Section](#43-applications-section)
    - 4.4 [Profile Section](#44-profile-section)
-   - 4.5 [Settings Section](#45-settings-section)
-     - 4.5.1 [AI sub-group](#451-ai-sub-group)
-     - 4.5.2 [Account sub-group](#452-account-sub-group)
-5. [Edit / Setup Profile Page → separate doc](#5-edit--setup-profile-page)
+   - 4.5 [Account Section](#45-account-section)
+5. [Edit / Setup Profile Page](#5-edit--setup-profile-page)
 6. [Interactions & Behaviour](#6-interactions--behaviour)
 7. [Data Model](#7-data-model)
 8. [Design Tokens](#8-design-tokens)
@@ -33,8 +27,6 @@ The **Profile** page is one of three top-level pages in Project Alice (alongside
 
 - **At-a-glance summary** — shows the user their application pipeline status and key personal/professional information in one place.
 - **Profile management** — allows the user to set up and edit their professional profile, which may be used to power compatibility scoring and auto-fill in the Tracker.
-
-> Profile **editing and setup** are documented separately in **[`edit_profile_page.md`](edit_profile_page.md)**. This page links into that flow via the **Edit Profile** / **Set Up Profile** buttons (§4.4).
 
 ---
 
@@ -52,7 +44,7 @@ The page has two primary states driven by whether a profile has been set up.
 - Profile section renders all filled sub-sections.
 - An **Edit Profile** button appears right-aligned in the Profile section header.
 
-> Both states also render the **Settings** section (§4.5) last, regardless of whether a profile exists — it hosts AI configuration and a runtime-mode-aware account control, neither of which is tied to profile setup.
+> Both states also render the **Account** section (§4.5) last, regardless of whether a profile exists — it is a runtime-mode-aware surface, not tied to profile setup.
 
 ---
 
@@ -70,7 +62,7 @@ The page has two primary states driven by whether a profile has been set up.
   ├── Welcome Heading
   ├── Applications Section Card
   ├── Profile Section Card
-  └── Settings Section Card   (AI sub-group + Account sub-group)
+  └── Account Section Card
 [Footer]
 ```
 
@@ -199,7 +191,7 @@ A card with:
 | State           | Right-aligned element                             |
 |-----------------|---------------------------------------------------|
 | No profile      | _(nothing)_                                       |
-| Profile exists  | `Edit Profile` — outline button → opens [Edit page](edit_profile_page.md) |
+| Profile exists  | `Edit Profile` — outline button → opens Edit page |
 
 #### Basic Info block
 Sits between the header and the sub-sections. Always visible when a profile exists.
@@ -235,8 +227,6 @@ Sections are separated by a subtle `1px solid #f5f3f0` top border (not a full-wi
 ##### Skills (proficiency)
 
 Skills are no longer flat tags. Each skill is rated on a **5-level proficiency scale** and rendered as its own row: the skill name on the left, a **5-segment graded meter** on the right.
-
-> The same proficiency scale powers the **Skills editor** in [`edit_profile_page.md`](edit_profile_page.md#skills-editor). This section describes the **read-only display** only.
 
 **Proficiency scale**
 
@@ -274,94 +264,13 @@ Skills are no longer flat tags. Each skill is rated on a **5-level proficiency s
       Add your background to strengthen your applications.
       [Set Up Profile — primary button]
 ```
-Clicking **Set Up Profile** navigates to the [Edit / Setup Profile page](edit_profile_page.md).
+Clicking **Set Up Profile** navigates to the Edit / Setup Profile page.
 
 ---
 
-### 4.5 Settings Section
+### 4.5 Account Section (feature 030)
 
-The final card on the page. A single **`Settings`** card that folds two labelled sub-groups into one surface — **Artificial Intelligence** (AI configuration) and **Account** (the destructive lifecycle control). It replaces the two separate cards that earlier builds shipped (a standalone "AI Resume Parsing" card + an "Account" card). Rendered regardless of whether a profile exists.
-
-#### Card structure
-```
-SETTINGS                                    ← card header (13px / 600)
-├── ARTIFICIAL INTELLIGENCE                  ← sub-group label
-│   ┌─ AI features ───────────────[ ⃝]┐     ← master toggle (gates everything below)
-│   │  Connection ──────────[● Connected]│   ← inset panel + status pill
-│   │   OpenRouter API key  •••• + 👁 + Test/Replace/Delete
-│   │   Model               provider/model-slug  (free text)
-│   │   helper: stored only in this browser…    │
-│   │  ── Enabled features ──                    │
-│   │   Resume parsing            [ ⃝]           │
-│   │   Job-description parsing   [ ⃝]           │
-│   │   Compatibility analysis    [⃝ ]           │
-│   └────────────────────────────────────────────┘
-└── ACCOUNT                                  ← sub-group label
-    {mode-specific description copy}
-    [ Destructive button ]
-```
-
-Demo mode keeps the same two sub-group labels, but replaces both interactive
-surfaces with amber informational notes: AI / Smart features are not available
-in the demo, and Account management is not available in the demo. Demo mode
-does **not** render the OpenRouter key/model controls, AI feature toggles, or a
-disabled destructive account button.
-
-- Card: reuses `.section-card` chrome (white surface, `--border`, `--r-md`, `--shadow-sm`) with a single `.section-header` reading **Settings**.
-- Sub-groups: `.set-group`, `20px 22px` padding (`16px` on mobile), separated by a `1px solid #F2EFE9` top border. Each opens with an uppercase 9px label (`--t3`).
-
----
-
-#### 4.5.1 AI sub-group (feature 033)
-
-Label: **`ARTIFICIAL INTELLIGENCE`**. Configures the user's own **OpenRouter** key and which AI-powered features are active. The user supplies and owns the key; it is stored **only in this browser** and never sent to our servers.
-
-##### Master toggle
-```
-AI features                                            [ ⃝]
-Power resume & job-description parsing and compatibility
-scoring with your own OpenRouter key.
-```
-- A single master switch (`.master-row` + `.sw`) at the top of the sub-group.
-- When **off**, the entire AI body (`.ai-body`) below is gated: `opacity .42`, `pointer-events: none`, `filter: saturate(.6)` — the connection panel and all feature toggles read as disabled but stay visible.
-- When **on**, the body is fully interactive.
-
-##### Connection panel
-An inset panel (`.conn-panel`, light `#FBFAF6` surface, `--r-md`) grouping the key + model + live status.
-
-| Element | Detail |
-|---------|--------|
-| Panel header | `Connection` title (12px / 600) + **status pill**, right-aligned |
-| Status pill | One clear state (replaces the old two-line "Key saved / Consent granted"): `● Connected` (green, `--ok` on `--ok-dim`), `Not connected` (grey), `Testing…` (amber, pulsing dot), `Key invalid` (red) |
-| API key — unsaved | Masked text input (`type=password`) + **show/hide eye** icon-button + **Save key** (primary; click validates non-empty input) |
-| API key — saved | Masked code `sk-or-v1-••••••••••••{last4}` + **eye** (reveals full key) + **Test** (re-validates → `Testing…` → resolves) + **Replace** (swap for a new key) + **Delete** (muted button that turns destructive-red on hover; clears the key and resets status to `Not connected`) |
-| Model | **Free-text slug field** (`provider/model-slug`, e.g. `anthropic/claude-sonnet-4`) + hint line `Any OpenRouter model slug.` Lets users type any OpenRouter model rather than picking from a fixed dropdown. No dropdown or model suggestions are rendered. |
-| Helper | `Stored only in this browser — never sent to our servers. Using your own OpenRouter key is your responsibility.` (`DM Mono` 10.5px) |
-
-> **Consent is folded into the key flow.** Saving a key *is* the consent to use it for AI features — there is no separate "Clear Consent" button. Removing consent = **Delete** the key.
-
-##### Enabled features
-A list of per-feature toggles (`.feat-list`), each a title + one-line description + switch. All are gated by the master toggle.
-
-| Feature key | Title | Description |
-|-------------|-------|-------------|
-| `cv`     | Resume parsing          | Extract structured fields from uploaded resumes. |
-| `jd`     | Job-description parsing | Pull role, skills, and salary from pasted listings. |
-| `compat` | Compatibility analysis  | Score how well each role matches your profile. |
-
-- Each toggle independently enables/disables that AI feature without removing the key.
-- With the master toggle off, all three render disabled (dimmed, not interactive).
-
-##### Responsive behaviour
-Verified at Tablet (768px), Mobile (390px), and slim Mobile (344px). The card itself has no horizontal overflow at 344px: the saved-key action row (`key · eye · Test · Replace · Delete`) wraps cleanly to multiple lines via `flex-wrap`, the model field + helper reflow, and every hit target stays ≥ 32px. Compact `16px` sub-group padding applies < 640px.
-
----
-
-#### 4.5.2 Account sub-group (feature 030)
-
-Label: **`ACCOUNT`**. A mode-aware sub-group hosting account lifecycle controls
-for hosted/local users. Present in **every** runtime mode and independent of
-whether a profile exists. In demo mode it renders a warning note only.
+The final card on the page. A mode-aware section hosting a single **destructive control** that closes the account lifecycle. Rendered in **every** runtime mode (hosted, local, demo) and independent of whether a profile exists.
 
 #### Layout
 ```
@@ -379,11 +288,9 @@ ACCOUNT
 |---------|------------------|----------|------------------|
 | Hosted  | `Delete account` | Yes      | "Permanently delete your account and all associated data." |
 | Local   | `Clear all data` | Yes      | "Permanently clear all locally stored applications and profile data." |
-| Demo    | _No button_ | No | Amber note: "Account management isn't available in the demo." + "Account deletion applies to a real hosted account and isn't available in the demo." |
+| Demo    | `Delete account` | **No** (disabled, `aria-disabled`) | "Account deletion applies to a real hosted account and isn't available in the demo." |
 
-Mode is resolved from `authStore` state: `authenticated` → hosted, demo status
-→ demo, otherwise local. Demo mode renders no destructive control, opens no
-modal, and fires no account-management network request.
+Mode is resolved from `authStore` state: `authenticated` → hosted, demo status → demo, otherwise local. The demo button is inert — clicking it opens no modal and fires no network request.
 
 #### Confirmation modal (`DeleteAccountModal`)
 
@@ -425,25 +332,68 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 
 ## 5. Edit / Setup Profile Page
 
-> **Moved.** The Edit / Setup Profile page is documented in its own
-> specification: **[`edit_profile_page.md`](edit_profile_page.md)**.
->
-> It covers the page chrome (sticky sub-header, Cancel/Save), the nine editable
-> sections, the Skills editor and entry-overlay modals, and the **proposed**
-> entry flow (smart vs. manual mode gate, résumé import, processing, review &
-> merge, and AI-filled provenance markers).
->
-> **Entry points from this page:** the **Edit Profile** button (§4.4 header,
-> profile exists) and the **Set Up Profile** button (§4.4 empty state) both
-> navigate to the `profile-edit` page.
+A dedicated full-page form. Entered from either:
+- **Set Up Profile** button (empty state)
+- **Edit Profile** button (profile exists, header row)
+
+Both entry points navigate to the same `profile-edit` page.
+
+### Sticky Sub-header
+- Same dark navy bar (`background: var(--navy)`), sticky below the main topbar (`top: 48px`, but adjusted to `52px` in practice since topbar is `52px`)
+- Left: **← Back** ghost button
+- Centre: `Edit Profile` title text (13px / 700)
+- Right: **Cancel** (outline) + **Save** (primary) page-level controls
+- Save button is disabled until the form is dirty (has unsaved changes)
+- Clicking back with unsaved changes shows an in-overlay discard-confirmation dialog
+
+### Body layout
+- Max-width **900px**, centred, padding `28px` (desktop) / `14px` (mobile)
+- Stacked section cards, gap `24px`
+
+### Sections (fully implemented)
+
+| # | Section | Fields |
+|---|---------|--------|
+| 1 | Basic Info | First Name\*, Last Name\*, City/Location, Email, Phone. 2-col grid on desktop. |
+| 2 | Summary | Textarea (resizable) |
+| 3 | Professional Experience | Entry list with inline add/edit modal. Fields: Role\*, Company\*, Responsibilities\*, Date Started\* (MM/YYYY), Date Ended (MM/YYYY), "Currently working here" checkbox. |
+| 4 | Education | Entry list. Fields: Degree & Major\*, University\*, Year Completed\*. |
+| 5 | Skills | Inline rows: skill **name** field + **level picker** (tap segments 1–5) + remove (×); an **Add skill** button appends a row. New skills start **unrated**, and **Save is gated** until every skill has a level. See [Skills editor](#skills-editor) below. |
+| 6 | Certifications | Entry list. Fields: Name\*, Issuing Body\*, Issuance Date\* (MM/YYYY), Expiry Date (MM/YYYY), Certificate ID. |
+| 7 | Awards | Entry list. Fields: Award Name\*, Issuing Body\*, Award Date (MM/YYYY), Details. |
+| 8 | Languages | Entry list. Fields: Language\*, Proficiency\* (dropdown: Beginner/Intermediate/Professional/Fluent). |
+| 9 | Links | Entry list. Fields: URL\* (http/https), Friendly Name. |
+
+\* = required field (validated on save)
+
+##### Skills editor
+
+The Skills section uses inline rows rather than an entry-overlay modal:
+
+```
+[ Skill name            ]  [1][2][3][4][5]   ×
+                            3 · Intermediate
+[ + Add skill ]
+```
+
+- Each row: a **name** text input, a **level picker** (five tappable segments numbered 1–5), and a **remove** (×) control.
+- **Level picker:** tapping segment `n` sets the level to `n` and fills segments 1…n in that level's colour; tapping the active level again clears it. Hovering previews the fill in a lighter tint. A caption below reads `"{n} · {Label}"`, or `"Tap to set a level"` when unset.
+- **Add skill** appends a new blank, **unrated** row.
+- **Validation gate:** a new skill must be given a level. Rows missing a level are highlighted (warning tint) and the footer shows `"Set a level for every skill to save · {n} missing"`. The **Save** button is disabled until every named skill has a level and no name is blank.
+- On narrow screens (< 560px) the level picker drops to its own line beneath the name field so the input keeps room.
+- The same **"?" scale popover** is available in the editor header.
+
+### Entry overlay (add/edit modal)
+
+- Desktop: centered modal `min(560px, 90vw)`, `max-height: 85vh`, `border-radius: 12px`, `box-shadow: 0 8px 32px rgba(0,0,0,.18)`
+- Mobile: bottom-sheet `border-radius: 16px 16px 0 0`, slides up 250ms ease-out
+- Backdrop: `rgba(0,0,0,.45)`, `z-index: 200`
+- Header: title + optional discard-confirmation overlay (appears when closing with unsaved changes)
+- Footer: Cancel + Save buttons (right-aligned, `gap: 10px`)
 
 ---
 
 ## 6. Interactions & Behaviour
-
-> Interactions that occur **inside the Edit / Setup Profile page** (level-segment
-> editing, entry-overlay add/edit, the proposed import flow, etc.) live in
-> [`edit_profile_page.md` §6](edit_profile_page.md#6-interactions--behaviour).
 
 | Interaction                   | Behaviour                                                         |
 |-------------------------------|-------------------------------------------------------------------|
@@ -456,30 +406,20 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 | Click "?" (skills)            | Opens the proficiency-scale popover; closes on outside-click / Esc |
 | Click "Custom" / "By level"   | Sorts skills by entered order, or by level (repeat clicks toggle highest- / lowest-first) |
 | Click "Show all / Show less"  | Expands / collapses the skills list past the 10-item limit         |
-| Toggle "AI features" master   | On → enables the AI sub-group; Off → gates the connection panel + all feature toggles (dimmed, inert) |
-| Toggle a feature (CV/JD/Compat)| Enables/disables that single AI feature without removing the key   |
-| Click eye (API key)           | Reveals / re-masks the OpenRouter key in place                     |
-| Click "Save key"              | Stores the key (browser-only) and sets status → `Connected`        |
-| Click "Test" (API key)        | Re-validates the saved key: status → `Testing…` then resolves       |
-| Click "Replace" (API key)     | Swaps the saved key back to an editable input                      |
-| Click "Delete" (API key)      | Clears the key (= revokes consent); status → `Not connected`       |
-| Edit Model slug field         | Free-text entry of any `provider/model-slug`; no dropdown or suggestions |
+| Tap a level segment (editor)  | Sets that skill's proficiency level (1–5); tapping the active level clears it |
 | Click "Go to Tracker"         | Navigates to Tracker page                                         |
 | Click "Archived applications" | Navigates to Tracker in the Archived view (`/?view=archived`)     |
 | Click "Edit Profile"          | Navigates to Edit Profile page                                    |
 | Click "Set Up Profile"        | Navigates to Edit Profile page (same destination)                 |
+| Click "← Back to Profile"     | Returns to Profile page; unsaved changes are discarded (TBD)      |
 | Click link chip               | Opens URL in new tab                                              |
 | Click "Delete account" (hosted)| Opens DeleteAccountModal; password gate → permanent account deletion → sign out → Welcome |
 | Click "Clear all data" (local)| Opens DeleteAccountModal; typed-`DELETE` gate → clears local data → re-mounts empty states |
-| Demo Account subgroup         | Shows an amber "Account management isn't available in the demo" note; no destructive button |
+| Click "Delete account" (demo) | No-op — control is disabled                                       |
 
 ---
 
 ## 7. Data Model
-
-> This is the canonical Profile model, rendered read-only by this page and
-> edited by [`edit_profile_page.md`](edit_profile_page.md). The edit doc documents
-> only the editing-specific deltas (unrated-skill gate, the résumé-parse payload).
 
 ### Profile object
 ```ts
@@ -564,29 +504,6 @@ Derived stats:
 
 All four stats and the chart are computed from the **active** application list only (`getAll()` excludes `archived` rows server-side). The archived count comes from a separate `getAll({ view: 'archived' })` fetch and surfaces solely on the Archived applications link (§4.3). Each application carries `archived: boolean` and `archivedDate: ISO date | null` (set server-side when archived, cleared on unarchive — feature 028); the Profile page reads only the archived **count**, not individual fields.
 
-### Settings — AI sub-group state
-The AI sub-group keeps its own browser-local settings (no server persistence; consistent with the "stored only in this browser" contract). Suggested shape:
-```ts
-interface AiSettings {
-  // ── Persisted (browser storage) ──
-  enabled:    boolean;                 // master "AI features" toggle
-  apiKey:     string | null;           // OpenRouter key; null = not connected. Presence = consent.
-  model:      string;                  // free-text slug, e.g. "anthropic/claude-sonnet-4"
-  features: {
-    cv:     boolean;                   // Resume parsing
-    jd:     boolean;                   // Job-description parsing
-    compat: boolean;                   // Compatibility analysis
-  };
-}
-
-// ── Derived at runtime, NOT persisted ──
-// Computed live so it can never go stale: no key → 'none'; mid-test → 'testing';
-// last Test failed → 'error'; otherwise → 'connected'. A saved 'connected' value
-// could be wrong the moment a key is revoked OpenRouter-side, so it is never stored.
-type AiConnectionStatus = 'connected' | 'none' | 'testing' | 'error';
-```
-> The key is held only in browser storage and sent directly to OpenRouter at call time — never to Project Alice servers. There is no separate consent flag: a non-null `apiKey` *is* consent, and **Delete** (clearing it) withdraws consent. Feature toggles are independent of the key and only take effect while `enabled` is true.
-
 ### Account section state (feature 030)
 The Account section has no persisted model of its own. Its behaviour is derived at render time from the runtime `mode` (hosted / local / demo, resolved from `authStore`), which selects the control label, description copy, enabled state, confirmation gate (password vs typed `DELETE`), and post-success path. The destructive backend operations act on existing entities — the Supabase `auth.users` row (cascade-deletes the user's data) in hosted mode, or the local `applications` + `profile` tables in local mode.
 
@@ -605,8 +522,6 @@ The Account section has no persisted model of its own. Its behaviour is derived 
 | `--indigo`        | `#4F46E5` | Primary buttons, active nav, avatar, Archived link|
 | `--indigo-hover`  | `#4338CA` | Primary button hover, Archived link hover |
 | `--sk-empty`      | `#E7E3DA` | Empty proficiency-meter segments   |
-| `--ok`            | `#16a34a` | AI `Connected` status dot          |
-| `--ok-dim`        | `#E6F4EA` | AI `Connected` status-pill background |
 | `--color-danger`  | `#c1121f` | Account destructive button + delete modal (hover `#a00e19`) |
 | `--t2`            | `#4B5563` | Body text, muted content           |
 | `--t3`            | `#9CA3AF` | Muted / secondary text             |
@@ -640,14 +555,12 @@ The Account section has no persisted model of its own. Its behaviour is derived 
 | # | Question                                                                 | Status   |
 |---|--------------------------------------------------------------------------|----------|
 | 1 | Should "Go to Tracker" filter the tracker to a specific status?          | Open     |
-| 2 | How are Experience / Education entries added and removed (row management)?| **Resolved** — inline entry overlay modal (desktop) / bottom-sheet (mobile). See [`edit_profile_page.md`](edit_profile_page.md). |
-| 3 | Should unsaved edits prompt a confirmation before navigating back?       | **Resolved** — yes; discard-confirmation overlay. See [`edit_profile_page.md`](edit_profile_page.md). |
+| 2 | How are Experience / Education entries added and removed (row management)?| **Resolved** — inline entry overlay modal (desktop) / bottom-sheet (mobile) |
+| 3 | Should unsaved edits prompt a confirmation before navigating back?       | **Resolved** — yes; discard-confirmation overlay appears inside the entry overlay |
 | 4 | Is the Profile used to power Tracker compatibility scores?               | Open     |
 | 5 | What additional link platforms should be supported (e.g. Indeed, Xing)? | **Resolved** — links are free-form URL + optional friendlyName; no platform list |
 | 6 | Should the avatar support a photo upload, or remain initials-only?       | Open (currently initials-only) |
 | 7 | Should the Calendar page have access to Profile data?                    | Open     |
 | 8 | How are archived applications surfaced on the Profile page?              | **Resolved** (028) — always-visible "Archived applications · N →" link in the Applications section; stats/chart exclude archived rows |
 | 9 | How does a user delete their account / clear their data?                 | **Resolved** (030) — mode-aware Account section (§4.5) with a gated confirmation modal; hosted deletes the account, local clears data, demo is disabled |
-| 10 | How are skills captured beyond flat tags?                               | **Resolved** — 1–5 proficiency scale; graded meter rows on the Profile page (§4.4 Skills); the gated inline editor lives in [`edit_profile_page.md`](edit_profile_page.md#skills-editor) |
-| 11 | How does a user start a profile — guided vs. blank form?                | **In design** — proposed smart/manual entry gate + résumé import. See [`edit_profile_page.md` §3](edit_profile_page.md#3-entry-flow--states-proposed) |
-| 12 | How are AI features configured and consented to?                        | **Resolved (feature 033)** — unified Settings card (§4.5.1): a master toggle, browser-local OpenRouter key (consent folded into the key flow), free-text model slug, single connection status, and per-feature toggles (CV / JD / Compatibility) |
+| 10 | How are skills captured beyond flat tags?                               | **Resolved** — 1–5 proficiency scale; graded meter rows with hover/tap reveal, "?" scale popover, sort, and collapse-past-10 (§4.4 Skills), plus a gated inline editor (§5 Skills editor) |

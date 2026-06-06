@@ -32,6 +32,11 @@ function accountButton(container) {
   return container.querySelector('.account-section__btn');
 }
 
+function getSection(container, label) {
+  return [...container.querySelectorAll('.section-card')]
+    .find((section) => section.querySelector('.section-label')?.textContent === label);
+}
+
 async function mountProfile(status) {
   authState.status = status;
   const container = document.createElement('main');
@@ -44,6 +49,8 @@ describe('Profile — Account section', () => {
     const container = await mountProfile('authenticated');
     const btn = accountButton(container);
 
+    expect(getSection(container, 'SETTINGS')).not.toBeNull();
+    expect(getSection(container, 'ACCOUNT')).toBeUndefined();
     expect(btn).not.toBeNull();
     expect(btn.textContent).toBe('Delete account');
     expect(btn.disabled).toBe(false);
@@ -57,15 +64,14 @@ describe('Profile — Account section', () => {
     expect(btn.disabled).toBe(false);
   });
 
-  it('demo: renders a disabled button that opens no modal and calls no API', async () => {
+  it('demo: renders account management as a warning note with no destructive button', async () => {
     const container = await mountProfile('demo');
     const btn = accountButton(container);
+    const settings = getSection(container, 'SETTINGS');
 
-    expect(btn.textContent).toBe('Delete account');
-    expect(btn.disabled).toBe(true);
-
-    btn.click();
-
+    expect(btn).toBeNull();
+    expect(settings.textContent).toContain("Account management isn't available in the demo.");
+    expect(settings.textContent).toContain("AI and Smart features aren't available in the demo.");
     expect(document.querySelector('.delete-modal-backdrop')).toBeNull();
     expect(api.deleteAccount).not.toHaveBeenCalled();
   });

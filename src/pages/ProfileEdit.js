@@ -1,6 +1,7 @@
 import { ResumeImport } from '../components/ResumeImport.js';
 import { Toast } from '../components/Toast.js';
 import aiSparkle from '../assets/AI_sparkle.png';
+import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
 import {
   getSkillLabel,
@@ -32,6 +33,13 @@ let _openOverlay = null;
 let _beforeUnloadHandler = null;
 let _highlightImport = false;
 let _importDone = false;
+let _profileExists = false;
+let _entryGateDismissed = false;
+let _importBarExpanded = false;
+let _entryFlowModal = null;
+let _sectionProvenance = new Map();
+let _flashPaths = new Set();
+let _flashTimer = null;
 let _importArea = null;
 let _mountGeneration = 0;
 let _saveBindings = [];
@@ -39,6 +47,30 @@ let _skillPopoverCleanup = [];
 
 const AI_STRING_FIELDS = ['firstName', 'lastName', 'city', 'email', 'phone', 'summary'];
 const AI_ARRAY_FIELDS = ['experience', 'education', 'skills', 'certifications', 'awards', 'languages', 'links'];
+const SECTION_FIELDS = Object.freeze({
+  basic: ['firstName', 'lastName', 'city', 'email', 'phone'],
+  summary: ['summary'],
+  experience: ['experience'],
+  education: ['education'],
+  skills: ['skills'],
+  certifications: ['certifications'],
+  awards: ['awards'],
+  languages: ['languages'],
+  links: ['links'],
+});
+const SECTION_TITLES = Object.freeze({
+  'BASIC INFO': 'basic',
+  SUMMARY: 'summary',
+  'PROFESSIONAL EXPERIENCE': 'experience',
+  EDUCATION: 'education',
+  SKILLS: 'skills',
+  CERTIFICATIONS: 'certifications',
+  AWARDS: 'awards',
+  LANGUAGES: 'languages',
+  LINKS: 'links',
+});
+const MANUAL_ENTRY_ICON_PATH = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z';
+const CHEVRON_DOWN_ICON_PATH = 'm6 9 6 6 6-6';
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -165,6 +197,23 @@ function createAiFieldBadge() {
   return badge;
 }
 
+function createSectionProvenance(type) {
+  const pill = createElement(
+    'span',
+    `section-provenance section-provenance--${type}`,
+    type === 'ai' ? '✦ AI FILLED' : '⚙ Auto-filled',
+  );
+
+  pill.setAttribute('aria-label', type === 'ai' ? 'AI filled section' : 'Auto-filled section');
+  return pill;
+}
+
+function clearSectionProvenance(sectionKey) {
+  if (sectionKey) {
+    _sectionProvenance.delete(sectionKey);
+  }
+}
+
 function clearAiIndicator(path, scope) {
   if (!path) {
     return;
@@ -223,6 +272,101 @@ function getMergedAiFieldSet(previousState, parsedData, mergedState, draftAiFiel
   return appliedFields;
 }
 
+function hasImportValue(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).some(hasImportValue);
+  }
+
+  return value !== null && value !== undefined && value !== '';
+}
+
+function mergeImportedProfile(previousState, parsedData) {
+  const mergedState = mergeResumeData(previousState, parsedData);
+  const currentSummary = typeof previousState?.summary === 'string' ? previousState.summary.trim() : '';
+  const parsedSummary = typeof parsedData?.summary === 'string' ? parsedData.summary.trim() : '';
+
+  if (currentSummary && parsedSummary) {
+    mergedState.summary = `${currentSummary}\n\n${parsedSummary}`;
+  }
+
+  return mergedState;
+}
+
+function getTouchedSections(previousState, parsedData, mergedState) {
+  const touched = new Set();
+
+  for (const [section, fields] of Object.entries(SECTION_FIELDS)) {
+    if (!fields.some((field) => hasImportValue(parsedData?.[field]))) {
+      continue;
+    }
+
+    if (fields.some((field) => JSON.stringify(previousState?.[field]) !== JSON.stringify(mergedState?.[field]))) {
+      touched.add(section);
+    }
+  }
+
+  return touched;
+}
+
+function getAiFieldsForTouchedSections(previousState, parsedData, mergedState, aiFieldSet) {
+  return getMergedAiFieldSet(previousState, parsedData, mergedState, aiFieldSet);
+}
+
+function getFlashPaths(previousState, parsedData, mergedState) {
+  const paths = new Set();
+
+  for (const field of AI_STRING_FIELDS) {
+    if (
+      hasImportValue(parsedData?.[field])
+      && JSON.stringify(previousState?.[field]) !== JSON.stringify(mergedState?.[field])
+    ) {
+      paths.add(field);
+    }
+  }
+
+  for (const field of AI_ARRAY_FIELDS) {
+    const previousLength = Array.isArray(previousState?.[field]) ? previousState[field].length : 0;
+    const mergedLength = Array.isArray(mergedState?.[field]) ? mergedState[field].length : 0;
+
+    for (let index = previousLength; index < mergedLength; index += 1) {
+      paths.add(`${field}[${index}]`);
+    }
+  }
+
+  return paths;
+}
+
+function shouldFlash(path) {
+  return path && _flashPaths.has(path);
+}
+
+function scheduleFlashClear(generation) {
+  if (_flashTimer) {
+    window.clearTimeout(_flashTimer);
+  }
+
+  _flashTimer = window.setTimeout(() => {
+    if (_mountGeneration !== generation) {
+      return;
+    }
+
+    _flashPaths = new Set();
+    _flashTimer = null;
+    if (_container) {
+      renderEditPage(_container);
+    }
+  }, 2700);
+}
+
+function getSectionForField(fieldName) {
+  return Object.entries(SECTION_FIELDS)
+    .find(([, fields]) => fields.includes(fieldName))?.[0] ?? '';
+}
+
 function createField(label, value = '', multiline = false, { required = false, placeholder = '', aiPath = '' } = {}) {
   const wrapper = createElement('label', 'edit-field');
   const labelEl = createElement('span', 'edit-field__label', label);
@@ -241,6 +385,9 @@ function createField(label, value = '', multiline = false, { required = false, p
     input.type = 'text';
   }
   appendAiIndicator(labelEl, aiPath, wrapper);
+  if (shouldFlash(aiPath)) {
+    wrapper.classList.add('epfFlash');
+  }
   input.addEventListener('input', () => clearAiIndicator(aiPath, wrapper));
   input.addEventListener('change', () => clearAiIndicator(aiPath, wrapper));
   error.hidden = true;
@@ -300,10 +447,14 @@ function createEditCard(title, { onAdd, headerAction } = {}) {
   const label = createElement('div', 'section-label', title);
   const labelGroup = createElement('div', 'section-card__label-group');
   const body = createElement('div', 'edit-card__body');
+  const sectionKey = SECTION_TITLES[title];
 
   // Group the label with its inline header action (e.g. the skills "?" scale
   // popover) so the action sits beside the label, not floating in the middle.
   labelGroup.append(label);
+  if (_sectionProvenance.has(sectionKey)) {
+    labelGroup.append(createSectionProvenance(_sectionProvenance.get(sectionKey)));
+  }
   if (headerAction) {
     labelGroup.append(headerAction);
   }
@@ -334,6 +485,10 @@ function createStructuredEntryRow(display, { onEdit, onRemove, aiPath = '' } = {
   const row = createElement('div', 'entry-row entry-row--structured');
   const content = createElement('div', 'entry-row__content');
   const actions = createElement('div', 'entry-row__actions');
+
+  if (shouldFlash(aiPath)) {
+    row.classList.add('epfFlash');
+  }
 
   if (display.title) {
     const title = createElement('div', 'profile-entry__title', display.title);
@@ -552,6 +707,7 @@ function getLinkLabel(url, friendlyName = '') {
 function updateField(fieldName, value) {
   _formState[fieldName] = value;
   _aiFields.delete(fieldName);
+  clearSectionProvenance(getSectionForField(fieldName));
   setFieldError(_basicInfoFields[fieldName], '');
   updateControlsState();
 }
@@ -802,6 +958,9 @@ function renderSkillsCard(page) {
       }, 'Remove skill');
 
       field.wrapper.classList.add('skill-editor-row__name');
+      if (shouldFlash(`skills[${index}]`)) {
+        row.classList.add('epfFlash');
+      }
       field.input.addEventListener('input', () => {
         const nextSelection = {
           end: field.input.selectionEnd,
@@ -1369,41 +1528,325 @@ function renderResumeImportDemoNote() {
   return note;
 }
 
-function renderResumeImportArea(page) {
+function isSmartEntryAvailable() {
+  return aiSettings.isEnabled() && aiSettings.getFeature('cv');
+}
+
+function navigateToAiSettings() {
+  closeEntryFlowModal();
+  _navigate('profile', { focusSettings: true });
+}
+
+function applyImportedResume(parsedData, aiFieldSet = new Set(), meta = {}, generation = _mountGeneration) {
+  if (!_container || _mountGeneration !== generation) return;
+  _importDone = true;
+  _entryGateDismissed = true;
+  _importBarExpanded = false;
+  closeEntryFlowModal();
+
+  const previousState = deepClone(_formState);
+  const mergedState = mergeImportedProfile(_formState, parsedData);
+  const touchedSections = getTouchedSections(previousState, parsedData, mergedState);
+  const provenanceType = meta.source === 'basic' ? 'basic' : 'ai';
+
+  _formState = mergedState;
+  _sectionProvenance = new Map([...touchedSections].map((section) => [section, provenanceType]));
+  _flashPaths = getFlashPaths(previousState, parsedData, mergedState);
+  _aiFields = provenanceType === 'ai'
+    ? getAiFieldsForTouchedSections(previousState, parsedData, mergedState, aiFieldSet)
+    : new Set();
+  renderEditPage(_container);
+  scheduleFlashClear(generation);
+  if (meta.notice) {
+    Toast.show(meta.notice, 'info');
+  }
+  Toast.show('Resume details imported.', 'info', {
+    actionLabel: 'Undo',
+    onAction: () => {
+      if (!_container || _mountGeneration !== generation) return;
+      _formState = deepClone(previousState);
+      _aiFields = new Set();
+      _sectionProvenance = new Map();
+      _flashPaths = new Set();
+      _importDone = false;
+      renderEditPage(_container);
+    },
+  });
+}
+
+function createSmartResumeImport({ generation, showHeader = true } = {}) {
+  return ResumeImport.create({
+    smartInput: true,
+    title: 'Import from your résumé',
+    showHeader,
+    onSuccess: (parsedData, aiFieldSet = new Set(), meta = {}) => {
+      applyImportedResume(parsedData, aiFieldSet, meta, generation);
+    },
+    onDismiss: () => {
+      if (_profileExists) {
+        _importBarExpanded = false;
+        renderEditPage(_container);
+      } else {
+        _entryGateDismissed = true;
+        closeEntryFlowModal();
+      }
+    },
+    onBack: () => {
+      closeEntryFlowModal();
+      showEntryGate();
+    },
+    navigate: _navigate,
+  });
+}
+
+function createSparkleTile(className = 'profile-ai-tile') {
+  const tile = createElement('span', className);
+  const icon = document.createElement('img');
+
+  icon.src = aiSparkle;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+  tile.append(icon);
+
+  return tile;
+}
+
+function createManualEntryTile() {
+  const tile = createElement('span', 'profile-ai-tile profile-entry-gate__icon profile-entry-gate__icon--manual');
+
+  tile.append(createSvgIcon(MANUAL_ENTRY_ICON_PATH));
+
+  return tile;
+}
+
+function trapModalFocus(backdrop, onEscape) {
+  const handler = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onEscape();
+      return;
+    }
+
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusable = [...backdrop.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])')]
+      .filter((el) => !el.disabled && !el.hidden);
+
+    if (focusable.length === 0) {
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable.at(-1);
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  document.addEventListener('keydown', handler);
+
+  return () => document.removeEventListener('keydown', handler);
+}
+
+function closeEntryFlowModal() {
+  if (!_entryFlowModal) {
+    return;
+  }
+
+  _entryFlowModal.cleanup?.();
+  _entryFlowModal.backdrop.remove();
+  _entryFlowModal = null;
+  document.body.style.overflow = '';
+}
+
+function openSmartInputModal() {
+  closeEntryFlowModal();
+
+  const generation = _mountGeneration;
+  const backdrop = createElement('div', 'profile-smart-modal-backdrop');
+  const modal = createElement('div', 'profile-smart-modal');
+  const header = createElement('div', 'profile-smart-modal__header');
+  const intro = createElement('div', 'profile-smart-modal__intro');
+  const title = createElement('h2', 'profile-smart-modal__title', 'Import from your resume');
+  const subtitle = createElement('p', 'profile-smart-modal__subtitle', "Upload a file or paste the text — we'll handle the rest.");
+  const close = createButton('×', 'profile-smart-modal__close', () => {
+    _entryGateDismissed = true;
+    closeEntryFlowModal();
+  }, 'Close smart import');
+  const importArea = createSmartResumeImport({ generation });
+
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'profile-smart-modal-title');
+  title.id = 'profile-smart-modal-title';
+  intro.append(title, subtitle);
+  header.append(intro, close);
+  modal.append(header, importArea);
+  backdrop.append(modal);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) {
+      _entryGateDismissed = true;
+      closeEntryFlowModal();
+    }
+  });
+
+  const cleanup = trapModalFocus(backdrop, () => {
+    _entryGateDismissed = true;
+    closeEntryFlowModal();
+  });
+
+  _entryFlowModal = { backdrop, cleanup };
+  document.body.style.overflow = 'hidden';
+  document.body.append(backdrop);
+  close.focus();
+}
+
+function dismissEntryGate() {
+  _entryGateDismissed = true;
+  closeEntryFlowModal();
+}
+
+function createEntryGateCard(kind) {
+  const isSmart = kind === 'smart';
+  const card = createElement('div', `profile-entry-gate__card profile-entry-gate__card--${kind}`);
+  const title = createElement('h3', 'profile-entry-gate__card-title', isSmart ? 'Smart entry' : 'Manual entry');
+  const copy = createElement(
+    'p',
+    'profile-entry-gate__copy',
+    isSmart
+      ? "Upload your résumé and we'll fill in your profile automatically."
+      : 'Type your details into the form, section by section.',
+  );
+  const bullets = createElement('ul', 'profile-entry-gate__bullets');
+
+  card.append(isSmart ? createSparkleTile('profile-ai-tile profile-entry-gate__icon') : createManualEntryTile());
+  if (isSmart) {
+    card.append(createElement('span', 'profile-entry-gate__badge', 'Fastest'));
+  }
+  bullets.append(
+    createElement('li', '', isSmart ? 'Parses experience, skills & more' : 'Full control over every field'),
+    createElement('li', '', isSmart ? 'Review before saving' : 'No resume needed'),
+  );
+  card.append(title, copy, bullets);
+
+  if (isSmart && !isSmartEntryAvailable()) {
+    card.classList.add('is-disabled');
+    const settings = createButton('Enable AI in Settings →', 'profile-btn profile-btn--outline profile-entry-gate__settings-link', navigateToAiSettings);
+
+    card.append(settings);
+  } else {
+    const choose = createButton('Choose →', 'profile-btn profile-btn--primary profile-entry-gate__choose', isSmart ? openSmartInputModal : dismissEntryGate);
+
+    card.append(choose);
+  }
+
+  return card;
+}
+
+function showEntryGate() {
+  closeEntryFlowModal();
+
+  const backdrop = createElement('div', 'profile-entry-gate');
+  const dialog = createElement('div', 'profile-entry-gate__dialog');
+  const header = createElement('div', 'profile-entry-gate__header');
+  const copy = createElement('div', 'profile-entry-gate__intro');
+  const title = createElement('h2', 'profile-entry-gate__title', "Let's build your profile.");
+  const subtitle = createElement('p', 'profile-entry-gate__subtitle', 'Start from a résumé, or fill it in yourself. You can edit everything afterward.');
+  const close = createButton('×', 'profile-entry-gate__close', dismissEntryGate, 'Close setup options');
+  const cards = createElement('div', 'profile-entry-gate__cards');
+
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.setAttribute('aria-labelledby', 'profile-entry-gate-title');
+  title.id = 'profile-entry-gate-title';
+  copy.append(title, subtitle);
+  header.append(copy, close);
+  cards.append(createEntryGateCard('smart'), createEntryGateCard('manual'));
+  dialog.append(header, cards);
+  backdrop.append(dialog);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) {
+      dismissEntryGate();
+    }
+  });
+
+  const cleanup = trapModalFocus(backdrop, dismissEntryGate);
+
+  _entryFlowModal = { backdrop, cleanup };
+  document.body.style.overflow = 'hidden';
+  document.body.append(backdrop);
+  backdrop.querySelector('.profile-entry-gate__card--smart .profile-entry-gate__choose, .profile-entry-gate__settings-link')?.focus();
+}
+
+function renderImportBar(page) {
   if (_importDone) {
     return;
   }
 
+  const generation = _mountGeneration;
+  const bar = createElement('section', `profile-import-bar${_importBarExpanded ? ' is-expanded' : ''}`);
+  const header = createElement('div', 'profile-import-bar__header');
+  const titleWrap = createElement('div', 'profile-import-bar__copy');
+  const title = createElement('div', 'profile-import-bar__title', 'Smart import');
+  const subtitle = createElement('p', 'profile-import-bar__subtitle', 'Refresh your profile from a newer résumé');
+
+  if (_highlightImport) {
+    bar.classList.add('profile-import-bar--highlight');
+  }
+
+  titleWrap.append(title, subtitle);
+  header.append(createSparkleTile('profile-ai-tile profile-import-bar__icon'), titleWrap);
+
+  if (!isSmartEntryAvailable()) {
+    const settings = createButton('Enable AI in Settings →', 'profile-btn profile-btn--outline profile-import-bar__settings-link', navigateToAiSettings);
+
+    bar.classList.add('is-disabled');
+    header.append(settings);
+    bar.append(header);
+    page.append(bar);
+    return;
+  }
+
+  const toggle = createButton('', 'profile-import-bar__toggle', () => {
+    _importBarExpanded = !_importBarExpanded;
+    renderEditPage(_container);
+  }, _importBarExpanded ? 'Collapse smart import' : 'Expand smart import');
+  const chevron = createElement('span', 'profile-import-bar__chevron');
+
+  toggle.setAttribute('aria-expanded', String(_importBarExpanded));
+  chevron.append(createSvgIcon(CHEVRON_DOWN_ICON_PATH));
+  toggle.append(chevron);
+  header.append(toggle);
+  bar.append(header);
+
+  if (_importBarExpanded) {
+    const importArea = createSmartResumeImport({ generation, showHeader: false });
+
+    _importArea = importArea;
+    bar.append(importArea);
+  }
+
+  page.append(bar);
+}
+
+function renderResumeImportArea(page) {
   if (authStore.getAuthState().status === 'demo') {
     page.append(renderResumeImportDemoNote());
     return;
   }
 
-  const generation = _mountGeneration;
-  const importArea = ResumeImport.create({
-    onSuccess: (parsedData, aiFieldSet = new Set(), meta = {}) => {
-      if (!_container || _mountGeneration !== generation) return;
-      _importDone = true;
-      const previousState = _formState;
-      const mergedState = mergeResumeData(_formState, parsedData);
-
-      _formState = mergedState;
-      _aiFields = getMergedAiFieldSet(previousState, parsedData, mergedState, aiFieldSet);
-      renderEditPage(_container);
-      if (meta.notice) {
-        Toast.show(meta.notice, 'info');
-      }
-    },
-    onDismiss: () => {},
-  });
-
-  _importArea = importArea;
-
-  if (_highlightImport) {
-    importArea.classList.add('resume-import--highlight');
+  if (!_profileExists) {
+    return;
   }
 
-  page.append(importArea);
+  renderImportBar(page);
 }
 
 function renderEditPage(container) {
@@ -1425,6 +1868,9 @@ function renderEditPage(container) {
   updateControlsState();
   if (_highlightImport) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (!_profileExists && !_entryGateDismissed && !_importDone && authStore.getAuthState().status !== 'demo') {
+    showEntryGate();
   }
 }
 
@@ -1497,6 +1943,8 @@ async function handleSave() {
     _formState = deepClone(payload);
     _initialState = deepClone(payload);
     _aiFields.clear();
+    _sectionProvenance.clear();
+    _flashPaths.clear();
     updateControlsState();
     _navigate('profile');
     Toast.show('Profile saved.', 'success');
@@ -1583,10 +2031,13 @@ export function confirmNavigation(page) {
 }
 
 export async function mount(container, { navigate, highlightImport = false } = {}) {
+  closeEntryFlowModal();
   _container = container;
   _navigate = typeof navigate === 'function' ? navigate : () => {};
   _highlightImport = highlightImport;
   _importDone = false;
+  _entryGateDismissed = false;
+  _importBarExpanded = false;
   _mountGeneration += 1;
   container.replaceChildren(buildProfileEditSkeleton());
 
@@ -1596,9 +2047,12 @@ export async function mount(container, { navigate, highlightImport = false } = {
     return;
   }
 
+  _profileExists = Boolean(profile);
   _formState = deepClone(normaliseProfile(profile ?? {}));
   _initialState = deepClone(_formState);
   _aiFields = new Set();
+  _sectionProvenance = new Map();
+  _flashPaths = new Set();
   renderSubheader();
   renderEditPage(container);
 
@@ -1612,8 +2066,13 @@ export async function mount(container, { navigate, highlightImport = false } = {
 }
 
 export function unmount() {
+  closeEntryFlowModal();
   _openOverlay?.close();
   cleanupSkillPopovers();
+  if (_flashTimer) {
+    window.clearTimeout(_flashTimer);
+    _flashTimer = null;
+  }
   if (_beforeUnloadHandler) {
     window.removeEventListener('beforeunload', _beforeUnloadHandler);
     _beforeUnloadHandler = null;
@@ -1634,6 +2093,8 @@ export function unmount() {
   _formState = null;
   _initialState = null;
   _aiFields = new Set();
+  _sectionProvenance = new Map();
+  _flashPaths = new Set();
   _saving = false;
   _basicInfoFields = {};
   _discardAction = null;
@@ -1646,6 +2107,9 @@ export function unmount() {
   _saveBindings = [];
   _highlightImport = false;
   _importDone = false;
+  _profileExists = false;
+  _entryGateDismissed = false;
+  _importBarExpanded = false;
 }
 
 export const ProfileEdit = { mount, unmount, confirmNavigation };

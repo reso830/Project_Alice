@@ -81,4 +81,19 @@ describe('ResumeImport — demo visibility', () => {
     expect(VISIBLE_STATUSES.has('local-mode')).toBe(true);
     expect(VISIBLE_STATUSES.has('authenticated')).toBe(true);
   });
+
+  it('does not expose the Settings affordance while hidden in demo mode', () => {
+    authStoreMock.getAuthState.mockReturnValue({
+      status: 'demo',
+      user: null,
+      accessToken: null,
+    });
+
+    const node = ResumeImport.create({ navigate: vi.fn() });
+    container.append(node);
+
+    expect(node.hidden).toBe(true);
+    expect(container.textContent).not.toContain('Enable AI in Settings');
+    expect(container.querySelector('.resume-import__settings-link')).toBeNull();
+  });
 });

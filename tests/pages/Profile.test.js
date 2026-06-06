@@ -134,6 +134,20 @@ describe('Profile page', () => {
 }`);
   });
 
+  it('suppresses profile/edit animations under reduced motion', () => {
+    const css = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
+
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.skill-meter,[\s\S]*\.skill-meter-row__level,[\s\S]*transition: none !important;/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.entry-row\.epfFlash,[\s\S]*\.skill-editor-row\.epfFlash,[\s\S]*\.edit-field\.epfFlash[\s\S]*animation: none !important;/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.entry-sheet__box[\s\S]*animation: none !important;/,
+    );
+  });
+
   it('renders the no-profile state and wires navigation callbacks', async () => {
     const container = document.createElement('main');
     const navigate = vi.fn();
@@ -205,6 +219,25 @@ describe('Profile page', () => {
     expect(container.textContent).not.toContain('Application data is unavailable right now.');
     expect([...container.querySelectorAll('.stat-chip__value')].map((chip) => chip.textContent))
       .toEqual(['1', '0', '0', '1', '1', '0', '0', '1']);
+  });
+
+  it('keeps the archived link discoverable when the archived count is zero', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockImplementation(({ view } = {}) => Promise.resolve(
+      view === 'archived'
+        ? []
+        : [createApplication({ id: 1, status: 'applied' })],
+    ));
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const link = getArchivedLink(container);
+
+    expect(link).not.toBeNull();
+    expect(link.textContent).toBe('Archived applications · 0 →');
+    expect(link.getAttribute('aria-label')).toBe('View archived applications, 0 items');
   });
 
   it('renders a saved profile and wires edit navigation', async () => {
@@ -295,6 +328,32 @@ describe('Profile page', () => {
     // skill-level-{n} on the row drives the level colour for BOTH the meter fill
     // and the revealed word (so the word matches the level's colour).
     expect(rows[0].classList.contains('skill-level-4')).toBe(true);
+  });
+
+  it('toggles read-only profile sub-sections for the mobile collapse affordance', async () => {
+    const container = document.createElement('main');
+
+    api.getProfile.mockResolvedValue({
+      firstName: 'Alex',
+      lastName: 'Rivera',
+      summary: 'Frontend engineer.',
+    });
+    api.getAll.mockResolvedValue([]);
+
+    await Profile.mount(container, { navigate: vi.fn() });
+
+    const summary = getSubsection(container, 'SUMMARY');
+    const label = summary.querySelector('.profile-subsection__label');
+    const content = summary.querySelector('.profile-subsection__content');
+
+    expect(summary.classList.contains('is-collapsed')).toBe(false);
+    expect(content.textContent).toContain('Frontend engineer.');
+
+    label.click();
+    expect(summary.classList.contains('is-collapsed')).toBe(true);
+
+    label.click();
+    expect(summary.classList.contains('is-collapsed')).toBe(false);
   });
 
   it('uses model normalization before displaying skills', async () => {
@@ -415,20 +474,30 @@ describe('Profile page', () => {
 
     await Profile.mount(container, { navigate: vi.fn() });
 
+    const customSort = container.querySelector('.skill-sort-btn[data-sort="custom"]');
+    const levelSort = container.querySelector('.skill-sort-btn[data-sort="level"]');
+
+    expect(customSort.textContent).toBe('Custom');
+    expect(customSort.classList.contains('is-active')).toBe(true);
+    expect(levelSort.textContent).toBe('By level ▾');
     expect(container.querySelectorAll('.skill-meter-row')).toHaveLength(10);
     expect(container.querySelector('.skill-list-toggle').textContent).toBe('Show all 12 skills ▾');
 
-    container.querySelector('.skill-sort-btn[data-sort="level"]').click();
+    levelSort.click();
+    expect(levelSort.textContent).toBe('By level ▾');
+    expect(levelSort.classList.contains('is-active')).toBe(true);
     expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 5');
 
-    container.querySelector('.skill-sort-btn[data-sort="level"]').click();
+    levelSort.click();
+    expect(levelSort.textContent).toBe('By level ▴');
     expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 1');
 
     container.querySelector('.skill-list-toggle').click();
     expect(container.querySelectorAll('.skill-meter-row')).toHaveLength(12);
     expect(container.querySelector('.skill-list-toggle').textContent).toBe('Show less');
 
-    container.querySelector('.skill-sort-btn[data-sort="custom"]').click();
+    customSort.click();
+    expect(customSort.classList.contains('is-active')).toBe(true);
     expect(container.querySelector('.skill-meter-row__name').textContent).toBe('Skill 1');
   });
 

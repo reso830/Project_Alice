@@ -409,13 +409,17 @@ purpose of hosted-mode required checks. The Vite plugin
 
 ### AI resume parsing (BYOK) — no new env vars
 
-The AI resume parser (feature 033, v1.3.0) is **bring-your-own-key and
-browser-side**: each user supplies their own OpenRouter API key, which is stored
-only in their browser and sent browser-direct to OpenRouter. It introduces **no
-new server environment variables** and **no runtime-mode change** — operators
-configure nothing, and the key never reaches Alice's server. With no key the app
-falls back to the existing rule-based parser, so local-first is preserved. See
-[`specs/033-llm-resume-cv-parser/quickstart.md`](../specs/033-llm-resume-cv-parser/quickstart.md).
+The AI resume parser remains **bring-your-own-key and browser-side**. Feature
+033 (v1.3.0) introduced the browser-direct OpenRouter path; feature
+034-profile-page-refresh (v1.4.0) moves the key, model, and feature toggles into
+the Profile page's unified Settings card and guided import flow. The key is
+stored only in the user's browser and sent browser-direct to OpenRouter.
+
+Feature 034 introduces **no new server environment variables**, **no database
+schema migration**, and **no runtime-mode change**. No deployment action is required for feature 034. Existing hosted and local deployments keep the same `/api/resume/*`
+server surface; AI availability is controlled entirely by browser-local
+settings. See
+[`specs/034-profile-page-refresh/quickstart.md`](../specs/034-profile-page-refresh/quickstart.md).
 
 ---
 
