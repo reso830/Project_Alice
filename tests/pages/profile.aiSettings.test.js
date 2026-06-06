@@ -120,10 +120,10 @@ describe('Profile — AI resume parsing settings', () => {
     expect(section.textContent).toContain('Any OpenRouter model slug');
     expect(cvToggle.getAttribute('aria-pressed')).toBe('true');
     expect(cvToggle.disabled).toBe(false);
-    expect(jdToggle.disabled).toBe(false);
-    expect(compatToggle.disabled).toBe(false);
+    expect(jdToggle.disabled).toBe(true);
+    expect(compatToggle.disabled).toBe(true);
     expect(section.textContent).toContain('ENABLED FEATURES');
-    expect(section.textContent).not.toContain('Coming soon');
+    expect(section.textContent).toContain('Coming soon');
     expect(section.textContent).toContain('Stored only in this browser');
   });
 

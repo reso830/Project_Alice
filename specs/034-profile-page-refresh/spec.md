@@ -60,14 +60,15 @@ basic import (consent folded into the key, model slug, master/feature gating) in
     connection panel with a masked OpenRouter key (save / show-hide / test /
     replace / delete), a single derived connection status pill
     (Connected / Not connected / Testing… / Key invalid), a free-text
-    `provider/model-slug` field with suggested-model datalist; and per-feature
+    `provider/model-slug` field with no dropdown or suggestions; and per-feature
     toggles (Resume parsing — functional, default on; Job-description parsing and
     Compatibility analysis — shown but disabled until features 035 / 036 ship).
     Consent is folded into the key flow (a saved key is consent; Delete
     withdraws it).
   - Account sub-group: the mode-aware destructive control (hosted "Delete
-    account" / local "Clear all data" / demo disabled) with the existing gated
-    confirmation modal.
+    account" / local "Clear all data") with the existing gated confirmation
+    modal. Demo mode renders an amber warning note instead of a destructive
+    control.
 - **Profile empty state** with a "Set Up Profile" call-to-action when no profile
   exists.
 - **Archived applications link** in the Applications section, surfacing the
@@ -198,8 +199,8 @@ Requirements trace to the brief's FR-001…FR-012 and the two design specs.
   not a profile exists.
 - **FR-002a AI sub-group controls** — Master toggle gates the body; connection
   panel provides key save / show-hide / test / replace / delete; a single derived
-  connection status pill; a free-text `provider/model-slug` field with a
-  suggested-model datalist; per-feature toggles. A saved key is consent; Delete
+  connection status pill; a free-text `provider/model-slug` field with no
+  dropdown or suggestions; per-feature toggles. A saved key is consent; Delete
   withdraws it. There is no separate consent control.
   - **Feature toggles:** Resume parsing (CV) is **functional** and defaults **on**
     once the master toggle is on and a key is saved (no second opt-in).
@@ -207,9 +208,10 @@ Requirements trace to the brief's FR-001…FR-012 and the two design specs.
     **shown but disabled** with a "coming soon" affordance — their backing
     features (035 / 036) are not built in 034 and the toggles have no effect until
     those features ship.
-- **FR-002b Account sub-group** — Mode-aware destructive control (hosted, local,
-  demo) and its gated confirmation modal behave as in feature 030, now hosted
-  inside the Settings card.
+- **FR-002b Account sub-group** — Mode-aware destructive control (hosted/local)
+  and its gated confirmation modal behave as in feature 030, now hosted inside
+  the Settings card. Demo mode renders an amber informational note only, with no
+  destructive button, modal, or account-management request.
 - **FR-003 Profile information structure** — The Profile section displays Basic
   Information, Summary, Professional Experience, Education, Skills,
   Certifications, Awards, Languages, and Links.
@@ -357,8 +359,9 @@ design specifics.
   reordered); Summary appends as a new paragraph; singular Basic Info fields fill
   only if empty; only touched sections are marked; an Undo toast restores the
   pre-import state.
-- **Demo mode account control** — The Account destructive button is disabled and
-  inert (no modal, no request).
+- **Demo mode Settings** — The AI and Account sub-groups remain visible as amber
+  informational notes. Demo mode renders no OpenRouter controls, feature toggles,
+  destructive account button, modal, or account-management request.
 - **Narrow viewport (≤ 344px)** — Settings card has no horizontal overflow; the
   saved-key action row wraps; hit targets stay ≥ 32px.
 - **Unsaved changes on navigate** — Discard-confirmation dialog appears; focus is
