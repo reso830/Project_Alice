@@ -636,6 +636,9 @@ describe('ProfileEdit page', () => {
     expect(gate.textContent).toContain('Smart entry');
     expect(gate.textContent).toContain('Fastest');
     expect(gate.textContent).toContain('Manual entry');
+    expect(getGateCard('smart').querySelector('.profile-entry-gate__icon img')).not.toBeNull();
+    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon img')).toBeNull();
+    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon svg')).not.toBeNull();
     expect(getCard(container, 'BASIC INFO')).not.toBeNull();
     expect(document.activeElement).toBe(getGateCard('smart').querySelector('.profile-entry-gate__choose'));
 
@@ -681,7 +684,7 @@ describe('ProfileEdit page', () => {
 
     expect(document.querySelector('.profile-entry-gate')).toBeNull();
     expect(modal).not.toBeNull();
-    expect(modal.textContent).toContain('Import from your résumé');
+    expect(modal.textContent).toContain('Import from your resume');
     expect(modal.querySelector('.resume-import--smart')).not.toBeNull();
     expect(modal.textContent).toContain('Upload file');
     expect(modal.textContent).toContain('Paste text');
@@ -1420,7 +1423,7 @@ describe('ProfileEdit page', () => {
     const importArea = expandSmartImport(container);
     const input = importArea.querySelector('.resume-import__input');
     selectResumeFile(input, file);
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const skills = getCard(container, 'SKILLS');
@@ -1455,7 +1458,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Jane Doe resume with enough detail to parse';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     getSaveButton(getTopControls(container)).click();
@@ -1489,7 +1492,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Very long resume with enough detail to parse';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     expect(container.querySelector('.resume-import')).toBeNull();
@@ -1518,7 +1521,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Resume content long enough for the smart input gate';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const dialog = document.querySelector('.resume-import-failure');
@@ -1554,7 +1557,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Resume content long enough for the smart input gate';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const dialog = document.querySelector('.resume-import-failure');
@@ -1580,7 +1583,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Scanned resume content with no usable fields';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const dialog = document.querySelector('.resume-import-failure--dead-end');
@@ -1634,7 +1637,7 @@ describe('ProfileEdit page', () => {
     const textarea = importArea.querySelector('.resume-import__paste-input');
     textarea.value = 'Jane Doe resume with enough detail to append';
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
-    getButton(container, 'Process Resume').click();
+    getButton(container, 'Process resume').click();
     await flushPromises();
 
     const summary = getCard(container, 'SUMMARY');

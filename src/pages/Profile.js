@@ -17,6 +17,7 @@ import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
 import { validateKey } from '../services/llmParser.js';
 import { renderInlineError } from '../utils/asyncUI.js';
+import { createSvgIcon } from '../utils/icons.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
 import { getSafeExternalHref } from '../utils/url.js';
 
@@ -869,20 +870,22 @@ function createSetGroup(label, body) {
 function renderAccountGroup({ navigate, container } = {}) {
   const mode = resolveAccountMode();
   const body = createElement('div', 'account-section');
+
+  if (mode === 'demo') {
+    body.classList.add('account-section--demo');
+    body.append(
+      createElement('p', 'account-section__title', "Account management isn't available in the demo."),
+      createElement('p', 'account-section__desc', ACCOUNT_COPY.demo),
+    );
+
+    return createSetGroup('ACCOUNT', body);
+  }
+
   const description = createElement('p', 'account-section__desc', ACCOUNT_COPY[mode]);
   const label = mode === 'local' ? 'Clear all data' : 'Delete account';
   const button = createButton(label, 'profile-btn profile-btn--danger account-section__btn', () => {
-    if (mode === 'demo') {
-      return;
-    }
-
     DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container) });
   });
-
-  if (mode === 'demo') {
-    button.disabled = true;
-    button.setAttribute('aria-disabled', 'true');
-  }
 
   body.append(description, button);
 
@@ -896,13 +899,7 @@ const CONNECTION_LABELS = {
   error: 'Key invalid',
 };
 
-const MODEL_SUGGESTIONS = [
-  'anthropic/claude-sonnet-4',
-  'openai/gpt-4o-mini',
-  'google/gemini-2.0-flash',
-  'meta-llama/llama-3.3-70b',
-];
-
+const EYE_ICON_PATH = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z';
 const FEATURE_COPY = {
   cv: {
     title: 'Resume parsing',
@@ -941,6 +938,16 @@ function createSwitch({ pressed, disabled = false, label, onClick }) {
   return button;
 }
 
+function createIconOnlyButton(label, className, iconPath, onClick) {
+  const button = createButton('', className, onClick);
+
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.append(createSvgIcon(iconPath));
+
+  return button;
+}
+
 function renderAiSettingsGroup() {
   const body = createElement('div', 'ai-settings');
   let enabled = aiSettings.isEnabled();
@@ -975,7 +982,7 @@ function renderAiSettingsGroup() {
     const modelField = createElement('label', 'edit-field conn-panel__model');
     const modelLabel = createElement('span', 'edit-field__label', 'Model');
     const modelInput = document.createElement('input');
-    const datalist = document.createElement('datalist');
+    const modelHint = createElement('span', 'edit-field__hint conn-panel__model-hint', 'Any OpenRouter model slug.');
     const helper = createElement(
       'p',
       'conn-panel__helper',
@@ -1001,9 +1008,12 @@ function renderAiSettingsGroup() {
       const keyLabel = createElement('span', 'edit-field__label', 'OpenRouter API key');
       const keyInput = document.createElement('input');
       const keyActions = createElement('div', 'conn-panel__actions');
-      const show = createButton('Show key', 'profile-btn profile-btn--outline profile-btn--compact', () => {
+      const show = createIconOnlyButton('Show key', 'profile-btn profile-btn--outline profile-btn--compact conn-panel__icon-btn', EYE_ICON_PATH, () => {
         keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-        show.textContent = keyInput.type === 'password' ? 'Show key' : 'Hide key';
+        const label = keyInput.type === 'password' ? 'Show key' : 'Hide key';
+
+        show.setAttribute('aria-label', label);
+        show.title = label;
       });
       const save = createButton('Save key', 'profile-btn profile-btn--primary profile-btn--compact', () => {
         const key = keyInput.value.trim();
@@ -1018,25 +1028,22 @@ function renderAiSettingsGroup() {
         testState = null;
         render();
       });
-
       keyInput.id = 'ai-openrouter-key';
       keyInput.type = 'password';
       keyInput.autocomplete = 'off';
       keyInput.className = 'edit-field__control';
       keyInput.placeholder = 'Paste OpenRouter key';
-      keyInput.addEventListener('input', () => {
-        save.disabled = keyInput.value.trim() === '';
-      });
-      save.disabled = true;
       keyField.setAttribute('for', 'ai-openrouter-key');
       keyField.append(keyLabel, keyInput);
       keyActions.append(show, save);
       keyArea.append(keyField, keyActions);
     } else {
+      const savedWrap = createElement('div', 'conn-panel__saved-wrap');
+      const savedLabel = createElement('div', 'edit-field__label conn-panel__saved-label', 'OpenRouter API key');
       const saved = createElement('div', 'conn-panel__saved-key');
       const keyText = createElement('code', 'conn-panel__key-text', revealed ? aiSettings.getKey() : maskKey(aiSettings.getKey()));
       const actions = createElement('div', 'conn-panel__actions');
-      const show = createButton(revealed ? 'Hide key' : 'Show key', 'profile-btn profile-btn--outline profile-btn--compact', () => {
+      const show = createIconOnlyButton(revealed ? 'Hide key' : 'Show key', 'profile-btn profile-btn--outline profile-btn--compact conn-panel__icon-btn', EYE_ICON_PATH, () => {
         revealed = !revealed;
         render();
       });
@@ -1054,7 +1061,7 @@ function renderAiSettingsGroup() {
         revealed = false;
         render();
       });
-      const deleteKey = createButton('Delete', 'profile-btn profile-btn--outline profile-btn--compact profile-btn--muted-danger', () => {
+      const deleteKey = createButton('Delete', 'profile-btn profile-btn--outline profile-btn--compact profile-btn--muted-danger conn-panel__delete-btn', () => {
         aiSettings.clearKey();
         Toast.show('AI key deleted.', 'success');
         editingKey = true;
@@ -1064,33 +1071,27 @@ function renderAiSettingsGroup() {
       });
 
       saved.append(keyText);
+      savedWrap.append(savedLabel, saved);
       actions.append(show, test, replace, deleteKey);
-      keyArea.append(saved, actions);
+      keyArea.append(savedWrap, actions);
     }
 
-    datalist.id = 'ai-model-suggestions';
-    for (const suggestion of MODEL_SUGGESTIONS) {
-      const option = document.createElement('option');
-
-      option.value = suggestion;
-      datalist.append(option);
-    }
     modelInput.id = 'ai-model-slug';
     modelInput.className = 'edit-field__control';
     modelInput.value = aiSettings.getModel();
-    modelInput.setAttribute('list', 'ai-model-suggestions');
+    modelInput.autocomplete = 'off';
     modelInput.placeholder = 'provider/model-slug';
     modelInput.addEventListener('change', () => aiSettings.setModel(modelInput.value));
     modelField.setAttribute('for', 'ai-model-slug');
-    modelField.append(modelLabel, modelInput, datalist);
+    modelField.append(modelLabel, modelInput, modelHint);
     panel.append(panelHeader, keyArea, modelField, helper);
 
+    featureList.append(createElement('div', 'feat-list__label', 'ENABLED FEATURES'));
     for (const key of ['cv', 'jd', 'compat']) {
-      const item = createElement('div', `feat-item${key === 'cv' ? '' : ' is-disabled'}`);
+      const item = createElement('div', 'feat-item');
       const copy = createElement('div', 'feat-item__copy');
       const toggle = createSwitch({
         pressed: aiSettings.getFeature(key),
-        disabled: key !== 'cv',
         label: `Toggle ${FEATURE_COPY[key].title}`,
         onClick: () => {
           const nextValue = !aiSettings.getFeature(key);
@@ -1102,9 +1103,7 @@ function renderAiSettingsGroup() {
       toggle.dataset.aiFeature = key;
       copy.append(
         createElement('div', 'feat-item__title', FEATURE_COPY[key].title),
-        createElement('p', 'feat-item__desc', key === 'cv'
-          ? FEATURE_COPY[key].description
-          : `${FEATURE_COPY[key].description} Coming soon.`),
+        createElement('p', 'feat-item__desc', FEATURE_COPY[key].description),
       );
       item.append(copy, toggle);
       featureList.append(item);
@@ -1119,14 +1118,24 @@ function renderAiSettingsGroup() {
   return createSetGroup('ARTIFICIAL INTELLIGENCE', body);
 }
 
+function renderDemoAiSettingsGroup() {
+  const body = createElement('div', 'ai-demo-note');
+
+  body.append(
+    createElement('p', 'ai-demo-note__title', "AI and Smart features aren't available in the demo."),
+    createElement('p', 'ai-demo-note__copy', 'They are available when using Alice with a real local or hosted profile.'),
+  );
+
+  return createSetGroup('ARTIFICIAL INTELLIGENCE', body);
+}
+
 function renderSettingsSection(page, { navigate, container } = {}) {
   const { section } = createSection('SETTINGS');
+  const isDemo = authStore.getAuthState().status === authStore.DEMO_STATUS;
 
   section.classList.add('settings-section');
-  section.append(
-    renderAiSettingsGroup(),
-    renderAccountGroup({ navigate, container }),
-  );
+  section.append(isDemo ? renderDemoAiSettingsGroup() : renderAiSettingsGroup());
+  section.append(renderAccountGroup({ navigate, container }));
   page.append(section);
 
   return section;

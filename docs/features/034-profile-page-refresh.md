@@ -110,6 +110,10 @@ The Settings section shall contain:
 * AI Settings subgroup
 * Account Management subgroup
 
+In demo mode, both subgroups remain visible as read-only warning notes so demo
+viewers can discover the capabilities without configuring AI keys or account
+management.
+
 The Settings section shall replace previously separate cards or management surfaces.
 
 ### FR-003 Profile Information Structure

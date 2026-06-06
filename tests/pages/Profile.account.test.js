@@ -64,15 +64,14 @@ describe('Profile — Account section', () => {
     expect(btn.disabled).toBe(false);
   });
 
-  it('demo: renders a disabled button that opens no modal and calls no API', async () => {
+  it('demo: renders account management as a warning note with no destructive button', async () => {
     const container = await mountProfile('demo');
     const btn = accountButton(container);
+    const settings = getSection(container, 'SETTINGS');
 
-    expect(btn.textContent).toBe('Delete account');
-    expect(btn.disabled).toBe(true);
-
-    btn.click();
-
+    expect(btn).toBeNull();
+    expect(settings.textContent).toContain("Account management isn't available in the demo.");
+    expect(settings.textContent).toContain("AI and Smart features aren't available in the demo.");
     expect(document.querySelector('.delete-modal-backdrop')).toBeNull();
     expect(api.deleteAccount).not.toHaveBeenCalled();
   });

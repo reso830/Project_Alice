@@ -135,7 +135,7 @@ async function importPastedResume(container, text) {
   const textarea = container.querySelector('.resume-import__paste-input');
 
   inputValue(textarea, text);
-  getButton(container, 'Process Resume').click();
+  getButton(container, 'Process resume').click();
   await flushPromises();
 }
 

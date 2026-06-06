@@ -254,6 +254,48 @@ describe('ResumeImport — auth-state gating', () => {
     expect(root.querySelector(`label[for="${textarea.id}"]`)?.textContent).toBe('Paste resume text');
   });
 
+  it('renders the smart import upload and selected-file states with modal footer actions', () => {
+    const onBack = vi.fn();
+    const root = ResumeImport.create({ smartInput: true, onDismiss: vi.fn(), onBack });
+
+    expect(root.classList).toContain('resume-import--smart');
+    expect(root.querySelector('.resume-import__drop-title')?.textContent).toContain('Drag & drop your resume');
+    expect(root.querySelector('.resume-import__browse-link')?.textContent).toBe('browse');
+    expect(root.querySelector('.resume-import__drop-meta')?.textContent).toContain('PDF');
+    expect(root.querySelector('.resume-import__actions .resume-import__back')?.textContent).toBe('Back');
+    expect(root.querySelector('.resume-import__process')?.textContent).toContain('Process resume');
+    expect(root.querySelector('.resume-import__process').disabled).toBe(true);
+
+    const file = selectFile(root, new window.File(['resume text'], 'Alex_Rivera_Resume.pdf', { type: 'application/pdf' }));
+    const selected = root.querySelector('.resume-import__selected-file');
+
+    expect(selected).not.toBeNull();
+    expect(selected.querySelector('.resume-import__filename')?.textContent).toBe(file.name);
+    expect(selected.querySelector('.resume-import__file-meta')?.textContent).toContain('ready to parse');
+    expect(root.textContent).not.toContain('Choose Different File');
+    expect(root.querySelector('.resume-import__process').disabled).toBe(false);
+
+    root.querySelector('.resume-import__back').click();
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a full-screen smart parsing overlay while processing', () => {
+    parseResume.mockReturnValue(new Promise(() => {}));
+    const root = ResumeImport.create({ smartInput: true, showHeader: true });
+
+    selectFile(root, new window.File(['resume text'], 'Alex_Rivera_Resume.pdf', { type: 'application/pdf' }));
+    root.querySelector('.resume-import__process').click();
+
+    const overlay = root.querySelector('.resume-import-processing');
+
+    expect(overlay).not.toBeNull();
+    expect(overlay.getAttribute('role')).toBe('status');
+    expect(overlay.getAttribute('aria-live')).toBe('polite');
+    expect(overlay.querySelector('.resume-import-processing__spinner')).not.toBeNull();
+    expect(overlay.textContent).toContain('Reading your resume...');
+    expect(overlay.textContent).toContain('Extracting your experience, skills, and details');
+  });
+
   it('routes pasted text through the LLM when AI, CV, and key are enabled', async () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');

@@ -183,15 +183,16 @@ appears inline inside the Import Bar (§3.5).
 
 ### 3.4 Processing state
 
-After **Process résumé**, a full-screen scrim (`--bg` at ~86% with blur) shows a
+After **Process résumé**, a near-opaque full-screen scrim (`--bg` at ~97.5% with
+blur) shows a
 **simple spinner** with:
 
-- Title: "Reading your résumé…"
+- Title: "Reading your resume..."
 - Sub: "Extracting your experience, skills, and details"
 
-> Per decision, this is a **plain spinner** — no staged progress / field-by-field
-> reveal. On completion the form is populated and the relevant sections are
-> marked (§5).
+> Per decision, this is a full-screen **plain spinner overlay** — no staged
+> progress / field-by-field reveal. On completion the overlay clears, the form is
+> populated, and the relevant sections are marked (§5).
 
 #### 3.4.1 Two-parser model
 
@@ -434,11 +435,11 @@ which parser**:
 | Open with **existing profile** | Goes straight to the populated form; Import Bar collapsed at top | Proposed |
 | Choose **Manual entry** / dismiss gate | Opens the blank form | Proposed |
 | Choose **Smart entry** | Opens the smart input step (upload / paste) | Proposed |
-| **Process résumé** | Runs the processing spinner, then fills (first-time) or appends (existing) | Proposed |
+| **Process résumé** | Shows the full-screen parsing overlay, then fills (first-time) or appends (existing) | Proposed |
 | **AI parser unavailable** | **Ask-first** dialog: surfaces the reason, then Use basic parser / Try AI again (or Update key in Settings) / manual·cancel (§3.4.2) | Proposed |
 | **Unreadable file** | Amber dead-end dialog; Try again / different file / manual (first-time) or Try again / Cancel (existing) | Proposed |
 | **Fill via basic parser** | Sections marked with the neutral "⚙ Auto-filled" tag instead of the AI sparkle (§5) | Proposed |
-| Expand **Import Bar** (existing) | Reveals smart input inline; chevron rotates | Proposed |
+| Expand **Import Bar** (existing) | Reveals the same smart upload/paste UI inline; chevron icon rotates | Proposed |
 | Tap a **level segment** (Skills editor) | Sets that skill's level (1–5); tapping the active level clears it | Shipped |
 | Click **"?"** (Skills editor) | Opens the proficiency-scale popover; closes on outside-click / Esc | Shipped |
 | Click **Add skill** | Appends a blank, unrated skill row | Shipped |
@@ -488,7 +489,8 @@ a raw string.
 | Token / asset        | Value                    | Usage                                            |
 |----------------------|--------------------------|--------------------------------------------------|
 | `--indigo-dim`       | `#EEF2FF`                | AI-filled tag background; import flash colour     |
-| `--indigo-soft`      | `#F4F2FF`                | Smart entry card wash; hover tints; parse-error tip box |
+| `--indigo-soft`      | `#F4F2FF`                | Smart entry card/import bar wash; hover tints; parse-error tip box |
+| `#FBFAF6`            | warm grey surface        | Smart upload dropzone background                  |
 | `#FBEEDB` / `#B5830C` | amber tint / gold        | Unreadable-file (dead-end) error icon badge (warning, non-destructive) |
 | `--indigo-dim` / `--indigo` | indigo tint / indigo | AI-unavailable (recoverable) info icon badge — cloud-off glyph |
 | "⚙ Auto-filled" tag  | grey on `--bg` + hairline border | Neutral basic-parser provenance tag (no AI sparkle) |
@@ -509,7 +511,7 @@ Editing-page chrome reuses shipped tokens: `--navy` (sub-header), `--indigo` /
 | 2 | Exact handling of **singular Basic Info fields** on existing-profile import — fill-if-empty (current proposal) vs. prompt the user? | Open (proposed flow) |
 | 3 | Should an existing-profile append offer an **Undo** (toast action) rather than relying on manual removal? | **Resolved** (proposed flow) — post-import toast carries an Undo action |
 | 4 | **Ask-first dialog** vs **silent auto-fallback** when the AI parser is unavailable? | **Resolved** — **ask-first**. The extra step gives explicit failure feedback (incl. reason code) and a deliberate choice; silent auto-fallback was set aside. |
-| 5 | Should processing show **staged progress** instead of a simple spinner if parse latency is high? | Deferred (simple spinner chosen for v1) |
+| 5 | Should processing show **staged progress** instead of a simple spinner if parse latency is high? | Deferred — v1 uses a full-screen parsing overlay with a simple spinner and static helper copy. |
 | 6 | Are **PDF / DOCX / TXT** the final accepted formats, or also LinkedIn / profile-URL import? | Open (file + paste only for v1) |
 | 7 | Should unsaved edits prompt a confirmation before navigating back? | **Resolved** — yes; discard-confirmation overlay (§2, §4.3) |
 | 8 | How are Experience / Education entries added and removed? | **Resolved** — entry-overlay modal (desktop) / bottom-sheet (mobile) (§4.3) |
@@ -528,11 +530,11 @@ via the §0 params.
 - [ ] **Manual entry** opens the blank form; **Smart entry** opens the upload/paste step.
 
 **Smart input**
-- [ ] Upload accepts **PDF/DOCX/TXT ≤ 5 MB** via drag-drop or browse; a chosen file shows a chip with a remove control. Paste accepts raw text.
+- [ ] Upload accepts **PDF/DOCX/TXT ≤ 5 MB** via drag-drop or browse; the warm-grey dropzone is shared between the first-time overlay and existing-profile Import Bar. A chosen file shows a file card with metadata and a remove control. Paste accepts raw text.
 - [ ] **Process résumé** is disabled until a file is chosen or > ~20 chars are pasted.
 
 **Processing & success**
-- [ ] Process shows the plain spinner, then resolves to the form.
+- [ ] Process shows a full-screen pale parsing overlay with a centered spinner, "Reading your resume..." title, and "Extracting your experience, skills, and details" helper copy, then resolves to the form.
 - [ ] **First-time success:** all returned fields fill the form; **every** populated section shows the **✦ AI filled** tag; rows flash once.
 - [ ] **Existing success:** parsed list items are **appended to the end** of each section; existing entries are untouched and in order; Summary appends as a new paragraph; singular Basic Info fields fill only if empty; **only** touched sections are tagged; a toast offers **Undo** that fully restores the pre-import state.
 

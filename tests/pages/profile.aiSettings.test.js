@@ -83,7 +83,7 @@ function getSection(container, label) {
 
 function getButton(container, label) {
   return [...container.querySelectorAll('button')]
-    .find((button) => button.textContent === label);
+    .find((button) => button.textContent === label || button.getAttribute('aria-label') === label);
 }
 
 describe('Profile — AI resume parsing settings', () => {
@@ -115,12 +115,15 @@ describe('Profile — AI resume parsing settings', () => {
     expect(section.querySelector('label[for="ai-openrouter-key"]')?.textContent).toBe('OpenRouter API key');
     expect(keyInput.type).toBe('password');
     expect(modelInput.value).toBe('meta-llama/llama-3.3-70b-instruct:free');
-    expect(section.querySelector('#ai-model-suggestions')).not.toBeNull();
+    expect(modelInput.getAttribute('list')).toBeNull();
+    expect(section.querySelector('#ai-model-suggestions')).toBeNull();
+    expect(section.textContent).toContain('Any OpenRouter model slug');
     expect(cvToggle.getAttribute('aria-pressed')).toBe('true');
     expect(cvToggle.disabled).toBe(false);
-    expect(jdToggle.disabled).toBe(true);
-    expect(compatToggle.disabled).toBe(true);
-    expect(section.textContent).toContain('Coming soon');
+    expect(jdToggle.disabled).toBe(false);
+    expect(compatToggle.disabled).toBe(false);
+    expect(section.textContent).toContain('ENABLED FEATURES');
+    expect(section.textContent).not.toContain('Coming soon');
     expect(section.textContent).toContain('Stored only in this browser');
   });
 
@@ -193,13 +196,21 @@ describe('Profile — AI resume parsing settings', () => {
     expect(container.textContent).toContain('Key invalid');
   });
 
-  it('keeps Settings visible in demo mode with disabled account control', async () => {
+  it('keeps Settings visible in demo mode with a read-only AI notice', async () => {
     const container = await mountProfile('demo');
     const section = getSection(container, 'SETTINGS');
 
     expect(section).not.toBeNull();
     expect(section.textContent).toContain('ARTIFICIAL INTELLIGENCE');
-    expect(section.querySelector('.account-section__btn')?.disabled).toBe(true);
+    expect(section.textContent).toContain("AI and Smart features aren't available in the demo.");
+    expect(section.textContent).toContain('They are available when using Alice with a real local or hosted profile.');
+    expect(section.textContent).not.toContain('AI features');
+    expect(section.querySelector('#ai-openrouter-key')).toBeNull();
+    expect(section.querySelector('#ai-model-slug')).toBeNull();
+    expect(section.querySelector('.ai-demo-note')).not.toBeNull();
+    expect(section.querySelector('.account-section--demo')).not.toBeNull();
+    expect(section.textContent).toContain("Account management isn't available in the demo.");
+    expect(section.querySelector('.account-section__btn')).toBeNull();
   });
 
   it('scrolls and focuses Settings when requested by navigation options', async () => {

@@ -69,6 +69,8 @@ const SECTION_TITLES = Object.freeze({
   LANGUAGES: 'languages',
   LINKS: 'links',
 });
+const MANUAL_ENTRY_ICON_PATH = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z';
+const CHEVRON_DOWN_ICON_PATH = 'm6 9 6 6 6-6';
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1589,6 +1591,10 @@ function createSmartResumeImport({ generation, showHeader = true } = {}) {
         closeEntryFlowModal();
       }
     },
+    onBack: () => {
+      closeEntryFlowModal();
+      showEntryGate();
+    },
     navigate: _navigate,
   });
 }
@@ -1601,6 +1607,14 @@ function createSparkleTile(className = 'profile-ai-tile') {
   icon.alt = '';
   icon.setAttribute('aria-hidden', 'true');
   tile.append(icon);
+
+  return tile;
+}
+
+function createManualEntryTile() {
+  const tile = createElement('span', 'profile-ai-tile profile-entry-gate__icon profile-entry-gate__icon--manual');
+
+  tile.append(createSvgIcon(MANUAL_ENTRY_ICON_PATH));
 
   return tile;
 }
@@ -1659,7 +1673,9 @@ function openSmartInputModal() {
   const backdrop = createElement('div', 'profile-smart-modal-backdrop');
   const modal = createElement('div', 'profile-smart-modal');
   const header = createElement('div', 'profile-smart-modal__header');
-  const title = createElement('h2', 'profile-smart-modal__title', 'Import from your résumé');
+  const intro = createElement('div', 'profile-smart-modal__intro');
+  const title = createElement('h2', 'profile-smart-modal__title', 'Import from your resume');
+  const subtitle = createElement('p', 'profile-smart-modal__subtitle', "Upload a file or paste the text — we'll handle the rest.");
   const close = createButton('×', 'profile-smart-modal__close', () => {
     _entryGateDismissed = true;
     closeEntryFlowModal();
@@ -1670,7 +1686,8 @@ function openSmartInputModal() {
   modal.setAttribute('aria-modal', 'true');
   modal.setAttribute('aria-labelledby', 'profile-smart-modal-title');
   title.id = 'profile-smart-modal-title';
-  header.append(title, close);
+  intro.append(title, subtitle);
+  header.append(intro, close);
   modal.append(header, importArea);
   backdrop.append(modal);
   backdrop.addEventListener('click', (event) => {
@@ -1709,7 +1726,7 @@ function createEntryGateCard(kind) {
   );
   const bullets = createElement('ul', 'profile-entry-gate__bullets');
 
-  card.append(createSparkleTile(isSmart ? 'profile-ai-tile profile-entry-gate__icon' : 'profile-ai-tile profile-entry-gate__icon profile-entry-gate__icon--manual'));
+  card.append(isSmart ? createSparkleTile('profile-ai-tile profile-entry-gate__icon') : createManualEntryTile());
   if (isSmart) {
     card.append(createElement('span', 'profile-entry-gate__badge', 'Fastest'));
   }
@@ -1801,9 +1818,10 @@ function renderImportBar(page) {
     _importBarExpanded = !_importBarExpanded;
     renderEditPage(_container);
   }, _importBarExpanded ? 'Collapse smart import' : 'Expand smart import');
-  const chevron = createElement('span', 'profile-import-bar__chevron', '⌄');
+  const chevron = createElement('span', 'profile-import-bar__chevron');
 
   toggle.setAttribute('aria-expanded', String(_importBarExpanded));
+  chevron.append(createSvgIcon(CHEVRON_DOWN_ICON_PATH));
   toggle.append(chevron);
   header.append(toggle);
   bar.append(header);

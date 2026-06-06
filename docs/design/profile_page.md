@@ -301,6 +301,12 @@ SETTINGS                                    ← card header (13px / 600)
     [ Destructive button ]
 ```
 
+Demo mode keeps the same two sub-group labels, but replaces both interactive
+surfaces with amber informational notes: AI / Smart features are not available
+in the demo, and Account management is not available in the demo. Demo mode
+does **not** render the OpenRouter key/model controls, AI feature toggles, or a
+disabled destructive account button.
+
 - Card: reuses `.section-card` chrome (white surface, `--border`, `--r-md`, `--shadow-sm`) with a single `.section-header` reading **Settings**.
 - Sub-groups: `.set-group`, `20px 22px` padding (`16px` on mobile), separated by a `1px solid #F2EFE9` top border. Each opens with an uppercase 9px label (`--t3`).
 
@@ -327,12 +333,10 @@ An inset panel (`.conn-panel`, light `#FBFAF6` surface, `--r-md`) grouping the k
 |---------|--------|
 | Panel header | `Connection` title (12px / 600) + **status pill**, right-aligned |
 | Status pill | One clear state (replaces the old two-line "Key saved / Consent granted"): `● Connected` (green, `--ok` on `--ok-dim`), `Not connected` (grey), `Testing…` (amber, pulsing dot), `Key invalid` (red) |
-| API key — unsaved | Masked text input (`type=password`) + **show/hide eye** icon-button + **Save key** (primary, disabled until non-empty) |
+| API key — unsaved | Masked text input (`type=password`) + **show/hide eye** icon-button + **Save key** (primary; click validates non-empty input) |
 | API key — saved | Masked code `sk-or-v1-••••••••••••{last4}` + **eye** (reveals full key) + **Test** (re-validates → `Testing…` → resolves) + **Replace** (swap for a new key) + **Delete** (muted button that turns destructive-red on hover; clears the key and resets status to `Not connected`) |
-| Model | **Free-text slug field** (`provider/model-slug`, e.g. `anthropic/claude-sonnet-4`) with a `datalist` of suggested models + a hint line. Lets users type any OpenRouter model rather than picking from a fixed dropdown. |
+| Model | **Free-text slug field** (`provider/model-slug`, e.g. `anthropic/claude-sonnet-4`) + hint line `Any OpenRouter model slug.` Lets users type any OpenRouter model rather than picking from a fixed dropdown. No dropdown or model suggestions are rendered. |
 | Helper | `Stored only in this browser — never sent to our servers. Using your own OpenRouter key is your responsibility.` (`DM Mono` 10.5px) |
-
-Suggested model slugs (datalist, not a hard list): `anthropic/claude-sonnet-4` · `openai/gpt-4o-mini` · `google/gemini-2.0-flash` · `meta-llama/llama-3.3-70b`.
 
 > **Consent is folded into the key flow.** Saving a key *is* the consent to use it for AI features — there is no separate "Clear Consent" button. Removing consent = **Delete** the key.
 
@@ -355,7 +359,9 @@ Verified at Tablet (768px), Mobile (390px), and slim Mobile (344px). The card it
 
 #### 4.5.2 Account sub-group (feature 030)
 
-Label: **`ACCOUNT`**. A mode-aware sub-group hosting a single **destructive control** that closes the account lifecycle. Present in **every** runtime mode (hosted, local, demo) and independent of whether a profile exists.
+Label: **`ACCOUNT`**. A mode-aware sub-group hosting account lifecycle controls
+for hosted/local users. Present in **every** runtime mode and independent of
+whether a profile exists. In demo mode it renders a warning note only.
 
 #### Layout
 ```
@@ -373,9 +379,11 @@ ACCOUNT
 |---------|------------------|----------|------------------|
 | Hosted  | `Delete account` | Yes      | "Permanently delete your account and all associated data." |
 | Local   | `Clear all data` | Yes      | "Permanently clear all locally stored applications and profile data." |
-| Demo    | `Delete account` | **No** (disabled, `aria-disabled`) | "Account deletion applies to a real hosted account and isn't available in the demo." |
+| Demo    | _No button_ | No | Amber note: "Account management isn't available in the demo." + "Account deletion applies to a real hosted account and isn't available in the demo." |
 
-Mode is resolved from `authStore` state: `authenticated` → hosted, demo status → demo, otherwise local. The demo button is inert — clicking it opens no modal and fires no network request.
+Mode is resolved from `authStore` state: `authenticated` → hosted, demo status
+→ demo, otherwise local. Demo mode renders no destructive control, opens no
+modal, and fires no account-management network request.
 
 #### Confirmation modal (`DeleteAccountModal`)
 
@@ -455,7 +463,7 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 | Click "Test" (API key)        | Re-validates the saved key: status → `Testing…` then resolves       |
 | Click "Replace" (API key)     | Swaps the saved key back to an editable input                      |
 | Click "Delete" (API key)      | Clears the key (= revokes consent); status → `Not connected`       |
-| Edit Model slug field         | Free-text entry of any `provider/model-slug`; datalist suggests common models |
+| Edit Model slug field         | Free-text entry of any `provider/model-slug`; no dropdown or suggestions |
 | Click "Go to Tracker"         | Navigates to Tracker page                                         |
 | Click "Archived applications" | Navigates to Tracker in the Archived view (`/?view=archived`)     |
 | Click "Edit Profile"          | Navigates to Edit Profile page                                    |
@@ -463,7 +471,7 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 | Click link chip               | Opens URL in new tab                                              |
 | Click "Delete account" (hosted)| Opens DeleteAccountModal; password gate → permanent account deletion → sign out → Welcome |
 | Click "Clear all data" (local)| Opens DeleteAccountModal; typed-`DELETE` gate → clears local data → re-mounts empty states |
-| Click "Delete account" (demo) | No-op — control is disabled                                       |
+| Demo Account subgroup         | Shows an amber "Account management isn't available in the demo" note; no destructive button |
 
 ---
 
