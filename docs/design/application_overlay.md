@@ -2,6 +2,8 @@
 
 Spec captures the modal that opens when a user clicks an application card in the Tracker, **and** when "+ New application" is clicked. One component, two modes.
 
+> **Create entry:** "+ New application" no longer opens this modal directly — it opens the **Add-application gate** (Smart vs Manual entry), which can pre-fill Create mode by parsing a pasted job posting. See §13 for the full entry & smart-fill flow.
+
 ---
 
 ## 1 · Modes
@@ -9,7 +11,7 @@ Spec captures the modal that opens when a user clicks an application card in the
 | Mode  | Trigger              | Footer button | Archive icon | Initial state                          |
 | ----- | -------------------- | ------------- | ------------ | -------------------------------------- |
 | Edit  | Click any card       | **Save**      | Visible      | All fields populated from row          |
-| Create| `+ New application`  | **Create**    | Hidden       | Empty draft, status defaults to `Wishlisted` |
+| Create| Add-application gate (§13) | **Create**    | Hidden       | Empty draft **or** parsed prefill; status defaults to `Wishlisted` |
 
 Both modes share identical layout, validation, dirty-state tracking, and discard flow.
 
@@ -78,6 +80,9 @@ The header background uses the **status accent color** for the active status (sa
 - Color follows the Tracker compat ramp (red < 40, amber 40–69, green ≥ 70)
 - The score itself is computed; only **Compatibility Notes** is editable here
 
+### Provenance (smart-filled Create)
+When Create mode is reached via a parse, filled fields carry provenance markers (fill banner, per-field **✦ AI** / **⚙ Auto** tag, one-time flash, clear-on-edit). Full rules in §13.6.
+
 ### Mobile collapse
 At < 640px the body grid collapses to single column. All 2-up rows stack; field order is preserved top-to-bottom.
 
@@ -107,7 +112,7 @@ The footer is **conditionally rendered** — hidden when the draft equals the or
 
 - **Save** (or **Create** in Create mode): commits draft → row, fires toast (`Saved.` / `Application created.`), modal stays open in Edit mode
 - **Discard:** opens discard confirmation (§7)
-- In Create mode the footer is **always visible** since an empty draft is by definition dirty; the button reads **Create** and is disabled until at least Job Title + Company are filled
+- In Create mode the footer is **always visible** since an empty draft is by definition dirty; the button reads **Create** and is disabled until at least Job Title + Company are filled. A smart-parsed draft typically arrives with both already populated, so **Create** is enabled on open.
 
 ---
 
@@ -170,6 +175,11 @@ type ModalState = {
   editingField: string | null;     // which field is in input mode
   confirmDiscard: boolean;
   confirmArchive: boolean;
+
+  // Create-mode smart fill (see §13):
+  prefill?: Partial<Application>;   // parsed values seeded into draft
+  aiFields?: string[];             // field keys to mark + flash
+  fillSource?: 'ai' | 'basic';     // selects ✦ AI vs ⚙ Auto styling
 };
 
 const isDirty = !shallowEqual(draft, original);
@@ -265,3 +275,89 @@ type ModalState = {
 
 - **Opening:** clicking a card with `row.archived === true` resolves to Archived mode (independent of which view is active).
 - **Exiting:** closing the modal returns to the Archived list unchanged. Clicking **↺ Unarchive** clears the flag on the row, closes the modal, the row immediately disappears from the Archived list, and the toolbar chip count updates.
+
+---
+
+## 13 · Entry & smart fill (Create mode)
+
+Create mode has **two entry paths**, chosen up front via the **Add-application gate**. The gate, smart-input, and failure surfaces reuse the pattern documented for the profile setup flow — see [`edit_profile_page.md`](../edit_profile_page.md) § Mode gate — adapted from résumé import to job-posting parsing. The flow always terminates in this modal (Create mode); nothing persists until **Create** is clicked.
+
+### 13.1 · Add-application gate
+
+Opened by **+ New application** (desktop toolbar) and the **FAB** (mobile). A centered modal (`max 660px`; cards stack < 600px) titled **"Let's add this application"** with two choice cards:
+
+| Card | Leading | Description | Result |
+| --- | --- | --- | --- |
+| **Smart entry** (badge: *Fastest*) | AI sparkle | "Paste a job posting and we'll fill in the details automatically." | → Smart input (§13.2) |
+| **Manual entry** | Pencil | "Type the details into the form, field by field." | → Create modal, empty draft |
+
+- Backdrop click / ✕ / `Esc` dismiss the gate — no application is created.
+- **AI provider off:** the Smart card is **locked** (no *Fastest* badge, dimmed sparkle) and shows an **"Enable AI in Settings →"** link in place of its CTA. Manual entry is unaffected.
+
+### 13.2 · Smart input — paste a job posting
+
+Centered modal (`max 540px`), title **"Paste the job posting."**
+
+- A single auto-focused multi-line paste area. Helper: *"Auto-parsing isn't perfect — you can review & edit everything before saving."*
+- Live character count.
+- **Parse posting** (primary) is disabled until the pasted text passes a minimum length (≈ 40 chars). **Back** returns to the gate.
+- The button is **text-only — no AI glyph**. The sparkle signifies *provenance* (what the AI wrote), never an action.
+
+### 13.3 · Processing
+
+Full-cover solid scrim with a spinner — **"Reading the job posting…"** / *"Extracting title, company, skills, and details."* On success the Create modal opens **pre-filled** with provenance (§13.6).
+
+### 13.4 · AI unavailable (recoverable)
+
+When the AI parser can't be reached, an **ask-first** dialog appears (cloud-off glyph) — **"Smart parsing is unavailable right now."** It surfaces a **reason-code** chip (§13.7) plus the pasted-context label. Actions:
+
+| Action | Behavior |
+| --- | --- |
+| **Use basic parser** | Falls back to the rule-based parser — faster, fewer fields. Fills Create mode with **⚙ Auto** provenance. |
+| **Try AI again** *(wait-type reasons)* | Retries the AI parse. |
+| **Update key in Settings** *(key / credit reasons)* | Routes to provider settings instead of a pointless retry. |
+| **Enter manually instead** | Abandons parsing → empty Create modal. |
+
+Whether the secondary button is *Try AI again* vs *Update key in Settings* is driven by the reason's `fix` class (§13.7).
+
+### 13.5 · Unreadable posting (dead-end)
+
+When neither parser can extract structure (e.g. an image-only listing), a terminal error appears (alert glyph) — **"We couldn't read that posting"** — with the `NO_TEXT` reason and a plain-text tip. There is **no basic-parser option** here. Actions: **Try again** / **Enter manually instead**.
+
+### 13.6 · Provenance markers
+
+When the Create modal opens from a parse, filled fields are marked so the user can see — then verify — what the machine wrote:
+
+- **Fill banner** atop the body: *"Filled from the job posting"* (AI) or *"Filled by the basic parser"* (⚙ Auto). Dismissible.
+- **Per-field tag** beside each filled label: **✦ AI** (indigo) for the AI parser, **⚙ Auto** (neutral) for the basic parser.
+- **One-time flash** on each filled field/value as the modal opens.
+- A tag **clears the moment the user edits that field** — once you've touched it, it's yours, not the machine's.
+- The **Job Title** header carries the same flash when prefilled; the title editor does **not** auto-open when a parsed value is present (so the flash is visible).
+
+Fields the parsers populate: Job Title, Company, Recruiter, Location, Salary, Shift, Work Setup, Responsibilities, Required Skills, Preferred Skills, URL. The basic parser fills a **subset** (typically no Recruiter / Shift / Preferred Skills). **Status is never parsed** — it stays `Wishlisted`.
+
+### 13.7 · AI-down reason codes
+
+| Key | Code | Meaning | `fix` → secondary action |
+| --- | --- | --- | --- |
+| `rate_limit` | `HTTP 429` | Too many requests in a short window | wait → **Try AI again** |
+| `invalid_key` | `HTTP 401` | Provider key rejected | settings → **Update key** |
+| `quota` | `HTTP 402` | No remaining provider credits | settings → **Update key** |
+| `timeout` | `TIMEOUT` | Model took too long to respond | wait → **Try AI again** |
+| `server` | `HTTP 503` | Provider temporarily unavailable | wait → **Try AI again** |
+| `network` | `NETWORK` | Couldn't reach the AI service | wait → **Try AI again** |
+
+The unreadable-posting dead-end (§13.5) uses a separate `NO_TEXT` reason and is **not** recoverable by retry alone — it needs different input.
+
+### 13.8 · State
+
+```ts
+// Create mode gains an entry sub-flow + provenance metadata:
+type AddFlowState = {
+  phase: null | 'gate' | 'smart' | 'processing';
+  error: null | { kind: 'llm' | 'parse'; reason: ReasonCode; contextLabel: string };
+};
+
+// The resulting ModalState (Create) carries the provenance fields from §10:
+//   prefill, aiFields, fillSource
+```

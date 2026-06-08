@@ -165,7 +165,7 @@ Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 **Brand cluster (left)**
 - Logo mark: `38×38px` PNG image (`assets/Alice_White.png`), no border or background styling
 - Logo text: "Project Alice", white, 15px / 600, letter-spacing −0.3px
-- Mark and text wrapped together; text-only span is `.topbar-brand-text` (swapped to short `.topbar-brand-text--short` label "Alice" at < 380px)
+- Mark and text wrapped together; text-only span is `.topbar-brand-text` (hidden at < 380px)
 
 **Page nav (immediately after brand)**
 - Nav buttons: `padding: 7px 11px`, radius `--r-sm`, no border by default
@@ -300,7 +300,7 @@ Row 3 grid: `minmax(0, 2fr) minmax(140px, 1fr) minmax(90px, .6fr)`
 
 > **Archive confirm dialog:** Archiving (from card × or modal × button) triggers a `ConfirmDialog` before proceeding. The dialog is a centered modal at `z-index: var(--z-modal) + 10`, max-width `380px`, with "Archive this application?" message and Cancel / Confirm buttons.
 
-> **Unarchive action:** When viewing the Archived list, the row of quick actions collapses to a **single** Unarchive button (↺). It uses the same outline chrome as peer card-action buttons but with the border and icon recolored to `--indigo` so it remains identifiable as the restore action; hover lifts to background `--indigo-dim`. Unlike Archive, Unarchive does **not** trigger a confirmation — it is a non-destructive restore. On click the row's `archived` flag is cleared (and `archivedDate` nulled) and a toast fires (`Unarchived.`). _Earlier drafts of this section called for a filled `--indigo-soft` background; that was revised after the v0.14.0 browser smoke walk surfaced the visual inconsistency against peer buttons (see [028-archive-applications-view](../../specs/028-archive-applications-view/) Phase 09 § 09.2 follow-up)._
+> **Unarchive action:** When viewing the Archived list, the row of quick actions collapses to a **single** Unarchive button (↺). It uses an elevated styling: border `--indigo-dim`, color `--indigo`, background `--indigo-soft`; hover lifts to border `--indigo`, background `--indigo-dim`. Unlike Archive, Unarchive does **not** trigger a confirmation — it is a non-destructive restore. On click the row's `archived` flag is cleared (and `archivedDate` nulled) and a toast fires (`Unarchived.`).
 
 Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 
@@ -331,6 +331,8 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 
 > Full spec: [`docs/design/application_overlay.md`](application_overlay.md)
 
+> **Create entry:** reached through the **Add-application gate** (Smart vs Manual entry → optional job-posting parse), not by opening this modal directly. See [`application_overlay.md`](application_overlay.md) §13.
+
 - Overlay: `rgba(0,0,0,.55)` + `backdrop-filter: blur(4px)`; body scroll locked while open; `z-index: var(--z-modal)` (300)
 - Entrance: scale `0.97→1` + `translateY(8px→0)` + fade in, 200ms ease
 - **Header background:** status `borderAccent` color — NOT `--navy`
@@ -359,7 +361,7 @@ Floating action button that replaces the toolbar "+ New application" on mobile.
 - Shadow: `0 6px 16px rgba(79,70,229,0.42), 0 2px 6px rgba(0,0,0,0.12)`
 - Active press: `transform: scale(0.96)`
 - z-index: `calc(--z-nav + 1)` so it floats above the tab bar
-- `aria-label="New application"`; opens the Detail Modal in Create mode
+- `aria-label="New application"`; opens the **Add-application gate** (Smart vs Manual; see [`application_overlay.md`](application_overlay.md) §13), which leads into the Detail Modal in Create mode
 - **Hidden when the Archived view is active** — creation is suppressed at every entry point (toolbar button + FAB) while viewing archived items.
 
 ---
@@ -386,7 +388,7 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 | **Desktop** `> 1024px` | 3-row card, compat bar 30%, 2-col modal, toolbar single row, top-bar nav inline beside brand |
 | **Tablet** `640–1023px` | Compat bar 36%, Responsibilities spans full detail row, modal 1-col |
 | **Mobile** `< 640px` | Card collapses to flex-column via CSS `order` (ID/badge/date → title → company → responsibilities → skills → salary → compat bar → actions); compat bar full-width; modal is bottom-sheet; toolbar is 2-row grid; filter panels expand inline; **page nav moves to bottom tab bar**; **+ New application becomes a FAB**; sign-out collapses to icon-only; email hidden; thin scrollbar (4px) on `<html>` |
-| **Fold-narrow** `< 380px` | "Project Alice" wordmark swaps to short "Alice" label beside the 38px logo mark and sign-out icon |
+| **Fold-narrow** `< 380px` | "Project Alice" wordmark hides — only the 38px logo mark remains beside the sign-out icon |
 
 ---
 
@@ -396,7 +398,7 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 |---|---|---|
 | Tracker | `tracker` | Card list with filters, sort, detail modal |
 | Calendar | `calendar` | Current month grid with applied-date markers |
-| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections; also surfaces an "Archived applications · N →" link that deep-links to `/?view=archived` |
+| Profile | `profile` | Stat cards: Total, Active, Offers, Rejections; also surfaces an "Archived applications · N →" link that deep-links to `Tracker.html?view=archived` |
 
 Mobile bottom-tab icons:
 - **Tracker** — list / clipboard glyph (rect + 3 lines)
@@ -411,7 +413,7 @@ Mobile bottom-tab icons:
 |---|---|
 | Click card body | Opens Detail Modal in Edit mode |
 | ✎ button (card) | Opens Detail Modal in Edit mode (same as card click) |
-| + New application (desktop toolbar) | Opens Detail Modal in Create mode — empty draft, status defaults to Wishlisted |
+| + New application (desktop toolbar) | Opens the **Add-application gate** (Smart vs Manual entry → optional job-posting parse; see `application_overlay.md` §13), landing in the Detail Modal in Create mode — empty draft or parsed prefill, status defaults to Wishlisted |
 | FAB (mobile) | Same as + New application |
 | ⇄ button (card or modal) | Opens Status Dropdown anchored below button |
 | 🔗 button | Copies `jobPostingUrl` to clipboard; fires toast |
