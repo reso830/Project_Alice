@@ -279,6 +279,23 @@ function cleanString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function cleanSalary(value) {
+  if (Number.isInteger(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = value.trim().replace(/,/g, '');
+  if (!/^\d+$/.test(normalized)) {
+    return value;
+  }
+
+  return Number.parseInt(normalized, 10);
+}
+
 function cleanStringArray(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -296,7 +313,7 @@ function buildJobDraft(parsed) {
     jobTitle: cleanString(parsed.jobTitle),
     responsibilities: cleanString(parsed.responsibilities),
     location: cleanString(parsed.location),
-    salary: parsed.salary,
+    salary: cleanSalary(parsed.salary),
     workSetup: cleanString(parsed.workSetup),
     shift: cleanString(parsed.shift),
     skills: cleanStringArray(parsed.skills),

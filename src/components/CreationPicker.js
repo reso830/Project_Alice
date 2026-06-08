@@ -119,12 +119,6 @@ function _makeCard({
       onClick();
     }
   });
-  card.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      card.querySelector('.creation-picker-card__cta')?.click();
-    }
-  });
 
   return card;
 }

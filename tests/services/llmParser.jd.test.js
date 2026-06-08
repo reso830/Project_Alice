@@ -40,7 +40,7 @@ describe('parseJobWithLlm', () => {
   "jobTitle": "Frontend Engineer",
   "responsibilities": "Build UI systems",
   "location": "Manila",
-  "salary": 900000,
+  "salary": "900,000",
   "workSetup": "Remote",
   "shift": "Night",
   "skills": ["React", "React", "CSS"],

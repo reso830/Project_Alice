@@ -183,7 +183,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 09 — Browser Smoke Test (mandatory, UI feature)
 
-### T013 — Walk each user story's Independent Test against the merge state
+### T013 — Walk each user story's Independent Test against the merge state [X]
 - **Target**: running app (local mode); merged/to-be-merged branch state.
 - **Behavior**: Execute, in a real browser:
   - **US1**: key + `jd` on → Smart entry → paste a full posting → Create modal pre-fills
@@ -198,3 +198,5 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
   text is persisted server-side.
 - **Validation**: All Independent Tests pass; record any deviation as a residual-risk note.
 - **Out of scope**: automated coverage (handled in earlier phases).
+- **Result**: Pass after Phase 09 UI follow-ups; desktop and mobile visual polish accepted,
+  recovery routes reviewed, provenance markers reviewed, and no key/JD text persistence added.
