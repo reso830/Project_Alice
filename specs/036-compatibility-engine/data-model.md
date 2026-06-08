@@ -1,0 +1,127 @@
+# Data Model: Compatibility Engine
+
+Builds on the existing application schema ([server/db/columns.js](../../server/db/columns.js), [server/db.js](../../server/db.js)) and the profile + `profile_skill` stores (031/032). **One additive column**; `compat` semantics change from random to computed.
+
+---
+
+## 1. New field — `minYearsExperience` / `min_years_experience`
+
+The job's stated minimum years of experience; the comparison target for the experience category. **Never extracted by the parser** — manual entry only.
+
+| Aspect | Value |
+| --- | --- |
+| App-model key | `minYearsExperience` |
+| DB column | `min_years_experience` |
+| Type | integer ≥ 0, or `null` (not stated) |
+| Default | `null` |
+| Persisted | local SQLite, hosted Supabase, demo (in-memory) — at parity |
+| Validation | non-negative integer or empty/null; **rejected, never coerced** when invalid |
+| Renormalization | `null`/`0` → experience category omitted, weights renormalize (FR-006) |
+
+### Wiring (mirror every place an application field is declared)
+
+- `server/db/columns.js`:
+  - `FIELD_TO_COLUMN`: `minYearsExperience: 'min_years_experience'`
+  - `INSERTABLE_COLUMNS`: add `'min_years_experience'`
+  - `APPLICATION_COLUMNS_WITHOUT_USER_ID`: add `'min_years_experience'`
+  - `toRecord`: `minYearsExperience: row.min_years_experience ?? null`
+  - `toRow`: pass through as integer or `null` (no JSON/boolean special-casing)
+- `src/models/application.js` — `normalizeApplication`: coerce to a non-negative integer or `null`; `validateApplication`: flag invalid (negative / non-integer / non-numeric non-empty) without silent coercion.
+- `server/validation/application.js` — `minYearsExperience: z.union([z.number().int().nonnegative(), z.null()]).optional()` (accept empty→null).
+
+### SQLite migration (idempotent, in `initSchema`)
+
+```js
+ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
+```
+
+### Supabase migration (additive)
+
+```sql
+ALTER TABLE public.applications
+  ADD COLUMN IF NOT EXISTS min_years_experience integer;
+```
+
+Add a probe to `assertHostedSchema` ([server/health.js](../../server/health.js)):
+
+```js
+{
+  table: 'applications',
+  column: 'min_years_experience',
+  failOn: [UNDEFINED_COLUMN],
+  docPath: 'specs/036-compatibility-engine/data-model.md §1',
+}
+```
+
+---
+
+## 2. `compat` — semantics change (no schema change)
+
+| Aspect | Before (≤035) | After (036) |
+| --- | --- | --- |
+| Column | `applications.compat INTEGER NOT NULL DEFAULT 0` | **unchanged** |
+| Source | random `Math.floor(Math.random()*101)` in parsers | **deterministic** `computeCompatibility(profile, application)` |
+| Writer | client (sent in payload) | **server** (local/hosted) or shared module (demo); client value **ignored** |
+| Range | 0–100 (clamped by `validateApplication`) | 0–100 (clamped by the module **and** `validateApplication`) |
+| Recompute | never | on app create/update; on profile save for all **active** apps; archived **frozen** |
+
+`compat` is **removed** from the client-writable Zod schema (`writableFields`). `validateApplication`'s existing `clampCompat` stays as a defensive backstop.
+
+---
+
+## 3. Scoring inputs (read-only; consumed by the module)
+
+**Profile** (via `req.repos.profile.get()` → reassembled `skills` from `profile_skill`, 032):
+- `skills: [{ name, level: 1–5 }]` — skills category (proficiency weighting)
+- `experience: [{ role, responsibilities, dateStarted, dateEnded, currentWork }]` — role titles (role alignment), responsibilities (keywords), date ranges (derived years)
+- `summary` — role alignment + keywords
+- `certifications: [{ name, … }]` — certifications category
+
+**Application (JD)**:
+- `skills: string[]` (required), `preferredSkills: string[]` — skills + keywords
+- `jobTitle` — role alignment + keywords
+- `responsibilities` — keywords (+ certification text matching)
+- `minYearsExperience` — experience target
+
+No profile or JD field is mutated by scoring.
+
+---
+
+## 4. Scoring output
+
+```js
+computeCompatibility(profile, application, { weights, asOf }) // →
+{ score: <integer 0–100>, label: 'Low' | 'Medium' | 'High' | 'Great' }
+```
+
+Only `score` is persisted (into `compat`). `label` is **derived** at display time via `getCompatLabel(score)` and never stored (so the two cannot disagree). **No per-category breakdown is produced or stored** (037).
+
+### Bands (`COMPAT_BANDS`)
+
+| Score | Label |
+| --- | --- |
+| 0–39 | Low |
+| 40–64 | Medium |
+| 65–84 | High |
+| 85–100 | Great |
+
+### Default weights (`COMPAT_WEIGHTS`, configurable)
+
+| Category | Weight |
+| --- | --- |
+| skills | 35 |
+| roleAlignment | 25 |
+| experience | 20 |
+| keywords | 10 |
+| certifications | 10 |
+
+Absent categories (no usable input on either side) are dropped and the remaining weights renormalized to sum to 1 before aggregation. Zero active categories → score `0`.
+
+---
+
+## 5. Entities touched
+
+- **Application** — gains `minYearsExperience`; `compat` repurposed as the computed score. All other fields unchanged.
+- **Compatibility result** (transient) — `{ score, label }`; not a stored entity beyond `compat`.
+- **Weights config** (`COMPAT_WEIGHTS`) — module constant, not persisted, not user-editable in v1.
+- **Profile / profile_skill** — read-only inputs; unchanged.
