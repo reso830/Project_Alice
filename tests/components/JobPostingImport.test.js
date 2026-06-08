@@ -271,10 +271,36 @@ describe('JobPostingImport', () => {
 
     expect(root.textContent).toContain("We couldn't read that posting");
     expect(root.textContent).toContain('NO_TEXT');
+    // Paste-only JD copy — not the shared resume/file-oriented NO_TEXT message.
+    expect(root.textContent).toContain('No readable job-posting details found');
+    expect(root.textContent).not.toContain('scanned or image-only');
     expect(root.textContent).toContain('Try again');
     expect(root.textContent).toContain('Enter manually instead');
     expect(root.textContent).not.toContain('Use basic parser');
     expect(parseJobPost).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('ignores a late AI parse result after the import is dismissed', async () => {
+    let resolveParse;
+    parseJobWithLlm.mockReturnValue(new Promise((resolve) => {
+      resolveParse = resolve;
+    }));
+    const onSuccess = vi.fn();
+    const root = createImport({ onSuccess });
+
+    pastePosting(root);
+    root.querySelector('.job-posting-import__parse').click();
+    await flushPromises();
+
+    // User closes the gate (Esc / × / backdrop) while the parse is in flight.
+    root.destroy();
+    resolveParse({
+      draft: { companyName: 'Acme Labs', jobTitle: 'Frontend Engineer' },
+      truncated: false,
+    });
+    await flushPromises();
+
     expect(onSuccess).not.toHaveBeenCalled();
   });
 

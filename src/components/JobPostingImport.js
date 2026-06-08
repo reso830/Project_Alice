@@ -80,6 +80,16 @@ function getReason(reasonKey) {
   return REASON_CODES[reasonKey] ?? REASON_CODES.rate_limit;
 }
 
+// JD parsing is paste-only, so override file/resume-oriented reason copy from the
+// shared REASON_CODES (e.g. NO_TEXT's "the file looks scanned or image-only").
+const JD_REASON_MESSAGES = Object.freeze({
+  NO_TEXT: 'No readable job-posting details found — paste the full listing text and try again.',
+});
+
+function getReasonMessage(reasonKey) {
+  return JD_REASON_MESSAGES[reasonKey] ?? getReason(reasonKey).message;
+}
+
 export const JobPostingImport = {
   create({
     onSuccess = () => {},
@@ -97,6 +107,7 @@ export const JobPostingImport = {
     let parseButton = null;
     let pendingBasicText = '';
     let isProcessing = false;
+    let destroyed = false;
 
     textarea.id = textareaId;
     textarea.className = 'job-posting-import__textarea';
@@ -245,7 +256,7 @@ export const JobPostingImport = {
       const reason = getReason(reasonKey);
       const line = createElement('p', 'job-posting-import-failure__reason');
       const code = createElement('span', 'job-posting-import-failure__code', reason.code);
-      const message = createElement('span', 'job-posting-import-failure__message', reason.message);
+      const message = createElement('span', 'job-posting-import-failure__message', getReasonMessage(reasonKey));
 
       line.append(code, message);
       return line;
@@ -317,6 +328,10 @@ export const JobPostingImport = {
     }
 
     function completeWithDraft(draft, fillSource, notice = '') {
+      if (destroyed) {
+        return null;
+      }
+
       const aiFieldSet = buildAiFieldSet(draft);
 
       if (aiFieldSet.size === 0) {
@@ -376,6 +391,11 @@ export const JobPostingImport = {
 
       try {
         const result = await parseJobWithLlm(text, aiSettings.getKey(), aiSettings.getModel());
+
+        if (destroyed) {
+          return null;
+        }
+
         const notice = result.truncated
           ? 'The posting was long, so some content may not be parsed.'
           : '';
@@ -384,6 +404,10 @@ export const JobPostingImport = {
         isProcessing = false;
         return completeWithDraft(result.draft, 'ai', notice);
       } catch (errorObject) {
+        if (destroyed) {
+          return null;
+        }
+
         const reason = mapErrorToReason(errorObject);
 
         renderFailureDialog(reason);
@@ -397,7 +421,9 @@ export const JobPostingImport = {
       updateParseButton();
     });
     renderIdle();
-    root.destroy = () => {};
+    root.destroy = () => {
+      destroyed = true;
+    };
 
     return root;
   },
