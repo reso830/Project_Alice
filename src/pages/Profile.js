@@ -1088,7 +1088,7 @@ function renderAiSettingsGroup() {
 
     featureList.append(createElement('div', 'feat-list__label', 'ENABLED FEATURES'));
     for (const key of ['cv', 'jd', 'compat']) {
-      const isComingSoon = key !== 'cv';
+      const isComingSoon = key === 'compat';
       const item = createElement('div', 'feat-item');
       const copy = createElement('div', 'feat-item__copy');
       const toggle = createSwitch({

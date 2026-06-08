@@ -1780,5 +1780,107 @@ describe('Modal', () => {
       expect(skillsField.querySelectorAll('.skill-tag')).toHaveLength(1);
       expect(skillsField.textContent).toContain('React');
     });
+
+    it('renders AI provenance markers, banner, and flash for parsed create-mode fields', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, {
+        mode: 'create',
+        prefill: {
+          companyName: 'Acme',
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          workSetup: 'Remote',
+        },
+        aiFields: new Set(['companyName', 'jobTitle', 'skills', 'workSetup']),
+        fillSource: 'ai',
+      });
+
+      expect(document.querySelector('.modal-fill-banner')?.textContent).toContain('Filled from the job posting');
+      expect(document.querySelector('#modal-title').textContent).toBe('Frontend Engineer');
+      expect(document.querySelector('.modal-title-input')).toBeNull();
+      expect(document.querySelector('.modal-title-provenance')?.textContent).toBe('✦ AI');
+      expect(document.querySelector('.modal-header__title-row').classList.contains('modal-provenance-flash')).toBe(true);
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
+      expect(getFieldByLabel('Company').classList.contains('modal-provenance-flash')).toBe(true);
+      expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
+      expect(getFieldByLabel('Work Setup').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
+      expect(getFieldByLabel('Recruiter').querySelector('.modal-field-provenance')).toBeNull();
+    });
+
+    it('renders basic-parser provenance copy separately from AI provenance', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, {
+        mode: 'create',
+        prefill: { companyName: 'Acme' },
+        aiFields: new Set(['companyName']),
+        fillSource: 'basic',
+      });
+
+      expect(document.querySelector('.modal-fill-banner')?.textContent).toContain('Filled by the basic parser');
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toBe('⚙ Auto');
+    });
+
+    it('renders the smart-fill truncation notice when provided', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, {
+        mode: 'create',
+        prefill: { companyName: 'Acme' },
+        aiFields: new Set(['companyName']),
+        fillSource: 'ai',
+        notice: 'The posting was long, so some content may not be parsed.',
+      });
+
+      expect(document.querySelector('.modal-fill-notice')?.textContent)
+        .toBe('The posting was long, so some content may not be parsed.');
+    });
+
+    it('does not render provenance markers for manual create mode', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, { mode: 'create', prefill: { companyName: 'Acme' } });
+
+      expect(document.querySelector('.modal-fill-banner')).toBeNull();
+      expect(document.querySelector('.modal-field-provenance')).toBeNull();
+      expect(document.querySelector('.modal-title-provenance')).toBeNull();
+    });
+
+    it('clears provenance markers when parsed fields are edited', () => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      Modal.open(null, {
+        mode: 'create',
+        prefill: {
+          companyName: 'Acme',
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          workSetup: 'Remote',
+        },
+        aiFields: new Set(['companyName', 'jobTitle', 'skills', 'workSetup']),
+        fillSource: 'ai',
+      });
+
+      editTextField('Company', 'Globex');
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')).toBeNull();
+      expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')).not.toBeNull();
+
+      document.querySelector('#modal-title').click();
+      const titleInput = document.querySelector('.modal-title-input');
+      titleInput.value = 'Product Engineer';
+      titleInput.dispatchEvent(new window.Event('blur'));
+      expect(document.querySelector('.modal-title-provenance')).toBeNull();
+
+      const skillsInput = getFieldByLabel('Required Skills').querySelector('.modal-chip-input');
+      skillsInput.value = 'TypeScript';
+      skillsInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')).toBeNull();
+
+      const workSetup = inputField('Work Setup');
+      workSetup.value = 'Hybrid';
+      workSetup.dispatchEvent(new window.Event('change', { bubbles: true }));
+      expect(getFieldByLabel('Work Setup').querySelector('.modal-field-provenance')).toBeNull();
+    });
   });
 });

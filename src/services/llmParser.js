@@ -1,3 +1,4 @@
+import { normalizeApplication, validateApplication } from '../models/application.js';
 import { normaliseProfile } from '../models/profile.js';
 
 export const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
@@ -6,6 +7,19 @@ export const MAX_INPUT_CHARS = 24_000;
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const JOB_OUTPUT_FIELDS = [
+  'companyName',
+  'jobTitle',
+  'responsibilities',
+  'location',
+  'salary',
+  'workSetup',
+  'shift',
+  'skills',
+  'preferredSkills',
+  'recruiter',
+  'jobPostingUrl',
+];
 
 export const REASON_CODES = Object.freeze({
   rate_limit: Object.freeze({
@@ -120,6 +134,18 @@ function hasExtractedData(profile) {
   return Object.values(profile).some(hasValue);
 }
 
+function hasUsableJobData(draft) {
+  return JOB_OUTPUT_FIELDS.some((field) => {
+    const value = draft[field];
+
+    if (field === 'salary') {
+      return Number.isInteger(value) && value > 0;
+    }
+
+    return hasValue(value);
+  });
+}
+
 function parseAssistantJson(content) {
   if (typeof content !== 'string') {
     throw createLlmError('LLM_INVALID_RESPONSE', 'The provider returned an invalid response.');
@@ -136,7 +162,7 @@ function parseAssistantJson(content) {
   }
 }
 
-function buildSystemPrompt() {
+function buildResumeSystemPrompt() {
   return [
     'You extract a resume into JSON for the user\'s profile. Return ONLY a JSON object — no prose, no markdown fences.',
     'If the input contains no résumé content, return every field empty: empty strings for string fields and empty arrays for array fields.',
@@ -154,7 +180,29 @@ function buildSystemPrompt() {
   ].join(' ');
 }
 
-export async function parseWithLlm(text, key, model = DEFAULT_MODEL) {
+function buildJobSystemPrompt() {
+  return [
+    'You extract a job posting into JSON for an application draft. Return ONLY a JSON object — no prose, no markdown fences.',
+    'If the input contains no job-posting content, return every field empty: empty strings for string fields, null for salary, and empty arrays for array fields.',
+    'Top-level keys: companyName, jobTitle, responsibilities, location, salary, workSetup, shift, skills, preferredSkills, recruiter, jobPostingUrl.',
+    'responsibilities is a single string; join bullets with newlines.',
+    'salary is an integer annual Philippine peso amount, using the lower bound of a range; use null when absent or unclear.',
+    'workSetup must be one of Remote, Hybrid, On-site, Field, or an empty string.',
+    'shift must be one of Day, Mid, Night, Flexible, or an empty string.',
+    'skills is an array of required skill names. preferredSkills is an array of nice-to-have skill names. Deduplicate both arrays.',
+    'jobPostingUrl must be an http(s) URL or an empty string.',
+    'Do not include status or compat. Status stays wishlisted and compat is assigned by the app.',
+    'Years of experience is not an output field; do not return yearsOfExperience or similar keys.',
+    'Do not fabricate missing facts — use empty strings, null, or empty arrays for unknown values.',
+  ].join(' ');
+}
+
+async function requestChatCompletion({
+  text,
+  key,
+  model = DEFAULT_MODEL,
+  systemPrompt,
+}) {
   const rawText = typeof text === 'string' ? text : '';
   const truncated = rawText.length > MAX_INPUT_CHARS;
   const input = truncated ? rawText.slice(0, MAX_INPUT_CHARS) : rawText;
@@ -175,7 +223,7 @@ export async function parseWithLlm(text, key, model = DEFAULT_MODEL) {
         model: modelSlug,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: buildSystemPrompt() },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: input },
         ],
       }),
@@ -207,10 +255,83 @@ export async function parseWithLlm(text, key, model = DEFAULT_MODEL) {
     throw createLlmError('LLM_INVALID_RESPONSE', 'The provider returned an invalid schema.');
   }
 
+  return { parsed, truncated };
+}
+
+export async function parseWithLlm(text, key, model = DEFAULT_MODEL) {
+  const { parsed, truncated } = await requestChatCompletion({
+    text,
+    key,
+    model,
+    systemPrompt: buildResumeSystemPrompt(),
+  });
+
   const draft = normaliseProfile(parsed);
 
   if (!hasExtractedData(draft)) {
     throw createLlmError('LLM_EMPTY_RESPONSE', 'The provider returned no usable profile data.');
+  }
+
+  return { draft, truncated };
+}
+
+function cleanString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function cleanStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(value
+    .filter((entry) => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter(Boolean))];
+}
+
+function buildJobDraft(parsed) {
+  const draft = {
+    companyName: cleanString(parsed.companyName),
+    jobTitle: cleanString(parsed.jobTitle),
+    responsibilities: cleanString(parsed.responsibilities),
+    location: cleanString(parsed.location),
+    salary: parsed.salary,
+    workSetup: cleanString(parsed.workSetup),
+    shift: cleanString(parsed.shift),
+    skills: cleanStringArray(parsed.skills),
+    preferredSkills: cleanStringArray(parsed.preferredSkills),
+    recruiter: cleanString(parsed.recruiter),
+    jobPostingUrl: cleanString(parsed.jobPostingUrl),
+    status: 'wishlisted',
+    compat: Math.floor(Math.random() * 101),
+  };
+
+  const validated = validateApplication(normalizeApplication({
+    id: 1,
+    ...draft,
+  }));
+
+  delete validated.id;
+  delete validated._corrupt;
+
+  return Object.fromEntries(
+    Object.entries(validated).filter(([key]) => key !== 'yearsOfExperience'),
+  );
+}
+
+export async function parseJobWithLlm(text, key, model = DEFAULT_MODEL) {
+  const { parsed, truncated } = await requestChatCompletion({
+    text,
+    key,
+    model,
+    systemPrompt: buildJobSystemPrompt(),
+  });
+
+  const draft = buildJobDraft(parsed);
+
+  if (!hasUsableJobData(draft)) {
+    throw createLlmError('LLM_EMPTY_RESPONSE', 'The provider returned no usable job-posting data.');
   }
 
   return { draft, truncated };

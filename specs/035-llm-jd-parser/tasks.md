@@ -11,7 +11,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 01 — AI JD parse service
 
-### T001 — Extract shared OpenRouter transport
+### T001 — Extract shared OpenRouter transport [X]
 - **Target**: `src/services/llmParser.js`
 - **Behavior**: Factor the fetch + `AbortController` timeout + fenced-JSON extraction +
   error-mapping out of `parseWithLlm` into a private helper (e.g. `requestChatCompletion({ text, key, model, systemPrompt })`) returning the raw parsed JSON object + `truncated`.
@@ -21,7 +21,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 - **Validation**: `tests/services/llmParser.test.js` (existing resume tests must stay green).
 - **Out of scope**: JD prompt/normalizer (T002); any UI.
 
-### T002 — Add `parseJobWithLlm`
+### T002 — Add `parseJobWithLlm` [X]
 - **Target**: `src/services/llmParser.js`; import from `src/models/application.js`.
 - **Behavior**: New `parseJobWithLlm(text, key, model)` using a JD system prompt (per
   [`contracts/api.md`](contracts/api.md)); pipe the LLM JSON through `normalizeApplication()`
@@ -41,7 +41,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 02 — Settings: make the `jd` toggle live (US2)
 
-### T003 — Enable the Job-description parsing toggle
+### T003 — Enable the Job-description parsing toggle [X]
 - **Target**: `src/pages/Profile.js` (feature list near line 1090; `FEATURE_COPY`).
 - **Behavior**: Change the coming-soon gate from `key !== 'cv'` to `key === 'compat'` so
   `cv` and `jd` are interactive and only `compat` shows "Coming soon."; ensure the `jd`
@@ -55,7 +55,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 03 — Modal provenance (Create mode) (US1 / US4)
 
-### T004 — Accept provenance params in `Modal.open`
+### T004 — Accept provenance params in `Modal.open` [X]
 - **Target**: `src/components/Modal.js` (`open()` options near line 981).
 - **Behavior**: Add `aiFields` (Set of field paths) and `fillSource` (`'ai' | 'basic'`) to
   the options; store as Modal-local state for Create mode only; default to no-provenance
@@ -64,7 +64,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 - **Validation**: `tests/components/Modal.test.js` — opening with no provenance is unchanged.
 - **Out of scope**: marker rendering (T005); edit/archived modes.
 
-### T005 — Render markers, banner, flash; clear-on-edit
+### T005 — Render markers, banner, flash; clear-on-edit [X]
 - **Target**: `src/components/Modal.js` (field rendering + Create body).
 - **Behavior**: Mirror `src/pages/ProfileEdit.js` provenance (`_aiFields`,
   `section-provenance` ✦ AI / ⚙ Auto, `clearAiIndicator`): per-filled-field tag beside the
@@ -81,7 +81,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 04 — JD smart-input flow (US1 / US3)
 
-### T006 — New `JobPostingImport` component (paste → processing → success)
+### T006 — New `JobPostingImport` component (paste → processing → success) [X]
 - **Target**: **new** `src/components/JobPostingImport.js`.
 - **Behavior**: Paste-only smart-input mirroring `src/components/ResumeImport.js`: idle
   paste area with live char count, **Parse posting** disabled under ~40 chars, processing
@@ -93,7 +93,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
   processing state, success handoff shape, truncation notice.
 - **Out of scope**: gate/cards (Phase 05); CSS (Phase 06).
 
-### T007 — Failure handling, basic fallback, dead-end, locked state
+### T007 — Failure handling, basic fallback, dead-end, locked state [X]
 - **Target**: `src/components/JobPostingImport.js`; uses `src/utils/jobPostParser.js`.
 - **Behavior**: Route by three outcomes. **Transport error / unparseable-or-non-object
   output** → recoverable reason-code dialog (reuse `REASON_CODES` / `mapErrorToReason`) with
@@ -114,7 +114,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 05 — Add-application gate (US1 / US2)
 
-### T008 — Upgrade `CreationPicker` to the §13.1 gate
+### T008 — Upgrade `CreationPicker` to the §13.1 gate [X]
 - **Target**: `src/components/CreationPicker.js`.
 - **Behavior**: Render the gate per `application_overlay.md` §13.1: **Smart entry** and
   **Manual entry** cards. Smart routes to `JobPostingImport`; Manual opens

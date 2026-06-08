@@ -58,7 +58,11 @@ async function mountProfile(status = 'authenticated', overrides = {}) {
   aiSettings.hasKey.mockReturnValue(overrides.hasKey ?? false);
   aiSettings.getKey.mockReturnValue(overrides.key ?? '');
   aiSettings.getModel.mockReturnValue('meta-llama/llama-3.3-70b-instruct:free');
-  aiSettings.getFeature.mockImplementation((key) => key === 'cv');
+  aiSettings.getFeature.mockImplementation((key) => {
+    const features = overrides.features ?? { cv: true, jd: false, compat: false };
+
+    return Boolean(features[key]);
+  });
   aiSettings.getConnectionStatus.mockImplementation((state) => {
     if (state === 'testing') {
       return 'testing';
@@ -84,6 +88,10 @@ function getSection(container, label) {
 function getButton(container, label) {
   return [...container.querySelectorAll('button')]
     .find((button) => button.textContent === label || button.getAttribute('aria-label') === label);
+}
+
+function getFeatureItem(section, key) {
+  return section.querySelector(`[data-ai-feature="${key}"]`)?.closest('.feat-item');
 }
 
 describe('Profile — AI resume parsing settings', () => {
@@ -120,11 +128,39 @@ describe('Profile — AI resume parsing settings', () => {
     expect(section.textContent).toContain('Any OpenRouter model slug');
     expect(cvToggle.getAttribute('aria-pressed')).toBe('true');
     expect(cvToggle.disabled).toBe(false);
-    expect(jdToggle.disabled).toBe(true);
+    expect(jdToggle.disabled).toBe(false);
     expect(compatToggle.disabled).toBe(true);
     expect(section.textContent).toContain('ENABLED FEATURES');
     expect(section.textContent).toContain('Coming soon');
+    expect(getFeatureItem(section, 'jd').textContent).not.toContain('Coming soon');
+    expect(getFeatureItem(section, 'compat').textContent).toContain('Coming soon');
     expect(section.textContent).toContain('Stored only in this browser');
+  });
+
+  it('lets users toggle job-description parsing while compatibility remains coming soon', async () => {
+    const features = { cv: true, jd: false, compat: false };
+
+    aiSettings.setFeature.mockImplementation((key, value) => {
+      features[key] = value;
+    });
+
+    const container = await mountProfile('authenticated', { features });
+    const section = getSection(container, 'SETTINGS');
+    const jdToggle = section.querySelector('[data-ai-feature="jd"]');
+    const compatToggle = section.querySelector('[data-ai-feature="compat"]');
+
+    expect(jdToggle.disabled).toBe(false);
+    expect(jdToggle.getAttribute('aria-pressed')).toBe('false');
+    expect(getFeatureItem(section, 'jd').classList.contains('is-disabled')).toBe(false);
+    expect(getFeatureItem(section, 'jd').textContent).not.toContain('Coming soon');
+
+    jdToggle.click();
+
+    expect(aiSettings.setFeature).toHaveBeenCalledWith('jd', true);
+    expect(section.querySelector('[data-ai-feature="jd"]').getAttribute('aria-pressed')).toBe('true');
+    expect(compatToggle.disabled).toBe(true);
+    expect(getFeatureItem(section, 'compat').classList.contains('is-disabled')).toBe(true);
+    expect(getFeatureItem(section, 'compat').textContent).toContain('Coming soon');
   });
 
   it('gates the AI body when the master toggle is off', async () => {

@@ -42,6 +42,10 @@ let _saveController = null;
 let _onApplicationUpdate = null;
 let _onApplicationCreate = null;
 let _onUnarchiveSuccess = null;
+let _aiFields = new Set();
+let _fillSource = null;
+let _flashFields = new Set();
+let _fillNotice = '';
 
 function trackBusyBinding(binding) {
   _busyBindings.push(binding);
@@ -62,6 +66,48 @@ function disposeBusyBindings() {
 
 function canEdit() {
   return _mode !== 'archived';
+}
+
+function hasProvenance(field) {
+  return _mode === 'create' && (_fillSource === 'ai' || _fillSource === 'basic') && _aiFields.has(field);
+}
+
+function createProvenanceTag() {
+  const tag = document.createElement('span');
+  const isAi = _fillSource === 'ai';
+
+  tag.className = `modal-field-provenance modal-field-provenance--${_fillSource}`;
+  tag.textContent = isAi ? '\u2726 AI' : '\u2699 Auto';
+  tag.setAttribute('aria-label', isAi ? 'AI-filled field' : 'Auto-filled field');
+
+  return tag;
+}
+
+function appendProvenance(labelEl, field, row = null) {
+  if (!hasProvenance(field)) {
+    return;
+  }
+
+  labelEl.append(createProvenanceTag());
+  row?.classList.add('has-modal-provenance');
+  if (_flashFields.has(field)) {
+    row?.classList.add('modal-provenance-flash');
+  }
+}
+
+function clearProvenance(field, row = null) {
+  if (!field) {
+    return;
+  }
+
+  _aiFields.delete(field);
+  _flashFields.delete(field);
+  row?.classList.remove('has-modal-provenance', 'modal-provenance-flash');
+  row?.querySelector('.modal-field-provenance')?.remove();
+  if (field === 'jobTitle') {
+    _titleRow?.querySelector('.modal-title-provenance')?.remove();
+    _titleRow?.classList.remove('has-modal-provenance', 'modal-provenance-flash');
+  }
 }
 
 function getFocusableElements(root) {
@@ -281,7 +327,7 @@ function createEditableShell(label, fullSpan = false, { required = false } = {})
   appendFieldLabel(labelEl, label, required);
   row.append(labelEl, valueEl);
 
-  return { row, valueEl };
+  return { row, labelEl, valueEl };
 }
 
 async function copyJobPostingUrl(event) {
@@ -312,14 +358,17 @@ function renderTextDisplay(valueEl, key, formatter) {
 }
 
 function makeInlineText({ label, key, multiline = false, fullSpan = false, required = false }) {
-  const { row, valueEl } = createEditableShell(label, fullSpan, { required });
+  const { row, labelEl, valueEl } = createEditableShell(label, fullSpan, { required });
   const formatter = key === 'salary' ? formatPeso : null;
   const displayClass = multiline ? ' modal-field__display--multiline' : '';
+
+  appendProvenance(labelEl, key, row);
 
   function commit(input) {
     _draft[key] = key === 'salary'
       ? parseSalaryInput(input.value)
       : input.value.trim();
+    clearProvenance(key, row);
     renderTextDisplay(valueEl, key, formatter);
     row.classList.remove('modal-field--editing');
     _syncFooter();
@@ -399,7 +448,9 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
 }
 
 function makeInlineSelect({ label, key, options, fullSpan = false }) {
-  const { row, valueEl } = createEditableShell(label, fullSpan);
+  const { row, labelEl, valueEl } = createEditableShell(label, fullSpan);
+
+  appendProvenance(labelEl, key, row);
 
   function renderDisplay() {
     valueEl.textContent = displayValue(_draft[key]);
@@ -438,6 +489,7 @@ function makeInlineSelect({ label, key, options, fullSpan = false }) {
 
     select.addEventListener('change', () => {
       _draft[key] = select.value;
+      clearProvenance(key, row);
       renderDisplay();
       row.classList.remove('modal-field--editing');
       _syncFooter();
@@ -478,6 +530,7 @@ function makeChipEditor({ label, key }) {
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value modal-skills modal-chip-editor';
   labelEl.textContent = label;
+  appendProvenance(labelEl, key, row);
 
   function values() {
     return Array.isArray(_draft[key]) ? _draft[key] : [];
@@ -498,6 +551,7 @@ function makeChipEditor({ label, key }) {
       removeButton.textContent = '\u00d7';
       removeButton.addEventListener('click', () => {
         _draft[key] = values().filter((value) => value !== skill);
+        clearProvenance(key, row);
         renderChips();
         _syncFooter();
       });
@@ -521,6 +575,7 @@ function makeChipEditor({ label, key }) {
 
       if (value !== '' && !values().includes(value)) {
         _draft[key] = [...values(), value];
+        clearProvenance(key, row);
         _syncFooter();
       }
 
@@ -543,6 +598,7 @@ function makeChipEditor({ label, key }) {
         committingByKeyboard = false;
       } else if (event.key === 'Backspace' && input.value === '') {
         _draft[key] = values().slice(0, -1);
+        clearProvenance(key, row);
         renderChips();
         _syncFooter();
       }
@@ -575,6 +631,7 @@ function createCompatField(score) {
 function renderTitle() {
   const title = document.createElement('h2');
   const required = document.createElement('span');
+  const provenance = hasProvenance('jobTitle') ? createProvenanceTag() : null;
   title.id = 'modal-title';
   title.textContent = displayValue(_draft.jobTitle);
   required.className = 'modal-field__required modal-title-required';
@@ -605,6 +662,9 @@ function renderTitle() {
 
       finished = true;
       _draft.jobTitle = commit ? input.value.trim() : previousValue;
+      if (commit) {
+        clearProvenance('jobTitle');
+      }
       renderTitle();
       if (commit) {
         _syncFooter();
@@ -624,11 +684,21 @@ function renderTitle() {
     });
   });
 
-  _titleRow.replaceChildren(title, required);
+  if (provenance) {
+    provenance.classList.add('modal-title-provenance');
+    _titleRow.classList.add('has-modal-provenance');
+    if (_flashFields.has('jobTitle')) {
+      _titleRow.classList.add('modal-provenance-flash');
+    }
+    _titleRow.replaceChildren(title, required, provenance);
+  } else {
+    _titleRow.classList.remove('has-modal-provenance', 'modal-provenance-flash');
+    _titleRow.replaceChildren(title, required);
+  }
 }
 
 function _renderBody() {
-  _body.replaceChildren(
+  const fields = [
     makeInlineText({ label: 'Company', key: 'companyName', required: true }),
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
     makeInlineText({ label: 'Location', key: 'location' }),
@@ -647,7 +717,35 @@ function _renderBody() {
     makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills' }),
     makeInlineText({ label: 'URL', key: 'jobPostingUrl', fullSpan: true }),
     makeInlineText({ label: 'General Notes', key: 'generalNotes', multiline: true, fullSpan: true }),
-  );
+  ];
+
+  if (_mode === 'create' && _fillNotice) {
+    const notice = document.createElement('p');
+
+    notice.className = 'modal-fill-notice';
+    notice.textContent = _fillNotice;
+    notice.setAttribute('role', 'status');
+    fields.unshift(notice);
+  }
+
+  if (_mode === 'create' && (_fillSource === 'ai' || _fillSource === 'basic') && _aiFields.size > 0) {
+    const banner = document.createElement('div');
+    const dismiss = document.createElement('button');
+
+    banner.className = `modal-fill-banner modal-fill-banner--${_fillSource}`;
+    banner.textContent = _fillSource === 'ai'
+      ? 'Filled from the job posting'
+      : 'Filled by the basic parser';
+    dismiss.type = 'button';
+    dismiss.className = 'modal-fill-banner__dismiss';
+    dismiss.setAttribute('aria-label', 'Dismiss fill banner');
+    dismiss.textContent = '\u00d7';
+    dismiss.addEventListener('click', () => banner.remove());
+    banner.append(dismiss);
+    fields.unshift(banner);
+  }
+
+  _body.replaceChildren(...fields);
 }
 
 function copyApplication(application) {
@@ -975,12 +1073,19 @@ export function close() {
   _onApplicationUpdate = null;
   _onApplicationCreate = null;
   _onUnarchiveSuccess = null;
+  _aiFields = new Set();
+  _fillSource = null;
+  _flashFields = new Set();
+  _fillNotice = '';
   Timeline.reset();
 }
 
 export function open(application, {
   mode,
   prefill,
+  aiFields,
+  fillSource,
+  notice,
   onApplicationUpdate,
   onApplicationCreate,
   onArchiveSuccess,
@@ -996,6 +1101,16 @@ export function open(application, {
 
   close();
   _mode = nextMode;
+  _fillSource = nextMode === 'create' && (fillSource === 'ai' || fillSource === 'basic')
+    ? fillSource
+    : null;
+  _aiFields = _fillSource && aiFields instanceof Set
+    ? new Set(aiFields)
+    : new Set();
+  _flashFields = new Set(_aiFields);
+  _fillNotice = nextMode === 'create' && typeof notice === 'string'
+    ? notice.trim()
+    : '';
   _draft = nextMode === 'create'
     ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0, ...(prefill ?? {}) }
     : copyApplication(application);

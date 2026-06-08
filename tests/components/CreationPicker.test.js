@@ -14,8 +14,15 @@ vi.mock('../../src/data/authStore.js', () => ({
   },
 }));
 
-vi.mock('../../src/utils/jobPostParser.js', () => ({
-  parseJobPost: vi.fn(),
+vi.mock('../../src/data/aiSettings.js', () => ({
+  canUseJdParser: vi.fn(),
+  getFeature: vi.fn(),
+  hasKey: vi.fn(),
+  isEnabled: vi.fn(),
+}));
+
+vi.mock('../../src/components/JobPostingImport.js', () => ({
+  JobPostingImport: { create: vi.fn() },
 }));
 
 vi.mock('../../src/components/Modal.js', () => ({
@@ -23,10 +30,9 @@ vi.mock('../../src/components/Modal.js', () => ({
 }));
 
 import { CreationPicker } from '../../src/components/CreationPicker.js';
+import * as aiSettings from '../../src/data/aiSettings.js';
+import { JobPostingImport } from '../../src/components/JobPostingImport.js';
 import { Modal } from '../../src/components/Modal.js';
-import { parseJobPost } from '../../src/utils/jobPostParser.js';
-
-const PARSEABLE_TEXT = 'Acme is hiring a Frontend Engineer to build JavaScript user interfaces for a growing team.';
 
 function setAuthState(state) {
   authStoreMocks.state = state;
@@ -40,29 +46,24 @@ function findCardByTitle(title) {
     .find((card) => card.querySelector('.creation-picker-card__title')?.textContent === title);
 }
 
-function openPasteStep() {
-  CreationPicker.open();
-  findCardByTitle('Smart Parser').click();
-  return {
-    textarea: document.querySelector('.parser-textarea'),
-    processBtn: document.querySelector('.parser-process-btn'),
-    loading: document.querySelector('.parser-loading'),
-  };
-}
-
-async function flushPromises(count = 2) {
-  for (let index = 0; index < count; index += 1) {
-    await Promise.resolve();
-  }
-}
-
 describe('CreationPicker.open() callback contract (issue #41)', () => {
   beforeEach(() => {
     authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
     authStoreMocks.subscribers.clear();
+    aiSettings.isEnabled.mockReturnValue(true);
+    aiSettings.getFeature.mockImplementation((key) => key === 'jd');
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.canUseJdParser.mockImplementation(() => (
+      aiSettings.isEnabled() && aiSettings.getFeature('jd') && aiSettings.hasKey()
+    ));
+    JobPostingImport.create.mockImplementation(() => {
+      const root = document.createElement('section');
+      root.className = 'job-posting-import';
+      root.textContent = 'Job posting import';
+      return root;
+    });
     Modal.open.mockClear();
-    parseJobPost.mockReset();
-    parseJobPost.mockReturnValue({ companyName: 'Acme', jobTitle: 'Frontend Engineer' });
+    JobPostingImport.create.mockClear();
   });
 
   afterEach(() => {
@@ -84,7 +85,7 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
       onSubmit: vi.fn(),
     });
 
-    findCardByTitle('Manual Entry').click();
+    findCardByTitle('Manual entry').click();
 
     expect(Modal.open).toHaveBeenCalledTimes(1);
     expect(Modal.open).toHaveBeenCalledWith(null, {
@@ -97,7 +98,7 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
 
   it('tolerates a missing callbacks argument', () => {
     CreationPicker.open();
-    findCardByTitle('Manual Entry').click();
+    findCardByTitle('Manual entry').click();
 
     expect(Modal.open).toHaveBeenCalledWith(null, {
       mode: 'create',
@@ -107,102 +108,126 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
     });
   });
 
-  it('marks Process busy and locks textarea during parser work', async () => {
-    let resolveParse;
-    parseJobPost.mockReturnValue(new Promise((resolve) => {
-      resolveParse = resolve;
-    }));
-    const { textarea, processBtn, loading } = openPasteStep();
-    textarea.value = PARSEABLE_TEXT;
-    textarea.dispatchEvent(new Event('input'));
-
-    processBtn.click();
-    processBtn.click();
-
-    expect(processBtn.textContent).toBe('Processing...');
-    expect(processBtn.getAttribute('aria-busy')).toBe('true');
-    expect(processBtn.disabled).toBe(true);
-    expect(textarea.disabled).toBe(true);
-    expect(loading.hidden).toBe(false);
-    expect(loading.textContent).toBe('Analyzing job post...');
-    expect(parseJobPost).toHaveBeenCalledTimes(1);
-
-    resolveParse({ companyName: 'Acme', jobTitle: 'Frontend Engineer' });
-    await flushPromises();
-
-    expect(Modal.open).toHaveBeenCalledWith(null, expect.objectContaining({
-      mode: 'create',
-      prefill: expect.objectContaining({ companyName: 'Acme' }),
-    }));
-  });
-
-  it('renders inline parser failure and retries with the current textarea content', async () => {
-    parseJobPost
-      .mockRejectedValueOnce(new Error('parse failed'))
-      .mockResolvedValueOnce({ companyName: 'Globex', jobTitle: 'Backend Engineer' });
-    const { textarea, processBtn, loading } = openPasteStep();
-    textarea.value = PARSEABLE_TEXT;
-    textarea.dispatchEvent(new Event('input'));
-
-    processBtn.click();
-    await flushPromises();
-
-    const retry = loading.querySelector('.inline-error__retry');
-    expect(loading.querySelector('.inline-error__message')?.textContent)
-      .toBe("Couldn't analyze the job post. Try again.");
-    expect(retry).not.toBeNull();
-    expect(textarea.disabled).toBe(false);
-
-    textarea.value = `${PARSEABLE_TEXT} Remote role.`;
-    retry.click();
-
-    expect(parseJobPost).toHaveBeenCalledTimes(2);
-    expect(parseJobPost).toHaveBeenLastCalledWith(`${PARSEABLE_TEXT} Remote role.`);
-    expect(processBtn.getAttribute('aria-busy')).toBe('true');
-    expect(loading.textContent).toBe('Analyzing job post...');
-
-    await flushPromises();
-
-    expect(Modal.open).toHaveBeenCalledWith(null, expect.objectContaining({
-      prefill: expect.objectContaining({ companyName: 'Globex' }),
-    }));
-  });
-
-  it('reopens with a fresh empty picker after closing mid-parse', () => {
-    parseJobPost.mockReturnValue(new Promise(() => {}));
-    const { textarea, processBtn } = openPasteStep();
-    textarea.value = PARSEABLE_TEXT;
-    textarea.dispatchEvent(new Event('input'));
-
-    processBtn.click();
+  it('renders the §13.1 Smart and Manual entry cards when AI JD parsing is available', () => {
     CreationPicker.close();
     CreationPicker.open();
 
-    expect(document.querySelector('.parser-textarea')).toBeNull();
-    expect(findCardByTitle('Smart Parser')).not.toBeNull();
-    expect(findCardByTitle('Manual Entry')).not.toBeNull();
+    const smart = findCardByTitle('Smart entry');
+
+    expect(smart).not.toBeNull();
+    expect(findCardByTitle('Manual entry')).not.toBeNull();
+    expect(smart.textContent).toContain('Fastest');
+    expect(smart.textContent).toContain("Paste a job posting and we'll fill in the details automatically.");
+    expect(smart.textContent).toContain('Paste posting');
   });
 
-  it('hides Smart Parser in demo mode while Manual Entry remains clickable', () => {
+  it('locks Smart entry when AI JD parsing is unavailable while Manual entry remains clickable', () => {
+    aiSettings.canUseJdParser.mockReturnValue(false);
+    aiSettings.hasKey.mockReturnValue(false);
+    const navigate = vi.fn();
+
+    CreationPicker.open({ navigate });
+
+    const smart = findCardByTitle('Smart entry');
+
+    expect(smart).not.toBeNull();
+    expect(smart.classList).toContain('creation-picker-card--locked');
+    expect(smart.getAttribute('aria-disabled')).toBe('true');
+    expect(smart.hasAttribute('role')).toBe(false);
+    expect(smart.hasAttribute('tabindex')).toBe(false);
+    expect(smart.querySelector('.creation-picker-card__cta').tagName).toBe('BUTTON');
+    expect(smart.textContent).toContain('Enable AI in Settings ->');
+    expect(smart.textContent).not.toContain('Fastest');
+
+    smart.click();
+
+    expect(JobPostingImport.create).not.toHaveBeenCalled();
+    expect(document.querySelector('.job-posting-import')).toBeNull();
+
+    findCardByTitle('Manual entry').click();
+
+    expect(Modal.open).toHaveBeenCalledWith(null, expect.objectContaining({ mode: 'create' }));
+
+    CreationPicker.open({ navigate });
+    findCardByTitle('Smart entry').querySelector('.creation-picker-card__cta').click();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+  });
+
+  it('routes unlocked Smart entry to the JD import flow', () => {
+    const navigate = vi.fn();
+
+    CreationPicker.open({ navigate });
+
+    findCardByTitle('Smart entry').click();
+
+    expect(JobPostingImport.create).toHaveBeenCalledWith(expect.objectContaining({
+      navigate,
+      onBack: expect.any(Function),
+      onSuccess: expect.any(Function),
+    }));
+    expect(document.querySelector('.job-posting-import')).not.toBeNull();
+    expect(Modal.open).not.toHaveBeenCalled();
+  });
+
+  it('opens Create modal with provenance params when the JD flow succeeds', () => {
+    const onApplicationCreate = vi.fn();
+    const draft = { companyName: 'Acme', jobTitle: 'Frontend Engineer' };
+    const aiFieldSet = new Set(['companyName', 'jobTitle']);
+
+    CreationPicker.open({ onApplicationCreate });
+    findCardByTitle('Smart entry').click();
+
+    JobPostingImport.create.mock.calls[0][0].onSuccess({
+      draft,
+      aiFieldSet,
+      fillSource: 'ai',
+      notice: 'The posting was long, so some content may not be parsed.',
+    });
+
+    expect(Modal.open).toHaveBeenCalledWith(null, {
+      mode: 'create',
+      prefill: draft,
+      aiFields: aiFieldSet,
+      fillSource: 'ai',
+      notice: 'The posting was long, so some content may not be parsed.',
+      onApplicationCreate,
+      onApplicationUpdate: undefined,
+      onArchiveSuccess: undefined,
+    });
+    expect(document.querySelector('.creation-picker-backdrop')).toBeNull();
+  });
+
+  it('lets the JD import Back action return to the gate', () => {
+    CreationPicker.open();
+    findCardByTitle('Smart entry').click();
+
+    JobPostingImport.create.mock.calls[0][0].onBack();
+
+    expect(findCardByTitle('Smart entry')).not.toBeNull();
+    expect(findCardByTitle('Manual entry')).not.toBeNull();
+  });
+
+  it('hides Smart entry in demo mode while Manual entry remains clickable', () => {
     authStoreMocks.state = { status: 'demo', user: null, accessToken: null };
     CreationPicker.open();
 
-    expect(findCardByTitle('Smart Parser')).toBeUndefined();
-    expect(document.querySelector('.parser-process-btn')).toBeNull();
+    expect(findCardByTitle('Smart entry')).toBeUndefined();
+    expect(document.querySelector('.job-posting-import')).toBeNull();
 
-    findCardByTitle('Manual Entry').click();
+    findCardByTitle('Manual entry').click();
 
-    expect(parseJobPost).not.toHaveBeenCalled();
+    expect(JobPostingImport.create).not.toHaveBeenCalled();
     expect(Modal.open).toHaveBeenCalledWith(null, expect.objectContaining({ mode: 'create' }));
   });
 
   it('updates parser gating when auth state changes while open', () => {
     CreationPicker.open();
-    expect(findCardByTitle('Smart Parser')).not.toBeNull();
+    expect(findCardByTitle('Smart entry')).not.toBeNull();
 
     setAuthState({ status: 'demo', user: null, accessToken: null });
 
-    expect(findCardByTitle('Smart Parser')).toBeUndefined();
-    expect(findCardByTitle('Manual Entry')).not.toBeNull();
+    expect(findCardByTitle('Smart entry')).toBeUndefined();
+    expect(findCardByTitle('Manual entry')).not.toBeNull();
   });
 });
