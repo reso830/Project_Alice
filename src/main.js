@@ -290,7 +290,7 @@ function navigate(page, options = {}) {
     _currentUnmount = ProfileEdit.unmount;
     activePage = 'profile';
   } else {
-    Tracker.mount(appRoot);
+    Tracker.mount(appRoot, { navigate });
     _currentUnmount = Tracker.unmount;
   }
 

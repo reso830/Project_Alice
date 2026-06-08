@@ -421,6 +421,20 @@ server surface; AI availability is controlled entirely by browser-local
 settings. See
 [`specs/034-profile-page-refresh/quickstart.md`](../specs/034-profile-page-refresh/quickstart.md).
 
+### AI job-description parsing (BYOK) — no new env vars
+
+Feature 035-llm-jd-parser (v1.5.0) adds an AI-assisted job-description parser to
+the Add-application gate's Smart entry. Like the resume parser it is
+**bring-your-own-key and browser-side**: the OpenRouter key is stored only in the
+user's browser and job text is sent browser-direct to OpenRouter, never
+persisted. There is **no new server surface at all** — job-description parsing is
+fully client-side (paste only; no file upload, so no `/api` route is involved).
+
+Feature 035 introduces **no new server environment variables**, **no database
+schema migration**, and **no runtime-mode change**. No deployment action is
+required for feature 035. See
+[`specs/035-llm-jd-parser/quickstart.md`](../specs/035-llm-jd-parser/quickstart.md).
+
 ---
 
 ## Environment Variable Checklist

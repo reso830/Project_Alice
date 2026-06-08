@@ -9,22 +9,24 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.4.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.4.0');
-    expect(APP_VERSION).toBe('v1.4.0');
+  it('keeps the 1.5.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.5.0');
+    expect(APP_VERSION).toBe('v1.5.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.4.0');
-    expect(lock.packages['']?.version).toBe('1.4.0');
+    expect(lock.version).toBe('1.5.0');
+    expect(lock.packages['']?.version).toBe('1.5.0');
 
-    expect(read('README.md')).toContain('Current version: **1.4.0**');
+    expect(read('README.md')).toContain('Current version: **1.5.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.5.0] — 2026-06-08');
     expect(read('CHANGELOG.md')).toContain('## [1.4.0] — 2026-06-06');
     expect(read('CHANGELOG.md')).toContain('## [1.3.0] — 2026-06-03');
     expect(read('CHANGELOG.md')).toContain('## [1.2.0] — 2026-06-02');
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.4.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.5.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0');
     expect(read('CHANGELOG.md')).toContain('[1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0');
     expect(read('CHANGELOG.md')).toContain('[1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0');
     expect(read('CHANGELOG.md')).toContain('[1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0');
@@ -57,6 +59,30 @@ describe('release metadata', () => {
       'docs/features/034-profile-page-refresh.md',
       'docs/design/profile_page.md',
       'docs/design/edit_profile_page.md',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the LLM JD Parser release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const deployment = read('docs/deployment.md');
+    const repoMap = read('docs/REPO_MAP.md');
+
+    expect(readme).toContain('AI job-description parsing (BYOK)');
+    expect(readme).toContain('specs/035-llm-jd-parser/quickstart.md');
+    expect(deployment).toContain('035-llm-jd-parser');
+    expect(deployment).toContain('required for feature 035');
+    expect(repoMap).toContain('src/components/JobPostingImport.js');
+    expect(repoMap).toContain('parseJobWithLlm');
+    expect(repoMap).toContain('canUseJdParser');
+    expect(read('docs/feature_roadmap.md')).toContain('[x]  035-llm-jd-parser  ·  shipped v1.5.0');
+
+    for (const path of [
+      'specs/035-llm-jd-parser',
+      'docs/features/035-llm-jd-parser.md',
+      'src/components/JobPostingImport.js',
+      'tests/components/JobPostingImport.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

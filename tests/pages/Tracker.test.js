@@ -425,6 +425,7 @@ describe('Tracker quick filter toolbar integration', () => {
 
   it('opens create mode from New application and prepends created records', async () => {
     const container = document.createElement('main');
+    const navigate = vi.fn();
     const existing = createApplication(1);
     const created = createApplication(42, {
       jobTitle: 'New Role',
@@ -436,10 +437,11 @@ describe('Tracker quick filter toolbar integration', () => {
     window.scrollTo = vi.fn();
     api.getAll.mockResolvedValue([existing]);
 
-    await Tracker.mount(container);
+    await Tracker.mount(container, { navigate });
     toolbarRenderOptions[0].onAddApplication();
 
     expect(openSpy).toHaveBeenCalledWith(expect.objectContaining({
+      navigate,
       onApplicationCreate: expect.any(Function),
     }));
 
@@ -449,6 +451,23 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(toolbarUpdateOptions.at(-1).salaryBounds.max).toBe(250000);
     expect(container.querySelectorAll('.card-list .card')).toHaveLength(2);
     expect(container.textContent).toContain('New Role');
+  });
+
+  it('opens the creation picker from the mobile FAB', async () => {
+    const container = document.createElement('main');
+    const navigate = vi.fn();
+    const openSpy = vi.spyOn(CreationPicker, 'open').mockImplementation(() => {});
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([]);
+
+    await Tracker.mount(container, { navigate });
+    container.querySelector('.fab').click();
+
+    expect(openSpy).toHaveBeenCalledWith(expect.objectContaining({
+      navigate,
+      onApplicationCreate: expect.any(Function),
+    }));
   });
 
   it('renders the first created record after mounting with an empty list', async () => {

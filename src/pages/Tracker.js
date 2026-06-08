@@ -37,6 +37,7 @@ let _fabEl = null;
 let _currentView = 'active';
 let _viewCounts = { activeCount: 0, archivedCount: 0 };
 let _viewBusy = false;
+let _navigate = () => {};
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
 const APPLICATIONS_LOAD_ERROR_MESSAGE = "Couldn't load your applications. Check your connection or try again.";
@@ -439,11 +440,11 @@ function applicationMutationCallbacks() {
 }
 
 function onAddApplication() {
-  CreationPicker.open(applicationMutationCallbacks());
+  CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate });
 }
 
 function onFabAddApplication() {
-  Modal.open(null, { mode: 'create', ...applicationMutationCallbacks() });
+  onAddApplication();
 }
 
 
@@ -635,7 +636,7 @@ export function refreshCard(id) {
   currentCard.replaceWith(Card.render(application, createCallbacks()));
 }
 
-export async function mount(container) {
+export async function mount(container, { navigate } = {}) {
   _container = container;
   _container.replaceChildren();
   _cardList = null;
@@ -652,6 +653,7 @@ export async function mount(container) {
     : 'active';
   _viewCounts = { activeCount: 0, archivedCount: 0 };
   _viewBusy = false;
+  _navigate = typeof navigate === 'function' ? navigate : () => {};
 
   const toolbar = QuickFiltersToolbar.render({
     apps: _applications,
@@ -718,6 +720,7 @@ export function unmount() {
   _currentView = 'active';
   _viewCounts = { activeCount: 0, archivedCount: 0 };
   _viewBusy = false;
+  _navigate = () => {};
 }
 
 export const Tracker = { mount, unmount };

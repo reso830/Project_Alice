@@ -1,11 +1,12 @@
 // CreationPicker — selection overlay for "New Application".
-// Manages two views: selection screen (Smart Parser vs Manual Entry) and paste step.
+// Manages the Add-application gate and routes Smart entry to the JD import flow.
 // Module pattern mirrors Modal.js (module-level state, no class).
 
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
-import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
-import { parseJobPost } from '../utils/jobPostParser.js';
+import aiSparkle from '../assets/AI_sparkle.png';
+import { canUseJdParser } from '../data/aiSettings.js';
 import { createSvgIcon } from '../utils/icons.js';
+import { JobPostingImport } from './JobPostingImport.js';
 import { Modal } from './Modal.js';
 
 let _backdrop = null;
@@ -13,9 +14,10 @@ let _panel = null;
 let _keydownHandler = null;
 let _callbacks = null;
 let _unsubscribeAuth = null;
+let _activeImport = null;
+let _navigate = () => {};
 
 const PARSER_VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
-
 function getFocusableElements(root) {
   return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
     .filter((el) => !el.disabled && el.offsetParent !== null);
@@ -30,156 +32,90 @@ function _isParserVisible() {
   return PARSER_VISIBLE_STATUSES.has(getAuthState()?.status);
 }
 
-function _hasParsedFields(parsed) {
-  return Boolean(
-    parsed.companyName
-    || parsed.jobTitle
-    || parsed.location
-    || parsed.responsibilities
-    || parsed.recruiter
-    || parsed.jobPostingUrl
-    || (parsed.salary !== null && parsed.salary !== undefined)
-    || parsed.workSetup
-    || parsed.shift
-    || (Array.isArray(parsed.skills) && parsed.skills.length > 0)
-    || (Array.isArray(parsed.preferredSkills) && parsed.preferredSkills.length > 0),
-  );
+function createAiSparkleIcon() {
+  const icon = document.createElement('img');
+
+  icon.src = aiSparkle;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+
+  return icon;
 }
 
-function _showErrorState(savedText, callbacks) {
-  const content = _panel.querySelector('.creation-picker-content');
-
-  const errorView = document.createElement('div');
-  errorView.className = 'parser-error';
-
-  const message = document.createElement('p');
-  message.className = 'parser-error__message';
-  message.textContent = 'Unable to extract application details. Please review the pasted content or enter details manually.';
-
-  const actions = document.createElement('div');
-  actions.className = 'parser-error__actions';
-
-  const retryBtn = document.createElement('button');
-  retryBtn.type = 'button';
-  retryBtn.textContent = 'Retry';
-  retryBtn.addEventListener('click', () => _showPasteStep(savedText));
-
-  const manualBtn = document.createElement('button');
-  manualBtn.type = 'button';
-  manualBtn.textContent = 'Enter manually';
-  manualBtn.addEventListener('click', () => {
-    close();
-    Modal.open(null, { mode: 'create', ..._modalCallbacks(callbacks) });
-  });
-
-  actions.append(retryBtn, manualBtn);
-  errorView.append(message, actions);
-  content.replaceChildren(errorView);
-  getFocusableElements(errorView)[0]?.focus();
-}
-
-async function _runParser(textarea, loading, retry) {
-  loading.className = 'parser-loading';
-  loading.replaceChildren();
-  loading.textContent = 'Analyzing job post...';
-  loading.hidden = false;
-
-  try {
-    const parsed = await Promise.resolve(parseJobPost(textarea.value));
-
-    if (!_hasParsedFields(parsed)) {
-      loading.hidden = true;
-      _showErrorState(textarea.value, _callbacks);
-      return null;
-    }
-
-    const callbacks = _callbacks;
-    close();
-    Modal.open(null, { mode: 'create', prefill: parsed, ..._modalCallbacks(callbacks) });
-    return parsed;
-  } catch {
-    loading.hidden = false;
-    renderInlineError({
-      target: loading,
-      message: "Couldn't analyze the job post. Try again.",
-      onRetry: retry,
-    });
-    return null;
-  }
-}
-
-function _showPasteStep(initialValue = '') {
-  const content = _panel.querySelector('.creation-picker-content');
-
-  const step = document.createElement('div');
-  step.className = 'parser-step';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'parser-textarea';
-  textarea.setAttribute('aria-label', 'Paste job posting text');
-  textarea.setAttribute('placeholder', 'Paste the job posting text here…');
-  textarea.value = initialValue;
-
-  const loading = document.createElement('div');
-  loading.className = 'parser-loading';
-  loading.textContent = 'Analyzing job post…';
-  loading.hidden = true;
-
-  const processBtn = document.createElement('button');
-  processBtn.type = 'button';
-  processBtn.className = 'parser-process-btn';
-  processBtn.textContent = 'Process';
-  processBtn.disabled = initialValue.trim().length < 20;
-
-  textarea.addEventListener('input', () => {
-    processBtn.disabled = textarea.value.trim().length < 20;
-  });
-
-  textarea.addEventListener('paste', () => {
-    setTimeout(() => {
-      processBtn.disabled = textarea.value.trim().length < 20;
-    }, 0);
-  });
-
-  let parserBinding;
-  parserBinding = bindBusyButton({
-    button: processBtn,
-    action: () => _runParser(textarea, loading, () => parserBinding.run().catch(() => {})),
-    busyLabel: 'Processing...',
-    peers: [textarea],
-    silent: true,
-  });
-
-  processBtn.addEventListener('click', () => {
-    parserBinding.run().catch(() => {});
-  });
-
-  step.append(textarea, loading, processBtn);
-  content.replaceChildren(step);
-  textarea.focus();
-}
-
-function _makeCard({ icon, title, desc, extraClass, onClick }) {
+function _makeCard({
+  icon,
+  title,
+  desc,
+  extraClass,
+  onClick,
+  badge = '',
+  cta = '',
+  ctaOnClick = null,
+  bullets = [],
+  locked = false,
+}) {
   const card = document.createElement('div');
   const iconEl = document.createElement('div');
+  const titleRow = document.createElement('div');
   const titleEl = document.createElement('p');
   const descEl = document.createElement('p');
 
-  card.className = ['creation-picker-card', extraClass].filter(Boolean).join(' ');
-  card.setAttribute('role', 'button');
-  card.setAttribute('tabindex', '0');
+  card.className = [
+    'creation-picker-card',
+    extraClass,
+    locked ? 'creation-picker-card--locked' : '',
+  ].filter(Boolean).join(' ');
+  if (locked) {
+    card.setAttribute('aria-disabled', 'true');
+  }
   iconEl.className = 'creation-picker-card__icon';
+  titleRow.className = 'creation-picker-card__title-row';
   titleEl.className = 'creation-picker-card__title';
   descEl.className = 'creation-picker-card__desc';
   iconEl.append(icon);
   titleEl.textContent = title;
   descEl.textContent = desc;
-  card.append(iconEl, titleEl, descEl);
+  titleRow.append(titleEl);
 
-  card.addEventListener('click', onClick);
-  card.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
+  if (badge) {
+    const badgeEl = document.createElement('span');
+    badgeEl.className = 'creation-picker-card__badge';
+    badgeEl.textContent = badge;
+    titleRow.append(badgeEl);
+  }
+
+  card.append(iconEl, titleRow, descEl);
+
+  if (bullets.length > 0) {
+    const list = document.createElement('ul');
+
+    list.className = 'creation-picker-card__bullets';
+    for (const bullet of bullets) {
+      const item = document.createElement('li');
+      item.textContent = bullet;
+      list.append(item);
+    }
+    card.append(list);
+  }
+
+  if (cta) {
+    const ctaEl = document.createElement('button');
+    ctaEl.className = 'creation-picker-card__cta';
+    ctaEl.type = 'button';
+    ctaEl.textContent = cta;
+    ctaEl.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (ctaOnClick) {
+        ctaOnClick();
+        return;
+      }
+      onClick();
+    });
+    card.append(ctaEl);
+  }
+
+  card.addEventListener('click', () => {
+    if (!locked) {
       onClick();
     }
   });
@@ -187,35 +123,93 @@ function _makeCard({ icon, title, desc, extraClass, onClick }) {
   return card;
 }
 
+function _openManualCreate() {
+  const callbacks = _callbacks;
+
+  close();
+  Modal.open(null, { mode: 'create', ..._modalCallbacks(callbacks) });
+}
+
+function _showSmartInput() {
+  const content = _panel.querySelector('.creation-picker-content');
+  const header = _panel.querySelector('.creation-picker-header');
+  const callbacks = _callbacks;
+  const importRoot = JobPostingImport.create({
+    navigate: _navigate,
+    onBack: () => _showSelectionScreen(),
+    onDismiss: close,
+    onManual: _openManualCreate,
+    onSuccess: ({ draft, aiFieldSet, fillSource, notice }) => {
+      close();
+      Modal.open(null, {
+        mode: 'create',
+        prefill: draft,
+        aiFields: aiFieldSet,
+        fillSource,
+        notice,
+        ..._modalCallbacks(callbacks),
+      });
+    },
+  });
+
+  _activeImport = importRoot;
+  _panel.classList.add('creation-picker-panel--smart-input');
+  _panel.setAttribute('aria-labelledby', importRoot.querySelector('.job-posting-import__title')?.id || 'creation-picker-title');
+  if (header) {
+    header.hidden = true;
+  }
+  content.replaceChildren(importRoot);
+  getFocusableElements(importRoot)[0]?.focus();
+}
+
 function _showSelectionScreen() {
   const content = _panel.querySelector('.creation-picker-content');
+  const header = _panel.querySelector('.creation-picker-header');
+  const aiReady = canUseJdParser();
 
+  if (_activeImport && typeof _activeImport.destroy === 'function') {
+    _activeImport.destroy();
+  }
+  _activeImport = null;
+  _panel.classList.remove('creation-picker-panel--smart-input');
+  _panel.setAttribute('aria-labelledby', 'creation-picker-title');
+  if (header) {
+    header.hidden = false;
+  }
   const cards = document.createElement('div');
   cards.className = 'creation-picker-cards';
 
   const parserCard = _makeCard({
-    icon: createSvgIcon('M12 3l2 6.268L21 12l-7 2.732L12 21l-2-6.268L3 12l7-2.732z'),
-    title: 'Smart Parser',
-    desc: 'Paste the job post and the app will parse it for you',
+    icon: createAiSparkleIcon(),
+    title: 'Smart entry',
+    desc: "Paste a job posting and we'll fill in the details automatically.",
     extraClass: 'creation-picker-card--parser',
-    onClick: () => _showPasteStep(),
+    badge: aiReady ? 'Fastest' : '',
+    cta: aiReady ? 'Choose →' : 'Enable AI in Settings →',
+    ctaOnClick: aiReady ? null : () => {
+      const navigate = _navigate;
+      close();
+      navigate('profile', { focusSettings: true });
+    },
+    bullets: [
+      'Pulls title, company, skills & more',
+      'Review before saving',
+    ],
+    locked: !aiReady,
+    onClick: () => _showSmartInput(),
   });
-
-  const parserNote = document.createElement('p');
-  parserNote.className = 'creation-picker-card__note';
-  parserNote.textContent = 'Experimental — results may vary.';
-  parserCard.append(parserNote);
 
   const manualCard = _makeCard({
     icon: createSvgIcon('M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'),
-    title: 'Manual Entry',
-    desc: 'Enter application details manually instead',
+    title: 'Manual entry',
+    desc: 'Type the details into the form, field by field.',
+    cta: 'Choose →',
+    bullets: [
+      'Full control over every field',
+      'No posting needed',
+    ],
     extraClass: '',
-    onClick: () => {
-      const callbacks = _callbacks;
-      close();
-      Modal.open(null, { mode: 'create', ..._modalCallbacks(callbacks) });
-    },
+    onClick: _openManualCreate,
   });
 
   if (_isParserVisible()) {
@@ -226,6 +220,10 @@ function _showSelectionScreen() {
 }
 
 export function close() {
+  if (_activeImport && typeof _activeImport.destroy === 'function') {
+    _activeImport.destroy();
+  }
+  _activeImport = null;
   if (_backdrop) {
     _backdrop.remove();
     _backdrop = null;
@@ -240,6 +238,7 @@ export function close() {
   }
   _panel = null;
   _callbacks = null;
+  _navigate = () => {};
 }
 
 /**
@@ -249,6 +248,7 @@ export function open(callbacks) {
   close();
 
   _callbacks = callbacks ?? {};
+  _navigate = typeof callbacks?.navigate === 'function' ? callbacks.navigate : () => {};
 
   const backdrop = document.createElement('div');
   backdrop.className = 'creation-picker-backdrop';
@@ -263,9 +263,15 @@ export function open(callbacks) {
   header.className = 'creation-picker-header';
 
   const titleEl = document.createElement('h2');
+  const intro = document.createElement('div');
+  const subtitleEl = document.createElement('p');
   titleEl.id = 'creation-picker-title';
   titleEl.className = 'creation-picker-title';
-  titleEl.textContent = 'New Application';
+  titleEl.textContent = "Let's add this application";
+  intro.className = 'creation-picker-intro';
+  subtitleEl.className = 'creation-picker-subtitle';
+  subtitleEl.textContent = 'Start from a job posting, or fill it in yourself. You can edit everything afterward.';
+  intro.append(titleEl, subtitleEl);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -277,7 +283,7 @@ export function open(callbacks) {
   const content = document.createElement('div');
   content.className = 'creation-picker-content';
 
-  header.append(titleEl, closeBtn);
+  header.append(intro, closeBtn);
   panel.append(header, content);
   backdrop.append(panel);
   document.body.append(backdrop);
