@@ -5,6 +5,7 @@ import {
   WORK_SETUP_VALUES,
   normalizeApplication,
 } from '../models/application.js';
+import aiSparkle from '../assets/AI_sparkle.png';
 import * as api from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
@@ -75,10 +76,29 @@ function hasProvenance(field) {
 function createProvenanceTag() {
   const tag = document.createElement('span');
   const isAi = _fillSource === 'ai';
+  const label = document.createElement('span');
 
   tag.className = `modal-field-provenance modal-field-provenance--${_fillSource}`;
-  tag.textContent = isAi ? '\u2726 AI' : '\u2699 Auto';
   tag.setAttribute('aria-label', isAi ? 'AI-filled field' : 'Auto-filled field');
+  label.className = 'modal-field-provenance__label';
+  label.textContent = isAi ? 'AI' : 'Auto';
+
+  if (isAi) {
+    const icon = document.createElement('img');
+
+    icon.className = 'modal-field-provenance__icon';
+    icon.src = aiSparkle;
+    icon.alt = '';
+    icon.setAttribute('aria-hidden', 'true');
+    tag.append(icon, label);
+  } else {
+    const icon = document.createElement('span');
+
+    icon.className = 'modal-field-provenance__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '\u2699';
+    tag.append(icon, label);
+  }
 
   return tag;
 }
@@ -730,18 +750,43 @@ function _renderBody() {
 
   if (_mode === 'create' && (_fillSource === 'ai' || _fillSource === 'basic') && _aiFields.size > 0) {
     const banner = document.createElement('div');
+    const content = document.createElement('div');
+    const iconFrame = document.createElement('span');
+    const copy = document.createElement('span');
+    const title = document.createElement('span');
+    const detail = document.createElement('span');
     const dismiss = document.createElement('button');
+    const isAi = _fillSource === 'ai';
 
     banner.className = `modal-fill-banner modal-fill-banner--${_fillSource}`;
-    banner.textContent = _fillSource === 'ai'
-      ? 'Filled from the job posting'
-      : 'Filled by the basic parser';
+    content.className = 'modal-fill-banner__content';
+    iconFrame.className = 'modal-fill-banner__icon';
+    copy.className = 'modal-fill-banner__copy';
+    title.className = 'modal-fill-banner__title';
+    detail.className = 'modal-fill-banner__detail';
+    title.textContent = isAi ? 'Filled from the job posting' : 'Filled by the basic parser';
+    detail.textContent = "Review the details before saving — nothing's saved until you hit Create.";
+
+    if (isAi) {
+      const icon = document.createElement('img');
+
+      icon.src = aiSparkle;
+      icon.alt = '';
+      icon.setAttribute('aria-hidden', 'true');
+      iconFrame.append(icon);
+    } else {
+      iconFrame.textContent = '\u2699';
+      iconFrame.setAttribute('aria-hidden', 'true');
+    }
+
     dismiss.type = 'button';
     dismiss.className = 'modal-fill-banner__dismiss';
     dismiss.setAttribute('aria-label', 'Dismiss fill banner');
     dismiss.textContent = '\u00d7';
     dismiss.addEventListener('click', () => banner.remove());
-    banner.append(dismiss);
+    copy.append(title, detail);
+    content.append(iconFrame, copy);
+    banner.append(content, dismiss);
     fields.unshift(banner);
   }
 

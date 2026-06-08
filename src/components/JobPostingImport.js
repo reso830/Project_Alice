@@ -85,12 +85,14 @@ export const JobPostingImport = {
     onSuccess = () => {},
     onDismiss = () => {},
     onBack = onDismiss,
+    onManual = onDismiss,
     navigate = () => {},
   } = {}) {
     const root = createElement('section', 'job-posting-import job-posting-import--idle');
     const textarea = document.createElement('textarea');
     const textareaId = `job-posting-import-paste-${textareaInputId += 1}`;
-    const count = createElement('p', 'job-posting-import__count', '0 characters');
+    const titleId = `job-posting-import-title-${textareaInputId}`;
+    const count = createElement('p', 'job-posting-import__count', '0 chars');
     const error = createElement('p', 'job-posting-import__error');
     let parseButton = null;
     let pendingBasicText = '';
@@ -99,7 +101,12 @@ export const JobPostingImport = {
     textarea.id = textareaId;
     textarea.className = 'job-posting-import__textarea';
     textarea.rows = 9;
-    textarea.placeholder = 'Paste the full job posting here...';
+    textarea.placeholder = [
+      'Paste the full job description here...',
+      '',
+      'e.g. Senior Frontend Engineer at Northwind Labs — Makati City (Hybrid).',
+      "You'll build and maintain our customer-facing web platform...",
+    ].join('\n');
     error.hidden = true;
 
     function getPastedText() {
@@ -112,7 +119,7 @@ export const JobPostingImport = {
 
     function updateCount() {
       const length = textarea.value.length;
-      count.textContent = `${length} ${length === 1 ? 'character' : 'characters'}`;
+      count.textContent = `${length} chars`;
     }
 
     function updateParseButton() {
@@ -132,15 +139,45 @@ export const JobPostingImport = {
       root.replaceChildren();
     }
 
+    function createHeader() {
+      const header = createElement('div', 'job-posting-import__header');
+      const intro = createElement('div', 'job-posting-import__intro');
+      const heading = createElement('h2', 'job-posting-import__title', 'Paste the job posting');
+      const subtitle = createElement(
+        'p',
+        'job-posting-import__subtitle',
+        "Copy the full text of the listing — we'll pull out the title, company, skills, and the rest.",
+      );
+      const closeButton = createButton('×', 'job-posting-import__close', onDismiss);
+      heading.id = titleId;
+      closeButton.setAttribute('aria-label', 'Close');
+      intro.append(heading, subtitle);
+      header.append(intro, closeButton);
+
+      return header;
+    }
+
+    function getPostingContext() {
+      const text = pendingBasicText || getPastedText();
+      const length = text.length;
+
+      return `Pasted job posting • ${length} ${length === 1 ? 'character' : 'characters'}`;
+    }
+
+    function goToSettings() {
+      onDismiss();
+      navigate('profile', { focusSettings: true });
+    }
+
     function renderIdle() {
       renderShell('job-posting-import--idle');
       isProcessing = false;
 
-      const heading = createElement('h2', 'job-posting-import__title', 'Paste the job posting.');
+      const footer = createElement('div', 'job-posting-import__footer');
       const helper = createElement(
         'p',
         'job-posting-import__helper',
-        "Auto-parsing isn't perfect - you can review and edit everything before saving.",
+        "Auto parsing isn't perfect — you can review & edit everything before saving.",
       );
       const field = createElement('div', 'job-posting-import__field');
       const label = createElement('label', 'job-posting-import__label', 'Paste job posting');
@@ -155,7 +192,8 @@ export const JobPostingImport = {
       updateParseButton();
       field.append(label, textarea, count);
       actions.append(back, parseButton);
-      root.append(heading, field, helper, actions, error);
+      footer.append(helper, actions);
+      root.append(createHeader(), field, error, footer);
       textarea.focus();
     }
 
@@ -171,11 +209,9 @@ export const JobPostingImport = {
         'Enable AI features, add your OpenRouter key, and turn on Job-description parsing to use Smart entry.',
       );
       const actions = createElement('div', 'job-posting-import__actions');
-      const settings = createButton('Enable AI in Settings ->', 'profile-btn profile-btn--outline job-posting-import__settings-link', () => {
-        navigate('profile', { focusSettings: true });
-      });
+      const settings = createButton('Enable AI in Settings →', 'profile-btn profile-btn--outline job-posting-import__settings-link', goToSettings);
       const manual = createButton('Enter manually instead', 'profile-btn profile-btn--outline', () => {
-        onDismiss();
+        onManual();
       });
 
       notice.setAttribute('role', 'status');
@@ -234,13 +270,13 @@ export const JobPostingImport = {
           ? 'Try pasting a text-based posting with title, company, and responsibilities.'
           : 'You can switch to the basic parser and review the results before saving.',
       );
-      const context = createElement('span', 'job-posting-import-failure__file', 'Pasted job posting');
+      const context = createElement('span', 'job-posting-import-failure__file', getPostingContext());
       const actions = createElement('div', 'job-posting-import-failure__actions');
-      const tryAgain = createButton('Try again', 'profile-btn profile-btn--outline', () => {
+      const tryAgain = createButton('Try again', 'profile-btn profile-btn--primary', () => {
         renderIdle();
       });
       const manual = createButton('Enter manually instead', 'profile-btn profile-btn--outline', () => {
-        onDismiss();
+        onManual();
       });
 
       isProcessing = false;
@@ -255,9 +291,7 @@ export const JobPostingImport = {
           processBasic().catch(() => {});
         }));
         if (reason.fix === 'settings') {
-          actions.append(createButton('Update key in Settings ->', 'profile-btn profile-btn--outline', () => {
-            navigate('profile', { focusSettings: true });
-          }));
+          actions.append(createButton('Update key in Settings →', 'profile-btn profile-btn--outline', goToSettings));
         } else {
           actions.append(createButton('Try AI again', 'profile-btn profile-btn--outline', () => {
             processAi({ fromRetry: true }).catch(() => {});
@@ -267,7 +301,7 @@ export const JobPostingImport = {
       }
 
       dialog.append(actions);
-      root.replaceChildren(dialog);
+      root.replaceChildren(createHeader(), dialog);
       actions.querySelector('button')?.focus();
     }
 

@@ -1797,14 +1797,19 @@ describe('Modal', () => {
       });
 
       expect(document.querySelector('.modal-fill-banner')?.textContent).toContain('Filled from the job posting');
+      expect(document.querySelector('.modal-fill-banner')?.textContent)
+        .toContain("Review the details before saving — nothing's saved until you hit Create.");
+      expect(document.querySelector('.modal-fill-banner__icon img')).not.toBeNull();
       expect(document.querySelector('#modal-title').textContent).toBe('Frontend Engineer');
       expect(document.querySelector('.modal-title-input')).toBeNull();
-      expect(document.querySelector('.modal-title-provenance')?.textContent).toBe('✦ AI');
+      expect(document.querySelector('.modal-title-provenance')?.textContent).toBe('AI');
+      expect(document.querySelector('.modal-title-provenance img')).not.toBeNull();
       expect(document.querySelector('.modal-header__title-row').classList.contains('modal-provenance-flash')).toBe(true);
-      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toBe('AI');
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance img')).not.toBeNull();
       expect(getFieldByLabel('Company').classList.contains('modal-provenance-flash')).toBe(true);
-      expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
-      expect(getFieldByLabel('Work Setup').querySelector('.modal-field-provenance')?.textContent).toBe('✦ AI');
+      expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')?.textContent).toBe('AI');
+      expect(getFieldByLabel('Work Setup').querySelector('.modal-field-provenance')?.textContent).toBe('AI');
       expect(getFieldByLabel('Recruiter').querySelector('.modal-field-provenance')).toBeNull();
     });
 
@@ -1819,7 +1824,7 @@ describe('Modal', () => {
       });
 
       expect(document.querySelector('.modal-fill-banner')?.textContent).toContain('Filled by the basic parser');
-      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toBe('⚙ Auto');
+      expect(getFieldByLabel('Company').querySelector('.modal-field-provenance')?.textContent).toContain('Auto');
     });
 
     it('renders the smart-fill truncation notice when provided', () => {

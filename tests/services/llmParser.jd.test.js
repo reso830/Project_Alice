@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { validateApplication } from '../../src/models/application.js';
 
 let llmParser;
 
@@ -124,6 +125,42 @@ describe('parseJobWithLlm', () => {
       compat: 1,
     });
     expect(result.draft).not.toHaveProperty('_corrupt');
+  });
+
+  it('produces a complete parsed draft that passes the same application validation used for manual saves', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-08T12:00:00Z'));
+    vi.spyOn(Math, 'random').mockReturnValue(0.73);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
+      content: JSON.stringify({
+        companyName: 'Acme Labs',
+        jobTitle: 'Frontend Engineer',
+        responsibilities: 'Build accessible tracker workflows.',
+        workSetup: 'Hybrid',
+        shift: 'Flexible',
+        jobPostingUrl: 'https://jobs.example.com/acme/frontend',
+        skills: ['JavaScript', 'Accessibility'],
+        preferredSkills: ['Vitest'],
+        status: 'offer',
+        lastStatusUpdate: 'not-from-provider',
+      }),
+    })));
+
+    const { draft } = await llmParser.parseJobWithLlm('Full job posting', 'key');
+    const validated = validateApplication({ id: 1, ...draft });
+
+    expect(validated).toMatchObject({
+      companyName: 'Acme Labs',
+      jobTitle: 'Frontend Engineer',
+      responsibilities: 'Build accessible tracker workflows.',
+      status: 'wishlisted',
+      lastStatusUpdate: '2026-06-08',
+      workSetup: 'Hybrid',
+      shift: 'Flexible',
+      jobPostingUrl: 'https://jobs.example.com/acme/frontend',
+      compat: 73,
+    });
+    expect(validated._corrupt).toBeUndefined();
   });
 
   it('truncates over-length job input and reports truncation', async () => {

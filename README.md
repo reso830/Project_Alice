@@ -19,6 +19,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Profile page** — personalised welcome, application stats with an interactive donut chart (desktop) and stacked bar (mobile), full profile card with collapsible subsections, an Archived Applications entry point, and a unified Settings card for AI and account controls; Skills render as graded 1-5 proficiency meters with an in-place level reveal, scale reference, sort, and collapse-past-10
 - **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; first-time users see a guided Setup and Import flow with Smart entry and Manual entry choices, while existing profiles get an Import Bar. Smart imports support paste/upload, ask-first AI-unavailable dialogs with reason codes, basic-parser fallback by explicit choice, AI-filled / Auto-filled provenance tags, Undo, and reduced-motion-safe highlighting; structured sections and Skills retain inline validation and keyboard-friendly overlays.
 - **AI resume parsing (BYOK)** — optional browser-direct OpenRouter parsing is configured from the Profile page's unified Settings card: save a browser-local key, choose a model slug, and toggle CV/JD/compatibility AI features independently. Saving a key is the consent boundary; deleting it withdraws AI access. Alice's server never receives the key, no environment variables are required, and manual/profile-local paths remain available. See [`specs/034-profile-page-refresh/quickstart.md`](specs/034-profile-page-refresh/quickstart.md). (034-profile-page-refresh)
+- **AI job-description parsing (BYOK)** — from the Add-application gate's Smart entry, paste a job posting and have an LLM (via OpenRouter) pre-fill a new application for review before saving. Gated by the master AI toggle plus the live Job-description parsing switch and a browser-local key; with AI off the Smart card is locked ("Enable AI in Settings →") and Manual entry remains. Recoverable failures offer a basic rule-based parser, an empty result ends in a clear dead-end, and pasted text is preserved across retries. Status is never parsed (stays Wishlisted) and no job text is persisted. See [`specs/035-llm-jd-parser/quickstart.md`](specs/035-llm-jd-parser/quickstart.md). (035-llm-jd-parser)
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
@@ -215,7 +216,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.4.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.5.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

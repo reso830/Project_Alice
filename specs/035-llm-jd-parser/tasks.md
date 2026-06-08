@@ -133,7 +133,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 06 — Styling
 
-### T009 — Gate, scrim, failure dialog, and provenance styles
+### T009 — Gate, scrim, failure dialog, and provenance styles [X]
 - **Target**: feature stylesheet(s) under `src/styles/` (follow the file the existing
   CreationPicker / ResumeImport / Modal styles live in; inspect before adding).
 - **Behavior**: Style the §13 gate cards + locked Smart state, the processing scrim, the
@@ -148,7 +148,7 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 07 — Integration & constitution validation
 
-### T010 — Parsed-data validation & gating integration pass
+### T010 — Parsed-data validation & gating integration pass [X]
 - **Target**: tests across `tests/services/`, `tests/components/`, `tests/pages/`.
 - **Behavior**: Confirm parsed data flows through the same validation as manual entry —
   required company/title/responsibilities/status/lastStatusUpdate, URL validity, enum
@@ -162,13 +162,13 @@ minimal file set. Tests use the existing Vitest setup (`npm run test:run`, `npm 
 
 ## Phase 08 — Release Prep (mandatory)
 
-### T011 — Version bump & lockfile
+### T011 — Version bump & lockfile [X]
 - **Target**: `package.json`, `package-lock.json` (root version), any in-app version display.
 - **Behavior**: Bump `1.4.0` → `1.5.0` (minor — additive feature); sync the
   `package-lock.json` root `version`; update any in-app version readout if present.
 - **Validation**: `node -p "require('./package.json').version"` → `1.5.0`; lockfile matches.
 
-### T012 — CHANGELOG, README, roadmap, docs sanity
+### T012 — CHANGELOG, README, roadmap, docs sanity [X]
 - **Target**: `CHANGELOG.md`, `README.md`, `docs/feature_roadmap.md`, `docs/REPO_MAP.md`,
   `docs/deployment.md`.
 - **Behavior**: Add a `## [1.5.0]` CHANGELOG entry (AI JD parsing, §13 gate, provenance,

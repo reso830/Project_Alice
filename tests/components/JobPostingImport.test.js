@@ -95,13 +95,16 @@ describe('JobPostingImport', () => {
 
     expect(textarea).not.toBeNull();
     expect(root.querySelector('input[type="file"]')).toBeNull();
+    expect(root.querySelector('.job-posting-import__title')?.textContent).toBe('Paste the job posting');
+    expect(root.querySelector('.job-posting-import__subtitle')?.textContent).toContain('Copy the full text');
+    expect(root.querySelector('.job-posting-import__helper')?.textContent).toContain("Auto parsing isn't perfect");
     expect(root.querySelector(`label[for="${textarea.id}"]`)?.textContent).toBe('Paste job posting');
-    expect(root.querySelector('.job-posting-import__count')?.textContent).toContain('0');
+    expect(root.querySelector('.job-posting-import__count')?.textContent).toBe('0 chars');
     expect(parseButton.disabled).toBe(true);
 
     pastePosting(root, 'Too short for parsing');
 
-    expect(root.querySelector('.job-posting-import__count')?.textContent).toContain('21');
+    expect(root.querySelector('.job-posting-import__count')?.textContent).toBe('21 chars');
     expect(parseButton.disabled).toBe(true);
 
     pastePosting(root, LONG_POSTING);
@@ -194,6 +197,10 @@ describe('JobPostingImport', () => {
     await flushPromises();
 
     expect(root.textContent).toContain('Smart parsing is unavailable right now');
+    expect(root.querySelector('.job-posting-import__title')?.textContent).toBe('Paste the job posting');
+    expect(root.querySelector('.job-posting-import__subtitle')?.textContent).toContain('Copy the full text');
+    expect(root.querySelector('.job-posting-import-failure__file')?.textContent)
+      .toBe(`Pasted job posting • ${LONG_POSTING.length} characters`);
     expect(root.textContent).toContain('HTTP 429');
     expect(root.textContent).toContain('Use basic parser');
     expect(root.textContent).toContain('Try AI again');
@@ -218,7 +225,8 @@ describe('JobPostingImport', () => {
   it('routes key and credit failures to Settings instead of retry', async () => {
     parseJobWithLlm.mockRejectedValue({ reason: 'invalid_key' });
     const navigate = vi.fn();
-    const root = createImport({ navigate });
+    const onDismiss = vi.fn();
+    const root = createImport({ navigate, onDismiss });
 
     pastePosting(root);
     root.querySelector('.job-posting-import__parse').click();
@@ -229,10 +237,27 @@ describe('JobPostingImport', () => {
     expect(root.textContent).not.toContain('Try AI again');
 
     [...root.querySelectorAll('button')]
-      .find((button) => button.textContent === 'Update key in Settings ->')
+      .find((button) => button.textContent === 'Update key in Settings →')
       .click();
 
+    expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+  });
+
+  it('routes failure manual recovery to the manual application flow', async () => {
+    parseJobWithLlm.mockRejectedValue({ reason: 'rate_limit' });
+    const onManual = vi.fn();
+    const root = createImport({ onManual });
+
+    pastePosting(root);
+    root.querySelector('.job-posting-import__parse').click();
+    await flushPromises();
+
+    [...root.querySelectorAll('button')]
+      .find((button) => button.textContent === 'Enter manually instead')
+      .click();
+
+    expect(onManual).toHaveBeenCalledTimes(1);
   });
 
   it('shows the NO_TEXT dead-end without a basic-parser option for empty AI results', async () => {

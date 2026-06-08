@@ -3,6 +3,7 @@
 // Module pattern mirrors Modal.js (module-level state, no class).
 
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
+import aiSparkle from '../assets/AI_sparkle.png';
 import { canUseJdParser } from '../data/aiSettings.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { JobPostingImport } from './JobPostingImport.js';
@@ -17,7 +18,6 @@ let _activeImport = null;
 let _navigate = () => {};
 
 const PARSER_VISIBLE_STATUSES = new Set(['local-mode', 'authenticated']);
-
 function getFocusableElements(root) {
   return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
     .filter((el) => !el.disabled && el.offsetParent !== null);
@@ -32,6 +32,16 @@ function _isParserVisible() {
   return PARSER_VISIBLE_STATUSES.has(getAuthState()?.status);
 }
 
+function createAiSparkleIcon() {
+  const icon = document.createElement('img');
+
+  icon.src = aiSparkle;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+
+  return icon;
+}
+
 function _makeCard({
   icon,
   title,
@@ -41,6 +51,7 @@ function _makeCard({
   badge = '',
   cta = '',
   ctaOnClick = null,
+  bullets = [],
   locked = false,
 }) {
   const card = document.createElement('div');
@@ -56,9 +67,6 @@ function _makeCard({
   ].filter(Boolean).join(' ');
   if (locked) {
     card.setAttribute('aria-disabled', 'true');
-  } else {
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
   }
   iconEl.className = 'creation-picker-card__icon';
   titleRow.className = 'creation-picker-card__title-row';
@@ -78,17 +86,31 @@ function _makeCard({
 
   card.append(iconEl, titleRow, descEl);
 
-  if (cta) {
-    const ctaEl = ctaOnClick ? document.createElement('button') : document.createElement('span');
-    ctaEl.className = 'creation-picker-card__cta';
-    ctaEl.textContent = cta;
-    if (ctaOnClick) {
-      ctaEl.type = 'button';
-      ctaEl.addEventListener('click', (event) => {
-        event.stopPropagation();
-        ctaOnClick();
-      });
+  if (bullets.length > 0) {
+    const list = document.createElement('ul');
+
+    list.className = 'creation-picker-card__bullets';
+    for (const bullet of bullets) {
+      const item = document.createElement('li');
+      item.textContent = bullet;
+      list.append(item);
     }
+    card.append(list);
+  }
+
+  if (cta) {
+    const ctaEl = document.createElement('button');
+    ctaEl.className = 'creation-picker-card__cta';
+    ctaEl.type = 'button';
+    ctaEl.textContent = cta;
+    ctaEl.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (ctaOnClick) {
+        ctaOnClick();
+        return;
+      }
+      onClick();
+    });
     card.append(ctaEl);
   }
 
@@ -100,9 +122,7 @@ function _makeCard({
   card.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      if (!locked) {
-        onClick();
-      }
+      card.querySelector('.creation-picker-card__cta')?.click();
     }
   });
 
@@ -118,11 +138,13 @@ function _openManualCreate() {
 
 function _showSmartInput() {
   const content = _panel.querySelector('.creation-picker-content');
+  const header = _panel.querySelector('.creation-picker-header');
   const callbacks = _callbacks;
   const importRoot = JobPostingImport.create({
     navigate: _navigate,
     onBack: () => _showSelectionScreen(),
     onDismiss: close,
+    onManual: _openManualCreate,
     onSuccess: ({ draft, aiFieldSet, fillSource, notice }) => {
       close();
       Modal.open(null, {
@@ -137,33 +159,48 @@ function _showSmartInput() {
   });
 
   _activeImport = importRoot;
+  _panel.classList.add('creation-picker-panel--smart-input');
+  _panel.setAttribute('aria-labelledby', importRoot.querySelector('.job-posting-import__title')?.id || 'creation-picker-title');
+  if (header) {
+    header.hidden = true;
+  }
   content.replaceChildren(importRoot);
   getFocusableElements(importRoot)[0]?.focus();
 }
 
 function _showSelectionScreen() {
   const content = _panel.querySelector('.creation-picker-content');
+  const header = _panel.querySelector('.creation-picker-header');
   const aiReady = canUseJdParser();
 
   if (_activeImport && typeof _activeImport.destroy === 'function') {
     _activeImport.destroy();
   }
   _activeImport = null;
+  _panel.classList.remove('creation-picker-panel--smart-input');
+  _panel.setAttribute('aria-labelledby', 'creation-picker-title');
+  if (header) {
+    header.hidden = false;
+  }
   const cards = document.createElement('div');
   cards.className = 'creation-picker-cards';
 
   const parserCard = _makeCard({
-    icon: createSvgIcon('M12 3l2 6.268L21 12l-7 2.732L12 21l-2-6.268L3 12l7-2.732z'),
+    icon: createAiSparkleIcon(),
     title: 'Smart entry',
     desc: "Paste a job posting and we'll fill in the details automatically.",
     extraClass: 'creation-picker-card--parser',
     badge: aiReady ? 'Fastest' : '',
-    cta: aiReady ? 'Paste posting' : 'Enable AI in Settings ->',
+    cta: aiReady ? 'Choose →' : 'Enable AI in Settings →',
     ctaOnClick: aiReady ? null : () => {
       const navigate = _navigate;
       close();
       navigate('profile', { focusSettings: true });
     },
+    bullets: [
+      'Pulls title, company, skills & more',
+      'Review before saving',
+    ],
     locked: !aiReady,
     onClick: () => _showSmartInput(),
   });
@@ -172,7 +209,11 @@ function _showSelectionScreen() {
     icon: createSvgIcon('M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'),
     title: 'Manual entry',
     desc: 'Type the details into the form, field by field.',
-    cta: 'Open form',
+    cta: 'Choose →',
+    bullets: [
+      'Full control over every field',
+      'No posting needed',
+    ],
     extraClass: '',
     onClick: _openManualCreate,
   });
@@ -228,9 +269,15 @@ export function open(callbacks) {
   header.className = 'creation-picker-header';
 
   const titleEl = document.createElement('h2');
+  const intro = document.createElement('div');
+  const subtitleEl = document.createElement('p');
   titleEl.id = 'creation-picker-title';
   titleEl.className = 'creation-picker-title';
   titleEl.textContent = "Let's add this application";
+  intro.className = 'creation-picker-intro';
+  subtitleEl.className = 'creation-picker-subtitle';
+  subtitleEl.textContent = 'Start from a job posting, or fill it in yourself. You can edit everything afterward.';
+  intro.append(titleEl, subtitleEl);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -242,7 +289,7 @@ export function open(callbacks) {
   const content = document.createElement('div');
   content.className = 'creation-picker-content';
 
-  header.append(titleEl, closeBtn);
+  header.append(intro, closeBtn);
   panel.append(header, content);
   backdrop.append(panel);
   document.body.append(backdrop);

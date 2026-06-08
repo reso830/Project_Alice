@@ -116,9 +116,13 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
 
     expect(smart).not.toBeNull();
     expect(findCardByTitle('Manual entry')).not.toBeNull();
+    expect(document.querySelector('.creation-picker-subtitle')?.textContent)
+      .toBe('Start from a job posting, or fill it in yourself. You can edit everything afterward.');
     expect(smart.textContent).toContain('Fastest');
     expect(smart.textContent).toContain("Paste a job posting and we'll fill in the details automatically.");
-    expect(smart.textContent).toContain('Paste posting');
+    expect(smart.textContent).toContain('Pulls title, company, skills & more');
+    expect(smart.textContent).toContain('Review before saving');
+    expect(smart.textContent).toContain('Choose →');
   });
 
   it('locks Smart entry when AI JD parsing is unavailable while Manual entry remains clickable', () => {
@@ -136,7 +140,7 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
     expect(smart.hasAttribute('role')).toBe(false);
     expect(smart.hasAttribute('tabindex')).toBe(false);
     expect(smart.querySelector('.creation-picker-card__cta').tagName).toBe('BUTTON');
-    expect(smart.textContent).toContain('Enable AI in Settings ->');
+    expect(smart.textContent).toContain('Enable AI in Settings →');
     expect(smart.textContent).not.toContain('Fastest');
 
     smart.click();
@@ -164,9 +168,12 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
     expect(JobPostingImport.create).toHaveBeenCalledWith(expect.objectContaining({
       navigate,
       onBack: expect.any(Function),
+      onManual: expect.any(Function),
       onSuccess: expect.any(Function),
     }));
     expect(document.querySelector('.job-posting-import')).not.toBeNull();
+    expect(document.querySelector('.creation-picker-panel')?.classList).toContain('creation-picker-panel--smart-input');
+    expect(document.querySelector('.creation-picker-header')?.hidden).toBe(true);
     expect(Modal.open).not.toHaveBeenCalled();
   });
 
@@ -198,6 +205,23 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
     expect(document.querySelector('.creation-picker-backdrop')).toBeNull();
   });
 
+  it('opens the Create modal when the JD flow asks for manual entry', () => {
+    const onApplicationCreate = vi.fn();
+
+    CreationPicker.open({ onApplicationCreate });
+    findCardByTitle('Smart entry').click();
+
+    JobPostingImport.create.mock.calls[0][0].onManual();
+
+    expect(Modal.open).toHaveBeenCalledWith(null, {
+      mode: 'create',
+      onApplicationCreate,
+      onApplicationUpdate: undefined,
+      onArchiveSuccess: undefined,
+    });
+    expect(document.querySelector('.creation-picker-backdrop')).toBeNull();
+  });
+
   it('lets the JD import Back action return to the gate', () => {
     CreationPicker.open();
     findCardByTitle('Smart entry').click();
@@ -219,6 +243,15 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
 
     expect(JobPostingImport.create).not.toHaveBeenCalled();
     expect(Modal.open).toHaveBeenCalledWith(null, expect.objectContaining({ mode: 'create' }));
+  });
+
+  it('shows Smart entry for authenticated sessions when JD parsing is configured', () => {
+    authStoreMocks.state = { status: 'authenticated', user: { id: 'user-1' }, accessToken: 'token' };
+
+    CreationPicker.open();
+
+    expect(findCardByTitle('Smart entry')).not.toBeNull();
+    expect(findCardByTitle('Smart entry').classList).not.toContain('creation-picker-card--locked');
   });
 
   it('updates parser gating when auth state changes while open', () => {

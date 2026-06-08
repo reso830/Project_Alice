@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-06-08
+
+LLM JD Parser — job-posting parsing gains an optional AI-assisted path. From the
+Add-application gate's Smart entry, users paste a job posting and have it parsed
+by an LLM (via OpenRouter) into a structured application draft for review before
+saving. Bring-your-own-key (BYOK): the OpenRouter key is stored only in the
+user's browser and the call is browser-direct, so it never reaches Alice's
+server. AI is gated by the master AI toggle plus the per-feature Job-description
+parsing switch in Profile → Settings; with AI off the Smart card is locked and
+Manual entry is the path forward. Failures degrade gracefully — recoverable
+errors offer a basic rule-based parser, an empty result ends in a clear dead-end,
+and pasted text is preserved across retries. Status is never parsed (stays
+Wishlisted) and no job text is persisted. Local-first is preserved: the app runs
+and applications can always be created manually from a plain checkout with no
+key. (035-llm-jd-parser)
+
+### Added
+
+- **AI job-description parsing (BYOK)** — Smart entry sends pasted job text to OpenRouter in a single browser-direct request and pre-fills the Create modal with the parsed application draft, validated through the existing application model. Gated by the master AI toggle + the Job-description parsing feature switch + a browser-local key. (035-llm-jd-parser)
+- **§13 Add-application gate** — `+ New application` and the mobile FAB open a Smart vs Manual entry gate; Smart routes to a paste-only smart-input flow with a processing scrim and, on success, opens the Create modal with provenance. When AI is off the Smart card is locked with an "Enable AI in Settings →" link, and Manual entry always remains. (035-llm-jd-parser)
+- **Provenance in the Create modal** — AI-filled fields carry a ✦ AI tag, basic-parser fields a neutral ⚙ Auto tag, with a dismissible fill banner, a reduced-motion-safe one-time flash, clear-on-edit, and a truncation notice when an over-length posting is trimmed. (035-llm-jd-parser)
+- **Graceful failure handling** — recoverable AI errors surface reason codes with Use basic parser / Try AI again / Update key in Settings / Enter manually; an empty result ends in a `NO_TEXT` dead-end; pasted text is preserved across retries. (035-llm-jd-parser)
+
+### Changed
+
+- **The Job-description parsing AI feature toggle is now live** in Profile → Settings (previously "Coming soon"); compatibility analysis remains coming soon. (035-llm-jd-parser)
+- **`src/services/llmParser.js` gains `parseJobWithLlm(text, key, model)`** alongside the resume `parseWithLlm`, sharing a single OpenRouter transport. (035-llm-jd-parser)
+
+### Security
+
+- **No new deployer surface** — feature 035 adds no environment variables, schema migrations, server-side keys, or external analytics. OpenRouter keys remain in browser `localStorage` and job text is sent only to OpenRouter from the browser, never persisted. (035-llm-jd-parser)
+
 ## [1.4.0] — 2026-06-06
 
 Profile Page Refresh — the Profile experience now brings AI configuration,
@@ -909,7 +941,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/reso830/Project_Alice/compare/v1.1.0...v1.2.0
