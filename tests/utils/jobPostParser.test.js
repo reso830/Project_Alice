@@ -33,11 +33,9 @@ describe('parseJobPost', () => {
       expect(result.recruiter).toBe('');
     });
 
-    it('always returns compat as integer 0–100', () => {
+    it('does not assign compatibility', () => {
       const result = parseJobPost('');
-      expect(Number.isInteger(result.compat)).toBe(true);
-      expect(result.compat).toBeGreaterThanOrEqual(0);
-      expect(result.compat).toBeLessThanOrEqual(100);
+      expect(result).not.toHaveProperty('compat');
     });
   });
 
@@ -313,14 +311,11 @@ Great communication skills and the ability to develop strong working relationshi
   });
 
   describe('compat', () => {
-    it('always returns compat as integer between 0 and 100', () => {
-      for (let i = 0; i < 10; i++) {
-        const text = 'Senior Frontend Engineer\nCompany: Acme Corp\nLocation: Manila\n\nWe need a skilled developer.';
-        const result = parseJobPost(text);
-        expect(Number.isInteger(result.compat)).toBe(true);
-        expect(result.compat).toBeGreaterThanOrEqual(0);
-        expect(result.compat).toBeLessThanOrEqual(100);
-      }
+    it('leaves compatibility unset for the server to compute', () => {
+      const text = 'Senior Frontend Engineer\nCompany: Acme Corp\nLocation: Manila\n\nWe need a skilled developer.';
+      const result = parseJobPost(text);
+
+      expect(result).not.toHaveProperty('compat');
     });
   });
 });

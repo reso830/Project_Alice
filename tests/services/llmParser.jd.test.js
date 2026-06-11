@@ -32,7 +32,6 @@ afterEach(() => {
 
 describe('parseJobWithLlm', () => {
   it('sends one OpenRouter request and normalizes assistant JSON into an application draft', async () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.42);
     const fetchMock = vi.fn().mockResolvedValue(makeResponse({
       content: `\`\`\`json
 {
@@ -87,16 +86,15 @@ describe('parseJobWithLlm', () => {
         recruiter: 'Sam Rivera',
         jobPostingUrl: 'https://jobs.example.com/acme',
         status: 'wishlisted',
-        compat: 42,
       }),
       truncated: false,
     });
     expect(result.draft).not.toHaveProperty('yearsOfExperience');
+    expect(result.draft).not.toHaveProperty('compat');
     expect(result.draft).not.toHaveProperty('_corrupt');
   });
 
   it('keeps a thin parse with at least one usable field and clears invalid values', async () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.01);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
       content: JSON.stringify({
         companyName: '',
@@ -122,15 +120,14 @@ describe('parseJobWithLlm', () => {
       jobPostingUrl: '',
       skills: ['TypeScript'],
       status: 'wishlisted',
-      compat: 1,
     });
+    expect(result.draft).not.toHaveProperty('compat');
     expect(result.draft).not.toHaveProperty('_corrupt');
   });
 
   it('produces a complete parsed draft that passes the same application validation used for manual saves', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-08T12:00:00Z'));
-    vi.spyOn(Math, 'random').mockReturnValue(0.73);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
       content: JSON.stringify({
         companyName: 'Acme Labs',
@@ -158,9 +155,9 @@ describe('parseJobWithLlm', () => {
       workSetup: 'Hybrid',
       shift: 'Flexible',
       jobPostingUrl: 'https://jobs.example.com/acme/frontend',
-      compat: 73,
     });
     expect(validated._corrupt).toBeUndefined();
+    expect(draft).not.toHaveProperty('compat');
   });
 
   it('truncates over-length job input and reports truncation', async () => {

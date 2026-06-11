@@ -19,7 +19,10 @@
 // `issuanceDate` / `expiryDate`, award `date`) stay static — they're
 // the demo persona's history, not metadata about the demo session.
 
+import { computeCompatibility } from '../models/compatibility.js';
 import { toISODate } from '../utils/date.js';
+
+export const DEMO_COMPAT_AS_OF = '2026-05-21';
 
 // Original calendar dates from the SQLite seed are inlined here so the
 // date-shift can preserve relative spacing without re-importing from
@@ -138,6 +141,34 @@ const SOURCE_TIMELINES = [
     { id: 1, date: '2026-02-28', status: 'applied', text: 'Applied to archived terminal demo role.' },
     { id: 2, date: '2026-03-10', status: 'rejected', text: 'Archived terminal row: rejected before the record was archived.' },
   ],
+];
+
+const SOURCE_MIN_YEARS_EXPERIENCE = [
+  4,
+  4,
+  5,
+  3,
+  3,
+  2,
+  5,
+  6,
+  3,
+  6,
+  4,
+  2,
+  3,
+  7,
+  4,
+  3,
+  2,
+  6,
+  4,
+  3,
+  5,
+  5,
+  6,
+  4,
+  2,
 ];
 
 const SOURCE_RECORDS = [
@@ -836,6 +867,24 @@ function attachSourceTimelines(records) {
   }));
 }
 
+function attachMinYearsExperience(records) {
+  if (records.length !== SOURCE_MIN_YEARS_EXPERIENCE.length) {
+    throw new Error('Demo seed records and min-years fixtures must stay aligned.');
+  }
+
+  return records.map((record, index) => ({
+    ...record,
+    minYearsExperience: SOURCE_MIN_YEARS_EXPERIENCE[index],
+  }));
+}
+
+function attachCompatibility(records, profile) {
+  return records.map((record) => ({
+    ...record,
+    compat: computeCompatibility(profile, record, { asOf: DEMO_COMPAT_AS_OF }).score,
+  }));
+}
+
 function shiftDates(records) {
   // The shift anchors the most recent `lastStatusUpdate` in the SQLite
   // seed to today, preserving the relative spacing between all rows.
@@ -868,8 +917,13 @@ function shiftDates(records) {
 }
 
 export function buildDemoSeed() {
+  const profile = deepClone(SOURCE_PROFILE);
+  const applications = shiftDates(
+    attachSourceTimelines(attachMinYearsExperience(deepClone(SOURCE_RECORDS))),
+  );
+
   return {
-    applications: shiftDates(attachSourceTimelines(deepClone(SOURCE_RECORDS))),
-    profile: deepClone(SOURCE_PROFILE),
+    applications: attachCompatibility(applications, profile),
+    profile,
   };
 }

@@ -10,9 +10,10 @@
 // `sessionStorage`, IndexedDB, or cookie writes.
 
 import { normalizeApplication, validateApplication } from '../models/application.js';
+import { computeCompatibility } from '../models/compatibility.js';
 import { normaliseProfile, validateProfile } from '../models/profile.js';
 import { toISODate } from '../utils/date.js';
-import { buildDemoSeed } from './demoSeed.js';
+import { buildDemoSeed, DEMO_COMPAT_AS_OF } from './demoSeed.js';
 
 let _applications = [];
 let _profile = null;
@@ -81,6 +82,23 @@ function findIndexById(id) {
   return _applications.findIndex((row) => row.id === id);
 }
 
+function scoreApplication(record) {
+  return computeCompatibility(_profile ?? {}, record, { asOf: DEMO_COMPAT_AS_OF }).score;
+}
+
+function withComputedCompat(record) {
+  return {
+    ...record,
+    compat: scoreApplication(record),
+  };
+}
+
+function recomputeActiveApplications() {
+  _applications = _applications.map((row) => (
+    row.archived === true ? row : withComputedCompat(row)
+  ));
+}
+
 export function loadSeed() {
   const { applications, profile } = buildDemoSeed();
   _applications = applications;
@@ -111,7 +129,7 @@ export function getById(id) {
 
 export function create(fields) {
   const normalized = normalizeApplication({ ...fields, id: nextId() });
-  const validated = validateApplicationOrThrow(normalized);
+  const validated = validateApplicationOrThrow(withComputedCompat(normalized));
   _applications = [deepClone(validated), ..._applications];
   return deepClone(validated);
 }
@@ -141,12 +159,13 @@ export function update(id, fields) {
 
   const normalized = normalizeApplication(merged);
   const validated = validateApplicationOrThrow(normalized);
+  const scored = withComputedCompat(validated);
   _applications = [
     ..._applications.slice(0, index),
-    deepClone(validated),
+    deepClone(scored),
     ..._applications.slice(index + 1),
   ];
-  return deepClone(validated);
+  return deepClone(scored);
 }
 
 export function archive(id, now = toISODate()) {
@@ -202,5 +221,6 @@ export function getProfile() {
 export function saveProfile(profile) {
   const validated = validateProfileOrThrow(profile);
   _profile = validated;
+  recomputeActiveApplications();
   return deepClone(_profile);
 }

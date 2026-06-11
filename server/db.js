@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { computeCompatibility } from '../src/models/compatibility.js';
+import { toRecord } from './db/columns.js';
 
 const DATA_DIR = path.resolve('data');
 const DB_PATH = process.env.ALICE_DB_PATH || path.join(DATA_DIR, 'alice.db');
@@ -17,7 +19,65 @@ function ensureColumn(targetDb, table, column, definition) {
   }
 }
 
-export function initSchema(targetDb = db) {
+function currentDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readProfileForCompatibility(targetDb) {
+  const row = targetDb.prepare('SELECT data FROM profile WHERE id = 1').get();
+
+  if (!row?.data) {
+    return null;
+  }
+
+  try {
+    const document = JSON.parse(row.data);
+    const skills = targetDb.prepare(`
+      SELECT skill_name, proficiency
+      FROM profile_skill
+      WHERE profile_id = 1
+      ORDER BY id ASC
+    `).all().map((skill) => ({
+      name: skill.skill_name,
+      level: skill.proficiency,
+    }));
+
+    return {
+      ...document,
+      skills: skills.length > 0 ? skills : (document.skills ?? []),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function backfillCompatibility(targetDb, asOf) {
+  const profile = readProfileForCompatibility(targetDb);
+
+  if (!profile) {
+    return;
+  }
+
+  const rows = targetDb.prepare('SELECT * FROM applications').all();
+  if (rows.length === 0) {
+    return;
+  }
+
+  const updateCompat = targetDb.prepare('UPDATE applications SET compat = @compat WHERE id = @id');
+
+  targetDb.transaction(() => {
+    for (const row of rows) {
+      const application = toRecord(row);
+      const compat = computeCompatibility(profile, application, { asOf }).score;
+
+      if (compat !== application.compat) {
+        updateCompat.run({ id: application.id, compat });
+      }
+    }
+  })();
+}
+
+export function initSchema(targetDb = db, { compatBackfillAsOf = currentDate() } = {}) {
   targetDb.exec(`
     CREATE TABLE IF NOT EXISTS applications (
       id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,4 +140,5 @@ export function initSchema(targetDb = db) {
   ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
   ensureColumn(targetDb, 'applications', 'timeline', "TEXT NOT NULL DEFAULT '[]'");
   ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
+  backfillCompatibility(targetDb, compatBackfillAsOf);
 }

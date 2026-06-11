@@ -78,11 +78,30 @@ skills into the table automatically on first read (idempotent, no user
 action). Operator walkthrough:
 [`specs/032-profile-schema-refactor/quickstart.md §2`](../specs/032-profile-schema-refactor/quickstart.md).
 
+Feature **036-compatibility-engine** adds an additive
+`min_years_experience integer` column to `applications` (nullable, no
+default, no backfill of that column). Apply the SQL block from
+[`specs/036-compatibility-engine/data-model.md §1`](../specs/036-compatibility-engine/data-model.md)
+after the 032 migration and before promoting a v1.6.0+ hosted deploy. The
+migration uses `ADD COLUMN IF NOT EXISTS` and is safe to re-run.
+
+> **One-time compatibility backfill (hosted operator step).** As of 036,
+> `compat` is a deterministic, server-computed score; existing rows may
+> still carry pre-036 random values. After applying the column migration,
+> run a **one-time maintenance pass that rescores every application for
+> each user — including archived rows — writing only `compat`** (see
+> [`specs/036-compatibility-engine/data-model.md §3`](../specs/036-compatibility-engine/data-model.md)).
+> Do **not** use a profile re-save for this: the ongoing profile-save
+> recompute intentionally excludes archived applications, so archived rows
+> would keep their legacy values. Local mode performs this backfill
+> automatically on boot (`initSchema`); hosted has no automatic backfill,
+> so the maintenance pass is an explicit operator step.
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
-probes against `applications` (including `applications.timeline`),
-`profile`, `profile_skill`, and `user_seed_state`. If the
-migration has not been applied:
+probes against `applications` (including `applications.timeline` and
+`applications.min_years_experience`), `profile`, `profile_skill`, and
+`user_seed_state`. If the migration has not been applied:
 - The server logs a descriptive error naming the missing column or
   table (e.g. `[hosted-schema] missing artifact: public.applications.user_id`).
 - The process exits non-zero so deployment orchestrators detect the failure.
@@ -209,6 +228,13 @@ ordered procedure and the pass/fail framing.
    - [ ] For v1.2.0+ hosted deploys, apply the 032 `profile_skill`
      table + RLS + `save_profile_with_skills` RPC from
      [`specs/032-profile-schema-refactor/data-model.md §3`](../specs/032-profile-schema-refactor/data-model.md).
+   - [ ] For v1.6.0+ hosted deploys, apply the 036
+     `min_years_experience` column from
+     [`specs/036-compatibility-engine/data-model.md §1`](../specs/036-compatibility-engine/data-model.md),
+     then run the one-time compatibility backfill over **all**
+     applications (including archived rows) per
+     [`§3`](../specs/036-compatibility-engine/data-model.md) — not a
+     profile re-save (which skips archived).
 
 3. **Install the allowlist trigger.**
    - [ ] Follow

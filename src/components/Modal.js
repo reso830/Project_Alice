@@ -377,6 +377,101 @@ function renderTextDisplay(valueEl, key, formatter) {
   }
 }
 
+function parseMinYearsInput(value) {
+  const trimmed = String(value ?? '').trim();
+
+  if (trimmed === '') {
+    return null;
+  }
+
+  return /^\d+$/u.test(trimmed) ? Number(trimmed) : trimmed;
+}
+
+function renderMinYearsDisplay(valueEl) {
+  valueEl.textContent = Number.isInteger(_draft.minYearsExperience)
+    ? String(_draft.minYearsExperience)
+    : displayValue(null);
+}
+
+function makeMinYearsField() {
+  const { row, labelEl, valueEl } = createEditableShell('Min Years');
+
+  appendProvenance(labelEl, 'minYearsExperience', row);
+
+  function commit(input) {
+    _draft.minYearsExperience = parseMinYearsInput(input.value);
+    clearProvenance('minYearsExperience', row);
+    renderMinYearsDisplay(valueEl);
+    row.classList.remove('modal-field--editing');
+    _syncFooter();
+  }
+
+  if (!canEdit()) {
+    renderMinYearsDisplay(valueEl);
+    return row;
+  }
+
+  row.addEventListener('click', (event) => {
+    if (event.target.closest('button') || row.classList.contains('modal-field--editing')) {
+      return;
+    }
+
+    const previousValue = _draft.minYearsExperience;
+    const input = document.createElement('input');
+    let finished = false;
+
+    input.className = 'modal-inline-control';
+    input.type = 'number';
+    input.min = '0';
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.value = Number.isInteger(_draft.minYearsExperience)
+      ? String(_draft.minYearsExperience)
+      : '';
+    row.classList.add('modal-field--editing');
+    valueEl.replaceChildren(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('blur', () => {
+      if (!finished) {
+        finished = true;
+        commit(input);
+      }
+    });
+
+    input.addEventListener('keydown', (keyboardEvent) => {
+      if (keyboardEvent.key === 'Escape') {
+        keyboardEvent.preventDefault();
+        keyboardEvent.stopPropagation();
+        finished = true;
+        _draft.minYearsExperience = previousValue;
+        renderMinYearsDisplay(valueEl);
+        row.classList.remove('modal-field--editing');
+        return;
+      }
+
+      if (keyboardEvent.key === 'Enter') {
+        keyboardEvent.preventDefault();
+        keyboardEvent.stopPropagation();
+        finished = true;
+        commit(input);
+      }
+    });
+  });
+
+  row.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !row.classList.contains('modal-field--editing')) {
+      event.preventDefault();
+      row.click();
+    }
+  });
+
+  renderMinYearsDisplay(valueEl);
+
+  return row;
+}
+
 function makeInlineText({ label, key, multiline = false, fullSpan = false, required = false }) {
   const { row, labelEl, valueEl } = createEditableShell(label, fullSpan, { required });
   const formatter = key === 'salary' ? formatPeso : null;
@@ -723,6 +818,7 @@ function _renderBody() {
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
     makeInlineText({ label: 'Location', key: 'location' }),
     makeInlineText({ label: 'Salary', key: 'salary' }),
+    makeMinYearsField(),
     makeInlineSelect({ label: 'Shift', key: 'shift', options: SHIFT_VALUES }),
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
     createCompatField(_draft.compat),
@@ -802,6 +898,13 @@ function copyApplication(application) {
     preferredSkills: [...(normalized.preferredSkills ?? [])],
     timeline: (normalized.timeline ?? []).map((entry) => ({ ...entry })),
   };
+}
+
+function savePayload(record) {
+  const payload = { ...record };
+
+  delete payload.compat;
+  return payload;
 }
 
 async function runSave() {
@@ -908,6 +1011,15 @@ function validateDraft() {
     }
   }
 
+  if (
+    _draft.minYearsExperience !== null
+    && _draft.minYearsExperience !== undefined
+    && !Number.isInteger(_draft.minYearsExperience)
+  ) {
+    showFieldError('Min Years', 'Min Years must be a whole number or blank.');
+    isValid = false;
+  }
+
   return isValid;
 }
 
@@ -922,7 +1034,7 @@ async function saveDraft({ skipValidation = false } = {}) {
 
   if (_mode === 'create') {
     try {
-      const newRecord = await api.create(_draft);
+      const newRecord = await api.create(savePayload(_draft));
 
       if (!_body || !_titleRow) {
         return newRecord;
@@ -975,7 +1087,7 @@ async function saveDraft({ skipValidation = false } = {}) {
 
   try {
     _saveController = new globalThis.AbortController();
-    const updated = await api.update(_draft.id, _draft, { signal: _saveController.signal });
+    const updated = await api.update(_draft.id, savePayload(_draft), { signal: _saveController.signal });
     _saveController = null;
 
     if (!_body || !_titleRow) {

@@ -7,6 +7,60 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-06-11
+
+Compatibility Engine — the `compat` score shown on every application is now a
+**deterministic, explainable** measure of fit between the user's profile and the
+job, replacing the previous random placeholder. Scoring is pure local computation
+(no LLM, no network): a shared module compares skills (weighted by 1–5
+proficiency), role alignment, experience, keywords, and certifications across
+configurable weighted categories, renormalizing when a category has no usable
+input, and maps the 0–100 score to a Low / Medium / High / Great band. The server
+is authoritative — scores are computed on application create/update and recomputed
+for all active applications when the profile is saved (archived applications stay
+frozen); demo mode runs the same module client-side. A new optional **Min Years
+Experience** field on each application gives the experience category a comparison
+target (manual entry — never parsed); the candidate's years are derived from the
+profile at scoring time. (036-compatibility-engine)
+
+### Added
+
+- **Deterministic compatibility scoring** — `src/models/compatibility.js`:
+  `computeCompatibility(profile, application, { asOf })` → `{ score, label }`,
+  with `COMPAT_WEIGHTS` (skills 35 / roleAlignment 25 / experience 20 / keywords
+  10 / certifications 10), `COMPAT_BANDS`, and `getCompatLabel()`. Same inputs
+  always produce the same score (time enters only via a caller-supplied `asOf`).
+  (036-compatibility-engine)
+- **Server-authoritative scoring** — `server/services/compatibility.js` computes
+  `compat` on application create/update and recomputes all **active** applications
+  when the profile is saved; archived scores stay frozen. (036-compatibility-engine)
+- **Min Years Experience field** — an optional `minYearsExperience` on applications
+  (additive `min_years_experience` column), editable inline in the detail modal as
+  a number; the experience category is graded by closeness and omitted (weights
+  renormalized) when blank. (036-compatibility-engine)
+- **Band label on the compatibility bar** — `CompatBar` now shows `"{score}% {label}"`
+  with a four-band colour, communicating fit without relying on colour alone.
+  (036-compatibility-engine)
+
+### Changed
+
+- **`compat` is now server-computed, not client-supplied** — removed from the
+  client-writable request schema (silently ignored if sent) and from the
+  job-posting parsers, which no longer assign a random score. A one-time backfill
+  (local: on boot; hosted: a maintenance pass over all rows incl. archived)
+  replaces legacy random values with computed scores. (036-compatibility-engine)
+- **The Compatibility analysis AI toggle remains "coming soon"** — 036 scoring is
+  deterministic and runs with AI off. (036-compatibility-engine)
+
+### Deployment
+
+- **Hosted schema migration** — adds the additive `min_years_experience integer`
+  column to `applications`; `assertHostedSchema` gains a probe so an unmigrated
+  deploy fails fast. After migrating, run the one-time compatibility backfill over
+  all applications (including archived). See
+  [`specs/036-compatibility-engine/data-model.md §1, §3`](specs/036-compatibility-engine/data-model.md)
+  and [`docs/deployment.md`](docs/deployment.md). (036-compatibility-engine)
+
 ## [1.5.0] — 2026-06-08
 
 LLM JD Parser — job-posting parsing gains an optional AI-assisted path. From the
@@ -941,7 +995,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0

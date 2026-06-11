@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { STATUS_VALUES } from '../../shared/constants.js';
+import { archive, create, getById } from '../../server/db/applications.js';
+import { initSchema } from '../../server/db.js';
+import { saveProfile } from '../../server/db/profile.js';
 import { makeMemoryDb } from './helpers.js';
+import { computeCompatibility } from '../../src/models/compatibility.js';
 import { toRecord, toRow } from '../../server/db/applications.js';
 import { createSchema, toApiError, updateSchema } from '../../server/validation/application.js';
 
@@ -51,6 +55,64 @@ describe('initSchema', () => {
       'idx_applications_archived',
       'idx_applications_created',
     ]));
+
+    db.close();
+  });
+
+  it('backfills deterministic compatibility for active and archived legacy rows', () => {
+    const db = makeMemoryDb();
+    const asOf = '2026-06-11';
+    const profile = saveProfile({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      summary: 'Frontend engineer working with React and TypeScript.',
+      experience: [
+        {
+          role: 'Frontend Engineer',
+          company: 'Acme',
+          responsibilities: 'Built React TypeScript interfaces.',
+          dateStarted: '01/2020',
+          dateEnded: '',
+          currentWork: true,
+        },
+      ],
+      skills: [
+        { name: 'React', level: 5 },
+        { name: 'TypeScript', level: 5 },
+      ],
+    }, db);
+    const active = create({
+      companyName: 'Acme',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+      responsibilities: 'Build React and TypeScript product interfaces.',
+      skills: ['React', 'TypeScript'],
+      minYearsExperience: 3,
+      compat: 1,
+    }, db, asOf);
+    const archived = create({
+      companyName: 'Archive Co',
+      jobTitle: 'Frontend Engineer',
+      status: 'rejected',
+      responsibilities: 'Build React UI.',
+      skills: ['React'],
+      minYearsExperience: 3,
+      compat: 99,
+    }, db, asOf);
+    archive(archived.id, db, asOf);
+    db.prepare('UPDATE applications SET compat = 1 WHERE id = ?').run(active.id);
+    db.prepare('UPDATE applications SET compat = 99 WHERE id = ?').run(archived.id);
+
+    initSchema(db, { compatBackfillAsOf: asOf });
+
+    const expectedActive = computeCompatibility(profile, getById(active.id, db), { asOf }).score;
+    const expectedArchived = computeCompatibility(profile, getById(archived.id, db), { asOf }).score;
+
+    expect(getById(active.id, db).compat).toBe(expectedActive);
+    expect(getById(archived.id, db)).toMatchObject({
+      archived: true,
+      compat: expectedArchived,
+    });
 
     db.close();
   });

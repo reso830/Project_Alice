@@ -71,7 +71,18 @@ Add a probe to `assertHostedSchema` ([server/health.js](../../server/health.js))
 
 ---
 
-## 3. Scoring inputs (read-only; consumed by the module)
+## 3. One-time legacy backfill
+
+Existing rows may contain parser-generated random `compat` values from pre-036 behavior. The 036 migration converges those rows once:
+
+- **Local SQLite**: `initSchema()` runs an idempotent backfill after additive columns exist. It reads the current profile, scores every application row with `computeCompatibility(profile, application, { asOf })`, and updates only `applications.compat`.
+- **Hosted Supabase**: after applying the `min_years_experience` migration, run an admin/maintenance pass over **all** applications for the user, including archived rows. Do not use profile-save recompute for this backfill; ongoing profile recompute intentionally excludes archived applications.
+
+The maintenance pass must preserve all fields except `compat`. Archived applications are rescored once to replace legacy random values, then remain frozen unless edited directly.
+
+---
+
+## 4. Scoring inputs (read-only; consumed by the module)
 
 **Profile** (via `req.repos.profile.get()` → reassembled `skills` from `profile_skill`, 032):
 - `skills: [{ name, level: 1–5 }]` — skills category (proficiency weighting)
@@ -89,7 +100,7 @@ No profile or JD field is mutated by scoring.
 
 ---
 
-## 4. Scoring output
+## 5. Scoring output
 
 ```js
 computeCompatibility(profile, application, { weights, asOf }) // →
@@ -121,7 +132,7 @@ Absent categories (no usable input on either side) are dropped and the remaining
 
 ---
 
-## 5. Entities touched
+## 6. Entities touched
 
 - **Application** — gains `minYearsExperience`; `compat` repurposed as the computed score. All other fields unchanged.
 - **Compatibility result** (transient) — `{ score, label }`; not a stored entity beyond `compat`.

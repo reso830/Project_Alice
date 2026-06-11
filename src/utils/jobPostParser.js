@@ -371,7 +371,6 @@ export function parseJobPost(text) {
       skills: [],
       preferredSkills: [],
       recruiter: '',
-      compat: Math.floor(Math.random() * 101),
     };
   }
 
@@ -391,6 +390,5 @@ export function parseJobPost(text) {
     skills: allSkills,
     preferredSkills: preferred,
     recruiter: extractRecruiter(text),
-    compat: Math.floor(Math.random() * 101),
   };
 }

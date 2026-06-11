@@ -83,7 +83,7 @@ Alice is evolving through four major phases:
 - [x]  033-llm-resume-cv-parser  ·  shipped v1.3.0
 - [x] 034-profile-page-refresh  ·  shipped v1.4.0
 - [x]  035-llm-jd-parser  ·  shipped v1.5.0
-- [ ]  036-compatibility-engine
+- [x]  036-compatibility-engine  ·  shipped v1.6.0
 - [ ]  037-compatibility-insights-panel
 - [ ]  038-ats-resume-quality-checks
 

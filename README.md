@@ -9,7 +9,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Archive Applications view** — a Tracker toolbar chip toggles between active and archived rows (deep-linkable via `?view=archived`); archived cards open a read-only overlay with a single ↺ Unarchive action; archived rows are excluded from every active workflow surface (Calendar suggestions, Action Panel sections, Profile stat tiles); a Profile entry point (`Archived applications · N →`) makes the view discoverable from anywhere
 - **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
 - **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
-- **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
+- **Compatibility scoring** — each application shows a deterministic, explainable compatibility score (0–100) and a Low / Medium / High / Great band, computed locally from your profile vs. the job across weighted categories (skills weighted by 1–5 proficiency, role alignment, experience, keywords, certifications) — no AI, no network. Scores recompute when the application or your profile changes; archived records stay frozen. See [`specs/036-compatibility-engine/`](specs/036-compatibility-engine/). (036-compatibility-engine)
+- **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, minimum years of experience, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
 - **Application Timeline** — detail overlays show a chronological Timeline with inline add, edit, delete, automatic status-change entries, and future-dated reminders
 - **Calendar page** — month-grid view of all Timeline activity with an Action Panel showing Today events, rule-based Suggested Actions (follow-up, feedback, ghost-flag, offer-expiry), and Upcoming entries; status filter; day popovers; Mark Ghosted from suggestion rows
 - **Status workflow** — ten states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Accepted / Rejected / Withdrawn / Ghosted)
@@ -216,7 +217,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.5.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.6.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
