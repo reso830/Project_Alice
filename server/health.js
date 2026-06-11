@@ -26,6 +26,12 @@ const PROBES = [
     failOn: [UNDEFINED_TABLE, UNDEFINED_COLUMN],
     docPath: 'specs/032-profile-schema-refactor/data-model.md §3',
   },
+  {
+    table: 'applications',
+    column: 'min_years_experience',
+    failOn: [UNDEFINED_COLUMN],
+    docPath: 'specs/036-compatibility-engine/data-model.md §1',
+  },
 ];
 
 function migrationHint(table, column, docPath) {

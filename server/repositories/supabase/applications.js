@@ -105,6 +105,7 @@ export function createSupabaseApplicationsRepository(client, userId) {
       timeline: '[]',
       archived: 0,
       metadata: null,
+      min_years_experience: null,
       ...toRow(sanitized),
     };
     row.created_at = now;

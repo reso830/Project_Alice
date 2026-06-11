@@ -47,6 +47,24 @@ function validApplicationPayload(overrides = {}) {
   };
 }
 
+function compatibleProfilePayload(overrides = {}) {
+  return {
+    firstName: 'Ana',
+    lastName: 'Rivera',
+    summary: 'Frontend engineer building React products.',
+    skills: [{ name: 'React', level: 5 }],
+    experience: [{
+      role: 'Frontend Engineer',
+      company: 'Acme',
+      responsibilities: 'Built React interfaces.',
+      dateStarted: '01/2020',
+      dateEnded: '01/2026',
+      currentWork: false,
+    }],
+    ...overrides,
+  };
+}
+
 describe('applications API', () => {
   it('returns health status with runtime field', async () => {
     await withServer(async (baseUrl) => {
@@ -147,6 +165,30 @@ describe('applications API', () => {
         generalNotes: 'Applied via referral.',
         preferredSkills: ['GraphQL', 'Figma'],
       });
+    });
+  });
+
+  it('computes compatibility on create and ignores client-supplied compat', async () => {
+    await withServer(async (baseUrl) => {
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload()),
+      });
+
+      const response = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(validApplicationPayload({
+          compat: 1,
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.compat).toBeGreaterThan(1);
     });
   });
 
@@ -541,6 +583,75 @@ describe('applications API', () => {
         generalNotes: '',
         preferredSkills: [],
       });
+    });
+  });
+
+  it('recomputes compatibility on application update', async () => {
+    await withServer(async (baseUrl) => {
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload()),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(validApplicationPayload({
+          jobTitle: 'Backend Engineer',
+          skills: ['Python'],
+          responsibilities: 'Build backend services.',
+        })),
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.compat).toBeGreaterThan(created.body.data.compat);
+    });
+  });
+
+  it('recomputes compatibility when an archived application is edited directly', async () => {
+    await withServer(async (baseUrl) => {
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload()),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(validApplicationPayload({
+          jobTitle: 'Backend Engineer',
+          skills: ['Python'],
+          responsibilities: 'Build backend services.',
+        })),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+      });
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.archived).toBe(true);
+      expect(response.body.data.compat).toBeGreaterThan(created.body.data.compat);
     });
   });
 

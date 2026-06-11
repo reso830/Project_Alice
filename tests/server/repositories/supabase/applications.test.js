@@ -110,6 +110,7 @@ describe('createSupabaseApplicationsRepository', () => {
             preferred_skills: [],
             metadata: null,
             timeline: [],
+            min_years_experience: 3,
             application_date: '2026-05-01',
             last_status_update: '2026-05-01',
             created_at: '2026-05-01',
@@ -127,6 +128,7 @@ describe('createSupabaseApplicationsRepository', () => {
         jobTitle: 'FE',
         status: 'applied',
         archived: false,
+        minYearsExperience: 3,
       });
       expect(first).not.toHaveProperty('user_id');
       expect(first).not.toHaveProperty('company_name');
@@ -246,6 +248,7 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(insertedRow.fav).toBe(false);
       expect(insertedRow.archived).toBe(false);
       expect(insertedRow.metadata).toBeNull();
+      expect(insertedRow.min_years_experience).toBeNull();
       // skills (jsonb) is normalized from JSON-stringified to a native array.
       expect(insertedRow.skills).toEqual([]);
       expect(insertedRow.timeline).toEqual([]);
@@ -272,6 +275,7 @@ describe('createSupabaseApplicationsRepository', () => {
         preferredSkills: ['storybook'],
         metadata: { source: 'manual' },
         timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' }],
+        minYearsExperience: 4,
       });
 
       const row = callsOf(calls, 'insert')[0].args[0];
@@ -287,6 +291,7 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(row.timeline).toEqual([
         { id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' },
       ]);
+      expect(row.min_years_experience).toBe(4);
     });
 
     it('throws on PostgREST error', async () => {
@@ -337,6 +342,19 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(updatedRow.timeline).toEqual([
         { id: 1, date: '2026-05-21', status: 'applied', text: '' },
       ]);
+    });
+
+    it('passes min_years_experience through on update', async () => {
+      const { client, calls } = makeClient({
+        data: { id: 1, min_years_experience: 5 },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.update(1, { minYearsExperience: 5 });
+
+      const updatedRow = callsOf(calls, 'update')[0].args[0];
+      expect(updatedRow.min_years_experience).toBe(5);
     });
 
     it('scopes UPDATE by id AND user_id', async () => {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { isValidTransition, TERMINAL_STATES } from '../../shared/constants.js';
 import { resolveRequestDate } from '../middleware/requestDate.js';
 import { attachRepos } from '../repositories/middleware.js';
+import { scoreApplication } from '../services/compatibility.js';
 import { createSchema, toApiError, updateSchema } from '../validation/application.js';
 
 function parseIdParam(value) {
@@ -80,7 +81,10 @@ export function createApplicationsRouter({
         });
       }
 
-      const record = await req.repos.applications.create(result.data, resolveRequestDate(req));
+      const asOf = resolveRequestDate(req);
+      const profile = await req.repos.profile.get();
+      const compat = scoreApplication(result.data, profile, asOf);
+      const record = await req.repos.applications.create({ ...result.data, compat }, asOf);
       return res.status(201).json({ data: record });
     } catch (error) {
       return next(error);
@@ -135,17 +139,12 @@ export function createApplicationsRouter({
         });
       }
 
-      if (result.data.status !== undefined) {
-        // CRITICAL: must `await` here. The Supabase adapter returns a
-        // Promise; without `await`, currentRecord would be a Promise
-        // object, currentRecord.status would be undefined,
-        // TERMINAL_STATES.has(undefined) would return false, and
-        // forbidden status transitions would silently slip through.
-        const currentRecord = await req.repos.applications.getById(id);
-        if (!currentRecord) {
-          return sendNotFound(res);
-        }
+      const currentRecord = await req.repos.applications.getById(id);
+      if (!currentRecord) {
+        return sendNotFound(res);
+      }
 
+      if (result.data.status !== undefined) {
         if (result.data.status !== currentRecord.status) {
           if (TERMINAL_STATES.has(currentRecord.status)) {
             return sendStatusValidationError(
@@ -163,7 +162,14 @@ export function createApplicationsRouter({
         }
       }
 
-      const record = await req.repos.applications.update(id, result.data, resolveRequestDate(req));
+      if (Object.keys(result.data).length === 0) {
+        return res.status(200).json({ data: currentRecord });
+      }
+
+      const asOf = resolveRequestDate(req);
+      const profile = await req.repos.profile.get();
+      const compat = scoreApplication({ ...currentRecord, ...result.data }, profile, asOf);
+      const record = await req.repos.applications.update(id, { ...result.data, compat }, asOf);
       if (!record) {
         return sendNotFound(res);
       }

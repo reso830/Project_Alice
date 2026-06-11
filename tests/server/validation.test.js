@@ -24,6 +24,7 @@ function validPayload(overrides = {}) {
     compatNotes: 'Strong React match',
     generalNotes: 'Applied via referral',
     preferredSkills: ['GraphQL', 'Figma'],
+    minYearsExperience: 3,
     metadata: { source: 'manual' },
     ...overrides,
   };
@@ -61,13 +62,9 @@ describe('createSchema', () => {
     expectFieldError(validPayload({ metadata: 'string' }), 'metadata');
   });
 
-  it('rejects out-of-range compatibility scores', () => {
-    const high = createSchema.safeParse(validPayload({ compat: 150 }));
-    const low = createSchema.safeParse(validPayload({ compat: -1 }));
-
-    expect(high.success).toBe(false);
-    expect(low.success).toBe(false);
-    expect(toApiError(high.error).compat).toBe('Compatibility must be between 0 and 100');
+  it('strips client-supplied compatibility scores', () => {
+    expect(createSchema.parse(validPayload({ compat: 150 }))).not.toHaveProperty('compat');
+    expect(updateSchema.parse({ compat: 72 })).toEqual({});
   });
 
   it('accepts all optional fields omitted', () => {
@@ -128,6 +125,19 @@ describe('createSchema', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it('accepts and rejects minYearsExperience values', () => {
+    expect(createSchema.parse(validPayload({ minYearsExperience: 0 })).minYearsExperience).toBe(0);
+    expect(createSchema.parse(validPayload({ minYearsExperience: 4 })).minYearsExperience).toBe(4);
+    expect(createSchema.parse(validPayload({ minYearsExperience: null })).minYearsExperience)
+      .toBeNull();
+    expect(createSchema.parse(validPayload({ minYearsExperience: '' })).minYearsExperience)
+      .toBeNull();
+
+    expectFieldError(validPayload({ minYearsExperience: -1 }), 'minYearsExperience');
+    expectFieldError(validPayload({ minYearsExperience: 3.7 }), 'minYearsExperience');
+    expectFieldError(validPayload({ minYearsExperience: 'abc' }), 'minYearsExperience');
   });
 
   it('accepts a valid timeline array', () => {
@@ -212,6 +222,7 @@ describe('updateSchema', () => {
       compatNotes: 'Updated compatibility notes',
       generalNotes: 'Updated general notes',
       preferredSkills: ['GraphQL'],
+      minYearsExperience: 5,
     })).toEqual({
       location: 'Cebu',
       shift: 'Flexible',
@@ -219,6 +230,7 @@ describe('updateSchema', () => {
       compatNotes: 'Updated compatibility notes',
       generalNotes: 'Updated general notes',
       preferredSkills: ['GraphQL'],
+      minYearsExperience: 5,
     });
   });
 

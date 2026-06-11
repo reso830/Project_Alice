@@ -36,6 +36,34 @@ async function request(baseUrl, path, options = {}) {
   };
 }
 
+function applicationPayload(overrides = {}) {
+  return {
+    companyName: 'Acme Corp',
+    jobTitle: 'Frontend Engineer',
+    status: 'applied',
+    responsibilities: 'Build product UI',
+    ...overrides,
+  };
+}
+
+function profilePayload(overrides = {}) {
+  return {
+    firstName: 'Ana',
+    lastName: 'Rivera',
+    summary: 'Frontend engineer.',
+    skills: [{ name: 'React', level: 5 }],
+    experience: [{
+      role: 'Frontend Engineer',
+      company: 'Acme',
+      responsibilities: 'Built interfaces.',
+      dateStarted: '01/2020',
+      dateEnded: '01/2026',
+      currentWork: false,
+    }],
+    ...overrides,
+  };
+}
+
 describe('profile API', () => {
   it('returns null when no profile exists', async () => {
     await withServer(async (baseUrl) => {
@@ -302,6 +330,68 @@ describe('profile API', () => {
       expect(saved.body.data.skills).toEqual(skills);
       // A fresh GET shows persistence with the identical embedded shape.
       expect(fetched.body.data.skills).toEqual(skills);
+    });
+  });
+
+  it('recomputes active application compatibility after profile save', async () => {
+    await withServer(async (baseUrl) => {
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload({
+          skills: [{ name: 'Python', level: 5 }],
+          summary: 'Backend engineer.',
+        })),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(applicationPayload({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload()),
+      });
+      const fetched = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(fetched.status).toBe(200);
+      expect(fetched.body.data.compat).toBeGreaterThan(created.body.data.compat);
+    });
+  });
+
+  it('leaves archived application compatibility frozen after profile save', async () => {
+    await withServer(async (baseUrl) => {
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload({
+          skills: [{ name: 'Python', level: 5 }],
+          summary: 'Backend engineer.',
+        })),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(applicationPayload({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload()),
+      });
+      const fetched = await request(baseUrl, `/api/applications/${created.body.data.id}`);
+
+      expect(fetched.status).toBe(200);
+      expect(fetched.body.data.archived).toBe(true);
+      expect(fetched.body.data.compat).toBe(created.body.data.compat);
     });
   });
 

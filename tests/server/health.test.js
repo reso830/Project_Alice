@@ -51,7 +51,7 @@ function makeLogger() {
 }
 
 function allProbeResponses(overrideByIndex = {}) {
-  return Array.from({ length: 6 }, (_, index) => overrideByIndex[index] ?? { error: null });
+  return Array.from({ length: 7 }, (_, index) => overrideByIndex[index] ?? { error: null });
 }
 
 const ALL_PROBE_TABLES = [
@@ -61,6 +61,7 @@ const ALL_PROBE_TABLES = [
   'applications',
   'applications',
   'profile_skill',
+  'applications',
 ];
 
 describe('assertHostedSchema', () => {
@@ -268,6 +269,18 @@ describe('assertHostedSchema', () => {
       await expect(
         assertHostedSchema(hostedConfig()),
       ).rejects.toThrow(/profile_skill\.user_id.*specs\/032-profile-schema-refactor\/data-model\.md/s);
+    });
+
+    it('throws on 42703 for applications.min_years_experience with the 036 data-model hint', async () => {
+      setupClient(allProbeResponses({
+        6: { error: { code: '42703', message: 'column min_years_experience does not exist' } },
+      }));
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(
+        /applications\.min_years_experience.*specs\/036-compatibility-engine\/data-model\.md/s,
+      );
     });
 
     it('does NOT fail on 42703 for user_seed_state (contract: only table-missing triggers hard fail)', async () => {

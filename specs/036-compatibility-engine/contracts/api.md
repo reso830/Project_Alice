@@ -39,13 +39,19 @@ import { computeCompatibility, getCompatLabel, COMPAT_WEIGHTS, COMPAT_BANDS }
 
 const { score, label } = computeCompatibility(profile, application, {
   weights = COMPAT_WEIGHTS,  // optional override
-  asOf,                      // optional 'YYYY-MM-DD'; defaults to today (server passes request date)
+  asOf,                      // REQUIRED 'YYYY-MM-DD' — caller supplies; the module never reads the clock
 });
 // score: integer 0–100 (clamped); label: 'Low' | 'Medium' | 'High' | 'Great'
 ```
 
+`asOf` is **required** and supplied by the caller — the server passes
+`resolveRequestDate(req)`; demo and tests pass an explicit date. The module
+contains **no `Date.now()` fallback**: ongoing-role tenure is measured against
+the caller-supplied `asOf` only, so identical inputs always yield the identical
+score (FR-001). Callers that omit it get no implicit "today."
+
 **Guarantees**:
-- **Deterministic** — identical `(profile, application, weights, asOf)` → identical result. No randomness, no network, no LLM.
+- **Deterministic** — identical `(profile, application, weights, asOf)` → identical result. No randomness, no clock read, no network, no LLM.
 - **Total** — never throws on sparse/empty inputs; returns a deterministic low score (0 when no category is active).
 - **Pure** — no I/O; does not mutate its arguments.
 

@@ -26,7 +26,9 @@ The job's stated minimum years of experience; the comparison target for the expe
   - `APPLICATION_COLUMNS_WITHOUT_USER_ID`: add `'min_years_experience'`
   - `toRecord`: `minYearsExperience: row.min_years_experience ?? null`
   - `toRow`: pass through as integer or `null` (no JSON/boolean special-casing)
-- `src/models/application.js` — `normalizeApplication`: coerce to a non-negative integer or `null`; `validateApplication`: flag invalid (negative / non-integer / non-numeric non-empty) without silent coercion.
+- `src/models/application.js`:
+  - `normalizeApplication` — **parse, do not coerce away bad values**: accept a non-negative integer, or a digit-only string like `"3"` (parsed to the integer `3`); empty string / `null` / absent → `null`. Any other value (negative, decimal such as `3.7`, non-numeric string, `NaN`) is **preserved as-is** (not floored, truncated, or zeroed) so validation can see and reject it.
+  - `validateApplication` — flag as invalid (no silent coercion) anything that is not a non-negative integer or `null`: negative, non-integer/decimal, or non-numeric. `3.7` is **rejected**, never floored to `3`.
 - `server/validation/application.js` — `minYearsExperience: z.union([z.number().int().nonnegative(), z.null()]).optional()` (accept empty→null).
 
 ### SQLite migration (idempotent, in `initSchema`)

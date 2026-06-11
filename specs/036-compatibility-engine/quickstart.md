@@ -54,3 +54,5 @@ Run the portfolio/demo runtime and confirm seeded applications show sensible, st
 ## Hosted note
 
 Apply the additive migration from [data-model.md](data-model.md) §1 (`ALTER TABLE … ADD COLUMN min_years_experience`) before deploying; `assertHostedSchema` will fail fast if it is missing.
+
+After migrating, run the **one-time backfill** (T017) as an all-applications maintenance pass — it must rescore **archived** apps too, so it cannot be a profile re-save (the ongoing profile recompute deliberately skips archived). Verify afterward that no application — active or archived — still shows a legacy random score.

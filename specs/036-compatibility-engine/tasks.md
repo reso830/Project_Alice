@@ -13,7 +13,7 @@ Phase dependency: 01 → 02 → 03 → 04/05 (parallel) → 06 → 07 → 08.
 ### T001 — Create the deterministic scoring module
 - **Target**: `src/models/compatibility.js` (new)
 - **Expected behavior**: Export `COMPAT_WEIGHTS` (skills 35, roleAlignment 25, experience 20, keywords 10, certifications 10), `COMPAT_BANDS` + `getCompatLabel(score)` (Low 0–39 / Medium 40–64 / High 65–84 / Great 85–100), and `computeCompatibility(profile, application, { weights = COMPAT_WEIGHTS, asOf } = {}) → { score, label }`. Implement the five category functions, the `derivedYears(experience, asOf)` helper, normalization/tokenization helpers, active-category selection, weight renormalization, and final `round`+clamp to 0–100. Formulas are fixed in [research.md](research.md) §D5/§D6 and [data-model.md](data-model.md) §4.
-- **Constraints**: Pure — **no I/O, no `Math.random`, no implicit `Date.now()`** (time enters only via `asOf`). Does not mutate arguments. Preferred-skill credit is capped so a profile with zero required coverage cannot reach a full skills sub-score (FR-005). Experience graded by closeness, full at ≥ requirement, no overshoot bonus (FR-013). Absent categories renormalize; zero active → `0`.
+- **Constraints**: Pure — **no I/O, no `Math.random`, no implicit `Date.now()`** (time enters only via `asOf`). `asOf` is a **required** caller-supplied `'YYYY-MM-DD'`; the module has **no clock fallback** (omitting it must not silently use "today"). Does not mutate arguments. Preferred-skill credit is capped so a profile with zero required coverage cannot reach a full skills sub-score (FR-005). Experience graded by closeness, full at ≥ requirement, no overshoot bonus (FR-013). Absent categories renormalize; zero active → `0`.
 - **Validation/test**: `tests/models/compatibility.test.js` (T002).
 - **Out of scope**: any per-category breakdown in the return value (037); reading repos/DB; display logic.
 
@@ -30,9 +30,9 @@ Phase dependency: 01 → 02 → 03 → 04/05 (parallel) → 06 → 07 → 08.
 
 ### T003 — App model: normalize + validate `minYearsExperience`
 - **Target**: `src/models/application.js`
-- **Expected behavior**: `normalizeApplication` coerces `minYearsExperience` to a non-negative integer or `null`. `validateApplication` flags a negative / non-integer / non-numeric non-empty value as invalid **without silent coercion**. (Keep existing `clampCompat` as the defensive `compat` backstop.)
-- **Constraints**: No new required field; default `null`. Centralized in the shared model (constitution).
-- **Validation/test**: `tests/models/application.test.js` — add cases for valid int, `null`/empty, and rejected invalid values.
+- **Expected behavior**: `normalizeApplication` **parses without coercing away bad values**: a non-negative integer or a digit-only string (`"3"`→`3`) becomes that integer; empty/`null`/absent → `null`; any other value (negative, decimal like `3.7`, non-numeric, `NaN`) is **preserved as-is** for validation. `validateApplication` flags as invalid anything that is not a non-negative integer or `null` — `3.7` is **rejected, never floored to `3`**; no silent conversion. (Keep existing `clampCompat` as the defensive `compat` backstop.)
+- **Constraints**: No new required field; default `null`. Do not truncate/floor/zero invalid input. Centralized in the shared model (constitution).
+- **Validation/test**: `tests/models/application.test.js` — cases for valid int, digit-string `"3"`→3, `null`/empty→null, and **rejected** invalid values (`-1`, `3.7`, `"abc"`) with no coercion.
 - **Out of scope**: scoring; UI.
 
 ### T004 — Column mapping for `min_years_experience`
@@ -94,8 +94,8 @@ Phase dependency: 01 → 02 → 03 → 04/05 (parallel) → 06 → 07 → 08.
 
 ### T011 — Demo store client-side scoring
 - **Target**: `src/data/demoStore.js`
-- **Expected behavior**: In `create`/`update`, compute `compat` via `src/models/compatibility.js` against the in-memory demo profile. If the demo profile is mutable at runtime, recompute the in-memory applications when it changes (mirror archived-frozen behavior).
-- **Constraints**: Same pure module as the server (no divergence); no network.
+- **Expected behavior**: In `create`/`update`, compute `compat` via `src/models/compatibility.js` against the in-memory demo profile, passing an explicit `asOf` (a fixed demo date). If the demo profile is mutable at runtime, recompute the in-memory applications when it changes (mirror archived-frozen behavior).
+- **Constraints**: Same pure module as the server (no divergence); no network; supply `asOf` explicitly (the module has no clock fallback).
 - **Validation/test**: `tests/data/demoStore.test.js` — created/updated demo app carries a computed `compat`.
 - **Out of scope**: server paths.
 
@@ -142,12 +142,12 @@ Phase dependency: 01 → 02 → 03 → 04/05 (parallel) → 06 → 07 → 08.
 - **Validation/test**: `tests/utils/jobPostParser.test.js`, `tests/services/llmParser.jd.test.js` — update any assertions expecting a random `compat`.
 - **Out of scope**: scoring logic.
 
-### T017 — One-time backfill of legacy scores
-- **Target**: local boot/migration step (e.g. `server/db.js`/init or a `server/db-*.js` maintenance script) + documented hosted step in [data-model.md](data-model.md)/[quickstart.md](quickstart.md)
-- **Expected behavior**: Recompute `compat` for every existing application against the current profile so no record keeps a legacy random value (SC-003). Local: run once during migration/boot. Hosted: documented one-time recompute (e.g. a single profile re-save or maintenance run).
-- **Constraints**: Idempotent and safe to re-run; deterministic; does not alter `minYearsExperience` or other fields.
-- **Validation/test**: a test seeding an app with an arbitrary `compat` then asserting the backfill replaces it with the computed value.
-- **Out of scope**: continuous recompute (covered by Phase 03 triggers).
+### T017 — One-time backfill of legacy scores (all apps, incl. archived)
+- **Target**: local boot/migration step (e.g. `server/db.js`/init or a `server/db-*.js` maintenance script) + a hosted all-applications maintenance path (script/admin action) documented in [data-model.md](data-model.md)/[quickstart.md](quickstart.md)
+- **Expected behavior**: Recompute `compat` for **every** existing application — **active *and* archived** — against the current profile, so no record keeps a legacy random value (SC-003). Iterate all records (`getAll()` + `getAllArchived()`), score each via `src/models/compatibility.js` with an explicit `asOf`, and persist. Archived apps are scored **once** here, then freeze.
+- **Constraints**: This is a **distinct one-time pass, NOT a profile re-save** — a profile save's ongoing recompute excludes archived (FR-009) and would leave archived legacy values. Idempotent and safe to re-run; deterministic; does not alter `minYearsExperience` or other fields. Hosted path must reach archived rows (not via the active-only profile recompute).
+- **Validation/test**: a test seeding **both** an active and an **archived** app with arbitrary `compat`, then asserting the backfill replaces **both** with the computed value.
+- **Out of scope**: continuous recompute (Phase 03 triggers); ongoing recompute touching archived (it must not — only this one-time pass does).
 
 ---
 

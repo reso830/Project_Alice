@@ -41,6 +41,7 @@ describe('initSchema', () => {
       'general_notes',
       'preferred_skills',
       'timeline',
+      'min_years_experience',
     ]);
     const timelineColumn = columns.find((column) => column.name === 'timeline');
     expect(timelineColumn.notnull).toBe(1);
@@ -143,6 +144,7 @@ describe('application row mapping', () => {
       archived: 0,
       metadata: '{"source":"manual"}',
       timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":"Submitted."}]',
+      min_years_experience: 3,
     })).toMatchObject({
       companyName: 'Acme',
       jobTitle: 'Engineer',
@@ -152,6 +154,7 @@ describe('application row mapping', () => {
       skills: ['JavaScript'],
       metadata: { source: 'manual' },
       timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' }],
+      minYearsExperience: 3,
     });
   });
 
@@ -179,6 +182,7 @@ describe('application row mapping', () => {
       archived: 0,
       metadata: null,
       timeline: '[]',
+      min_years_experience: null,
     }).salary).toBe(120000);
   });
 
@@ -189,12 +193,14 @@ describe('application row mapping', () => {
       skills: ['React'],
       metadata: null,
       timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: '' }],
+      minYearsExperience: 4,
     })).toEqual({
       fav: 1,
       compat: 72,
       skills: '["React"]',
       metadata: null,
       timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":""}]',
+      min_years_experience: 4,
     });
   });
 });

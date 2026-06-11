@@ -79,4 +79,5 @@ export function initSchema(targetDb = db) {
   ensureColumn(targetDb, 'applications', 'general_notes', 'TEXT');
   ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
   ensureColumn(targetDb, 'applications', 'timeline', "TEXT NOT NULL DEFAULT '[]'");
+  ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
 }

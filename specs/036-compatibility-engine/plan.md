@@ -132,9 +132,9 @@ A thin orchestration helper (`server/services/compatibility.js`) wraps "score on
 
 ## Migration & Backfill
 
-- **Local (SQLite)**: idempotent `ensureColumn` adds `min_years_experience` on boot. Existing rows keep their legacy random `compat` until a recompute trigger fires.
+- **Local (SQLite)**: idempotent `ensureColumn` adds `min_years_experience` on boot. The one-time backfill (below) runs in the same boot/migration step, so existing rows' legacy random `compat` is replaced immediately — no legacy random value survives normal migration.
 - **Hosted (Supabase)**: additive `ALTER TABLE applications ADD COLUMN min_years_experience integer;` (SQL in [data-model.md](data-model.md)); `assertHostedSchema` gains a probe so an unmigrated deploy fails fast.
-- **Backfill (convergence for SC-003)**: a one-time recompute of every application's `compat` against the current profile so no record keeps a legacy random value. Local: run during the same boot/migration step (cheap, synchronous). Hosted: a documented one-time recompute (e.g. a single profile re-save or a maintenance run). Captured as a task in `/speckit.tasks`.
+- **Backfill (convergence for SC-003)**: a one-time recompute of **every** application's `compat` — **active *and* archived** — against the current profile so no record keeps a legacy random value. This is a **distinct maintenance pass, not a profile re-save**: a profile save runs the *ongoing* recompute, which by design excludes archived snapshots (FR-009), so it would leave archived legacy values in place. The one-time backfill instead iterates all records (e.g. `getAll()` + `getAllArchived()`), scores each once, and writes it; archived apps are scored **once** here (a random value is not a snapshot worth preserving) and then freeze. Local: run during the boot/migration step (cheap, synchronous, covers both archived and active). Hosted: a documented one-time all-applications maintenance run (script or admin action) — explicitly **not** a profile re-save. Captured as task T017.
 
 ## Risks & Tradeoffs
 

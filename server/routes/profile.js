@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { attachRepos } from '../repositories/middleware.js';
+import { resolveRequestDate } from '../middleware/requestDate.js';
+import { recomputeActive } from '../services/compatibility.js';
 import { validateProfile } from '../../src/models/profile.js';
 
 /**
@@ -51,7 +53,10 @@ export function createProfileRouter({
         });
       }
 
-      return res.status(200).json({ data: await req.repos.profile.upsert(req.body) });
+      const saved = await req.repos.profile.upsert(req.body);
+      await recomputeActive(req.repos, saved, resolveRequestDate(req));
+
+      return res.status(200).json({ data: saved });
     } catch (error) {
       return next(error);
     }
