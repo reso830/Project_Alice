@@ -28,18 +28,22 @@ const jobPostingUrl = z.string()
   .or(emptyString)
   .optional();
 
-const compat = z.number()
-  .int('Compatibility score must be an integer')
-  .min(0, 'Compatibility must be between 0 and 100')
-  .max(100, 'Compatibility must be between 0 and 100')
-  .optional();
-
 const salary = z.union([
   z.number()
     .int('Salary must be a positive integer or null')
     .positive('Salary must be a positive integer or null'),
   z.null(),
 ]).optional();
+
+const minYearsExperience = z.preprocess(
+  (value) => (value === '' ? null : value),
+  z.union([
+    z.number()
+      .int('Min years experience must be a non-negative integer or null')
+      .nonnegative('Min years experience must be a non-negative integer or null'),
+    z.null(),
+  ]).optional(),
+);
 
 const metadata = z.union([
   z.record(z.string(), z.unknown()),
@@ -74,7 +78,6 @@ const writableFields = {
   companyName: requiredString('Company name'),
   jobTitle: requiredString('Job title'),
   status,
-  compat,
   fav: optionalBoolean,
   sourcePlatform: optionalText,
   applicationDate: dateField('Application date'),
@@ -92,6 +95,7 @@ const writableFields = {
   compatNotes: optionalText,
   generalNotes: optionalText,
   preferredSkills: z.array(z.string()).optional(),
+  minYearsExperience,
   metadata,
   timeline,
 };

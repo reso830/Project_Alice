@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.5.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.5.0');
-    expect(APP_VERSION).toBe('v1.5.0');
+  it('keeps the 1.6.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.6.0');
+    expect(APP_VERSION).toBe('v1.6.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.5.0');
-    expect(lock.packages['']?.version).toBe('1.5.0');
+    expect(lock.version).toBe('1.6.0');
+    expect(lock.packages['']?.version).toBe('1.6.0');
 
-    expect(read('README.md')).toContain('Current version: **1.5.0**');
+    expect(read('README.md')).toContain('Current version: **1.6.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.6.0] — 2026-06-11');
     expect(read('CHANGELOG.md')).toContain('## [1.5.0] — 2026-06-08');
     expect(read('CHANGELOG.md')).toContain('## [1.4.0] — 2026-06-06');
     expect(read('CHANGELOG.md')).toContain('## [1.3.0] — 2026-06-03');
@@ -25,7 +26,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.5.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.6.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0');
     expect(read('CHANGELOG.md')).toContain('[1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0');
     expect(read('CHANGELOG.md')).toContain('[1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0');
     expect(read('CHANGELOG.md')).toContain('[1.3.0]: https://github.com/reso830/Project_Alice/compare/v1.2.0...v1.3.0');
@@ -83,6 +85,31 @@ describe('release metadata', () => {
       'docs/features/035-llm-jd-parser.md',
       'src/components/JobPostingImport.js',
       'tests/components/JobPostingImport.test.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Compatibility Engine release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const deployment = read('docs/deployment.md');
+    const repoMap = read('docs/REPO_MAP.md');
+
+    expect(readme).toContain('Compatibility scoring');
+    expect(deployment).toContain('036-compatibility-engine');
+    expect(deployment).toContain('One-time compatibility backfill');
+    expect(repoMap).toContain('src/models/compatibility.js');
+    expect(repoMap).toContain('server/services/compatibility.js');
+    expect(repoMap).toContain('computeCompatibility');
+    expect(repoMap).toContain('recomputeActive');
+    expect(read('docs/feature_roadmap.md')).toContain('[x]  036-compatibility-engine  ·  shipped v1.6.0');
+
+    for (const path of [
+      'specs/036-compatibility-engine',
+      'docs/features/036-compatibility-engine.md',
+      'src/models/compatibility.js',
+      'server/services/compatibility.js',
+      'tests/models/compatibility.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

@@ -35,6 +35,7 @@ function validRecord(overrides = {}) {
     compatNotes: 'Strong match',
     generalNotes: 'Applied via referral',
     preferredSkills: ['GraphQL'],
+    minYearsExperience: null,
     ...overrides,
   };
 }
@@ -75,6 +76,25 @@ describe('validateApplication', () => {
   it('clamps compatibility score to 0-100', () => {
     expect(validateApplication(validRecord({ compat: -5 })).compat).toBe(0);
     expect(validateApplication(validRecord({ compat: 120 })).compat).toBe(100);
+  });
+
+  it('marks invalid minYearsExperience values as corrupt without coercing them', () => {
+    expect(validateApplication(validRecord({ minYearsExperience: undefined }))._corrupt)
+      .toBeUndefined();
+    expect(validateApplication(validRecord({ minYearsExperience: null }))._corrupt).toBeUndefined();
+    expect(validateApplication(validRecord({ minYearsExperience: 0 }))._corrupt).toBeUndefined();
+    expect(validateApplication(validRecord({ minYearsExperience: 3 }))._corrupt).toBeUndefined();
+
+    const negative = validateApplication(validRecord({ minYearsExperience: -1 }));
+    const decimal = validateApplication(validRecord({ minYearsExperience: 3.7 }));
+    const text = validateApplication(validRecord({ minYearsExperience: 'abc' }));
+
+    expect(negative._corrupt).toBe(true);
+    expect(negative.minYearsExperience).toBe(-1);
+    expect(decimal._corrupt).toBe(true);
+    expect(decimal.minYearsExperience).toBe(3.7);
+    expect(text._corrupt).toBe(true);
+    expect(text.minYearsExperience).toBe('abc');
   });
 
   it('coerces invalid skills and fav values to defaults', () => {
@@ -158,6 +178,7 @@ describe('normalizeApplication', () => {
       workSetup: undefined,
       compatNotes: undefined,
       generalNotes: undefined,
+      minYearsExperience: undefined,
     }));
 
     expect(record.responsibilities).toBe('');
@@ -174,6 +195,24 @@ describe('normalizeApplication', () => {
     expect(record.workSetup).toBe('');
     expect(record.compatNotes).toBe('');
     expect(record.generalNotes).toBe('');
+    expect(record.minYearsExperience).toBeNull();
+  });
+
+  it('normalizes minYearsExperience without hiding invalid values', () => {
+    expect(normalizeApplication(validRecord({ minYearsExperience: 3 })).minYearsExperience)
+      .toBe(3);
+    expect(normalizeApplication(validRecord({ minYearsExperience: '3' })).minYearsExperience)
+      .toBe(3);
+    expect(normalizeApplication(validRecord({ minYearsExperience: '' })).minYearsExperience)
+      .toBeNull();
+    expect(normalizeApplication(validRecord({ minYearsExperience: undefined })).minYearsExperience)
+      .toBeNull();
+    expect(normalizeApplication(validRecord({ minYearsExperience: -1 })).minYearsExperience)
+      .toBe(-1);
+    expect(normalizeApplication(validRecord({ minYearsExperience: 3.7 })).minYearsExperience)
+      .toBe(3.7);
+    expect(normalizeApplication(validRecord({ minYearsExperience: 'abc' })).minYearsExperience)
+      .toBe('abc');
   });
 
   it('fills absent or invalid preferred skills with an empty array', () => {

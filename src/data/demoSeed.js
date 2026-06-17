@@ -19,7 +19,10 @@
 // `issuanceDate` / `expiryDate`, award `date`) stay static — they're
 // the demo persona's history, not metadata about the demo session.
 
+import { computeCompatibility } from '../models/compatibility.js';
 import { toISODate } from '../utils/date.js';
+
+export const DEMO_COMPAT_AS_OF = '2026-05-21';
 
 // Original calendar dates from the SQLite seed are inlined here so the
 // date-shift can preserve relative spacing without re-importing from
@@ -140,12 +143,40 @@ const SOURCE_TIMELINES = [
   ],
 ];
 
+const SOURCE_MIN_YEARS_EXPERIENCE = [
+  4,
+  4,
+  5,
+  3,
+  3,
+  2,
+  5,
+  6,
+  3,
+  6,
+  4,
+  2,
+  3,
+  7,
+  4,
+  3,
+  2,
+  6,
+  4,
+  3,
+  5,
+  5,
+  6,
+  4,
+  2,
+];
+
 const SOURCE_RECORDS = [
   {
     companyName: 'Acme Corp',
     jobTitle: 'Frontend Engineer',
     status: 'applied',
-    compat: 85,
+    compat: 40,
     fav: true,
     salary: 120000,
     sourcePlatform: 'LinkedIn',
@@ -167,7 +198,7 @@ const SOURCE_RECORDS = [
     companyName: 'Beta Systems',
     jobTitle: 'Backend Engineer',
     status: 'interview',
-    compat: 72,
+    compat: 56,
     fav: false,
     salary: 130000,
     sourcePlatform: 'Indeed',
@@ -189,7 +220,7 @@ const SOURCE_RECORDS = [
     companyName: 'Gamma Digital',
     jobTitle: 'Full Stack Developer',
     status: 'offer',
-    compat: 91,
+    compat: 67,
     fav: true,
     salary: 145000,
     sourcePlatform: 'Referral',
@@ -211,7 +242,7 @@ const SOURCE_RECORDS = [
     companyName: 'Delta Cloud',
     jobTitle: 'DevOps Engineer',
     status: 'phone_screen',
-    compat: 60,
+    compat: 38,
     fav: false,
     salary: 110000,
     sourcePlatform: 'Company website',
@@ -233,7 +264,7 @@ const SOURCE_RECORDS = [
     companyName: 'Epsilon AI',
     jobTitle: 'ML Engineer',
     status: 'assessment',
-    compat: 78,
+    compat: 30,
     fav: false,
     salary: 150000,
     sourcePlatform: 'LinkedIn',
@@ -255,7 +286,7 @@ const SOURCE_RECORDS = [
     companyName: 'Zeta Health',
     jobTitle: 'Software Engineer',
     status: 'wishlisted',
-    compat: 55,
+    compat: 60,
     fav: false,
     salary: null,
     sourcePlatform: 'LinkedIn',
@@ -277,7 +308,7 @@ const SOURCE_RECORDS = [
     companyName: 'Eta Retail',
     jobTitle: 'Platform Engineer',
     status: 'rejected',
-    compat: 40,
+    compat: 27,
     fav: false,
     salary: 115000,
     sourcePlatform: 'Indeed',
@@ -299,7 +330,7 @@ const SOURCE_RECORDS = [
     companyName: 'Theta Finance',
     jobTitle: 'Senior Engineer',
     status: 'ghosted',
-    compat: 65,
+    compat: 51,
     fav: false,
     salary: 140000,
     sourcePlatform: 'Company website',
@@ -321,7 +352,7 @@ const SOURCE_RECORDS = [
     companyName: 'Iota Media',
     jobTitle: 'React Developer',
     status: 'withdrawn',
-    compat: 50,
+    compat: 47,
     fav: false,
     salary: 105000,
     sourcePlatform: 'Referral',
@@ -343,7 +374,7 @@ const SOURCE_RECORDS = [
     companyName: 'Kappa Labs',
     jobTitle: 'Engineering Manager',
     status: 'applied',
-    compat: 68,
+    compat: 35,
     fav: false,
     salary: 160000,
     sourcePlatform: 'LinkedIn',
@@ -365,7 +396,7 @@ const SOURCE_RECORDS = [
     companyName: 'Lambda Ops',
     jobTitle: 'Site Reliability Engineer',
     status: 'interview',
-    compat: 70,
+    compat: 25,
     fav: false,
     salary: 135000,
     sourcePlatform: 'LinkedIn',
@@ -387,7 +418,7 @@ const SOURCE_RECORDS = [
     companyName: 'Mu Technologies',
     jobTitle: 'iOS Developer',
     status: 'phone_screen',
-    compat: 58,
+    compat: 27,
     fav: false,
     salary: 115000,
     sourcePlatform: 'AngelList',
@@ -409,7 +440,7 @@ const SOURCE_RECORDS = [
     companyName: 'Nu Analytics',
     jobTitle: 'Data Engineer',
     status: 'assessment',
-    compat: 82,
+    compat: 30,
     fav: false,
     salary: 125000,
     sourcePlatform: 'Indeed',
@@ -431,7 +462,7 @@ const SOURCE_RECORDS = [
     companyName: 'Xi Studio',
     jobTitle: 'Staff Engineer',
     status: 'wishlisted',
-    compat: 83,
+    compat: 37,
     fav: true,
     salary: 170000,
     sourcePlatform: 'LinkedIn',
@@ -453,7 +484,7 @@ const SOURCE_RECORDS = [
     companyName: 'Omicron Bank',
     jobTitle: 'Java Developer',
     status: 'applied',
-    compat: 48,
+    compat: 25,
     fav: false,
     salary: 118000,
     sourcePlatform: 'Company website',
@@ -475,7 +506,7 @@ const SOURCE_RECORDS = [
     companyName: 'Pi Robotics',
     jobTitle: 'Embedded Software Engineer',
     status: 'rejected',
-    compat: 35,
+    compat: 29,
     fav: false,
     salary: 110000,
     sourcePlatform: 'Indeed',
@@ -497,7 +528,7 @@ const SOURCE_RECORDS = [
     companyName: 'Rho Games',
     jobTitle: 'Game Developer',
     status: 'withdrawn',
-    compat: 44,
+    compat: 37,
     fav: false,
     salary: 95000,
     sourcePlatform: 'Referral',
@@ -519,7 +550,7 @@ const SOURCE_RECORDS = [
     companyName: 'Sigma Cloud',
     jobTitle: 'Cloud Architect',
     status: 'offer',
-    compat: 88,
+    compat: 21,
     fav: true,
     salary: 165000,
     sourcePlatform: 'LinkedIn',
@@ -541,7 +572,7 @@ const SOURCE_RECORDS = [
     companyName: 'Tau Security',
     jobTitle: 'Security Engineer',
     status: 'ghosted',
-    compat: 74,
+    compat: 33,
     fav: false,
     salary: 140000,
     sourcePlatform: 'Company website',
@@ -563,7 +594,7 @@ const SOURCE_RECORDS = [
     companyName: 'Upsilon Dev',
     jobTitle: 'Software Engineer II',
     status: 'phone_screen',
-    compat: 76,
+    compat: 69,
     fav: false,
     salary: 125000,
     sourcePlatform: 'AngelList',
@@ -585,7 +616,7 @@ const SOURCE_RECORDS = [
     companyName: 'Phi Systems',
     jobTitle: 'Solutions Architect',
     status: 'interview',
-    compat: 66,
+    compat: 17,
     fav: false,
     salary: 155000,
     sourcePlatform: 'LinkedIn',
@@ -607,7 +638,7 @@ const SOURCE_RECORDS = [
     companyName: 'Chi Networks',
     jobTitle: 'Senior Network Engineer',
     status: 'applied',
-    compat: 42,
+    compat: 29,
     fav: false,
     salary: 120000,
     sourcePlatform: 'Indeed',
@@ -629,7 +660,7 @@ const SOURCE_RECORDS = [
     companyName: 'Psi Corp',
     jobTitle: 'Frontend Architect',
     status: 'wishlisted',
-    compat: 79,
+    compat: 28,
     fav: false,
     salary: null,
     sourcePlatform: 'LinkedIn',
@@ -652,7 +683,7 @@ const SOURCE_RECORDS = [
     companyName: 'Archive Labs',
     jobTitle: 'Design Systems Engineer',
     status: 'assessment',
-    compat: 81,
+    compat: 30,
     fav: true,
     salary: 132000,
     sourcePlatform: 'LinkedIn',
@@ -677,7 +708,7 @@ const SOURCE_RECORDS = [
     companyName: 'Beacon Robotics',
     jobTitle: 'Robotics QA Engineer',
     status: 'rejected',
-    compat: 46,
+    compat: 29,
     fav: false,
     salary: 98000,
     sourcePlatform: 'Company website',
@@ -836,6 +867,24 @@ function attachSourceTimelines(records) {
   }));
 }
 
+function attachMinYearsExperience(records) {
+  if (records.length !== SOURCE_MIN_YEARS_EXPERIENCE.length) {
+    throw new Error('Demo seed records and min-years fixtures must stay aligned.');
+  }
+
+  return records.map((record, index) => ({
+    ...record,
+    minYearsExperience: SOURCE_MIN_YEARS_EXPERIENCE[index],
+  }));
+}
+
+function attachCompatibility(records, profile) {
+  return records.map((record) => ({
+    ...record,
+    compat: computeCompatibility(profile, record, { asOf: DEMO_COMPAT_AS_OF }).score,
+  }));
+}
+
 function shiftDates(records) {
   // The shift anchors the most recent `lastStatusUpdate` in the SQLite
   // seed to today, preserving the relative spacing between all rows.
@@ -868,8 +917,13 @@ function shiftDates(records) {
 }
 
 export function buildDemoSeed() {
+  const profile = deepClone(SOURCE_PROFILE);
+  const applications = shiftDates(
+    attachSourceTimelines(attachMinYearsExperience(deepClone(SOURCE_RECORDS))),
+  );
+
   return {
-    applications: shiftDates(attachSourceTimelines(deepClone(SOURCE_RECORDS))),
-    profile: deepClone(SOURCE_PROFILE),
+    applications: attachCompatibility(applications, profile),
+    profile,
   };
 }

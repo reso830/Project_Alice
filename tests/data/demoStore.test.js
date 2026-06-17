@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_RECORDS } from '../../server/seeds/applicationsData.js';
 import { DEMO_PROFILE } from '../../server/seeds/profileData.js';
+import { buildDemoSeed, DEMO_COMPAT_AS_OF } from '../../src/data/demoSeed.js';
 import * as demoStore from '../../src/data/demoStore.js';
+import { computeCompatibility } from '../../src/models/compatibility.js';
 import { toISODate } from '../../src/utils/date.js';
 
 // --- storage discipline -----------------------------------------------------
@@ -66,6 +68,10 @@ function shiftSeedDate(isoString) {
   );
   const offsetMs = parseISODate(toISODate(new Date())).getTime() - parseISODate(maxSourceDate).getTime();
   return toISODate(new Date(parseISODate(isoString).getTime() + offsetMs));
+}
+
+function expectedCompat(application, profile = demoStore.getProfile()) {
+  return computeCompatibility(profile ?? {}, application, { asOf: DEMO_COMPAT_AS_OF }).score;
 }
 
 beforeEach(() => {
@@ -143,6 +149,17 @@ describe('demoStore.loadSeed + parity with SQLite seed', () => {
     const apps = demoStore.getAll();
     apps.forEach((row, index) => {
       expect(row.id).toBe(index + 1);
+    });
+  });
+
+  it('seeds min years and deterministic compatibility from the shared module', () => {
+    const { applications, profile } = buildDemoSeed();
+
+    applications.forEach((row) => {
+      expect(
+        row.minYearsExperience === null || Number.isInteger(row.minYearsExperience),
+      ).toBe(true);
+      expect(row.compat).toBe(expectedCompat(row, profile));
     });
   });
 });
@@ -223,6 +240,24 @@ describe('demoStore.create', () => {
     expect(captured.code).toBe('VALIDATION_ERROR');
     expect(captured.fields).toHaveProperty('companyName');
   });
+
+  it('computes compatibility from the demo profile and ignores client-supplied compat', () => {
+    demoStore.loadSeed();
+
+    const created = demoStore.create({
+      companyName: 'Compatibility Co',
+      jobTitle: 'React Engineer',
+      status: 'wishlisted',
+      responsibilities: 'Build React and TypeScript product workflows.',
+      skills: ['React', 'TypeScript'],
+      preferredSkills: ['GraphQL'],
+      minYearsExperience: 3,
+      compat: 1,
+    });
+
+    expect(created.compat).toBe(expectedCompat(created));
+    expect(created.compat).not.toBe(1);
+  });
 });
 
 // --- update -----------------------------------------------------------------
@@ -286,6 +321,20 @@ describe('demoStore.update', () => {
       captured = error;
     }
     expect(captured?.code).toBe('NOT_FOUND');
+  });
+
+  it('recomputes compatibility on update and ignores client-supplied compat', () => {
+    demoStore.loadSeed();
+
+    const updated = demoStore.update(1, {
+      skills: ['React', 'TypeScript', 'GraphQL'],
+      preferredSkills: ['Accessibility'],
+      minYearsExperience: 2,
+      compat: 1,
+    });
+
+    expect(updated.compat).toBe(expectedCompat(updated));
+    expect(updated.compat).not.toBe(1);
   });
 });
 
@@ -401,6 +450,46 @@ describe('demoStore profile CRUD', () => {
     expect(captured?.code).toBe('VALIDATION_ERROR');
     expect(captured.fields).toHaveProperty('firstName');
     expect(captured.fields).toHaveProperty('lastName');
+  });
+
+  it('saveProfile recomputes active application compatibility', () => {
+    demoStore.loadSeed();
+    const before = demoStore.getById(1);
+    const nextProfile = {
+      ...DEMO_PROFILE,
+      summary: 'React TypeScript frontend engineer focused on design systems.',
+      skills: [
+        { name: 'React', level: 5 },
+        { name: 'TypeScript', level: 5 },
+        { name: 'CSS', level: 4 },
+        { name: 'Accessibility', level: 4 },
+      ],
+    };
+
+    demoStore.saveProfile(nextProfile);
+    const after = demoStore.getById(1);
+
+    expect(after.compat).toBe(expectedCompat(after, nextProfile));
+    expect(after.compat).not.toBe(before.compat);
+  });
+
+  it('saveProfile leaves archived application compatibility frozen', () => {
+    demoStore.loadSeed();
+    const archived = demoStore.archive(1, '2030-03-10');
+    const nextProfile = {
+      ...DEMO_PROFILE,
+      summary: 'React TypeScript frontend engineer focused on design systems.',
+      skills: [
+        { name: 'React', level: 5 },
+        { name: 'TypeScript', level: 5 },
+        { name: 'CSS', level: 4 },
+        { name: 'Accessibility', level: 4 },
+      ],
+    };
+
+    demoStore.saveProfile(nextProfile);
+
+    expect(demoStore.getById(archived.id).compat).toBe(archived.compat);
   });
 });
 

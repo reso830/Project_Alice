@@ -211,6 +211,26 @@ function clampCompat(value) {
   return Math.max(0, Math.min(100, number));
 }
 
+function normalizeMinYearsExperience(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  if (Number.isInteger(value) && value >= 0) {
+    return value;
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  return value;
+}
+
+function isValidMinYearsExperience(value) {
+  return value === undefined || value === null || (Number.isInteger(value) && value >= 0);
+}
+
 export function normalizeApplication(record) {
   const normalized = { ...record };
 
@@ -251,6 +271,8 @@ export function normalizeApplication(record) {
     normalized.salary = null;
   }
 
+  normalized.minYearsExperience = normalizeMinYearsExperience(normalized.minYearsExperience);
+
   return normalized;
 }
 
@@ -290,6 +312,10 @@ export function validateApplication(record) {
   }
 
   validated.compat = clampCompat(validated.compat);
+
+  if (!isValidMinYearsExperience(validated.minYearsExperience)) {
+    validated._corrupt = true;
+  }
 
   if (!Array.isArray(validated.skills)) {
     validated.skills = [];

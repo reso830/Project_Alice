@@ -1,26 +1,41 @@
+import { getCompatLabel } from '../models/compatibility.js';
+
 function clampScore(score) {
   const number = Number(score);
   if (Number.isNaN(number)) {
     return 0;
   }
 
-  return Math.max(0, Math.min(100, number));
+  return Math.max(0, Math.min(100, Math.round(number)));
 }
 
 function getFillColor(score) {
-  if (score >= 80) {
-    return '#22C55E';
+  const label = getCompatLabel(score);
+
+  if (label === 'Great') {
+    return '#2563EB';
   }
 
-  if (score >= 60) {
+  if (label === 'High') {
+    return '#15803D';
+  }
+
+  if (label === 'Medium') {
     return '#EAB308';
   }
 
-  return '#4F46E5';
+  return '#EF4444';
+}
+
+function getLabelColor(score) {
+  const label = getCompatLabel(score);
+
+  return label === 'High' || label === 'Great' ? '#FFFFFF' : '#111827';
 }
 
 export function render(score) {
   const safeScore = clampScore(score);
+  const compatLabel = getCompatLabel(safeScore);
   const bar = document.createElement('div');
   const fill = document.createElement('div');
   const label = document.createElement('span');
@@ -31,8 +46,8 @@ export function render(score) {
 
   fill.style.width = `${safeScore}%`;
   fill.style.backgroundColor = getFillColor(safeScore);
-  label.style.color = safeScore >= 50 ? '#FFFFFF' : '#4B5563';
-  label.textContent = `${safeScore}%`;
+  label.style.color = getLabelColor(safeScore);
+  label.textContent = `${safeScore}% ${compatLabel}`;
 
   bar.append(fill, label);
 

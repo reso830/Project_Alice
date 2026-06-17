@@ -1,4 +1,4 @@
-# Feature Brief: 035 - Compatibility Engine
+# Feature Brief: 036 - Compatibility Engine
 
 ## Summary
 Introduce a deterministic compatibility engine that evaluates alignment between a user profile and a job description.

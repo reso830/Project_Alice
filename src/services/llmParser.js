@@ -321,7 +321,6 @@ function buildJobDraft(parsed) {
     recruiter: cleanString(parsed.recruiter),
     jobPostingUrl: cleanString(parsed.jobPostingUrl),
     status: 'wishlisted',
-    compat: Math.floor(Math.random() * 101),
   };
 
   const validated = validateApplication(normalizeApplication({
@@ -330,6 +329,7 @@ function buildJobDraft(parsed) {
   }));
 
   delete validated.id;
+  delete validated.compat;
   delete validated._corrupt;
 
   return Object.fromEntries(

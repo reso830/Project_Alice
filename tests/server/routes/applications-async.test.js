@@ -38,10 +38,16 @@ function makePromiseReturningApplicationsAdapter(recordsById) {
 function makeApp(applicationsAdapter) {
   const app = express();
   app.use(express.json());
+  const profileAdapter = { get: vi.fn(async () => null) };
   app.use(
     '/api/applications',
     createApplicationsRouter({
-      repos: { forRequest: () => ({ applications: applicationsAdapter }) },
+      repos: {
+        forRequest: () => ({
+          applications: applicationsAdapter,
+          profile: profileAdapter,
+        }),
+      },
     }),
   );
   return app;

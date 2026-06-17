@@ -55,6 +55,7 @@ describe('SQLite persistence', () => {
       compatNotes: null,
       generalNotes: null,
       preferredSkills: [],
+      minYearsExperience: null,
     });
 
     db.close();
@@ -76,6 +77,7 @@ describe('SQLite persistence', () => {
       'compat_notes',
       'general_notes',
       'preferred_skills',
+      'min_years_experience',
     ]));
 
     db.close();

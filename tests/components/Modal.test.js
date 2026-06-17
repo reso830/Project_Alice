@@ -45,6 +45,7 @@ function application(overrides = {}) {
     generalNotes: '',
     preferredSkills: [],
     jobPostingUrl: '',
+    minYearsExperience: null,
     ...overrides,
   };
 }
@@ -313,7 +314,7 @@ describe('Modal', () => {
     expect(inputField('Company').value).toBe('');
     document.querySelector('#modal-title').click();
     expect(document.querySelector('.modal-title-input').value).toBe('');
-    expect(document.querySelector('.compat-bar__label').textContent).toBe('0%');
+    expect(document.querySelector('.compat-bar__label').textContent).toBe('0% Low');
   });
 
   it('shows all missing required fields when Create is clicked blank', async () => {
@@ -359,7 +360,9 @@ describe('Modal', () => {
       responsibilities: 'Build product UI',
       location: 'Manila',
       status: 'wishlisted',
+      minYearsExperience: null,
     }));
+    expect(api.create.mock.calls[0][0]).not.toHaveProperty('compat');
     expect(onApplicationCreate).toHaveBeenCalledWith(created);
     expect(document.body.textContent).toContain('Application created.');
     expect(document.querySelector('.modal-footer').hidden).toBe(true);
@@ -438,6 +441,7 @@ describe('Modal', () => {
       'Work Setup',
       'Compat Notes',
       'General Notes',
+      'Min Years',
       'Preferred Skills',
       'Timeline',
     ]) {
@@ -447,6 +451,7 @@ describe('Modal', () => {
     expect(getFieldByLabel('Skills')).toBeUndefined();
     expect(getFieldByLabel('Required Skills')).not.toBeUndefined();
     expect(document.querySelector('.compat-bar')).not.toBeNull();
+    expect(document.querySelector('.compat-bar__label').textContent).toBe('80% High');
     expect(getFieldByLabel('Compat Notes').querySelector('.modal-field__value').textContent).toBe('\u2014');
 
     for (const label of ['Timeline', 'Responsibilities', 'Required Skills', 'Preferred Skills', 'URL', 'General Notes']) {
@@ -463,7 +468,69 @@ describe('Modal', () => {
     expect(getFieldByLabel('Company').querySelector('.modal-field__required')).not.toBeNull();
     expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__required')).not.toBeNull();
     expect(getFieldByLabel('Recruiter').querySelector('.modal-field__required')).toBeNull();
+    expect(getFieldByLabel('Min Years').querySelector('.modal-field__required')).toBeNull();
     expect(getFieldByLabel('URL').querySelector('.modal-field__required')).toBeNull();
+  });
+
+  it('edits Min Years inline and sends the numeric value without client compat', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({ minYearsExperience: 4, compat: 66 }));
+
+    Modal.open(application({ minYearsExperience: null, compat: 40 }));
+    editTextField('Min Years', '4');
+    saveButton().click();
+    await flushPromises();
+
+    const payload = api.update.mock.calls[0][1];
+
+    expect(payload.minYearsExperience).toBe(4);
+    expect(payload).not.toHaveProperty('compat');
+    expect(document.querySelector('.compat-bar__label').textContent).toBe('66% High');
+  });
+
+  it('sends empty Min Years as null', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({ minYearsExperience: null }));
+
+    Modal.open(application({ minYearsExperience: 3 }));
+    editTextField('Min Years', '');
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update.mock.calls[0][1].minYearsExperience).toBeNull();
+  });
+
+  it('rejects invalid Min Years before save', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ minYearsExperience: 3 }));
+    editTextField('Min Years', '3.7');
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Min Years must be a whole number or blank.');
+  });
+
+  it('uses a raw text editor for Min Years and renders a visible inline error', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ minYearsExperience: 3 }));
+    const input = inputField('Min Years');
+
+    expect(input.type).toBe('text');
+
+    input.value = '-1';
+    input.dispatchEvent(new window.Event('blur'));
+    saveButton().click();
+    await flushPromises();
+
+    const error = getFieldByLabel('Min Years').querySelector('.modal-field-error');
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(error).not.toBeNull();
+    expect(error.textContent).toBe('Min Years must be a whole number or blank.');
+    expect(error.hidden).toBe(false);
   });
 
   it('renders Timeline section in the row-5 slot', () => {
@@ -480,7 +547,7 @@ describe('Modal', () => {
 
     expect(field).not.toBeUndefined();
     expect(field.classList.contains('modal-field--full')).toBe(true);
-    expect(fields.indexOf(field)).toBe(8);
+    expect(fields.indexOf(field)).toBe(9);
     expect(document.querySelector('[data-modal-field="last-status-update"]')).toBeNull();
     expect(field.querySelector('.tl-collapsed')).not.toBeNull();
   });

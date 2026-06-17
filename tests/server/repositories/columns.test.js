@@ -77,6 +77,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       compat_notes: null,
       general_notes: null,
       preferred_skills: '[]',
+      min_years_experience: 3,
       last_status_update: '2026-05-01',
       created_at: '2026-05-01',
       updated_at: '2026-05-01',
@@ -105,6 +106,7 @@ describe('toRecord / toRow round-trip via shared module', () => {
       'lastStatusUpdate',
       'location',
       'metadata',
+      'minYearsExperience',
       'notes',
       'preferredSkills',
       'recruiter',
@@ -151,6 +153,41 @@ describe('toRecord / toRow round-trip via shared module', () => {
     })).toEqual({
       timeline: JSON.stringify([{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }]),
     });
+  });
+
+  it('round-trips minYearsExperience as min_years_experience including null', () => {
+    expect(FIELD_TO_COLUMN.minYearsExperience).toBe('min_years_experience');
+    expect(APPLICATION_COLUMNS_WITHOUT_USER_ID).toContain('min_years_experience');
+    expect(toRow({ minYearsExperience: 3 })).toEqual({ min_years_experience: 3 });
+    expect(toRow({ minYearsExperience: null })).toEqual({ min_years_experience: null });
+    expect(toRecord({
+      id: 1,
+      company_name: 'x',
+      job_title: 'y',
+      status: 'applied',
+      compat: 0,
+      fav: 0,
+      skills: '[]',
+      preferred_skills: '[]',
+      metadata: null,
+      timeline: '[]',
+      archived: 0,
+      min_years_experience: 4,
+    }).minYearsExperience).toBe(4);
+    expect(toRecord({
+      id: 1,
+      company_name: 'x',
+      job_title: 'y',
+      status: 'applied',
+      compat: 0,
+      fav: 0,
+      skills: '[]',
+      preferred_skills: '[]',
+      metadata: null,
+      timeline: '[]',
+      archived: 0,
+      min_years_experience: null,
+    }).minYearsExperience).toBeNull();
   });
 
   it('toRecord parses JSON-stringified skills, metadata, and timeline (SQLite shape)', () => {
