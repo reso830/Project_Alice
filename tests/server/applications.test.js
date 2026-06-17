@@ -655,6 +655,63 @@ describe('applications API', () => {
     });
   });
 
+  it('recomputes compatibility when an archived application is unarchived', async () => {
+    await withServer(async (baseUrl) => {
+      // Profile A — strong match for a React role.
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload()),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(validApplicationPayload({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+      });
+
+      // Profile B — no React; profile-wide recompute skips the archived row,
+      // so its score stays frozen at the Profile-A value.
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload({
+          summary: 'Backend engineer building Python services.',
+          skills: [{ name: 'Python', level: 5 }],
+          experience: [{
+            role: 'Backend Engineer',
+            company: 'Acme',
+            responsibilities: 'Built Python services.',
+            dateStarted: '01/2020',
+            dateEnded: '01/2026',
+            currentWork: false,
+          }],
+        })),
+      });
+      const frozen = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        headers: { 'X-Client-Date': '2026-06-11' },
+      });
+      expect(frozen.body.data.compat).toBe(created.body.data.compat);
+
+      // Unarchiving rescores against the current (Profile B) profile.
+      const restored = await request(baseUrl, `/api/applications/${created.body.data.id}/unarchive`, {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+      });
+
+      expect(restored.status).toBe(200);
+      expect(restored.body.data.archived).toBe(false);
+      expect(restored.body.data.compat).toBeLessThan(created.body.data.compat);
+    });
+  });
+
   it('returns validation fields for invalid update URLs', async () => {
     await withServer(async (baseUrl) => {
       const created = await request(baseUrl, '/api/applications', {

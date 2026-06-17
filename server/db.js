@@ -16,7 +16,9 @@ function ensureColumn(targetDb, table, column, definition) {
   const columns = targetDb.prepare(`PRAGMA table_info(${table})`).all();
   if (!columns.some((entry) => entry.name === column)) {
     targetDb.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    return true;
   }
+  return false;
 }
 
 function currentDate() {
@@ -51,7 +53,7 @@ function readProfileForCompatibility(targetDb) {
   }
 }
 
-function backfillCompatibility(targetDb, asOf) {
+export function backfillCompatibility(targetDb, asOf) {
   const profile = readProfileForCompatibility(targetDb);
 
   if (!profile) {
@@ -139,6 +141,14 @@ export function initSchema(targetDb = db, { compatBackfillAsOf = currentDate() }
   ensureColumn(targetDb, 'applications', 'general_notes', 'TEXT');
   ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
   ensureColumn(targetDb, 'applications', 'timeline', "TEXT NOT NULL DEFAULT '[]'");
-  ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
-  backfillCompatibility(targetDb, compatBackfillAsOf);
+  const addedMinYearsColumn = ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
+
+  // One-time legacy backfill: run ONLY on the boot that first adds the
+  // min_years_experience column (the 036 migration). Re-running it on every
+  // startup would rewrite **archived** scores that must stay frozen (FR-009)
+  // and let currentWork tenure drift recompute them. Once the column exists,
+  // active rows are kept fresh by the route recompute paths instead.
+  if (addedMinYearsColumn) {
+    backfillCompatibility(targetDb, compatBackfillAsOf);
+  }
 }

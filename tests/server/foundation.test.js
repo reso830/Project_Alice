@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STATUS_VALUES } from '../../shared/constants.js';
 import { archive, create, getById } from '../../server/db/applications.js';
-import { initSchema } from '../../server/db.js';
+import { backfillCompatibility, initSchema } from '../../server/db.js';
 import { saveProfile } from '../../server/db/profile.js';
 import { makeMemoryDb } from './helpers.js';
 import { computeCompatibility } from '../../src/models/compatibility.js';
@@ -103,7 +103,7 @@ describe('initSchema', () => {
     db.prepare('UPDATE applications SET compat = 1 WHERE id = ?').run(active.id);
     db.prepare('UPDATE applications SET compat = 99 WHERE id = ?').run(archived.id);
 
-    initSchema(db, { compatBackfillAsOf: asOf });
+    backfillCompatibility(db, asOf);
 
     const expectedActive = computeCompatibility(profile, getById(active.id, db), { asOf }).score;
     const expectedArchived = computeCompatibility(profile, getById(archived.id, db), { asOf }).score;
@@ -113,6 +113,35 @@ describe('initSchema', () => {
       archived: true,
       compat: expectedArchived,
     });
+
+    db.close();
+  });
+
+  it('does not re-run the backfill on later initSchema calls (archived stays frozen)', () => {
+    // The min_years_experience column already exists after makeMemoryDb's
+    // initSchema, so the one-time migration backfill must not run again.
+    const db = makeMemoryDb();
+    const asOf = '2026-06-11';
+    saveProfile({
+      firstName: 'Ada',
+      summary: 'Frontend engineer working with React.',
+      skills: [{ name: 'React', level: 5 }],
+    }, db);
+    const app = create({
+      companyName: 'Archive Co',
+      jobTitle: 'Frontend Engineer',
+      status: 'rejected',
+      responsibilities: 'Build React UI.',
+      skills: ['React'],
+      minYearsExperience: 3,
+    }, db, asOf);
+    archive(app.id, db, asOf);
+    // A deliberately "wrong" frozen score the backfill would overwrite if it ran.
+    db.prepare('UPDATE applications SET compat = 7 WHERE id = ?').run(app.id);
+
+    initSchema(db, { compatBackfillAsOf: asOf });
+
+    expect(getById(app.id, db).compat).toBe(7);
 
     db.close();
   });

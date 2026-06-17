@@ -205,12 +205,23 @@ export function createApplicationsRouter({
         return sendInvalidId(res);
       }
 
-      const record = await req.repos.applications.unarchive(id, resolveRequestDate(req));
-      if (!record) {
+      const asOf = resolveRequestDate(req);
+      const restored = await req.repos.applications.unarchive(id, asOf);
+      if (!restored) {
         return sendNotFound(res);
       }
 
-      return res.status(200).json({ data: record });
+      // The restored application re-enters the active set; its score was
+      // frozen while archived (and skipped by profile-wide recompute), so
+      // refresh it against the current profile now.
+      const profile = await req.repos.profile.get();
+      const compat = scoreApplication(restored, profile, asOf);
+      if (compat === restored.compat) {
+        return res.status(200).json({ data: restored });
+      }
+
+      const rescored = await req.repos.applications.update(id, { compat }, asOf);
+      return res.status(200).json({ data: rescored ?? restored });
     } catch (error) {
       return next(error);
     }
