@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import { initSchema } from './db.js';
+import { backfillCompatibility, db, initSchema } from './db.js';
 import { saveProfile } from './db/profile.js';
 import { DEMO_PROFILE } from './seeds/profileData.js';
 
@@ -17,6 +17,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   try {
     const saved = saveProfile(DEMO_PROFILE);
+    // Recompute every seeded application's compatibility against the
+    // just-saved profile (db:seed inserts apps with no profile to score
+    // against, so they default to 0). Keeps the SQLite demo at parity with
+    // the deterministic engine + the client demo seed.
+    const recomputed = backfillCompatibility(db, new Date().toISOString().slice(0, 10));
+    console.log(`Recomputed compatibility for ${recomputed} application(s).`);
     console.log('Profile seeded successfully.');
     console.log(`  Name  : ${saved.firstName} ${saved.lastName}`);
     console.log(`  City  : ${saved.city}`);

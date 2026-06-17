@@ -57,15 +57,16 @@ export function backfillCompatibility(targetDb, asOf) {
   const profile = readProfileForCompatibility(targetDb);
 
   if (!profile) {
-    return;
+    return 0;
   }
 
   const rows = targetDb.prepare('SELECT * FROM applications').all();
   if (rows.length === 0) {
-    return;
+    return 0;
   }
 
   const updateCompat = targetDb.prepare('UPDATE applications SET compat = @compat WHERE id = @id');
+  let updated = 0;
 
   targetDb.transaction(() => {
     for (const row of rows) {
@@ -74,9 +75,12 @@ export function backfillCompatibility(targetDb, asOf) {
 
       if (compat !== application.compat) {
         updateCompat.run({ id: application.id, compat });
+        updated += 1;
       }
     }
   })();
+
+  return updated;
 }
 
 export function initSchema(targetDb = db, { compatBackfillAsOf = currentDate() } = {}) {

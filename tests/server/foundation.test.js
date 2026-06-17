@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { STATUS_VALUES } from '../../shared/constants.js';
 import { archive, create, getById } from '../../server/db/applications.js';
 import { backfillCompatibility, initSchema } from '../../server/db.js';
-import { saveProfile } from '../../server/db/profile.js';
+import { getProfile, saveProfile } from '../../server/db/profile.js';
+import { seedApplications } from '../../server/db-seed.js';
+import { DEMO_PROFILE } from '../../server/seeds/profileData.js';
 import { makeMemoryDb } from './helpers.js';
 import { computeCompatibility } from '../../src/models/compatibility.js';
 import { toRecord, toRow } from '../../server/db/applications.js';
@@ -142,6 +144,32 @@ describe('initSchema', () => {
     initSchema(db, { compatBackfillAsOf: asOf });
 
     expect(getById(app.id, db).compat).toBe(7);
+
+    db.close();
+  });
+
+  it('seeds SQLite applications with min years + engine-matched compatibility (db:seed → db:seed:profile)', () => {
+    const db = makeMemoryDb();
+    const asOf = '2026-06-11';
+
+    // Mirror the documented local flow: seed applications, then seed the
+    // profile (which recomputes scores).
+    const seededCount = seedApplications(db);
+    saveProfile(DEMO_PROFILE, db);
+    const updated = backfillCompatibility(db, asOf);
+    expect(updated).toBeGreaterThan(0);
+
+    const profile = getProfile(db);
+    const rows = db.prepare('SELECT * FROM applications').all().map(toRecord);
+
+    expect(rows).toHaveLength(seededCount);
+    // Min Years is populated on the seed (not blank), and every score matches
+    // the deterministic engine — no stale/non-v2 literals.
+    expect(rows.some((row) => Number.isInteger(row.minYearsExperience))).toBe(true);
+    for (const row of rows) {
+      expect(row.minYearsExperience === null || Number.isInteger(row.minYearsExperience)).toBe(true);
+      expect(row.compat).toBe(computeCompatibility(profile, row, { asOf }).score);
+    }
 
     db.close();
   });

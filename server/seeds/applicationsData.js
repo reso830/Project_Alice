@@ -741,7 +741,29 @@ const BASE_DEMO_RECORDS = [
   },
 ];
 
-export const DEMO_RECORDS = BASE_DEMO_RECORDS.map((record, index) => ({
-  ...shiftRecordDates(record),
-  timeline: DEMO_TIMELINES[index],
-}));
+// Required minimum years per record (index-aligned with BASE_DEMO_RECORDS).
+// Mirrors the client demo seed's first 23 values (src/data/demoSeed.js) so the
+// two surfaces stay consistent. NOTE: the `compat` literals on the records are
+// illustrative only and are NOT seeded — `db:seed:profile` recomputes every
+// score against the seeded profile via the deterministic engine.
+const DEMO_MIN_YEARS_EXPERIENCE = [
+  4, 4, 5, 3, 3, 2, 5, 6, 3, 6, 4, 2, 3, 7, 4, 3, 2, 6, 4, 3, 5, 5, 6,
+];
+
+if (BASE_DEMO_RECORDS.length !== DEMO_MIN_YEARS_EXPERIENCE.length) {
+  throw new Error('applicationsData: DEMO_MIN_YEARS_EXPERIENCE must stay aligned with the records.');
+}
+
+export const DEMO_RECORDS = BASE_DEMO_RECORDS.map((record, index) => {
+  // `compat` is dropped here: it is server-authoritative (036) and recomputed
+  // by db:seed:profile, so the illustrative literal is neither seeded nor
+  // exposed. shiftRecordDates returns a fresh object, so delete is safe.
+  const shifted = shiftRecordDates(record);
+  delete shifted.compat;
+
+  return {
+    ...shifted,
+    timeline: DEMO_TIMELINES[index],
+    min_years_experience: DEMO_MIN_YEARS_EXPERIENCE[index],
+  };
+});
