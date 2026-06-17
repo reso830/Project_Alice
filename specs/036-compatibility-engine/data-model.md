@@ -122,13 +122,15 @@ Only `score` is persisted (into `compat`). `label` is **derived** at display tim
 
 | Category | Weight |
 | --- | --- |
-| skills | 35 |
+| skills | **43** |
 | roleAlignment | 25 |
-| experience | 20 |
+| experience | **12** |
 | keywords | 10 |
 | certifications | 10 |
 
 Absent categories (no usable input on either side) are dropped and the remaining weights renormalized to sum to 1 before aggregation. Zero active categories → score `0`.
+
+> **Revised 2026-06-16 (Group B).** Originally `skills 35 · experience 20`; experience dropped to 12 with the freed 8 moved into skills (see §7). The **skills sub-score formula** also changed — see §7 and [research.md](research.md) D10.
 
 ---
 
@@ -138,3 +140,17 @@ Absent categories (no usable input on either side) are dropped and the remaining
 - **Compatibility result** (transient) — `{ score, label }`; not a stored entity beyond `compat`.
 - **Weights config** (`COMPAT_WEIGHTS`) — module constant, not persisted, not user-editable in v1.
 - **Profile / profile_skill** — read-only inputs; unchanged.
+
+---
+
+## 7. Revision history
+
+### 2026-06-16 — Group B (scoring v2, post-smoke-test)
+
+No schema or persistence change — this revision only adjusts the **scoring computation** (still `compat` ∈ 0–100, same field, same recompute architecture). Reader-facing explainer: [`docs/compatibility_scoring.md`](../../docs/compatibility_scoring.md); decisions: [research.md](research.md) D10/D11.
+
+- **Skills sub-score** — replaced "required mean + capped additive preferred bonus" with **pooled weighted coverage**: required weight 1, preferred weight 0.69, matched skill contributes `proficiency/5`, unmatched required remain in the denominator; cap of 0.35 when zero required matched; preferred-only postings reduce to preferred coverage. Fixes the required-vs-preferred inversion and keeps partial coverage honest.
+- **Default weights** — `experience 20 → 12`, `skills 35 → 43` (table above). Reduces the sway of the coarse, usually-blank Min Years field.
+- **Experience activation** — when Min Years is stated but the profile has no experience entries: score **0** if the profile has other substantive content (fresh-grad shortfall), **omit + renormalize** if the profile is essentially empty (don't penalize an unfilled profile). Curve and `derivedYears` unchanged.
+
+These changes ship within the **unreleased** v1.6.0 (036 has not merged), so they refine — rather than supersede — the 1.6.0 behavior; the v1.6.0 CHANGELOG/REPO_MAP weight references are updated as part of the Group B implementation phase.

@@ -15,6 +15,8 @@ Decisions and rationale behind [plan.md](plan.md). All choices trace to the spec
 
 ## D2 — Default category weights: 35/25/20/10/10
 
+> **Superseded by D11 (2026-06-16):** weights are now `skills 43 · roleAlignment 25 · experience 12 · keywords 10 · certifications 10`. Original decision kept below for history.
+
 **Decision**: `skills 35, roleAlignment 25, experience 20, keywords 10, certifications 10`. Configurable; absent categories renormalize.
 
 **Why**: User-selected "Balanced" profile. Skills still leads (only fully-structured both-sides signal), role and experience carry real weight, and the coarse text signals (keywords, certifications) are kept light to avoid fake precision. Weights live in the module as `COMPAT_WEIGHTS` so they are trivially tunable and unit-testable.
@@ -32,6 +34,8 @@ Decisions and rationale behind [plan.md](plan.md). All choices trace to the spec
 **Why**: Deterministic and cheap; aligns with the brief's "no fake precision." The known cost — "React" ≠ "React.js", "JS" ≠ "JavaScript" — is accepted for v1 because the structured **skills** category (exact skill names the user curated, matched against parser-extracted skill names) dominates. Semantic/synonym matching is an explicit non-goal and a clean future extension point (the category list is open).
 
 ## D5 — Category formulas (normalized to [0,1])
+
+> **Superseded in part (2026-06-16, post-smoke-test).** The **skills** formula below is replaced by **D10** (pooled weighted coverage), and the default **weights** + **experience activation** are revised by **D11**. The role-alignment, keywords, and certifications formulas and the aggregate/renormalization mechanism are unchanged. Kept here for history.
 
 Let `norm(s)` = lowercased, whitespace-collapsed; `tokens(s)` = `norm`→split on non-alphanumeric→drop stopwords→dedupe.
 
@@ -66,3 +70,38 @@ Let `norm(s)` = lowercased, whitespace-collapsed; `tokens(s)` = `norm`→split o
 **Decision**: Keep `CompatBar` as the single render surface; change its banding from the current 3 color thresholds (≥80/≥60) to the **four** spec bands and add the **label text** next to the percentage.
 
 **Why**: Non-color-only (constitution + FR-016) and consistent presentation everywhere the bar already appears (Tracker card, detail overlay). The label mapping lives in the shared module so display and scoring never disagree.
+
+---
+
+## Revision — Group B (scoring v2), 2026-06-16
+
+Post-smoke-test review of the deployed scoring surfaced two believability problems. These decisions revise D5 (skills formula, default weights, experience activation); everything else is unchanged. Full math and worked examples live in [`docs/compatibility_scoring.md`](../../docs/compatibility_scoring.md).
+
+### D10 — Skills: pooled weighted coverage (replaces the D5 skills formula)
+
+**Problem**: D5 made `requiredScore` a *mean* over the required list but `preferred` an *additive* bonus. When required coverage was low, adding a matched skill to **required** barely moved the score (the `+1` in the denominator diluted it), while adding the same skill to **preferred** added a clean flat bump — so a preferred match could out-score a required match (observed on app#990: Jest@4 → +6% as required vs +11% as preferred). The discount factor wasn't the cause; the *mean-vs-additive* structure was.
+
+**Decision**: Score skills as one **pooled, weighted coverage** fraction. Each required skill carries weight `1`, each preferred skill carries weight `w = 0.69` (the "a preferred skill at proficiency 4 should weigh like a required skill at ~2.75" intuition → `2.75 / 4 ≈ 0.69`). A matched skill contributes its proficiency fraction `level/5`; an unmatched skill contributes `0` but keeps its weight in the denominator:
+
+```
+num = Σ_matched-required (level/5)·1 + Σ_matched-preferred (level/5)·w
+den = |required|·1 + |preferred|·w
+skills = num / den
+```
+
+Guards: if required is non-empty and **zero** required skills are matched, cap `skills = min(0.35, skills)` (nice-to-haves can't mask failing the actual requirements). If **no** required skills are listed (preferred-only posting), the `w` cancels and the formula naturally becomes preferred coverage `Σ(level/5)/|preferred|`. Both lists empty → category inactive.
+
+**Why**: Proven structurally — a required match's marginal contribution always exceeds the same skill as preferred for any list size (no dilution edge case), so the inversion is impossible; unmatched required skills stay in the denominator, so partial coverage stays honest (matching 5 of 6 strong skills ≈ 67%, not 100%); a single parameter `w` instead of three.
+
+### D11 — Experience: lighter weight + data-aware activation
+
+**Problem**: experience at weight 20 let one coarse, often-blank field swing the total by ~±15 points (observed: app#984 moved 24% → 39% just by setting Min Years). And an empty `experience` section scored `0`, penalizing an unfilled profile rather than treating it as "no data."
+
+**Decision (weight)**: drop experience weight **20 → 12** and move the freed **8** into **skills (35 → 43)**. New default weights: **skills 43 · role alignment 25 · experience 12 · keywords 10 · certifications 10**. This caps experience's sway to ~±8 points when present; it remains omitted+renormalized whenever Min Years is blank (the common case, since postings rarely state explicit years).
+
+**Decision (activation)**: when a job states `minYearsExperience > 0`, the experience category is scored as:
+- profile **has** experience entries (`derivedYears > 0`) → graded as before (`candidate ≥ required ? 1 : candidate/required`);
+- profile has **no** experience but **does** have other substantive content (summary, education, skills, certifications, awards, or languages) → `0` (a deliberate "fresh-grad has no experience yet" signal — a genuine shortfall);
+- profile is **essentially empty** (no experience *and* no other substantive content) → **omit** the category and renormalize (nothing to assess; don't penalize an unfilled profile).
+
+**Why**: mirrors the skills rule (missing *data* → omit, not score 0) while preserving an honest zero for a genuinely experience-less but otherwise-complete profile. The curve and `derivedYears` (verified accurate against the seeded ~7.8-year persona) are unchanged.

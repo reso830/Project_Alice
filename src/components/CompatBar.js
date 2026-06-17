@@ -13,11 +13,11 @@ function getFillColor(score) {
   const label = getCompatLabel(score);
 
   if (label === 'Great') {
-    return '#22C55E';
+    return '#2563EB';
   }
 
   if (label === 'High') {
-    return '#16A34A';
+    return '#15803D';
   }
 
   if (label === 'Medium') {
@@ -25,6 +25,12 @@ function getFillColor(score) {
   }
 
   return '#EF4444';
+}
+
+function getLabelColor(score) {
+  const label = getCompatLabel(score);
+
+  return label === 'High' || label === 'Great' ? '#FFFFFF' : '#111827';
 }
 
 export function render(score) {
@@ -40,7 +46,7 @@ export function render(score) {
 
   fill.style.width = `${safeScore}%`;
   fill.style.backgroundColor = getFillColor(safeScore);
-  label.style.color = '#111827';
+  label.style.color = getLabelColor(safeScore);
   label.textContent = `${safeScore}% ${compatLabel}`;
 
   bar.append(fill, label);

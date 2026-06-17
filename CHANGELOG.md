@@ -27,10 +27,10 @@ profile at scoring time. (036-compatibility-engine)
 
 - **Deterministic compatibility scoring** — `src/models/compatibility.js`:
   `computeCompatibility(profile, application, { asOf })` → `{ score, label }`,
-  with `COMPAT_WEIGHTS` (skills 35 / roleAlignment 25 / experience 20 / keywords
-  10 / certifications 10), `COMPAT_BANDS`, and `getCompatLabel()`. Same inputs
-  always produce the same score (time enters only via a caller-supplied `asOf`).
-  (036-compatibility-engine)
+  with `COMPAT_WEIGHTS` (skills 43 / roleAlignment 25 / experience 12 / keywords
+  10 / certifications 10), pooled weighted skill coverage, `COMPAT_BANDS`, and
+  `getCompatLabel()`. Same inputs always produce the same score (time enters only
+  via a caller-supplied `asOf`). (036-compatibility-engine)
 - **Server-authoritative scoring** — `server/services/compatibility.js` computes
   `compat` on application create/update and recomputes all **active** applications
   when the profile is saved; archived scores stay frozen. (036-compatibility-engine)

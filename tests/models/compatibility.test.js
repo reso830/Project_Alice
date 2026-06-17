@@ -7,6 +7,8 @@ import {
 } from '../../src/models/compatibility.js';
 
 const AS_OF = '2026-06-11';
+const SKILLS_ONLY = Object.freeze({ skills: 1 });
+const SKILLS_AND_EXPERIENCE_ONLY = Object.freeze({ skills: 43, experience: 12 });
 
 function profile(overrides = {}) {
   return {
@@ -62,9 +64,9 @@ describe('getCompatLabel', () => {
 describe('computeCompatibility', () => {
   it('exports the documented default weights', () => {
     expect(COMPAT_WEIGHTS).toEqual({
-      skills: 35,
+      skills: 43,
       roleAlignment: 25,
-      experience: 20,
+      experience: 12,
       keywords: 10,
       certifications: 10,
     });
@@ -104,7 +106,7 @@ describe('computeCompatibility', () => {
         responsibilities: '',
         minYearsExperience: null,
       }),
-      { asOf: AS_OF },
+      { asOf: AS_OF, weights: SKILLS_ONLY },
     );
     const levelFive = computeCompatibility(
       profile({ skills: [{ name: 'React', level: 5 }] }),
@@ -115,38 +117,101 @@ describe('computeCompatibility', () => {
         responsibilities: '',
         minYearsExperience: null,
       }),
-      { asOf: AS_OF },
+      { asOf: AS_OF, weights: SKILLS_ONLY },
     );
 
     expect(levelFive.score).toBeGreaterThan(levelTwo.score);
   });
 
-  it('gives preferred skills capped partial credit below required coverage', () => {
-    const preferredOnly = computeCompatibility(
-      profile({ skills: [{ name: 'GraphQL', level: 5 }] }),
+  it('uses pooled weighted coverage so required matches are worth at least preferred matches', () => {
+    const candidate = profile({ skills: [{ name: 'React', level: 5 }] });
+    const asRequired = computeCompatibility(
+      candidate,
       application({
         jobTitle: '',
-        skills: ['React'],
-        preferredSkills: ['GraphQL'],
-        responsibilities: '',
-        minYearsExperience: null,
-      }),
-      { asOf: AS_OF },
-    );
-    const requiredCovered = computeCompatibility(
-      profile({ skills: [{ name: 'React', level: 5 }] }),
-      application({
-        jobTitle: '',
-        skills: ['React'],
+        skills: ['React', 'Missing'],
         preferredSkills: [],
         responsibilities: '',
         minYearsExperience: null,
       }),
-      { asOf: AS_OF },
+      { asOf: AS_OF, weights: SKILLS_ONLY },
+    );
+    const asPreferred = computeCompatibility(
+      candidate,
+      application({
+        jobTitle: '',
+        skills: ['Missing'],
+        preferredSkills: ['React'],
+        responsibilities: '',
+        minYearsExperience: null,
+      }),
+      { asOf: AS_OF, weights: SKILLS_ONLY },
     );
 
-    expect(preferredOnly.score).toBeGreaterThan(0);
-    expect(preferredOnly.score).toBeLessThan(requiredCovered.score);
+    expect(asRequired.score).toBeGreaterThanOrEqual(asPreferred.score);
+    expect(asRequired.score).toBe(50);
+    expect(asPreferred.score).toBe(35);
+  });
+
+  it('keeps partial required coverage honest in the skills sub-score', () => {
+    const result = computeCompatibility(
+      profile({
+        skills: [
+          { name: 'React', level: 4 },
+          { name: 'JavaScript', level: 4 },
+          { name: 'TypeScript', level: 4 },
+          { name: 'CSS', level: 4 },
+          { name: 'Vite', level: 4 },
+        ],
+      }),
+      application({
+        jobTitle: '',
+        skills: ['React', 'JavaScript', 'TypeScript', 'CSS', 'Vite', 'Accessibility'],
+        preferredSkills: [],
+        responsibilities: '',
+        minYearsExperience: null,
+      }),
+      { asOf: AS_OF, weights: SKILLS_ONLY },
+    );
+
+    expect(result.score).toBe(67);
+  });
+
+  it('caps skills at 35 percent when required skills exist and none are matched', () => {
+    const result = computeCompatibility(
+      profile({
+        skills: [
+          { name: 'GraphQL', level: 5 },
+          { name: 'Storybook', level: 5 },
+        ],
+      }),
+      application({
+        jobTitle: '',
+        skills: ['React'],
+        preferredSkills: ['GraphQL', 'Storybook'],
+        responsibilities: '',
+        minYearsExperience: null,
+      }),
+      { asOf: AS_OF, weights: SKILLS_ONLY },
+    );
+
+    expect(result.score).toBe(35);
+  });
+
+  it('uses preferred-only coverage when no required skills are listed', () => {
+    const result = computeCompatibility(
+      profile({ skills: [{ name: 'GraphQL', level: 5 }] }),
+      application({
+        jobTitle: '',
+        skills: [],
+        preferredSkills: ['GraphQL'],
+        responsibilities: '',
+        minYearsExperience: null,
+      }),
+      { asOf: AS_OF, weights: SKILLS_AND_EXPERIENCE_ONLY },
+    );
+
+    expect(result.score).toBe(100);
   });
 
   it('grades experience by closeness and gives no overshoot bonus', () => {
@@ -160,7 +225,7 @@ describe('computeCompatibility', () => {
         responsibilities: '',
         minYearsExperience: 7,
       }),
-      { asOf: AS_OF },
+      { asOf: AS_OF, weights: SKILLS_AND_EXPERIENCE_ONLY },
     );
     const largeShortfall = computeCompatibility(
       sixYears,
@@ -225,6 +290,57 @@ describe('computeCompatibility', () => {
     );
 
     expect(result.score).toBe(100);
+  });
+
+  it('scores stated experience as zero for a substantive profile with no experience entries', () => {
+    const result = computeCompatibility(
+      profile({
+        summary: '',
+        skills: [{ name: 'React', level: 5 }],
+        experience: [],
+        certifications: [],
+      }),
+      application({
+        jobTitle: '',
+        skills: ['React'],
+        preferredSkills: [],
+        responsibilities: '',
+        minYearsExperience: 3,
+      }),
+      { asOf: AS_OF, weights: SKILLS_AND_EXPERIENCE_ONLY },
+    );
+
+    expect(result.score).toBe(78);
+  });
+
+  it('omits stated experience for an essentially empty profile', () => {
+    const emptyProfile = profile({
+      summary: '',
+      skills: [],
+      experience: [],
+      education: [],
+      certifications: [],
+      awards: [],
+      languages: [],
+    });
+    const yearsRequired = application({
+      jobTitle: '',
+      skills: [],
+      preferredSkills: [],
+      responsibilities: '',
+      minYearsExperience: 3,
+    });
+    const yearsBlank = application({
+      jobTitle: '',
+      skills: [],
+      preferredSkills: [],
+      responsibilities: '',
+      minYearsExperience: null,
+    });
+
+    expect(computeCompatibility(emptyProfile, yearsRequired, { asOf: AS_OF })).toEqual(
+      computeCompatibility(emptyProfile, yearsBlank, { asOf: AS_OF }),
+    );
   });
 
   it('returns zero for sparse inputs and never mutates the supplied data', () => {

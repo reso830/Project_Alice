@@ -25,4 +25,27 @@ describe('CompatBar', () => {
 
     expect(bar.querySelector('.compat-bar__label')?.textContent).toBe('85% Great');
   });
+
+  it.each([
+    [20, 'rgb(17, 24, 39)'],
+    [50, 'rgb(17, 24, 39)'],
+    [70, 'rgb(255, 255, 255)'],
+    [90, 'rgb(255, 255, 255)'],
+  ])('uses a readable flat text color at %i', (score, color) => {
+    const label = CompatBar.render(score).querySelector('.compat-bar__label');
+
+    expect(label.style.color).toBe(color);
+  });
+
+  it('uses a brighter blue fill for Great compatibility', () => {
+    const fill = CompatBar.render(90).querySelector('.compat-bar__fill');
+
+    expect(fill.style.backgroundColor).toBe('rgb(37, 99, 235)');
+  });
+
+  it('uses a WCAG-compliant green fill for High compatibility', () => {
+    const fill = CompatBar.render(70).querySelector('.compat-bar__fill');
+
+    expect(fill.style.backgroundColor).toBe('rgb(21, 128, 61)');
+  });
 });

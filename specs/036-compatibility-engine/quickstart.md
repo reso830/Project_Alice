@@ -33,8 +33,11 @@ npm run dev                    # Vite + Express
 
 ## 5. Verify preferred-skill partial credit
 
+> Scoring v2 (Group B, 2026-06-16): skills now use **pooled weighted coverage** (preferred weight 0.69; 0.35 cap when zero required matched). The checks below still hold — preferred stays below required — but the underlying model changed; see [`docs/compatibility_scoring.md`](../../docs/compatibility_scoring.md).
+
 1. Find/create an application whose **preferred** skills you have but whose **required** skills you do not.
-2. Confirm the skills contribution is **partial** — it cannot reach the level you'd get by covering the required skills.
+2. Confirm the skills contribution is **partial** — it cannot reach the level you'd get by covering the required skills, and is capped (≤ 35% of the skills sub-score) when you match no required skills.
+3. Add a matched skill to **required** vs. **preferred** and confirm the required placement helps **at least as much** (no inversion).
 
 ## 6. Verify recompute scope (archived frozen)
 

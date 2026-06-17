@@ -512,6 +512,27 @@ describe('Modal', () => {
     expect(document.body.textContent).toContain('Min Years must be a whole number or blank.');
   });
 
+  it('uses a raw text editor for Min Years and renders a visible inline error', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ minYearsExperience: 3 }));
+    const input = inputField('Min Years');
+
+    expect(input.type).toBe('text');
+
+    input.value = '-1';
+    input.dispatchEvent(new window.Event('blur'));
+    saveButton().click();
+    await flushPromises();
+
+    const error = getFieldByLabel('Min Years').querySelector('.modal-field-error');
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(error).not.toBeNull();
+    expect(error.textContent).toBe('Min Years must be a whole number or blank.');
+    expect(error.hidden).toBe(false);
+  });
+
   it('renders Timeline section in the row-5 slot', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

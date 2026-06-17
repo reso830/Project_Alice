@@ -43,14 +43,14 @@ No violations → Complexity Tracking table omitted.
 A single, side-effect-free module — the centralized source of truth for scoring. No I/O, no `Math.random`, no implicit `Date.now()`.
 
 Exports (final names settled in implementation):
-- `COMPAT_WEIGHTS` — default category weights: **skills 35, roleAlignment 25, experience 20, keywords 10, certifications 10** (configurable; sum need not be relied on — categories renormalize).
+- `COMPAT_WEIGHTS` — default category weights: **skills 43, roleAlignment 25, experience 12, keywords 10, certifications 10** (configurable; sum need not be relied on — categories renormalize). *(Revised 2026-06-16, Group B — was `35 · 25 · 20 · 10 · 10`; see [research.md](research.md) D11 and [data-model.md §7](data-model.md).)*
 - `COMPAT_BANDS` / `getCompatLabel(score)` — bands **Low 0–39 · Medium 40–64 · High 65–84 · Great 85–100**.
 - `computeCompatibility(profile, application, { weights = COMPAT_WEIGHTS, asOf } = {}) → { score, label }` — `score` is an integer 0–100; `label` derived from it.
 
 Each category produces a normalized sub-score in `[0,1]`; only categories with usable input on **both** sides are "active"; active weights are **renormalized** to sum to 1; `score = round(100 × Σ effectiveWeightᵢ × subScoreᵢ)`; zero active categories → `0`.
 
 Category logic (full rules in [research.md](research.md) and [data-model.md](data-model.md)):
-- **skills** — required `application.skills` matched against profile `{name, level}`; each match credited by `level/5` (proficiency weighting); matched `preferredSkills` add a **capped partial bonus** that cannot lift a profile with no required coverage to full.
+- **skills** — required `application.skills` matched against profile `{name, level}`; each match credited by `level/5` (proficiency weighting). *(Revised 2026-06-16, Group B — the original "capped additive preferred bonus" is replaced by **pooled weighted coverage**: required weight 1, preferred weight 0.69, unmatched required kept in the denominator, with a 0.35 cap when zero required matched. See [research.md](research.md) D10 and [`docs/compatibility_scoring.md`](../../docs/compatibility_scoring.md).)*
 - **roleAlignment** — normalized token overlap of `application.jobTitle` against a profile corpus of `experience[].role` + `summary`.
 - **experience** — derived candidate years vs `application.minYearsExperience`, **graded by closeness** (≥ requirement → full, no overshoot bonus; short → `candidate/required`). Omitted when the requirement is blank/0.
 - **keywords** — normalized token overlap of a JD corpus (responsibilities + jobTitle + skills + preferredSkills) against a profile corpus (summary + experience responsibilities + skill names); bounded `[0,1]` so a long JD cannot dominate.

@@ -388,8 +388,13 @@ function parseMinYearsInput(value) {
 }
 
 function renderMinYearsDisplay(valueEl) {
-  valueEl.textContent = Number.isInteger(_draft.minYearsExperience)
-    ? String(_draft.minYearsExperience)
+  if (Number.isInteger(_draft.minYearsExperience)) {
+    valueEl.textContent = String(_draft.minYearsExperience);
+    return;
+  }
+
+  valueEl.textContent = typeof _draft.minYearsExperience === 'string'
+    ? _draft.minYearsExperience
     : displayValue(null);
 }
 
@@ -421,13 +426,12 @@ function makeMinYearsField() {
     let finished = false;
 
     input.className = 'modal-inline-control';
-    input.type = 'number';
-    input.min = '0';
-    input.step = '1';
+    input.type = 'text';
+    input.pattern = '\\d*';
     input.inputMode = 'numeric';
     input.value = Number.isInteger(_draft.minYearsExperience)
       ? String(_draft.minYearsExperience)
-      : '';
+      : (typeof _draft.minYearsExperience === 'string' ? _draft.minYearsExperience : '');
     row.classList.add('modal-field--editing');
     valueEl.replaceChildren(input);
     input.focus();

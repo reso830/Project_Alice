@@ -1,7 +1,7 @@
 export const COMPAT_WEIGHTS = Object.freeze({
-  skills: 35,
+  skills: 43,
   roleAlignment: 25,
-  experience: 20,
+  experience: 12,
   keywords: 10,
   certifications: 10,
 });
@@ -13,7 +13,8 @@ export const COMPAT_BANDS = Object.freeze([
   Object.freeze({ min: 85, max: 100, label: 'Great' }),
 ]);
 
-const PREFERRED_FACTOR = 0.3;
+const PREFERRED_SKILL_WEIGHT = 0.69;
+const ZERO_REQUIRED_MATCH_CAP = 0.35;
 const DAYS_PER_YEAR = 365.2425;
 const STOPWORDS = new Set([
   'a',
@@ -136,18 +137,28 @@ function scoreSkills(profile, application) {
     return null;
   }
 
-  const requiredScore = required.length === 0
-    ? 0
-    : required.reduce((sum, name) => sum + (profileSkills.get(name) ?? 0), 0) / required.length;
-  const preferredScore = preferred.length === 0
-    ? 0
-    : preferred.reduce((sum, name) => sum + (profileSkills.get(name) ?? 0), 0) / preferred.length;
+  const requiredMatched = required.filter((name) => profileSkills.has(name));
+  const requiredNumerator = requiredMatched.reduce(
+    (sum, name) => sum + profileSkills.get(name),
+    0,
+  );
+  const preferredNumerator = preferred.reduce(
+    (sum, name) => sum + ((profileSkills.get(name) ?? 0) * PREFERRED_SKILL_WEIGHT),
+    0,
+  );
+  const denominator = required.length + (preferred.length * PREFERRED_SKILL_WEIGHT);
 
-  if (required.length === 0) {
-    return Math.min(1, PREFERRED_FACTOR * preferredScore);
+  if (denominator <= 0) {
+    return null;
   }
 
-  return Math.min(1, requiredScore + (PREFERRED_FACTOR * preferredScore));
+  const score = (requiredNumerator + preferredNumerator) / denominator;
+
+  if (required.length > 0 && requiredMatched.length === 0) {
+    return Math.min(ZERO_REQUIRED_MATCH_CAP, score);
+  }
+
+  return score;
 }
 
 function scoreRoleAlignment(profile, application) {
@@ -232,9 +243,40 @@ function scoreExperience(profile, application, asOf) {
     return null;
   }
 
-  const candidate = derivedYears(profile?.experience, asOf);
+  const experience = safeArray(profile?.experience);
+  const candidate = derivedYears(experience, asOf);
+
+  if (experience.length === 0 && !hasSubstantiveProfileContent(profile)) {
+    return null;
+  }
 
   return candidate >= required ? 1 : Math.max(0, candidate / required);
+}
+
+function hasTextValue(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasSubstantiveProfileContent(profile) {
+  if (hasTextValue(profile?.summary)) {
+    return true;
+  }
+
+  return [
+    profile?.education,
+    profile?.skills,
+    profile?.certifications,
+    profile?.awards,
+    profile?.languages,
+  ].some((items) => safeArray(items).some((item) => {
+    if (typeof item === 'string') {
+      return hasTextValue(item);
+    }
+
+    return item
+      && typeof item === 'object'
+      && Object.values(item).some((value) => hasTextValue(value));
+  }));
 }
 
 function jdKeywordTokens(application) {
