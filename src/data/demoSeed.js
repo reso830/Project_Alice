@@ -24,6 +24,8 @@ import { toISODate } from '../utils/date.js';
 
 export const DEMO_COMPAT_AS_OF = '2026-05-21';
 
+const SEEDED_COMPAT_SCORED_AT = '2026-06-17T09:00:00.000Z';
+
 // Original calendar dates from the SQLite seed are inlined here so the
 // date-shift can preserve relative spacing without re-importing from
 // `server/seeds/` (which would cross the client/server boundary).
@@ -191,6 +193,11 @@ const SOURCE_RECORDS = [
     shift: 'Day',
     workSetup: 'Hybrid',
     compatNotes: 'Strong React match; culture fit confirmed.',
+    compatAnalysis: {
+      summary: 'Strong React fit',
+      body: 'React, TypeScript, CSS, and accessibility expectations line up well with Alex\'s profile.',
+      generatedAt: '2026-06-17T09:10:00.000Z',
+    },
     generalNotes: null,
     preferredSkills: ['Storybook', 'Accessibility'],
   },
@@ -235,6 +242,11 @@ const SOURCE_RECORDS = [
     shift: 'Flexible',
     workSetup: 'Remote',
     compatNotes: 'Best overall fit of current round.',
+    compatAnalysis: {
+      summary: 'Full-stack match',
+      body: 'The role combines React, Node.js, TypeScript, PostgreSQL, and Redis, matching Alex\'s strongest production history.',
+      generatedAt: '2026-06-17T08:30:00.000Z',
+    },
     generalNotes: null,
     preferredSkills: ['GraphQL', 'Redis'],
   },
@@ -411,6 +423,11 @@ const SOURCE_RECORDS = [
     shift: 'Day',
     workSetup: 'Remote',
     compatNotes: 'Strong reliability background.',
+    compatAnalysis: {
+      summary: 'Reliability stretch',
+      body: 'Go, Kubernetes, Prometheus, and incident-response language overlap, though PagerDuty depth is lighter in the profile.',
+      generatedAt: '2026-06-17T09:05:00.000Z',
+    },
     generalNotes: null,
     preferredSkills: [],
   },
@@ -882,6 +899,8 @@ function attachCompatibility(records, profile) {
   return records.map((record) => ({
     ...record,
     compat: computeCompatibility(profile, record, { asOf: DEMO_COMPAT_AS_OF }).score,
+    compatScoredAt: record.compatScoredAt ?? SEEDED_COMPAT_SCORED_AT,
+    compatAnalysis: record.compatAnalysis ?? null,
   }));
 }
 

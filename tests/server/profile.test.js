@@ -362,6 +362,65 @@ describe('profile API', () => {
     });
   });
 
+  it('stamps compatScoredAt for every active application after profile save', async () => {
+    await withServer(async (baseUrl, db) => {
+      const staleStamp = '2026-01-01T00:00:00.000Z';
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload()),
+      });
+      const firstActive = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(applicationPayload({
+          companyName: 'Acme Corp',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+      const secondActive = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(applicationPayload({
+          companyName: 'Beta Inc',
+          skills: ['React'],
+          responsibilities: 'Maintain React components.',
+        })),
+      });
+      const archived = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(applicationPayload({
+          companyName: 'Closed Co',
+          skills: ['React'],
+          responsibilities: 'Build old React UI.',
+        })),
+      });
+      await request(baseUrl, `/api/applications/${archived.body.data.id}/archive`, {
+        method: 'POST',
+      });
+      db.prepare('UPDATE applications SET compat_scored_at = ?').run(staleStamp);
+
+      const saved = await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profilePayload()),
+      });
+      const fetchedFirst = await request(baseUrl, `/api/applications/${firstActive.body.data.id}`);
+      const fetchedSecond = await request(baseUrl, `/api/applications/${secondActive.body.data.id}`);
+      const fetchedArchived = await request(baseUrl, `/api/applications/${archived.body.data.id}`);
+
+      expect(saved.status).toBe(200);
+      for (const response of [fetchedFirst, fetchedSecond]) {
+        expect(response.status).toBe(200);
+        expect(response.body.data.compatScoredAt).toMatch(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+        );
+        expect(response.body.data.compatScoredAt).not.toBe(staleStamp);
+      }
+      expect(fetchedFirst.body.data.compat).toBe(firstActive.body.data.compat);
+      expect(fetchedSecond.body.data.compat).toBe(secondActive.body.data.compat);
+      expect(fetchedArchived.body.data.archived).toBe(true);
+      expect(fetchedArchived.body.data.compatScoredAt).toBe(staleStamp);
+    });
+  });
+
   it('leaves archived application compatibility frozen after profile save', async () => {
     await withServer(async (baseUrl) => {
       await request(baseUrl, '/api/profile', {

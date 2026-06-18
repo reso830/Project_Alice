@@ -1088,12 +1088,10 @@ function renderAiSettingsGroup() {
 
     featureList.append(createElement('div', 'feat-list__label', 'ENABLED FEATURES'));
     for (const key of ['cv', 'jd', 'compat']) {
-      const isComingSoon = key === 'compat';
       const item = createElement('div', 'feat-item');
       const copy = createElement('div', 'feat-item__copy');
       const toggle = createSwitch({
         pressed: aiSettings.getFeature(key),
-        disabled: isComingSoon,
         label: `Toggle ${FEATURE_COPY[key].title}`,
         onClick: () => {
           const nextValue = !aiSettings.getFeature(key);
@@ -1103,16 +1101,10 @@ function renderAiSettingsGroup() {
       });
 
       toggle.dataset.aiFeature = key;
-      if (isComingSoon) {
-        item.classList.add('is-disabled');
-      }
       copy.append(
         createElement('div', 'feat-item__title', FEATURE_COPY[key].title),
         createElement('p', 'feat-item__desc', FEATURE_COPY[key].description),
       );
-      if (isComingSoon) {
-        copy.append(createElement('p', 'feat-item__soon', 'Coming soon.'));
-      }
       item.append(copy, toggle);
       featureList.append(item);
     }

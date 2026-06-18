@@ -106,6 +106,9 @@ export function createSupabaseApplicationsRepository(client, userId) {
       archived: 0,
       metadata: null,
       min_years_experience: null,
+      compat_notes: null,
+      compat_analysis: null,
+      compat_scored_at: null,
       ...toRow(sanitized),
     };
     row.created_at = now;

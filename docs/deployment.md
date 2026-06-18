@@ -97,10 +97,24 @@ migration uses `ADD COLUMN IF NOT EXISTS` and is safe to re-run.
 > automatically on boot (`initSchema`); hosted has no automatic backfill,
 > so the maintenance pass is an explicit operator step.
 
+Feature **037-compatibility-insights-panel** adds two additive `TEXT`
+columns to `applications`: `compat_analysis` (nullable, JSON-encoded
+`CompatNotes` or `null`) and `compat_scored_at` (nullable, ISO timestamp
+used as the notes-staleness signal). Apply the SQL block from
+[`specs/037-compatibility-insights-panel/data-model.md §1, §2`](../specs/037-compatibility-insights-panel/data-model.md)
+after the 036 migration and before promoting a v1.7.0+ hosted deploy. The
+block uses `ADD COLUMN IF NOT EXISTS` and is safe to re-run. The backfill
+sets `compat_scored_at = created_at` for existing rows (prevents
+false staleness on pre-037 records) and nulls any existing `compat_notes`
+values (column is retained). No deployment action is required for this
+feature beyond the column additions — no new env vars, no new RPC, no
+seed changes. See [`specs/037-compatibility-insights-panel/quickstart.md`](../specs/037-compatibility-insights-panel/quickstart.md).
+
 The Express server runs a **boot-time schema check**
 ([server/health.js](../server/health.js)) that issues sentinel PostgREST
-probes against `applications` (including `applications.timeline` and
-`applications.min_years_experience`), `profile`, `profile_skill`, and
+probes against `applications` (including `applications.timeline`,
+`applications.min_years_experience`, `applications.compat_analysis`, and
+`applications.compat_scored_at`), `profile`, `profile_skill`, and
 `user_seed_state`. If the migration has not been applied:
 - The server logs a descriptive error naming the missing column or
   table (e.g. `[hosted-schema] missing artifact: public.applications.user_id`).

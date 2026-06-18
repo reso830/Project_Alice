@@ -14,6 +14,7 @@ import { computeCompatibility } from '../models/compatibility.js';
 import { normaliseProfile, validateProfile } from '../models/profile.js';
 import { toISODate } from '../utils/date.js';
 import { buildDemoSeed, DEMO_COMPAT_AS_OF } from './demoSeed.js';
+import { hasCompatRelevantFields } from '../../shared/compatFields.js';
 
 let _applications = [];
 let _profile = null;
@@ -86,16 +87,17 @@ function scoreApplication(record) {
   return computeCompatibility(_profile ?? {}, record, { asOf: DEMO_COMPAT_AS_OF }).score;
 }
 
-function withComputedCompat(record) {
+function withComputedCompat(record, { stamp = false } = {}) {
   return {
     ...record,
     compat: scoreApplication(record),
+    ...(stamp ? { compatScoredAt: new Date().toISOString() } : {}),
   };
 }
 
 function recomputeActiveApplications() {
   _applications = _applications.map((row) => (
-    row.archived === true ? row : withComputedCompat(row)
+    row.archived === true ? row : withComputedCompat(row, { stamp: true })
   ));
 }
 
@@ -129,7 +131,7 @@ export function getById(id) {
 
 export function create(fields) {
   const normalized = normalizeApplication({ ...fields, id: nextId() });
-  const validated = validateApplicationOrThrow(withComputedCompat(normalized));
+  const validated = validateApplicationOrThrow(withComputedCompat(normalized, { stamp: true }));
   _applications = [deepClone(validated), ..._applications];
   return deepClone(validated);
 }
@@ -159,13 +161,42 @@ export function update(id, fields) {
 
   const normalized = normalizeApplication(merged);
   const validated = validateApplicationOrThrow(normalized);
-  const scored = withComputedCompat(validated);
+  const scored = withComputedCompat(validated, {
+    stamp: hasCompatRelevantFields(incoming, existing),
+  });
   _applications = [
     ..._applications.slice(0, index),
     deepClone(scored),
     ..._applications.slice(index + 1),
   ];
   return deepClone(scored);
+}
+
+export function saveCompatNotes(id, { summary, body }) {
+  const index = findIndexById(id);
+  if (index === -1) {
+    throw {
+      code: 'NOT_FOUND',
+      message: 'Application not found',
+    };
+  }
+
+  const compatAnalysis = {
+    summary: typeof summary === 'string' ? summary.trim() : '',
+    body: typeof body === 'string' ? body.trim() : '',
+    generatedAt: new Date().toISOString(),
+  };
+  const updated = {
+    ..._applications[index],
+    compatAnalysis,
+  };
+
+  _applications = [
+    ..._applications.slice(0, index),
+    deepClone(updated),
+    ..._applications.slice(index + 1),
+  ];
+  return { data: deepClone(compatAnalysis) };
 }
 
 export function archive(id, now = toISODate()) {

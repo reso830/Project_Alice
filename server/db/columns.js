@@ -28,7 +28,8 @@ export const FIELD_TO_COLUMN = {
   location: 'location',
   shift: 'shift',
   workSetup: 'work_setup',
-  compatNotes: 'compat_notes',
+  compatAnalysis: 'compat_analysis',
+  compatScoredAt: 'compat_scored_at',
   generalNotes: 'general_notes',
   preferredSkills: 'preferred_skills',
   minYearsExperience: 'min_years_experience',
@@ -58,7 +59,8 @@ export const INSERTABLE_COLUMNS = [
   'location',
   'shift',
   'work_setup',
-  'compat_notes',
+  'compat_analysis',
+  'compat_scored_at',
   'general_notes',
   'preferred_skills',
   'min_years_experience',
@@ -105,6 +107,8 @@ export const APPLICATION_COLUMNS_WITHOUT_USER_ID = [
   'shift',
   'work_setup',
   'compat_notes',
+  'compat_analysis',
+  'compat_scored_at',
   'general_notes',
   'preferred_skills',
   'min_years_experience',
@@ -195,6 +199,8 @@ export function toRecord(row) {
     shift: row.shift,
     workSetup: row.work_setup,
     compatNotes: row.compat_notes,
+    compatAnalysis: parseJson(row.compat_analysis, null),
+    compatScoredAt: row.compat_scored_at ?? null,
     generalNotes: row.general_notes,
     preferredSkills: parseJson(row.preferred_skills, []),
     minYearsExperience: row.min_years_experience ?? null,
@@ -224,6 +230,8 @@ export function toRow(fields) {
     } else if (field === 'preferredSkills') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);
     } else if (field === 'metadata') {
+      row[column] = value != null ? JSON.stringify(value) : null;
+    } else if (field === 'compatAnalysis') {
       row[column] = value != null ? JSON.stringify(value) : null;
     } else if (field === 'timeline') {
       row[column] = JSON.stringify(Array.isArray(value) ? value : []);

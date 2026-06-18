@@ -3,6 +3,7 @@ import {
   APPLICATION_COLUMNS_WITHOUT_USER_ID,
   currentDate,
   FIELD_TO_COLUMN,
+  INSERTABLE_COLUMNS,
   UPDATABLE_COLUMNS,
   toRecord,
   toRow,
@@ -60,6 +61,8 @@ describe('toRecord / toRow round-trip via shared module', () => {
       job_title: 'FE',
       status: 'applied',
       compat: 50,
+      compat_analysis: '{"summary":"Strong match","body":"React aligns well.","generatedAt":"2026-06-17T10:34:56.789Z"}',
+      compat_scored_at: '2026-06-17T10:00:00.000Z',
       fav: 1,
       source_platform: 'LinkedIn',
       application_date: '2026-05-01',
@@ -94,7 +97,9 @@ describe('toRecord / toRow round-trip via shared module', () => {
       'archivedDate',
       'companyName',
       'compat',
+      'compatAnalysis',
       'compatNotes',
+      'compatScoredAt',
       'createdAt',
       'fav',
       'followUpAction',
@@ -153,6 +158,83 @@ describe('toRecord / toRow round-trip via shared module', () => {
     })).toEqual({
       timeline: JSON.stringify([{ id: 1, date: '2026-05-21', status: 'applied', text: 'x' }]),
     });
+  });
+
+  it('round-trips compatibility analysis and score timestamp while retiring compatNotes writes', () => {
+    const notes = {
+      summary: 'Strong React fit',
+      body: 'React and TypeScript line up with the role.',
+      generatedAt: '2026-06-17T10:34:56.789Z',
+    };
+
+    expect(FIELD_TO_COLUMN.compatAnalysis).toBe('compat_analysis');
+    expect(FIELD_TO_COLUMN.compatScoredAt).toBe('compat_scored_at');
+    expect(FIELD_TO_COLUMN).not.toHaveProperty('compatNotes');
+    expect(APPLICATION_COLUMNS_WITHOUT_USER_ID).toEqual(expect.arrayContaining([
+      'compat_notes',
+      'compat_analysis',
+      'compat_scored_at',
+    ]));
+    expect(INSERTABLE_COLUMNS).toEqual(expect.arrayContaining([
+      'compat_analysis',
+      'compat_scored_at',
+    ]));
+    expect(INSERTABLE_COLUMNS).not.toContain('compat_notes');
+
+    expect(toRow({ compatAnalysis: notes, compatScoredAt: notes.generatedAt })).toEqual({
+      compat_analysis: JSON.stringify(notes),
+      compat_scored_at: notes.generatedAt,
+    });
+    expect(toRow({ compatAnalysis: null, compatScoredAt: null })).toEqual({
+      compat_analysis: null,
+      compat_scored_at: null,
+    });
+    expect(toRow({ compatNotes: 'legacy note' })).toEqual({});
+    expect(UPDATABLE_COLUMNS.has('compat_notes')).toBe(false);
+
+    const record = toRecord({
+      id: 1,
+      company_name: 'x',
+      job_title: 'y',
+      status: 'applied',
+      compat: 0,
+      compat_analysis: JSON.stringify(notes),
+      compat_scored_at: notes.generatedAt,
+      compat_notes: null,
+      fav: 0,
+      skills: '[]',
+      preferred_skills: '[]',
+      metadata: null,
+      timeline: '[]',
+      archived: 0,
+      min_years_experience: null,
+    });
+
+    expect(record.compatAnalysis).toEqual(notes);
+    expect(record.compatScoredAt).toBe(notes.generatedAt);
+    expect(record.compatNotes).toBeNull();
+  });
+
+  it('treats malformed compat_analysis JSON as null', () => {
+    const record = toRecord({
+      id: 1,
+      company_name: 'x',
+      job_title: 'y',
+      status: 'applied',
+      compat: 0,
+      compat_analysis: '{not-json',
+      compat_scored_at: null,
+      fav: 0,
+      skills: '[]',
+      preferred_skills: '[]',
+      metadata: null,
+      timeline: '[]',
+      archived: 0,
+      min_years_experience: null,
+    });
+
+    expect(record.compatAnalysis).toBeNull();
+    expect(record.compatScoredAt).toBeNull();
   });
 
   it('round-trips minYearsExperience as min_years_experience including null', () => {

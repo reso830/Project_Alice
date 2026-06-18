@@ -113,6 +113,9 @@ describe('applications API', () => {
       expect(response.body.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(response.body.data.updatedAt).toBe(response.body.data.createdAt);
       expect(response.body.data.lastStatusUpdate).toBe(response.body.data.createdAt);
+      expect(response.body.data.compatScoredAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
     });
   });
 
@@ -161,7 +164,7 @@ describe('applications API', () => {
         location: 'Manila',
         shift: 'Day',
         workSetup: 'Remote',
-        compatNotes: 'Strong frontend match.',
+        compatNotes: null,
         generalNotes: 'Applied via referral.',
         preferredSkills: ['GraphQL', 'Figma'],
       });
@@ -213,7 +216,7 @@ describe('applications API', () => {
         location: 'Manila',
         shift: 'Mid',
         workSetup: 'Hybrid',
-        compatNotes: 'Compatibility detail',
+        compatNotes: null,
         generalNotes: 'General detail',
         preferredSkills: ['GraphQL'],
       });
@@ -579,7 +582,7 @@ describe('applications API', () => {
         location: '',
         shift: '',
         workSetup: '',
-        compatNotes: '',
+        compatNotes: null,
         generalNotes: '',
         preferredSkills: [],
       });
@@ -615,6 +618,70 @@ describe('applications API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.compat).toBeGreaterThan(created.body.data.compat);
+    });
+  });
+
+  it('updates compatScoredAt when a compat-relevant field changes', async () => {
+    await withServer(async (baseUrl, db) => {
+      const staleStamp = '2026-01-01T00:00:00.000Z';
+      await request(baseUrl, '/api/profile', {
+        method: 'PUT',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(compatibleProfilePayload()),
+      });
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify(validApplicationPayload({
+          jobTitle: 'Frontend Engineer',
+          skills: ['Python'],
+          responsibilities: 'Build frontend UI.',
+        })),
+      });
+      db.prepare('UPDATE applications SET compat_scored_at = ? WHERE id = ?')
+        .run(staleStamp, created.body.data.id);
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        headers: { 'X-Client-Date': '2026-06-11' },
+        body: JSON.stringify({ skills: ['React'] }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.compatScoredAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+      expect(response.body.data.compatScoredAt).not.toBe(staleStamp);
+    });
+  });
+
+  it('preserves compatScoredAt when only non-compat fields change', async () => {
+    await withServer(async (baseUrl, db) => {
+      const existingStamp = '2026-01-01T00:00:00.000Z';
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({
+          notes: 'Initial general note',
+        })),
+      });
+      db.prepare('UPDATE applications SET compat_scored_at = ? WHERE id = ?')
+        .run(existingStamp, created.body.data.id);
+
+      const response = await request(baseUrl, `/api/applications/${created.body.data.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          notes: 'Updated general note',
+          jobTitle: created.body.data.jobTitle,
+          responsibilities: created.body.data.responsibilities,
+          skills: created.body.data.skills,
+          preferredSkills: created.body.data.preferredSkills,
+          minYearsExperience: created.body.data.minYearsExperience,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.notes).toBe('Updated general note');
+      expect(response.body.data.compatScoredAt).toBe(existingStamp);
     });
   });
 

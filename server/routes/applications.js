@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { isValidTransition, TERMINAL_STATES } from '../../shared/constants.js';
+import { hasCompatRelevantFields } from '../../shared/compatFields.js';
 import { resolveRequestDate } from '../middleware/requestDate.js';
 import { attachRepos } from '../repositories/middleware.js';
 import { scoreApplication } from '../services/compatibility.js';
@@ -36,6 +37,39 @@ function sendNotFound(res) {
     error: {
       code: 'NOT_FOUND',
       message: 'Application not found',
+    },
+  });
+}
+
+function validateCompatNotesBody(body) {
+  const fields = {};
+  const summary = typeof body?.summary === 'string' ? body.summary.trim() : '';
+  const noteBody = typeof body?.body === 'string' ? body.body.trim() : '';
+
+  if (summary.length === 0 || summary.length > 34) {
+    fields.summary = 'Summary must be 1-34 characters.';
+  }
+
+  if (noteBody.length === 0) {
+    fields.body = 'Body is required.';
+  }
+
+  return {
+    valid: Object.keys(fields).length === 0,
+    fields,
+    data: {
+      summary,
+      body: noteBody,
+    },
+  };
+}
+
+function sendCompatNotesValidationError(res, fields) {
+  return res.status(400).json({
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'Validation failed',
+      fields,
     },
   });
 }
@@ -84,7 +118,12 @@ export function createApplicationsRouter({
       const asOf = resolveRequestDate(req);
       const profile = await req.repos.profile.get();
       const compat = scoreApplication(result.data, profile, asOf);
-      const record = await req.repos.applications.create({ ...result.data, compat }, asOf);
+      const compatScoredAt = new Date().toISOString();
+      const record = await req.repos.applications.create({
+        ...result.data,
+        compat,
+        compatScoredAt,
+      }, asOf);
       return res.status(201).json({ data: record });
     } catch (error) {
       return next(error);
@@ -169,7 +208,14 @@ export function createApplicationsRouter({
       const asOf = resolveRequestDate(req);
       const profile = await req.repos.profile.get();
       const compat = scoreApplication({ ...currentRecord, ...result.data }, profile, asOf);
-      const record = await req.repos.applications.update(id, { ...result.data, compat }, asOf);
+      const scorePayload = hasCompatRelevantFields(result.data, currentRecord)
+        ? { compat, compatScoredAt: new Date().toISOString() }
+        : { compat };
+      const record = await req.repos.applications.update(
+        id,
+        { ...result.data, ...scorePayload },
+        asOf,
+      );
       if (!record) {
         return sendNotFound(res);
       }
@@ -193,6 +239,35 @@ export function createApplicationsRouter({
       }
 
       return res.status(200).json({ data: record });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post('/:id/compat-notes', async (req, res, next) => {
+    try {
+      const id = parseIdParam(req.params.id);
+      if (id === null) {
+        return sendInvalidId(res);
+      }
+
+      const currentRecord = await req.repos.applications.getById(id);
+      if (!currentRecord) {
+        return sendNotFound(res);
+      }
+
+      const result = validateCompatNotesBody(req.body);
+      if (!result.valid) {
+        return sendCompatNotesValidationError(res, result.fields);
+      }
+
+      const compatNotes = {
+        ...result.data,
+        generatedAt: new Date().toISOString(),
+      };
+      await req.repos.applications.update(id, { compatAnalysis: compatNotes }, resolveRequestDate(req));
+
+      return res.status(200).json({ data: compatNotes });
     } catch (error) {
       return next(error);
     }

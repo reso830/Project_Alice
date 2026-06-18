@@ -5,14 +5,16 @@ import {
   WORK_SETUP_VALUES,
   normalizeApplication,
 } from '../models/application.js';
+import { computeCompatibility } from '../models/compatibility.js';
 import aiSparkle from '../assets/AI_sparkle.png';
 import * as api from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { resolveSkillLevel } from '../utils/skillProficiency.js';
 import { validateUrl } from '../utils/validate.js';
-import { CompatBar } from './CompatBar.js';
+import { CompatibilityModule } from './CompatibilityModule.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { StatusDropdown } from './StatusDropdown.js';
 import { Timeline, appendStatusChangeTimelineEntry } from './Timeline.js';
@@ -23,6 +25,8 @@ let _backdrop = null;
 let _keydownHandler = null;
 let _draft = null;
 let _original = null;
+let _profile = null;
+let _compatibilityField = null;
 let _body = null;
 let _titleRow = null;
 let _footer = null;
@@ -43,6 +47,8 @@ let _saveController = null;
 let _onApplicationUpdate = null;
 let _onApplicationCreate = null;
 let _onUnarchiveSuccess = null;
+let _onOpenSettings = null;
+let _onOpenProfile = null;
 let _aiFields = new Set();
 let _fillSource = null;
 let _flashFields = new Set();
@@ -387,6 +393,26 @@ function parseMinYearsInput(value) {
   return /^\d+$/u.test(trimmed) ? Number(trimmed) : trimmed;
 }
 
+function recomputeDraftCompatibility() {
+  if (!_draft || !_profile) {
+    return;
+  }
+
+  _draft.compat = computeCompatibility(_profile, _draft).score;
+}
+
+function refreshCompatibilityField() {
+  recomputeDraftCompatibility();
+
+  if (!_compatibilityField?.isConnected) {
+    return;
+  }
+
+  const currentField = _compatibilityField;
+  const nextField = createCompatibilityField();
+  currentField.replaceWith(nextField);
+}
+
 function renderMinYearsDisplay(valueEl) {
   if (Number.isInteger(_draft.minYearsExperience)) {
     valueEl.textContent = String(_draft.minYearsExperience);
@@ -408,6 +434,7 @@ function makeMinYearsField() {
     clearProvenance('minYearsExperience', row);
     renderMinYearsDisplay(valueEl);
     row.classList.remove('modal-field--editing');
+    refreshCompatibilityField();
     _syncFooter();
   }
 
@@ -638,14 +665,66 @@ function makeInlineSelect({ label, key, options, fullSpan = false }) {
   return row;
 }
 
-function makeChipEditor({ label, key }) {
+function makeSkillLegend(profileSkills) {
+  if (!Array.isArray(profileSkills)) {
+    return null;
+  }
+
+  const legend = document.createElement('div');
+  legend.className = 'skills-legend modal-field--full';
+
+  for (const [glyph, label, className] of [
+    ['✓', 'Proficient', 'lvl-high'],
+    ['●', 'Learning', 'lvl-low'],
+    ['✕', 'Missing', 'miss'],
+  ]) {
+    const item = document.createElement('span');
+    const icon = document.createElement('span');
+
+    item.className = 'skills-legend__item';
+    icon.className = `ck ${className}`;
+    icon.textContent = glyph;
+    item.append(icon, ` ${label}`);
+    legend.append(item);
+  }
+
+  return legend;
+}
+
+function applyProficiencyToChip(tag, skill, profileSkills) {
+  if (!Array.isArray(profileSkills)) {
+    tag.append(skill);
+    return;
+  }
+
+  const level = resolveSkillLevel(skill, profileSkills);
+  const glyphByLevel = {
+    proficient: '✓',
+    learning: '●',
+    missing: '✕',
+  };
+  const classByLevel = {
+    proficient: 'lvl-high',
+    learning: 'lvl-low',
+    missing: 'miss',
+  };
+  const icon = document.createElement('span');
+
+  tag.classList.add(classByLevel[level]);
+  icon.className = 'ck';
+  icon.textContent = glyphByLevel[level];
+  icon.setAttribute('aria-hidden', 'true');
+  tag.append(icon, skill);
+}
+
+function makeChipEditor({ label, key, profileSkills = null }) {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
   const valueEl = document.createElement('div');
 
   row.className = canEdit()
-    ? 'modal-field modal-field--full modal-field--editable'
-    : 'modal-field modal-field--full';
+    ? 'modal-field modal-field--editable'
+    : 'modal-field';
   labelEl.className = 'modal-field__label';
   valueEl.className = 'modal-field__value modal-skills modal-chip-editor';
   labelEl.textContent = label;
@@ -663,7 +742,7 @@ function makeChipEditor({ label, key }) {
       const removeButton = document.createElement('button');
 
       tag.className = 'skill-tag';
-      tag.append(skill);
+      applyProficiencyToChip(tag, skill, profileSkills);
       removeButton.type = 'button';
       removeButton.className = 'skill-tag__remove';
       removeButton.setAttribute('aria-label', `Remove ${skill}`);
@@ -672,6 +751,7 @@ function makeChipEditor({ label, key }) {
         _draft[key] = values().filter((value) => value !== skill);
         clearProvenance(key, row);
         renderChips();
+        refreshCompatibilityField();
         _syncFooter();
       });
       if (canEdit()) {
@@ -695,6 +775,7 @@ function makeChipEditor({ label, key }) {
       if (value !== '' && !values().includes(value)) {
         _draft[key] = [...values(), value];
         clearProvenance(key, row);
+        refreshCompatibilityField();
         _syncFooter();
       }
 
@@ -719,6 +800,7 @@ function makeChipEditor({ label, key }) {
         _draft[key] = values().slice(0, -1);
         clearProvenance(key, row);
         renderChips();
+        refreshCompatibilityField();
         _syncFooter();
       }
     });
@@ -732,19 +814,58 @@ function makeChipEditor({ label, key }) {
   return row;
 }
 
-function createCompatField(score) {
+function createCompatibilityField() {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
-  const valueEl = document.createElement('div');
 
-  row.className = 'modal-field';
+  row.className = 'modal-field modal-field--full';
   labelEl.className = 'modal-field__label';
-  valueEl.className = 'modal-field__value modal-field__display';
   labelEl.textContent = 'Compatibility';
-  valueEl.append(CompatBar.render(score));
-  row.append(labelEl, valueEl);
+  row.append(
+    labelEl,
+    CompatibilityModule.render({
+      application: _draft,
+      profile: _profile,
+      onNotesGenerated: _handleNotesGenerated,
+      onOpenSettings: _handleOpenSettings,
+      onOpenProfile: _handleOpenProfile,
+    }),
+  );
+  _compatibilityField = row;
 
   return row;
+}
+
+function _handleNotesGenerated(updatedNotes) {
+  _draft = {
+    ..._draft,
+    compatAnalysis: updatedNotes,
+  };
+  if (_original) {
+    _original = {
+      ..._original,
+      compatAnalysis: updatedNotes,
+    };
+  }
+  _syncFooter();
+}
+
+async function _handleOpenSettings() {
+  const onOpenSettings = _onOpenSettings;
+  const closed = await _attemptClose();
+
+  if (closed) {
+    onOpenSettings?.();
+  }
+}
+
+async function _handleOpenProfile() {
+  const onOpenProfile = _onOpenProfile;
+  const closed = await _attemptClose();
+
+  if (closed) {
+    onOpenProfile?.();
+  }
 }
 
 function renderTitle() {
@@ -817,24 +938,26 @@ function renderTitle() {
 }
 
 function _renderBody() {
+  const profileSkills = _profile?.skills ?? null;
+  const skillsLegend = makeSkillLegend(profileSkills);
   const fields = [
     makeInlineText({ label: 'Company', key: 'companyName', required: true }),
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
     makeInlineText({ label: 'Location', key: 'location' }),
     makeInlineText({ label: 'Salary', key: 'salary' }),
-    makeMinYearsField(),
     makeInlineSelect({ label: 'Shift', key: 'shift', options: SHIFT_VALUES }),
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
-    createCompatField(_draft.compat),
-    makeInlineText({ label: 'Compat Notes', key: 'compatNotes', multiline: true }),
+    makeMinYearsField(),
+    makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
+    makeChipEditor({ label: 'Required Skills', key: 'skills', profileSkills }),
+    makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills', profileSkills }),
+    ...(skillsLegend ? [skillsLegend] : []),
+    createCompatibilityField(),
     Timeline.render(_draft, {
       currentStatus: _draft.status,
       onChange: _syncFooter,
       readOnly: _mode === 'archived',
     }),
-    makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
-    makeChipEditor({ label: 'Required Skills', key: 'skills' }),
-    makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills' }),
     makeInlineText({ label: 'URL', key: 'jobPostingUrl', fullSpan: true }),
     makeInlineText({ label: 'General Notes', key: 'generalNotes', multiline: true, fullSpan: true }),
   ];
@@ -908,6 +1031,8 @@ function savePayload(record) {
   const payload = { ...record };
 
   delete payload.compat;
+  delete payload.compatAnalysis;
+  delete payload.compatScoredAt;
   return payload;
 }
 
@@ -1171,12 +1296,12 @@ async function _attemptDiscardDraft() {
 async function _attemptClose() {
   if (_saveController) {
     close();
-    return;
+    return true;
   }
 
   if (!_isDirty()) {
     close();
-    return;
+    return true;
   }
 
   const confirmed = await ConfirmDialog.show('Discard changes?\nYour edits will be lost.', {
@@ -1186,7 +1311,10 @@ async function _attemptClose() {
 
   if (confirmed) {
     close();
+    return true;
   }
+
+  return false;
 }
 
 export function close() {
@@ -1217,6 +1345,8 @@ export function close() {
   _original = null;
   _body = null;
   _titleRow = null;
+  _profile = null;
+  _compatibilityField = null;
   _footer = null;
   _saveButton = null;
   _saveBinding = null;
@@ -1234,6 +1364,8 @@ export function close() {
   _onApplicationUpdate = null;
   _onApplicationCreate = null;
   _onUnarchiveSuccess = null;
+  _onOpenSettings = null;
+  _onOpenProfile = null;
   _aiFields = new Set();
   _fillSource = null;
   _flashFields = new Set();
@@ -1243,6 +1375,7 @@ export function close() {
 
 export function open(application, {
   mode,
+  profile,
   prefill,
   aiFields,
   fillSource,
@@ -1251,6 +1384,8 @@ export function open(application, {
   onApplicationCreate,
   onArchiveSuccess,
   onUnarchiveSuccess,
+  onOpenSettings,
+  onOpenProfile,
 } = {}) {
   const nextMode = mode === 'create' || application === null
     ? 'create'
@@ -1276,9 +1411,12 @@ export function open(application, {
     ? { ...normalizeApplication({}), status: 'wishlisted', compat: 0, ...(prefill ?? {}) }
     : copyApplication(application);
   _original = nextMode === 'create' ? null : copyApplication(application);
+  _profile = profile ?? null;
   _onApplicationUpdate = onApplicationUpdate;
   _onApplicationCreate = onApplicationCreate;
   _onUnarchiveSuccess = onUnarchiveSuccess;
+  _onOpenSettings = typeof onOpenSettings === 'function' ? onOpenSettings : null;
+  _onOpenProfile = typeof onOpenProfile === 'function' ? onOpenProfile : null;
 
   _savedScrollY = window.scrollY;
   document.body.style.overflow = 'hidden';

@@ -7,6 +7,7 @@ import {
   getById,
   getProfile,
   request,
+  saveCompatNotes,
   saveProfile,
   unarchive,
   update,
@@ -176,6 +177,32 @@ describe('api service', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/profile', expect.objectContaining({
       method: 'PUT',
       body: JSON.stringify(profile),
+    }));
+  });
+
+  it('posts generated compatibility notes to the application notes endpoint', async () => {
+    const notes = {
+      summary: 'Strong React fit',
+      body: 'The deterministic score is explained here.',
+      generatedAt: '2026-06-17T10:34:56.789Z',
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: notes }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(saveCompatNotes(7, {
+      summary: notes.summary,
+      body: notes.body,
+    })).resolves.toEqual(notes);
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/applications/7/compat-notes', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({
+        summary: notes.summary,
+        body: notes.body,
+      }),
     }));
   });
 

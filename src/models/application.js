@@ -246,7 +246,6 @@ export function normalizeApplication(record) {
     'location',
     'shift',
     'workSetup',
-    'compatNotes',
     'generalNotes',
   ]) {
     if (typeof normalized[field] !== 'string') {
@@ -254,8 +253,20 @@ export function normalizeApplication(record) {
     }
   }
 
+  if (typeof normalized.compatNotes !== 'string' || normalized.compatNotes === '') {
+    normalized.compatNotes = null;
+  }
+
   if (!Array.isArray(normalized.preferredSkills)) {
     normalized.preferredSkills = [];
+  }
+
+  if (normalized.compatAnalysis === undefined) {
+    normalized.compatAnalysis = null;
+  }
+
+  if (normalized.compatScoredAt === undefined) {
+    normalized.compatScoredAt = null;
   }
 
   if (Array.isArray(record.timeline)) {

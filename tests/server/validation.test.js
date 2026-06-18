@@ -22,6 +22,12 @@ function validPayload(overrides = {}) {
     shift: 'Day',
     workSetup: 'Remote',
     compatNotes: 'Strong React match',
+    compatAnalysis: {
+      summary: 'Strong React fit',
+      body: 'React and TypeScript line up with the role.',
+      generatedAt: '2026-06-17T10:34:56.789Z',
+    },
+    compatScoredAt: '2026-06-17T10:00:00.000Z',
     generalNotes: 'Applied via referral',
     preferredSkills: ['GraphQL', 'Figma'],
     minYearsExperience: 3,
@@ -65,6 +71,24 @@ describe('createSchema', () => {
   it('strips client-supplied compatibility scores', () => {
     expect(createSchema.parse(validPayload({ compat: 150 }))).not.toHaveProperty('compat');
     expect(updateSchema.parse({ compat: 72 })).toEqual({});
+  });
+
+  it('strips retired and server-managed compatibility fields', () => {
+    const parsedCreate = createSchema.parse(validPayload());
+
+    expect(parsedCreate).not.toHaveProperty('compatNotes');
+    expect(parsedCreate).not.toHaveProperty('compatAnalysis');
+    expect(parsedCreate).not.toHaveProperty('compatScoredAt');
+
+    expect(updateSchema.parse({
+      compatNotes: 'legacy note',
+      compatAnalysis: {
+        summary: 'Strong React fit',
+        body: 'React and TypeScript line up with the role.',
+        generatedAt: '2026-06-17T10:34:56.789Z',
+      },
+      compatScoredAt: '2026-06-17T10:00:00.000Z',
+    })).toEqual({});
   });
 
   it('accepts all optional fields omitted', () => {
@@ -220,6 +244,8 @@ describe('updateSchema', () => {
       shift: 'Flexible',
       workSetup: 'Hybrid',
       compatNotes: 'Updated compatibility notes',
+      compatAnalysis: { summary: 'x', body: 'y', generatedAt: '2026-06-17T10:00:00.000Z' },
+      compatScoredAt: '2026-06-17T10:00:00.000Z',
       generalNotes: 'Updated general notes',
       preferredSkills: ['GraphQL'],
       minYearsExperience: 5,
@@ -227,7 +253,6 @@ describe('updateSchema', () => {
       location: 'Cebu',
       shift: 'Flexible',
       workSetup: 'Hybrid',
-      compatNotes: 'Updated compatibility notes',
       generalNotes: 'Updated general notes',
       preferredSkills: ['GraphQL'],
       minYearsExperience: 5,

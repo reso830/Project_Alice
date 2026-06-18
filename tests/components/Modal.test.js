@@ -21,6 +21,7 @@ import {
   Modal,
   getHeaderContrastRatio,
 } from '../../src/components/Modal.js';
+import { computeCompatibility } from '../../src/models/compatibility.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
 
@@ -34,6 +35,8 @@ function application(overrides = {}) {
     status: 'wishlisted',
     lastStatusUpdate: '2026-04-30',
     compat: 80,
+    compatAnalysis: null,
+    compatScoredAt: '2026-06-17T10:00:00.000Z',
     recruiter: '',
     salary: 150000,
     responsibilities: 'Build UI',
@@ -46,6 +49,18 @@ function application(overrides = {}) {
     preferredSkills: [],
     jobPostingUrl: '',
     minYearsExperience: null,
+    ...overrides,
+  };
+}
+
+function profile(overrides = {}) {
+  return {
+    summary: 'Frontend engineer',
+    skills: [
+      { name: 'JavaScript', level: 5 },
+      { name: 'GraphQL', level: 2 },
+    ],
+    experience: [{ role: 'Frontend Engineer' }],
     ...overrides,
   };
 }
@@ -314,7 +329,7 @@ describe('Modal', () => {
     expect(inputField('Company').value).toBe('');
     document.querySelector('#modal-title').click();
     expect(document.querySelector('.modal-title-input').value).toBe('');
-    expect(document.querySelector('.compat-bar__label').textContent).toBe('0% Low');
+    expect(document.querySelector('.cx-unsaved')?.textContent).toContain('Scored after you save');
   });
 
   it('shows all missing required fields when Create is clicked blank', async () => {
@@ -439,7 +454,6 @@ describe('Modal', () => {
       'Location',
       'Shift',
       'Work Setup',
-      'Compat Notes',
       'General Notes',
       'Min Years',
       'Preferred Skills',
@@ -450,13 +464,91 @@ describe('Modal', () => {
 
     expect(getFieldByLabel('Skills')).toBeUndefined();
     expect(getFieldByLabel('Required Skills')).not.toBeUndefined();
-    expect(document.querySelector('.compat-bar')).not.toBeNull();
-    expect(document.querySelector('.compat-bar__label').textContent).toBe('80% High');
-    expect(getFieldByLabel('Compat Notes').querySelector('.modal-field__value').textContent).toBe('\u2014');
+    expect(getFieldByLabel('Compat Notes')).toBeUndefined();
+    expect(document.querySelector('.compatibility-module')).not.toBeNull();
 
-    for (const label of ['Timeline', 'Responsibilities', 'Required Skills', 'Preferred Skills', 'URL', 'General Notes']) {
+    for (const label of ['Timeline', 'Responsibilities', 'URL', 'General Notes']) {
       expect(getFieldByLabel(label).classList.contains('modal-field--full')).toBe(true);
     }
+  });
+
+  it('renders profile-coded skill chips and legend when profile skills are provided', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      skills: ['JavaScript', 'GraphQL', 'Rust'],
+      preferredSkills: ['GraphQL'],
+    }), { profile: profile() });
+
+    const required = getFieldByLabel('Required Skills');
+    const tags = [...required.querySelectorAll('.skill-tag')];
+
+    expect(tags.find((tag) => tag.textContent.includes('JavaScript')).classList).toContain('lvl-high');
+    expect(tags.find((tag) => tag.textContent.includes('GraphQL')).classList).toContain('lvl-low');
+    expect(tags.find((tag) => tag.textContent.includes('Rust')).classList).toContain('miss');
+    expect(required.querySelector('.ck')?.textContent).toBe('✓');
+    expect(document.querySelector('.skills-legend')?.textContent).toContain('Proficient');
+    expect(document.querySelector('.skills-legend')?.textContent).toContain('Learning');
+    expect(document.querySelector('.skills-legend')?.textContent).toContain('Missing');
+  });
+
+  it('keeps profile-coded skill chips and legend at normal font weight', () => {
+    const proficiencyChipRule = mainCss.match(/\.skill-tag\.lvl-high,\s*\.skill-tag\.lvl-low,\s*\.skill-tag\.miss\s*\{[^}]+\}/u)?.[0];
+    const legendRule = mainCss.match(/\.skills-legend\s*\{[^}]+\}/u)?.[0];
+
+    expect(proficiencyChipRule).toContain('font: 400 10.5px/1.2 var(--font-mono)');
+    expect(legendRule).toContain('font: 400 10px/1.2 var(--font-mono)');
+  });
+
+  it('lays out skill columns side by side with a full-width legend', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application(), { profile: profile() });
+
+    expect(getFieldByLabel('Required Skills').classList.contains('modal-field--full')).toBe(false);
+    expect(getFieldByLabel('Preferred Skills').classList.contains('modal-field--full')).toBe(false);
+    expect(document.querySelector('.skills-legend')?.classList.contains('modal-field--full')).toBe(true);
+  });
+
+  it('recomputes and refreshes the compatibility ring after skill edits', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const app = application({
+      compat: 5,
+      skills: ['Rust'],
+      preferredSkills: [],
+      responsibilities: 'Build UI',
+      minYearsExperience: null,
+    });
+    const userProfile = profile({
+      skills: [{ name: 'JavaScript', level: 5 }],
+      experience: [],
+    });
+    const expectedScore = computeCompatibility(userProfile, {
+      ...app,
+      skills: ['Rust', 'JavaScript'],
+    }).score;
+
+    Modal.open(app, { profile: userProfile });
+
+    const input = getFieldByLabel('Required Skills').querySelector('.modal-chip-input');
+    input.value = 'JavaScript';
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(document.querySelector('.ring-num')?.textContent).toBe(String(expectedScore));
+  });
+
+  it('keeps skill chips plain when no profile skills are provided', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({ skills: ['JavaScript'] }));
+
+    const tag = getFieldByLabel('Required Skills').querySelector('.skill-tag');
+
+    expect(tag.classList.contains('lvl-high')).toBe(false);
+    expect(tag.classList.contains('lvl-low')).toBe(false);
+    expect(tag.classList.contains('miss')).toBe(false);
+    expect(tag.querySelector('.ck')).toBeNull();
+    expect(document.querySelector('.skills-legend')).toBeNull();
   });
 
   it('marks only required fields with visual indicators', () => {
@@ -476,7 +568,7 @@ describe('Modal', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     api.update.mockResolvedValue(application({ minYearsExperience: 4, compat: 66 }));
 
-    Modal.open(application({ minYearsExperience: null, compat: 40 }));
+    Modal.open(application({ minYearsExperience: null, compat: 40 }), { profile: profile() });
     editTextField('Min Years', '4');
     saveButton().click();
     await flushPromises();
@@ -485,7 +577,7 @@ describe('Modal', () => {
 
     expect(payload.minYearsExperience).toBe(4);
     expect(payload).not.toHaveProperty('compat');
-    expect(document.querySelector('.compat-bar__label').textContent).toBe('66% High');
+    expect(document.querySelector('.ring-num')?.textContent).toBe('66');
   });
 
   it('sends empty Min Years as null', async () => {
@@ -547,7 +639,7 @@ describe('Modal', () => {
 
     expect(field).not.toBeUndefined();
     expect(field.classList.contains('modal-field--full')).toBe(true);
-    expect(fields.indexOf(field)).toBe(9);
+    expect(fields.indexOf(field)).toBe(11);
     expect(document.querySelector('[data-modal-field="last-status-update"]')).toBeNull();
     expect(field.querySelector('.tl-collapsed')).not.toBeNull();
   });
@@ -1292,12 +1384,82 @@ describe('Modal', () => {
 
     expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__value').classList)
       .toContain('modal-field__display--multiline');
-    expect(getFieldByLabel('Compat Notes').querySelector('.modal-field__value').classList)
-      .toContain('modal-field__display--multiline');
+    expect(getFieldByLabel('Compat Notes')).toBeUndefined();
     expect(getFieldByLabel('General Notes').querySelector('.modal-field__value').classList)
       .toContain('modal-field__display--multiline');
     expect(getFieldByLabel('Responsibilities').querySelector('.modal-field__value').textContent)
       .toBe('Line one\nLine two');
+  });
+
+  it('treats generated compatibility notes as already saved', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application());
+    document.querySelector('.compatibility-module').__compatibilityState.onNotesGenerated({
+      summary: 'Generated fit',
+      body: 'Generated body',
+      generatedAt: '2026-06-17T11:00:00.000Z',
+    });
+
+    expect(document.querySelector('.modal-footer').hidden).toBe(true);
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it('omits generated compatibility notes from later application saves', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue(application({
+      companyName: 'Globex',
+      compatAnalysis: {
+        summary: 'Generated fit',
+        body: 'Generated body',
+        generatedAt: '2026-06-17T11:00:00.000Z',
+      },
+      compatScoredAt: '2026-06-17T10:00:00.000Z',
+    }));
+
+    Modal.open(application());
+    document.querySelector('.compatibility-module').__compatibilityState.onNotesGenerated({
+      summary: 'Generated fit',
+      body: 'Generated body',
+      generatedAt: '2026-06-17T11:00:00.000Z',
+    });
+
+    editTextField('Company', 'Globex');
+
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update.mock.calls[0][1]).toEqual(expect.objectContaining({ companyName: 'Globex' }));
+    expect(api.update.mock.calls[0][1]).not.toHaveProperty('compatAnalysis');
+    expect(api.update.mock.calls[0][1]).not.toHaveProperty('compatScoredAt');
+  });
+
+  it('routes CompatibilityModule Settings links through Modal options', async () => {
+    const onOpenSettings = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application(), { profile: profile(), onOpenSettings });
+    document.querySelector('.sec-toggle').click();
+    document.querySelector('.cx-enable-ai').click();
+    await Promise.resolve();
+
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(modalBackdrop()).toBeNull();
+  });
+
+  it('routes CompatibilityModule profile links through Modal options', async () => {
+    const onOpenProfile = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application(), {
+      profile: { summary: '', skills: [], experience: [] },
+      onOpenProfile,
+    });
+    document.querySelector('.cx-empty-act').click();
+    await Promise.resolve();
+
+    expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    expect(modalBackdrop()).toBeNull();
   });
 
   it('keeps the footer visible and draft intact when save fails', async () => {

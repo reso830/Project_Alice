@@ -249,6 +249,9 @@ describe('createSupabaseApplicationsRepository', () => {
       expect(insertedRow.archived).toBe(false);
       expect(insertedRow.metadata).toBeNull();
       expect(insertedRow.min_years_experience).toBeNull();
+      expect(insertedRow.compat_notes).toBeNull();
+      expect(insertedRow.compat_analysis).toBeNull();
+      expect(insertedRow.compat_scored_at).toBeNull();
       // skills (jsonb) is normalized from JSON-stringified to a native array.
       expect(insertedRow.skills).toEqual([]);
       expect(insertedRow.timeline).toEqual([]);
@@ -355,6 +358,32 @@ describe('createSupabaseApplicationsRepository', () => {
 
       const updatedRow = callsOf(calls, 'update')[0].args[0];
       expect(updatedRow.min_years_experience).toBe(5);
+    });
+
+    it('passes compatibility analysis and score timestamp through as plain text columns', async () => {
+      const notes = {
+        summary: 'Strong React fit',
+        body: 'React and TypeScript line up with the role.',
+        generatedAt: '2026-06-17T10:34:56.789Z',
+      };
+      const { client, calls } = makeClient({
+        data: {
+          id: 1,
+          compat_analysis: notes,
+          compat_scored_at: notes.generatedAt,
+        },
+        error: null,
+      });
+      const repo = createSupabaseApplicationsRepository(client, USER_ID);
+
+      await repo.update(1, {
+        compatAnalysis: notes,
+        compatScoredAt: notes.generatedAt,
+      });
+
+      const updatedRow = callsOf(calls, 'update')[0].args[0];
+      expect(updatedRow.compat_analysis).toBe(JSON.stringify(notes));
+      expect(updatedRow.compat_scored_at).toBe(notes.generatedAt);
     });
 
     it('scopes UPDATE by id AND user_id', async () => {

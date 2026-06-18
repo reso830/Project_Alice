@@ -44,6 +44,8 @@ describe('initSchema', () => {
       'shift',
       'work_setup',
       'compat_notes',
+      'compat_analysis',
+      'compat_scored_at',
       'general_notes',
       'preferred_skills',
       'timeline',
@@ -57,6 +59,43 @@ describe('initSchema', () => {
       'idx_applications_archived',
       'idx_applications_created',
     ]));
+
+    db.close();
+  });
+
+  it('backfills compat_scored_at and clears retired compat_notes idempotently', () => {
+    const db = makeMemoryDb();
+    const app = create({
+      companyName: 'Legacy Co',
+      jobTitle: 'Frontend Engineer',
+      status: 'applied',
+      responsibilities: 'Build UI',
+      compat: 55,
+    }, db, '2026-06-10');
+    db.prepare(`
+      UPDATE applications
+      SET compat_notes = 'legacy notes',
+          compat_scored_at = NULL
+      WHERE id = ?
+    `).run(app.id);
+
+    initSchema(db);
+
+    const row = db.prepare(`
+      SELECT created_at, compat_notes, compat_scored_at
+      FROM applications
+      WHERE id = ?
+    `).get(app.id);
+    expect(row.compat_notes).toBeNull();
+    expect(row.compat_scored_at).toBe(row.created_at);
+
+    initSchema(db);
+    const rerun = db.prepare(`
+      SELECT created_at, compat_notes, compat_scored_at
+      FROM applications
+      WHERE id = ?
+    `).get(app.id);
+    expect(rerun).toEqual(row);
 
     db.close();
   });
@@ -264,6 +303,8 @@ describe('application row mapping', () => {
       metadata: '{"source":"manual"}',
       timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":"Submitted."}]',
       min_years_experience: 3,
+      compat_analysis: '{"summary":"Strong match","body":"React aligns well.","generatedAt":"2026-06-17T10:34:56.789Z"}',
+      compat_scored_at: '2026-06-17T10:00:00.000Z',
     })).toMatchObject({
       companyName: 'Acme',
       jobTitle: 'Engineer',
@@ -274,6 +315,12 @@ describe('application row mapping', () => {
       metadata: { source: 'manual' },
       timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: 'Submitted.' }],
       minYearsExperience: 3,
+      compatAnalysis: {
+        summary: 'Strong match',
+        body: 'React aligns well.',
+        generatedAt: '2026-06-17T10:34:56.789Z',
+      },
+      compatScoredAt: '2026-06-17T10:00:00.000Z',
     });
   });
 
@@ -302,6 +349,8 @@ describe('application row mapping', () => {
       metadata: null,
       timeline: '[]',
       min_years_experience: null,
+      compat_analysis: null,
+      compat_scored_at: null,
     }).salary).toBe(120000);
   });
 
@@ -313,6 +362,8 @@ describe('application row mapping', () => {
       metadata: null,
       timeline: [{ id: 1, date: '2026-05-21', status: 'applied', text: '' }],
       minYearsExperience: 4,
+      compatAnalysis: { summary: 'x', body: 'y', generatedAt: '2026-06-17T10:00:00.000Z' },
+      compatScoredAt: '2026-06-17T10:00:00.000Z',
     })).toEqual({
       fav: 1,
       compat: 72,
@@ -320,6 +371,8 @@ describe('application row mapping', () => {
       metadata: null,
       timeline: '[{"id":1,"date":"2026-05-21","status":"applied","text":""}]',
       min_years_experience: 4,
+      compat_analysis: '{"summary":"x","body":"y","generatedAt":"2026-06-17T10:00:00.000Z"}',
+      compat_scored_at: '2026-06-17T10:00:00.000Z',
     });
   });
 });

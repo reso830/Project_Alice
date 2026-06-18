@@ -32,6 +32,18 @@ const PROBES = [
     failOn: [UNDEFINED_COLUMN],
     docPath: 'specs/036-compatibility-engine/data-model.md §1',
   },
+  {
+    table: 'applications',
+    column: 'compat_analysis',
+    failOn: [UNDEFINED_COLUMN],
+    docPath: 'specs/037-compatibility-insights-panel/data-model.md §1',
+  },
+  {
+    table: 'applications',
+    column: 'compat_scored_at',
+    failOn: [UNDEFINED_COLUMN],
+    docPath: 'specs/037-compatibility-insights-panel/data-model.md §2',
+  },
 ];
 
 function migrationHint(table, column, docPath) {

@@ -123,6 +123,10 @@ export function canUseJdParser() {
   return isEnabled() && getFeature('jd') && hasKey();
 }
 
+export function canUseCompatAnalysis() {
+  return isEnabled() && getFeature('compat') && hasKey();
+}
+
 export function getModel() {
   ensureMigrated();
   const model = (getStoredValue(MODEL_STORAGE_KEY) ?? '').trim();

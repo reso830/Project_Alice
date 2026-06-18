@@ -25,6 +25,7 @@ vi.mock('../../src/services/api.js', () => ({
   archive: vi.fn(),
   getAll: vi.fn(),
   getById: vi.fn(),
+  getProfile: vi.fn(),
   unarchive: vi.fn(),
   update: vi.fn(),
 }));
@@ -50,6 +51,15 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
+
+function createProfile(overrides = {}) {
+  return {
+    summary: 'Frontend engineer',
+    skills: [{ name: 'JavaScript', level: 5 }],
+    experience: [{ role: 'Frontend Engineer' }],
+    ...overrides,
+  };
+}
 
 function createApplication(id, overrides = {}) {
   return {
@@ -713,6 +723,51 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(api.update).toHaveBeenCalledWith(1, { fav: true });
     expect(container.querySelector('.card-btn--star').classList.contains('card-btn--starred'))
       .toBe(true);
+  });
+
+  it('fetches the profile at mount and passes it into opened application modals', async () => {
+    const container = document.createElement('main');
+    const navigate = vi.fn();
+    const original = createApplication(1, { skills: ['JavaScript'] });
+
+    window.scrollTo = vi.fn();
+    api.getProfile.mockResolvedValue(createProfile());
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+
+    await Tracker.mount(container, { navigate });
+    container.querySelector('.card').click();
+    await Promise.resolve();
+
+    expect(api.getProfile).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.compatibility-module')).not.toBeNull();
+    expect(document.querySelector('.skill-tag.lvl-high')?.textContent).toContain('JavaScript');
+
+    document.querySelector('.sec-toggle').click();
+    document.querySelector('.cx-enable-ai').click();
+    await Promise.resolve();
+
+    expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
+  });
+
+  it('routes CompatibilityModule profile links to the profile page', async () => {
+    const container = document.createElement('main');
+    const navigate = vi.fn();
+    const original = createApplication(1, { skills: ['JavaScript'] });
+
+    window.scrollTo = vi.fn();
+    api.getProfile.mockResolvedValue({ summary: '', skills: [], experience: [] });
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+
+    await Tracker.mount(container, { navigate });
+    container.querySelector('.card').click();
+    await Promise.resolve();
+
+    document.querySelector('.cx-empty-act').click();
+    await Promise.resolve();
+
+    expect(navigate).toHaveBeenCalledWith('profile');
   });
 
   it('keeps overlay status changes local until save exists', async () => {

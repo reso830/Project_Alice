@@ -109,6 +109,20 @@ describe('aiSettings', () => {
     expect(() => aiSettings.getFeature('other')).toThrow(/Unknown AI feature/);
   });
 
+  it('allows compatibility analysis only when AI, key, and compat feature are enabled', () => {
+    expect(aiSettings.canUseCompatAnalysis()).toBe(false);
+
+    aiSettings.setEnabled(true);
+    aiSettings.setKey('sk-or-test');
+    expect(aiSettings.canUseCompatAnalysis()).toBe(false);
+
+    aiSettings.setFeature('compat', true);
+    expect(aiSettings.canUseCompatAnalysis()).toBe(true);
+
+    aiSettings.setEnabled(false);
+    expect(aiSettings.canUseCompatAnalysis()).toBe(false);
+  });
+
   it('derives connection status from key presence and transient test state', () => {
     expect(aiSettings.getConnectionStatus()).toBe('none');
 

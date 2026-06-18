@@ -84,7 +84,7 @@ Alice is evolving through four major phases:
 - [x] 034-profile-page-refresh  ·  shipped v1.4.0
 - [x]  035-llm-jd-parser  ·  shipped v1.5.0
 - [x]  036-compatibility-engine  ·  shipped v1.6.0
-- [ ]  037-compatibility-insights-panel
+- [x]  037-compatibility-insights-panel  ·  shipped v1.7.0
 - [ ]  038-ats-resume-quality-checks
 
 ---

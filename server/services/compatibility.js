@@ -10,10 +10,12 @@ export async function recomputeActive(repos, profile, asOf) {
 
   for (const application of applications) {
     const compat = scoreApplication(application, profile, asOf);
+    const compatScoredAt = new Date().toISOString();
+    const payload = compat !== application.compat
+      ? { compat, compatScoredAt }
+      : { compatScoredAt };
 
-    if (compat !== application.compat) {
-      updates.push(repos.applications.update(application.id, { compat }, asOf));
-    }
+    updates.push(repos.applications.update(application.id, payload, asOf));
   }
 
   return Promise.all(updates);
