@@ -320,7 +320,7 @@ describe('CompatibilityModule rendering', () => {
       .toContain("These notes are out of date and can't be refreshed while AI is off");
     expect(root.querySelector('.cx-stale-btn')).toBeNull();
     expect(root.querySelector('.cx-regen')).toBeNull();
-    expect(root.querySelectorAll('.cx-enable-ai')).toHaveLength(2);
+    expect(root.querySelectorAll('.cx-enable-ai')).toHaveLength(1);
     expect(root.querySelector('.ring-num')?.textContent).toBe('86');
   });
 

@@ -1,6 +1,6 @@
 # Implementation Plan: Compatibility Insights Panel
 
-**Branch**: `037-compatibility-insights-panel` | **Date**: 2026-06-17 | **Spec**: [spec.md](spec.md)  
+**Branch**: `037-compatibility-insights-panel` | **Date**: 2026-06-17 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `specs/037-compatibility-insights-panel/spec.md`
 
 ---
@@ -15,13 +15,13 @@ The LLM call follows the existing client-side pattern (user's OpenRouter key via
 
 ## Technical Context
 
-**Language/Version**: Node.js (ESM), Vanilla JS frontend (Vite), Express backend  
-**Primary Dependencies**: `better-sqlite3` (local), `@supabase/supabase-js` (hosted), `zod` (validation), OpenRouter (client-side LLM via `aiSettings`); **no new dependency**  
-**Storage**: Two new `TEXT` columns on `applications` (`compat_analysis`, `compat_scored_at`); `compat_notes` retired in place  
-**Testing**: Vitest (`tests/models`, `tests/server`, `tests/components`, `tests/services`)  
-**Target Platform**: Desktop + mobile browsers; Vercel serverless (hosted) / local Node (local) / client-only (demo)  
-**Project Type**: Web application (Vite frontend + Express backend, dual-mode persistence)  
-**Performance Goals**: Notes generation is user-triggered and bounded by `LLM_TIMEOUT_MS` (30 s); staleness check is a single timestamp comparison at render time  
+**Language/Version**: Node.js (ESM), Vanilla JS frontend (Vite), Express backend
+**Primary Dependencies**: `better-sqlite3` (local), `@supabase/supabase-js` (hosted), `zod` (validation), OpenRouter (client-side LLM via `aiSettings`); **no new dependency**
+**Storage**: Two new `TEXT` columns on `applications` (`compat_analysis`, `compat_scored_at`); `compat_notes` retired in place
+**Testing**: Vitest (`tests/models`, `tests/server`, `tests/components`, `tests/services`)
+**Target Platform**: Desktop + mobile browsers; Vercel serverless (hosted) / local Node (local) / client-only (demo)
+**Project Type**: Web application (Vite frontend + Express backend, dual-mode persistence)
+**Performance Goals**: Notes generation is user-triggered and bounded by `LLM_TIMEOUT_MS` (30 s); staleness check is a single timestamp comparison at render time
 **Constraints**: AI calls are strictly user-initiated; AI failure never blocks the modal; score is always live; local-first by default
 
 ---

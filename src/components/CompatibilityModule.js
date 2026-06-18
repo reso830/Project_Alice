@@ -513,7 +513,7 @@ function renderFreshLikeState(state, actions) {
       regenBtn.title = 'Save your changes first';
     }
     right.append(regenBtn);
-  } else {
+  } else if (!isStale) {
     right.append(createEnableAiLink(actions));
   }
   foot.append(showMore, right);
