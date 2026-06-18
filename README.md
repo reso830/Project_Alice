@@ -108,6 +108,7 @@ Two independent checks guard against a hosted deployment with missing config:
 |---|---|
 | `npm run db:init` | Initialize (or re-initialize) the SQLite database |
 | `npm run db:seed` | Clear the database and load 23 demo application records |
+| `npm run db:seed:demo` | Load demo applications, then seed the demo profile and recompute compatibility scores |
 | `npm run db:clear` | Delete all application records from the database |
 | `npm run db:seed:profile` | Populate the profile table with demo profile data |
 | `npm run db:clear:profile` | Clear the profile table (resets to no-profile state) |
@@ -126,14 +127,16 @@ Two independent checks guard against a hosted deployment with missing config:
 Two scripts are provided for demos and local development:
 
 ```bash
-# Load 23 pre-written records (clears any existing data first)
-npm run db:seed
+# Load scored demo applications and Alex Rivera's demo profile
+npm run db:seed:demo
 
 # Remove all records without touching the schema
 npm run db:clear
 ```
 
-`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Accepted, Rejected, Withdrawn, and Ghosted — plus one archived record. Records have varied dates, compatibility scores, notes, skills, and salary ranges so the UI renders a representative view.
+`db:seed:demo` is the recommended local demo command. It runs `db:seed` followed by `db:seed:profile`, so the applications are inserted, Alex Rivera's demo profile is saved, and compatibility scores are recomputed from the deterministic engine.
+
+`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Accepted, Rejected, Withdrawn, and Ghosted — plus one archived record. It intentionally does not write compatibility scores directly; rows stay at the default score of `0` until `db:seed:profile` saves a profile and runs the compatibility backfill.
 
 `db:clear` is a hard delete of all rows. The schema (tables and indexes) is left intact, so the server keeps running and `db:seed` can be run again without `db:init`.
 
@@ -145,8 +148,7 @@ npm run db:clear
 
 ```bash
 npm run db:init              # first time only
-npm run db:seed              # load demo applications
-npm run db:seed:profile      # load demo profile
+npm run db:seed:demo         # load demo applications, profile, and scores
 npm run server:dev           # terminal 1
 npm run dev                  # terminal 2 — open http://localhost:5173
 # ... demo ...

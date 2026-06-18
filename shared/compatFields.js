@@ -6,7 +6,7 @@ export const COMPAT_RELEVANT_FIELDS = [
   'minYearsExperience',
 ];
 
-function valuesDiffer(first, second) {
+export function valuesDiffer(first, second) {
   if (Array.isArray(first) || Array.isArray(second)) {
     return JSON.stringify(first ?? []) !== JSON.stringify(second ?? []);
   }

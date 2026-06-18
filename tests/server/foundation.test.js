@@ -63,7 +63,7 @@ describe('initSchema', () => {
     db.close();
   });
 
-  it('backfills compat_scored_at and clears retired compat_notes idempotently', () => {
+  it('backfills compat_scored_at without rescanning retired compat_notes after migration', () => {
     const db = makeMemoryDb();
     const app = create({
       companyName: 'Legacy Co',
@@ -86,7 +86,7 @@ describe('initSchema', () => {
       FROM applications
       WHERE id = ?
     `).get(app.id);
-    expect(row.compat_notes).toBeNull();
+    expect(row.compat_notes).toBe('legacy notes');
     expect(row.compat_scored_at).toBe(row.created_at);
 
     initSchema(db);

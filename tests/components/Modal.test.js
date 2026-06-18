@@ -21,6 +21,7 @@ import {
   Modal,
   getHeaderContrastRatio,
 } from '../../src/components/Modal.js';
+import { CompatibilityModule } from '../../src/components/CompatibilityModule.js';
 import { computeCompatibility } from '../../src/models/compatibility.js';
 import { STATUS_CONFIG } from '../../src/models/application.js';
 import { formatPeso } from '../../src/utils/currency.js';
@@ -128,6 +129,16 @@ afterEach(() => {
 });
 
 describe('Modal', () => {
+  it('resets compatibility dirty state when closing', () => {
+    const setDirtySpy = vi.spyOn(CompatibilityModule, 'setDirty');
+
+    Modal.open(application(), { profile: profile() });
+    Modal.close();
+
+    expect(setDirtySpy).toHaveBeenCalledWith(false);
+    setDirtySpy.mockRestore();
+  });
+
   it('renders the status-colored header and badge from STATUS_CONFIG', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

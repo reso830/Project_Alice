@@ -92,7 +92,12 @@ export function resetCompatibilityModuleState() {
 }
 
 export function setDirty(isDirty) {
-  _modalDirty = Boolean(isDirty);
+  const nextDirty = Boolean(isDirty);
+  if (_modalDirty === nextDirty) {
+    return;
+  }
+
+  _modalDirty = nextDirty;
   if (_activeState) {
     _activeState.isModalDirty = _modalDirty;
     renderInto(_activeState);
@@ -253,6 +258,47 @@ function createAiTag(dimmed = false) {
   return tag;
 }
 
+function createEnableAiLink(actions) {
+  const link = el('a', 'cx-enable-ai', 'Enable AI →');
+  link.href = '#profile';
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    actions.openSettings();
+  });
+  return link;
+}
+
+function createLockIcon() {
+  const frame = el('span', 'cx-stale-ic cx-stale-ic--lock');
+  const svg = svgEl('svg', {
+    viewBox: '0 0 16 16',
+    width: '14',
+    height: '14',
+    'aria-hidden': 'true',
+    focusable: 'false',
+  });
+  const body = svgEl('rect', {
+    x: '4',
+    y: '7',
+    width: '8',
+    height: '6',
+    rx: '1.5',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '1.4',
+  });
+  const shackle = svgEl('path', {
+    d: 'M5.5 7V5.8a2.5 2.5 0 0 1 5 0V7',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '1.4',
+    'stroke-linecap': 'round',
+  });
+  svg.append(body, shackle);
+  frame.append(svg);
+  return frame;
+}
+
 function createSparkleIcon(className = 'cx-empty-ic') {
   const frame = el('span', className);
   const icon = document.createElement('img');
@@ -358,13 +404,8 @@ function renderNoneState(state, actions) {
   box.append(copy);
 
   if (!hasAiConfigured(state.aiSettings)) {
-    const link = el('a', 'cx-enable-ai', 'Enable AI in Settings →');
-    link.href = '#profile';
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
-      actions.openSettings();
-    });
-    box.append(link);
+    copy.textContent = 'No written analysis yet. Turn on AI to generate notes for this score.';
+    box.append(createEnableAiLink(actions));
     return box;
   }
 
@@ -410,28 +451,46 @@ function renderFreshLikeState(state, actions) {
   const fragment = document.createDocumentFragment();
   const notes = state.application?.compatAnalysis ?? {};
   const isStale = state.notesState === 'stale';
+  const canGenerate = hasAiConfigured(state.aiSettings);
 
   if (isStale) {
-    const stale = el('div', 'cx-stale-bar');
-    const refreshBtn = button('cx-stale-btn', '↻ Refresh notes', actions.generate);
-    if (state.isModalDirty) {
-      refreshBtn.disabled = true;
-      refreshBtn.title = 'Save your changes first';
+    const stale = el('div', canGenerate ? 'cx-stale-bar' : 'cx-stale-bar cx-stale-bar--readonly');
+    if (canGenerate) {
+      const refreshBtn = button('cx-stale-btn', '↻ Refresh notes', actions.generate);
+      if (state.isModalDirty) {
+        refreshBtn.disabled = true;
+        refreshBtn.title = 'Save your changes first';
+      }
+      stale.append(
+        el('span', 'cx-stale-ic', '⚠'),
+        el(
+          'span',
+          'cx-stale-txt',
+          'Your profile or job data changed after these notes were written. The score above is current — refresh the notes to match.',
+        ),
+        refreshBtn,
+      );
+    } else {
+      stale.append(
+        createLockIcon(),
+        el(
+          'span',
+          'cx-stale-txt',
+          "These notes are out of date and can't be refreshed while AI is off. The score above is current.",
+        ),
+        createEnableAiLink(actions),
+      );
     }
-    stale.append(
-      el('span', 'cx-stale-ic', '⚠'),
-      el(
-        'span',
-        'cx-stale-txt',
-        'Your profile or job data changed after these notes were written. The score above is current — refresh the notes to match.',
-      ),
-      refreshBtn,
-    );
     fragment.append(stale);
   }
 
   fragment.append(renderNotesHead());
-  const prose = el('div', isStale ? 'cx-notes clamp stale' : 'cx-notes clamp');
+  const prose = el('div', [
+    'cx-notes',
+    'clamp',
+    isStale ? 'stale' : '',
+    canGenerate ? '' : 'cx-notes--readonly',
+  ].filter(Boolean).join(' '));
   renderBoldText(prose, notes.body ?? '');
   const foot = el('div', 'cx-foot');
   const showMore = button('cx-showmore', 'Show more ▾', () => {
@@ -445,14 +504,18 @@ function renderFreshLikeState(state, actions) {
   const generated = formatDate(notes.generatedAt);
   right.append(
     el('span', 'cx-meta', generated ? `✦ Generated ${generated}` : '✦ Generated'),
-    el('span', 'cx-sep', '·'),
   );
-  const regenBtn = button('cx-regen', isStale ? '↻ Refresh' : '↻ Regenerate', actions.generate);
-  if (state.isModalDirty) {
-    regenBtn.disabled = true;
-    regenBtn.title = 'Save your changes first';
+  if (canGenerate) {
+    right.append(el('span', 'cx-sep', '·'));
+    const regenBtn = button('cx-regen', isStale ? '↻ Refresh' : '↻ Regenerate', actions.generate);
+    if (state.isModalDirty) {
+      regenBtn.disabled = true;
+      regenBtn.title = 'Save your changes first';
+    }
+    right.append(regenBtn);
+  } else {
+    right.append(createEnableAiLink(actions));
   }
-  right.append(regenBtn);
   foot.append(showMore, right);
   fragment.append(prose, foot);
   return fragment;
@@ -525,6 +588,7 @@ function createState(options = {}) {
     _open = false;
     _localState = null;
     _inFlight = false;
+    _modalDirty = false;
   }
 
   return {

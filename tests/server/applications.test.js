@@ -12,7 +12,7 @@ async function withServer(test) {
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    await test(baseUrl, db);
+    await test(baseUrl, db, repositories);
   } finally {
     server.close();
     db.close();
@@ -776,6 +776,38 @@ describe('applications API', () => {
       expect(restored.status).toBe(200);
       expect(restored.body.data.archived).toBe(false);
       expect(restored.body.data.compat).toBeLessThan(created.body.data.compat);
+    });
+  });
+
+  it('returns not found if unarchive rescore cannot persist', async () => {
+    await withServer(async (baseUrl, _db, repositories) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload({
+          jobTitle: 'Frontend Engineer',
+          skills: ['React'],
+          responsibilities: 'Build React UI.',
+        })),
+      });
+      await request(baseUrl, `/api/applications/${created.body.data.id}/archive`, {
+        method: 'POST',
+      });
+
+      const update = repositories.applications.update;
+      repositories.applications.update = () => null;
+
+      try {
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}/unarchive`, {
+          method: 'POST',
+        });
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toMatchObject({
+          code: 'NOT_FOUND',
+        });
+      } finally {
+        repositories.applications.update = update;
+      }
     });
   });
 

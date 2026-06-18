@@ -274,6 +274,56 @@ describe('CompatibilityModule rendering', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
+  it('renders existing notes as read-only history when AI is off', async () => {
+    const module = await loadModule();
+    const onOpenSettings = vi.fn();
+    const root = render({
+      module,
+      aiSettings: aiSettings({ hasKey: () => false }),
+      onOpenSettings,
+      application: {
+        compatAnalysis: {
+          summary: 'Strong React fit',
+          body: 'Historical analysis.',
+          generatedAt: '2026-06-09T10:00:00.000Z',
+        },
+        compatScoredAt: '2026-06-09T10:00:00.000Z',
+      },
+    });
+    root.querySelector('.sec-toggle').click();
+
+    expect(root.querySelector('.cx-notes')?.classList.contains('cx-notes--readonly')).toBe(true);
+    expect(root.querySelector('.cx-regen')).toBeNull();
+    expect(root.querySelector('.cx-foot-r .cx-enable-ai')?.textContent).toBe('Enable AI →');
+    root.querySelector('.cx-foot-r .cx-enable-ai').click();
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders stale notes with a neutral read-only bar when AI is off', async () => {
+    const module = await loadModule();
+    const root = render({
+      module,
+      aiSettings: aiSettings({ isEnabled: () => false }),
+      application: {
+        compatAnalysis: {
+          summary: 'Old React fit',
+          body: 'Older analysis.',
+          generatedAt: '2026-06-08T10:00:00.000Z',
+        },
+        compatScoredAt: '2026-06-09T10:00:00.000Z',
+      },
+    });
+    root.querySelector('.sec-toggle').click();
+
+    expect(root.querySelector('.cx-stale-bar')?.classList.contains('cx-stale-bar--readonly')).toBe(true);
+    expect(root.querySelector('.cx-stale-bar')?.textContent)
+      .toContain("These notes are out of date and can't be refreshed while AI is off");
+    expect(root.querySelector('.cx-stale-btn')).toBeNull();
+    expect(root.querySelector('.cx-regen')).toBeNull();
+    expect(root.querySelectorAll('.cx-enable-ai')).toHaveLength(2);
+    expect(root.querySelector('.ring-num')?.textContent).toBe('86');
+  });
+
   it('renders fresh notes with clamped prose, formatted date, and show more toggle', async () => {
     const module = await loadModule();
     const root = render({

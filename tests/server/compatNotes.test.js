@@ -12,7 +12,7 @@ async function withServer(test) {
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    await test(baseUrl, db);
+    await test(baseUrl, db, repositories);
   } finally {
     server.close();
     db.close();
@@ -137,6 +137,34 @@ describe('compatibility notes API', () => {
       expect(response.body.error).toMatchObject({
         code: 'NOT_FOUND',
       });
+    });
+  });
+
+  it('returns not found if the notes update cannot persist', async () => {
+    await withServer(async (baseUrl, _db, repositories) => {
+      const created = await request(baseUrl, '/api/applications', {
+        method: 'POST',
+        body: JSON.stringify(validApplicationPayload()),
+      });
+      const update = repositories.applications.update;
+      repositories.applications.update = () => null;
+
+      try {
+        const response = await request(baseUrl, `/api/applications/${created.body.data.id}/compat-notes`, {
+          method: 'POST',
+          body: JSON.stringify({
+            summary: 'Good fit',
+            body: 'Body text.',
+          }),
+        });
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toMatchObject({
+          code: 'NOT_FOUND',
+        });
+      } finally {
+        repositories.applications.update = update;
+      }
     });
   });
 

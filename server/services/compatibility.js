@@ -11,6 +11,8 @@ export async function recomputeActive(repos, profile, asOf) {
   for (const application of applications) {
     const compat = scoreApplication(application, profile, asOf);
     const compatScoredAt = new Date().toISOString();
+    // Stamp even when the numeric score is unchanged: generated analysis
+    // compares its timestamp to this value, so profile edits must stale notes.
     const payload = compat !== application.compat
       ? { compat, compatScoredAt }
       : { compatScoredAt };

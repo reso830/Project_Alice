@@ -14,6 +14,7 @@ import { createStatusBadge, displayValue } from '../utils/dom.js';
 import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
 import { resolveSkillLevel } from '../utils/skillProficiency.js';
 import { validateUrl } from '../utils/validate.js';
+import { valuesDiffer } from '../../shared/compatFields.js';
 import { CompatibilityModule } from './CompatibilityModule.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { StatusDropdown } from './StatusDropdown.js';
@@ -254,14 +255,6 @@ function setStatusBadgeSaveLocked(locked) {
   } else {
     badge.removeAttribute('aria-disabled');
   }
-}
-
-function valuesDiffer(first, second) {
-  if (Array.isArray(first) || Array.isArray(second)) {
-    return JSON.stringify(first ?? []) !== JSON.stringify(second ?? []);
-  }
-
-  return first !== second;
 }
 
 function _isDirty() {
@@ -1337,6 +1330,8 @@ export function close() {
   if (hadOpenModal) {
     window.scrollTo(0, _savedScrollY);
   }
+
+  CompatibilityModule.setDirty(false);
 
   // During an in-flight save, close paths abort the save rather than blocking the user.
   // See specs/029-loading-async-states/research.md § 3.4.

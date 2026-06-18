@@ -265,9 +265,16 @@ export function createApplicationsRouter({
         ...result.data,
         generatedAt: new Date().toISOString(),
       };
-      await req.repos.applications.update(id, { compatAnalysis: compatNotes }, resolveRequestDate(req));
+      const record = await req.repos.applications.update(
+        id,
+        { compatAnalysis: compatNotes },
+        resolveRequestDate(req),
+      );
+      if (!record) {
+        return sendNotFound(res);
+      }
 
-      return res.status(200).json({ data: compatNotes });
+      return res.status(200).json({ data: record.compatAnalysis });
     } catch (error) {
       return next(error);
     }
@@ -294,7 +301,10 @@ export function createApplicationsRouter({
       const compatScoredAt = new Date().toISOString();
       const payload = compat !== restored.compat ? { compat, compatScoredAt } : { compatScoredAt };
       const rescored = await req.repos.applications.update(id, payload, asOf);
-      return res.status(200).json({ data: rescored ?? restored });
+      if (!rescored) {
+        return sendNotFound(res);
+      }
+      return res.status(200).json({ data: rescored });
     } catch (error) {
       return next(error);
     }
