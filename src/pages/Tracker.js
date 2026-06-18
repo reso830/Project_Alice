@@ -443,7 +443,7 @@ function applicationMutationCallbacks() {
 }
 
 function onAddApplication() {
-  CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate });
+  CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate, profile: _profile });
 }
 
 function onFabAddApplication() {

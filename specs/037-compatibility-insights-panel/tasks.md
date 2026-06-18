@@ -324,11 +324,11 @@ Phase dependency: 01 → 02 → 03/04 (parallel) → 05 → 06 → 07 → 08 →
 - **Steps**: Click "Expand" on the module. Confirm: full 64px score ring appears; verdict pill with correct tier color; notes section visible (fresh/none state); "Collapse" button returns to compact bar.
 - **Pass criteria**: All 4 acceptance scenarios from spec.md US2 verified. Show more/less toggle works on long notes prose.
 
-### T040 `[ ]` [US3] — Generate AI analysis
+### T040 `[x]` [US3] — Generate AI analysis
 - **Steps**: Open an application with no analysis (notes = null). Expand module. Confirm `none` state shows "Generate notes" button. Click it. Confirm `generating` skeleton appears (score still visible above). Wait for completion. Confirm `fresh` state: headline, prose, "Generated {date}", Regenerate button.
 - **Pass criteria**: All 6 acceptance scenarios from spec.md US3 verified. No automatic LLM call on modal open (check network tab before clicking). Create mode → Generate button disabled.
 
-### T041 `[ ]` [US4] — Stale notes
+### T041 `[x]` [US4] — Stale notes
 - **Steps**: Generate notes on an application. Then edit a compat-relevant field (e.g. add a required skill) and save. Reopen the modal. Confirm amber stale bar with correct copy; dimmed prose; score ring at new current value; "Refresh notes" generates new notes and transitions to fresh.
 - **Pass criteria**: All 6 acceptance scenarios from spec.md US4 verified. Editing a non-compat field (General Notes) does NOT trigger stale state.
 
@@ -336,11 +336,11 @@ Phase dependency: 01 → 02 → 03/04 (parallel) → 05 → 06 → 07 → 08 →
 - **Steps**: Disable network or set an invalid API key. Click "Generate notes". Confirm `error` state: red bar with "Couldn't write the analysis…"; score ring and skill chips still visible and functional. Click "Try again" → `generating` state reappears.
 - **Pass criteria**: All 4 acceptance scenarios from spec.md US5 verified. Modal remains fully functional during and after error.
 
-### T043 `[ ]` [US6] — No-profile state
+### T043 `[x]` [US6] — No-profile state
 - **Steps**: Clear all profile data (or use a test fixture with empty profile). Open any application. Confirm module shows "Compatibility unavailable" with "Complete profile →" action, no score ring, no toggle, `✦ AI` tag dimmed.
 - **Pass criteria**: All 3 acceptance scenarios from spec.md US6 verified.
 
-### T044 `[ ]` — Mobile layout smoke test
+### T044 `[x]` — Mobile layout smoke test
 - **Steps**: Open DevTools, set viewport to 375px width (mobile). Open the modal via a card click. Confirm: single-column body layout; module collapsed bar visible; expand works; skill chips wrap correctly; stale bar wraps with "Refresh notes" button pushed right; generate prompt stacks vertically with full-width button; no horizontal overflow.
 - **Pass criteria**: All module functionality available at 375px. No broken layout. Touch targets adequately sized.
 

@@ -24,8 +24,8 @@ function getFocusableElements(root) {
 }
 
 function _modalCallbacks(callbacks = {}) {
-  const { onApplicationCreate, onApplicationUpdate, onArchiveSuccess } = callbacks;
-  return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess };
+  const { onApplicationCreate, onApplicationUpdate, onArchiveSuccess, profile } = callbacks;
+  return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess, profile };
 }
 
 function _isParserVisible() {

@@ -291,11 +291,9 @@ export function createApplicationsRouter({
       // refresh it against the current profile now.
       const profile = await req.repos.profile.get();
       const compat = scoreApplication(restored, profile, asOf);
-      if (compat === restored.compat) {
-        return res.status(200).json({ data: restored });
-      }
-
-      const rescored = await req.repos.applications.update(id, { compat }, asOf);
+      const compatScoredAt = new Date().toISOString();
+      const payload = compat !== restored.compat ? { compat, compatScoredAt } : { compatScoredAt };
+      const rescored = await req.repos.applications.update(id, payload, asOf);
       return res.status(200).json({ data: rescored ?? restored });
     } catch (error) {
       return next(error);

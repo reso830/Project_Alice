@@ -301,6 +301,8 @@ function _syncFooter() {
   } else {
     _footer.hidden = !_isDirty();
   }
+
+  CompatibilityModule.setDirty(_isDirty());
 }
 
 function clearInlineErrors() {

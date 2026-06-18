@@ -11,6 +11,7 @@ let _applicationKey = null;
 let _open = false;
 let _localState = null;
 let _inFlight = false;
+let _modalDirty = false;
 
 export const COMPAT_TIERS = Object.freeze({
   Low: Object.freeze({
@@ -87,6 +88,15 @@ export function resetCompatibilityModuleState() {
   _open = false;
   _localState = null;
   _inFlight = false;
+  _modalDirty = false;
+}
+
+export function setDirty(isDirty) {
+  _modalDirty = Boolean(isDirty);
+  if (_activeState) {
+    _activeState.isModalDirty = _modalDirty;
+    renderInto(_activeState);
+  }
 }
 
 function svgEl(tag, attributes = {}) {
@@ -362,6 +372,9 @@ function renderNoneState(state, actions) {
   if (!state.application?.id) {
     generate.disabled = true;
     generate.title = 'Save the application first';
+  } else if (state.isModalDirty) {
+    generate.disabled = true;
+    generate.title = 'Save your changes first';
   }
   box.append(generate);
   return box;
@@ -400,6 +413,11 @@ function renderFreshLikeState(state, actions) {
 
   if (isStale) {
     const stale = el('div', 'cx-stale-bar');
+    const refreshBtn = button('cx-stale-btn', '↻ Refresh notes', actions.generate);
+    if (state.isModalDirty) {
+      refreshBtn.disabled = true;
+      refreshBtn.title = 'Save your changes first';
+    }
     stale.append(
       el('span', 'cx-stale-ic', '⚠'),
       el(
@@ -407,7 +425,7 @@ function renderFreshLikeState(state, actions) {
         'cx-stale-txt',
         'Your profile or job data changed after these notes were written. The score above is current — refresh the notes to match.',
       ),
-      button('cx-stale-btn', '↻ Refresh notes', actions.generate),
+      refreshBtn,
     );
     fragment.append(stale);
   }
@@ -428,8 +446,13 @@ function renderFreshLikeState(state, actions) {
   right.append(
     el('span', 'cx-meta', generated ? `✦ Generated ${generated}` : '✦ Generated'),
     el('span', 'cx-sep', '·'),
-    button('cx-regen', isStale ? '↻ Refresh' : '↻ Regenerate', actions.generate),
   );
+  const regenBtn = button('cx-regen', isStale ? '↻ Refresh' : '↻ Regenerate', actions.generate);
+  if (state.isModalDirty) {
+    regenBtn.disabled = true;
+    regenBtn.title = 'Save your changes first';
+  }
+  right.append(regenBtn);
   foot.append(showMore, right);
   fragment.append(prose, foot);
   return fragment;
@@ -522,6 +545,7 @@ function createState(options = {}) {
     open: _open,
     localState: _localState,
     inFlight: _inFlight,
+    isModalDirty: _modalDirty,
   };
 }
 
@@ -557,7 +581,7 @@ function renderInto(state) {
 }
 
 async function generateForState(state) {
-  if (_inFlight || !state.application?.id || !hasAiConfigured(state.aiSettings)) {
+  if (_inFlight || !state.application?.id || !hasAiConfigured(state.aiSettings) || state.isModalDirty) {
     return;
   }
 
@@ -602,4 +626,4 @@ export function render(options = {}) {
   return state.root;
 }
 
-export const CompatibilityModule = { render };
+export const CompatibilityModule = { render, setDirty };
