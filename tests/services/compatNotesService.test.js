@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const llmClientMock = vi.hoisted(() => ({
-  requestChatCompletion: vi.fn(),
+const aiServiceMock = vi.hoisted(() => ({
+  complete: vi.fn(),
   mapErrorToReason: vi.fn((error) => error?.reason ?? 'rate_limit'),
 }));
 
-vi.mock('../../src/services/llmClient.js', () => llmClientMock);
+vi.mock('../../src/services/aiService.js', () => aiServiceMock);
 
 afterEach(() => {
-  llmClientMock.requestChatCompletion.mockReset();
-  llmClientMock.mapErrorToReason.mockClear();
+  aiServiceMock.complete.mockReset();
+  aiServiceMock.mapErrorToReason.mockClear();
 });
 
 function application(overrides = {}) {
@@ -48,7 +48,7 @@ function aiSettings() {
 
 describe('compatNotesService', () => {
   it('builds coaching-oriented prompt context with score and resolved skill matches', async () => {
-    llmClientMock.requestChatCompletion.mockResolvedValue({
+    aiServiceMock.complete.mockResolvedValue({
       parsed: {
         summary: 'Strong React fit',
         body: 'Your React work maps well to the core of the role, while TypeScript depth and GraphQL are the places to sharpen the story.',
@@ -62,13 +62,13 @@ describe('compatNotesService', () => {
       summary: 'Strong React fit',
       body: 'Your React work maps well to the core of the role, while TypeScript depth and GraphQL are the places to sharpen the story.',
     });
-    expect(llmClientMock.requestChatCompletion).toHaveBeenCalledWith(expect.objectContaining({
+    expect(aiServiceMock.complete).toHaveBeenCalledWith(expect.objectContaining({
       key: 'sk-or-test',
       model: 'openai/gpt-4o-mini',
       systemPrompt: expect.stringContaining('Return ONLY JSON'),
       userContent: expect.stringContaining('Score: 86'),
     }));
-    const call = llmClientMock.requestChatCompletion.mock.calls[0][0];
+    const call = aiServiceMock.complete.mock.calls[0][0];
     expect(call.systemPrompt).toContain('professional career coach');
     expect(call.systemPrompt).toContain('do not repeat the score, percentage, or tier label');
     expect(call.systemPrompt).toContain('complete phrase under 28 characters');
@@ -84,7 +84,7 @@ describe('compatNotesService', () => {
   });
 
   it('replaces over-limit summaries with a complete fallback headline', async () => {
-    llmClientMock.requestChatCompletion.mockResolvedValue({
+    aiServiceMock.complete.mockResolvedValue({
       parsed: {
         summary: 'This summary is definitely longer than thirty four characters',
         body: 'Concise body.',
@@ -98,8 +98,23 @@ describe('compatNotesService', () => {
     expect(result.summary.length).toBeLessThanOrEqual(34);
   });
 
+  it('replaces over-target summaries even when they fit the hard UI limit', async () => {
+    aiServiceMock.complete.mockResolvedValue({
+      parsed: {
+        summary: 'This summary is thirty chars!',
+        body: 'Concise body.',
+      },
+    });
+    const { generateNotes } = await import('../../src/services/compatNotesService.js');
+
+    const result = await generateNotes(application({ compat: 60 }), profile(), aiSettings());
+
+    expect(result.summary).toBe('Some fit, clear gaps');
+    expect(result.summary.length).toBeLessThanOrEqual(34);
+  });
+
   it('handles empty application and profile fields gracefully', async () => {
-    llmClientMock.requestChatCompletion.mockResolvedValue({
+    aiServiceMock.complete.mockResolvedValue({
       parsed: {
         summary: 'Limited context',
         body: 'Only the score was available.',
@@ -112,7 +127,7 @@ describe('compatNotesService', () => {
       body: 'Only the score was available.',
     });
 
-    const call = llmClientMock.requestChatCompletion.mock.calls[0][0];
+    const call = aiServiceMock.complete.mock.calls[0][0];
     expect(call.userContent).toContain('Score: 0');
     expect(call.userContent).not.toContain('Tier:');
     expect(call.userContent).toContain('Required skills: None');
@@ -120,10 +135,10 @@ describe('compatNotesService', () => {
   });
 
   it('re-exports LLM error mapping from the shared client', async () => {
-    llmClientMock.mapErrorToReason.mockReturnValue('timeout');
+    aiServiceMock.mapErrorToReason.mockReturnValue('timeout');
     const { mapErrorToReason } = await import('../../src/services/compatNotesService.js');
 
     expect(mapErrorToReason({ code: 'LLM_TIMEOUT' })).toBe('timeout');
-    expect(llmClientMock.mapErrorToReason).toHaveBeenCalledWith({ code: 'LLM_TIMEOUT' });
+    expect(aiServiceMock.mapErrorToReason).toHaveBeenCalledWith({ code: 'LLM_TIMEOUT' });
   });
 });

@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.7.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.7.0');
-    expect(APP_VERSION).toBe('v1.7.0');
+  it('keeps the 1.7.1 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.7.1');
+    expect(APP_VERSION).toBe('v1.7.1');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.7.0');
-    expect(lock.packages['']?.version).toBe('1.7.0');
+    expect(lock.version).toBe('1.7.1');
+    expect(lock.packages['']?.version).toBe('1.7.1');
 
-    expect(read('README.md')).toContain('Current version: **1.7.0**');
+    expect(read('README.md')).toContain('Current version: **1.7.1**');
+    expect(read('CHANGELOG.md')).toContain('## [1.7.1] — 2026-06-19');
     expect(read('CHANGELOG.md')).toContain('## [1.7.0] — 2026-06-18');
     expect(read('CHANGELOG.md')).toContain('## [1.6.0] — 2026-06-11');
     expect(read('CHANGELOG.md')).toContain('## [1.5.0] — 2026-06-08');
@@ -27,7 +28,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.1...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1');
     expect(read('CHANGELOG.md')).toContain('[1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0');
     expect(read('CHANGELOG.md')).toContain('[1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0');
     expect(read('CHANGELOG.md')).toContain('[1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0');
@@ -206,17 +208,43 @@ describe('release metadata', () => {
     expect(repoMap).toContain('src/components/CompatibilityModule.js');
     expect(repoMap).toContain('compatNotesService.js');
     expect(repoMap).toContain('skillProficiency.js');
-    expect(repoMap).toContain('llmClient.js');
     expect(repoMap).toContain('specs/037-compatibility-insights-panel/');
     expect(read('docs/feature_roadmap.md')).toContain('[x]  037-compatibility-insights-panel  ·  shipped v1.7.0');
 
     for (const path of [
       'specs/037-compatibility-insights-panel',
       'src/components/CompatibilityModule.js',
-      'src/services/llmClient.js',
+      'src/services/aiService.js',
       'src/services/compatNotesService.js',
       'src/utils/skillProficiency.js',
       'tests/components/CompatibilityModule.test.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the AI Provider Abstraction release surfaces with resolvable links', () => {
+    const repoMap = read('docs/REPO_MAP.md');
+    const changelog = read('CHANGELOG.md');
+
+    expect(changelog).toContain('AI Provider Abstraction Layer');
+    expect(repoMap).toContain('src/services/aiErrors.js');
+    expect(repoMap).toContain('src/services/aiProvider.js');
+    expect(repoMap).toContain('src/services/aiService.js');
+    expect(repoMap).toContain('src/services/providers/');
+    expect(repoMap).toContain('src/services/providers/openrouter.js');
+    expect(repoMap).toContain('Removed in 038');
+    expect(read('docs/feature_roadmap.md')).toContain('[x]  038-ai-provider-abstraction  ·  shipped v1.7.1');
+
+    for (const path of [
+      'specs/038-ai-provider-abstraction',
+      'docs/features/038-ai-provider-abstraction.md',
+      'src/services/aiErrors.js',
+      'src/services/aiProvider.js',
+      'src/services/aiService.js',
+      'src/services/providers/openrouter.js',
+      'tests/services/aiService.test.js',
+      'tests/services/providers/openrouter.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

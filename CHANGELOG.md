@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-06-19
+
+### Changed
+- Added the internal AI Provider Abstraction Layer: AI features now route through `aiService.js`, OpenRouter transport is isolated behind a provider contract, and future providers can be registered without changing migrated feature code.
+- Removed the legacy `llmClient.js` transport module after migrating Resume Import, Job Description Parser, Compatibility Notes, and key validation to the AI service facade.
+
 ## [1.7.0] — 2026-06-18
 
 Compatibility Insights Panel — the Application Edit Modal's compatibility
@@ -1091,7 +1097,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0

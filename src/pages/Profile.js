@@ -15,7 +15,7 @@ import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
-import { validateKey } from '../services/llmParser.js';
+import { validateKey } from '../services/aiService.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';

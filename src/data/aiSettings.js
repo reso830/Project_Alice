@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL } from '../services/llmParser.js';
+import { DEFAULT_MODEL } from '../services/aiService.js';
 
 const KEY_STORAGE_KEY = 'alice.ai.openrouterKey';
 const CONSENT_STORAGE_KEY = 'alice.ai.consent';

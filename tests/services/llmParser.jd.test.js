@@ -165,10 +165,10 @@ describe('parseJobWithLlm', () => {
       content: JSON.stringify({ companyName: 'Acme' }),
     })));
 
-    const result = await llmParser.parseJobWithLlm('x'.repeat(llmParser.MAX_INPUT_CHARS + 10), 'key');
+    const result = await llmParser.parseJobWithLlm('x'.repeat(24_000 + 10), 'key');
 
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    expect(body.messages[1].content).toHaveLength(llmParser.MAX_INPUT_CHARS);
+    expect(body.messages[1].content).toHaveLength(24_000);
     expect(result.truncated).toBe(true);
   });
 
@@ -246,7 +246,7 @@ describe('parseJobWithLlm', () => {
     const expectation = expect(promise).rejects.toMatchObject({
       code: 'LLM_TIMEOUT',
     });
-    await vi.advanceTimersByTimeAsync(llmParser.LLM_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(30_000);
     await expectation;
 
     vi.useRealTimers();

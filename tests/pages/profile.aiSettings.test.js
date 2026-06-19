@@ -24,7 +24,7 @@ vi.mock('../../src/data/aiSettings.js', () => ({
   setModel: vi.fn(),
 }));
 
-vi.mock('../../src/services/llmParser.js', () => ({
+vi.mock('../../src/services/aiService.js', () => ({
   validateKey: vi.fn(),
 }));
 
@@ -41,7 +41,7 @@ vi.mock('../../src/components/Toast.js', () => ({
 }));
 
 import * as aiSettings from '../../src/data/aiSettings.js';
-import * as llmParser from '../../src/services/llmParser.js';
+import * as aiService from '../../src/services/aiService.js';
 import { Toast } from '../../src/components/Toast.js';
 import { Profile } from '../../src/pages/Profile.js';
 
@@ -189,7 +189,7 @@ describe('Profile — AI resume parsing settings', () => {
 
   it('saves, reveals, tests, replaces, and deletes the OpenRouter key', async () => {
     aiSettings.hasKey.mockReturnValue(false);
-    llmParser.validateKey.mockResolvedValue({ ok: true });
+    aiService.validateKey.mockResolvedValue({ ok: true });
     let container = await mountProfile();
     const section = getSection(container, 'SETTINGS');
     const input = section.querySelector('#ai-openrouter-key');
@@ -212,7 +212,7 @@ describe('Profile — AI resume parsing settings', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(llmParser.validateKey).toHaveBeenCalledWith('sk-secret-value');
+    expect(aiService.validateKey).toHaveBeenCalledWith('sk-secret-value');
     expect(container.textContent).toContain('Connected');
 
     getButton(container, 'Delete').click();
@@ -227,7 +227,7 @@ describe('Profile — AI resume parsing settings', () => {
 
   it('shows key invalid status when Test fails', async () => {
     aiSettings.getConnectionStatus.mockReturnValue('connected');
-    llmParser.validateKey.mockResolvedValue({ ok: false, reason: 'invalid_key' });
+    aiService.validateKey.mockResolvedValue({ ok: false, reason: 'invalid_key' });
     const container = await mountProfile('authenticated', { hasKey: true, key: 'sk-secret-value' });
 
     getButton(container, 'Test').click();

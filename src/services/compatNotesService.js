@@ -1,10 +1,9 @@
 import {
+  complete,
   mapErrorToReason,
-  requestChatCompletion,
-} from './llmClient.js';
+} from './aiService.js';
 import { resolveSkillMatches } from '../utils/skillProficiency.js';
 
-const SUMMARY_LIMIT = 34;
 const SUMMARY_TARGET_LIMIT = 28;
 
 export { mapErrorToReason };
@@ -108,8 +107,6 @@ function normalizeNotes(parsed, application = null) {
   if (summary.length > SUMMARY_TARGET_LIMIT) {
     const score = Number.isFinite(application?.compat) ? Math.round(application.compat) : 0;
     summary = fallbackSummaryForScore(score);
-  } else if (summary.length > SUMMARY_LIMIT) {
-    summary = summary.slice(0, SUMMARY_LIMIT).trim();
   }
   const body = cleanString(parsed?.body);
 
@@ -117,7 +114,7 @@ function normalizeNotes(parsed, application = null) {
 }
 
 export async function generateNotes(application, profile, aiSettings) {
-  const { parsed } = await requestChatCompletion({
+  const { parsed } = await complete({
     key: aiSettings?.getKey?.(),
     model: aiSettings?.getModel?.(),
     systemPrompt: buildCompatSystemPrompt(),
