@@ -98,6 +98,36 @@ describe('Card', () => {
     expect(mainCss).toContain('cursor: not-allowed;');
   });
 
+  it('clamps skill tags to two rows so long skill lists do not stretch cards', () => {
+    const skillsRule = [...mainCss.matchAll(/\.skills\s*\{[^}]+\}/gu)]
+      .map((match) => match[0])
+      .find((rule) => rule.includes('display: flex;'));
+
+    expect(skillsRule).toContain('flex-wrap: wrap;');
+    expect(skillsRule).toContain('max-height: calc(((11px * 1.45) + 6px) * 2 + 5px);');
+    expect(skillsRule).toContain('overflow: hidden;');
+  });
+
+  it('summarizes long card skill lists with a visible hidden-count chip', () => {
+    const skills = ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'GraphQL', 'Jest', 'Playwright', 'AWS'];
+    const card = Card.render(application({ skills }));
+    const skillsEl = card.querySelector('.skills');
+    const tags = [...skillsEl.querySelectorAll('.skill-tag')];
+
+    expect(tags.map((tag) => tag.textContent)).toEqual([
+      'React',
+      'TypeScript',
+      'Node.js',
+      'PostgreSQL',
+      'GraphQL',
+      'Jest',
+      '+2 more',
+    ]);
+    expect(tags.at(-1).classList.contains('skill-tag--more')).toBe(true);
+    expect(tags.at(-1).getAttribute('aria-label')).toBe('2 more required skills');
+    expect(skillsEl.title).toBe('8 required skills. Open details to view all.');
+  });
+
   it('keeps the status button enabled for active states', () => {
     const card = Card.render(application({ status: 'applied' }));
     const statusButton = card.querySelector('[aria-label="Change status"]');

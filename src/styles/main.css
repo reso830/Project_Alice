@@ -3543,6 +3543,8 @@ button:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  max-height: calc(((11px * 1.45) + 6px) * 2 + 5px);
+  overflow: hidden;
 }
 
 .skill-tag {
@@ -3550,6 +3552,12 @@ button:focus-visible,
   padding: 2px 7px;
   background: var(--indigo-dim);
   color: var(--indigo);
+}
+
+.skill-tag--more {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--t3);
 }
 
 .skill-tag.lvl-high,
