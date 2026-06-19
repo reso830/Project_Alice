@@ -104,7 +104,7 @@ describe('Card', () => {
       .find((rule) => rule.includes('display: flex;'));
 
     expect(skillsRule).toContain('flex-wrap: wrap;');
-    expect(skillsRule).toContain('max-height: calc(((11px * 1.45) + 4px) * 2 + 5px);');
+    expect(skillsRule).toContain('max-height: calc(((11px * 1.45) + 6px) * 2 + 5px);');
     expect(skillsRule).toContain('overflow: hidden;');
   });
 

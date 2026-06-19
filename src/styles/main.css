@@ -3543,7 +3543,7 @@ button:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  max-height: calc(((11px * 1.45) + 4px) * 2 + 5px);
+  max-height: calc(((11px * 1.45) + 6px) * 2 + 5px);
   overflow: hidden;
 }
 
