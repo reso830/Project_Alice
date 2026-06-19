@@ -55,6 +55,20 @@ describe('seedHostedUserIfNeeded', () => {
 
       expect(createSupabaseClientForRequest).toHaveBeenCalledWith(req);
     });
+
+    it('reuses req.supabase when attachRepos already created a per-request client', async () => {
+      makeRpcMock({ data: true, error: null });
+      const rpc = vi.fn(async () => ({ data: true, error: null }));
+      const req = makeReq({ supabase: { rpc } });
+      const next = vi.fn();
+
+      await seedHostedUserIfNeeded(req, {}, next);
+
+      expect(createSupabaseClientForRequest).not.toHaveBeenCalled();
+      expect(rpc).toHaveBeenCalledTimes(1);
+      expect(rpc).toHaveBeenCalledWith('claim_and_seed_starter');
+      expect(next).toHaveBeenCalledWith();
+    });
   });
 
   describe('second authenticated call from same user (RPC returns data:false)', () => {
