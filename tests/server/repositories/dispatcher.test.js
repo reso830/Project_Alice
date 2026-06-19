@@ -81,6 +81,10 @@ describe('createRepositories dispatcher — uniform forRequest contract', () => 
     const repos = dispatcher.forRequest(mockReq);
     expect(repos).toHaveProperty('applications');
     expect(repos).toHaveProperty('profile');
+    expect(mockReq.supabase).toBe(
+      supabaseClientFactory.mock.results[0].value
+        .createSupabaseClientForRequest.mock.results[0].value,
+    );
   });
 
   it('hosted forRequest constructs a fresh adapter bundle per call (per-request, not cached)', async () => {

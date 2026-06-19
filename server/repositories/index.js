@@ -17,8 +17,9 @@
  * - Local: `forRequest` returns the long-lived SQLite bundle built once at
  *   dispatcher creation. `req` is ignored.
  * - Hosted: `forRequest` constructs a fresh Supabase client from the
- *   caller's JWT (`req.headers.authorization`) and returns RLS-scoped
- *   adapters keyed to `req.user.id`. Per-request; no caching.
+ *   caller's JWT (`req.headers.authorization`), stashes it on `req.supabase`
+ *   for later per-request middleware, and returns RLS-scoped adapters keyed
+ *   to `req.user.id`. Per-request; no cross-request caching.
  *
  * @param {import('../config.js').config} config
  * @returns {Promise<{ forRequest: (req: import('express').Request) => { applications: object, profile: object } }>}
@@ -40,6 +41,7 @@ export async function createRepositories(config) {
     return {
       forRequest(req) {
         const client = createSupabaseClientForRequest(req);
+        req.supabase = client;
         const userId = req.user?.id;
         return {
           applications: createSupabaseApplicationsRepository(client, userId),

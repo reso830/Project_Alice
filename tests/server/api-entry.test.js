@@ -165,7 +165,7 @@ describe('api/index.js (Vercel entry) — hosted-mode integration', () => {
     const { createSupabaseClientForRequest } = await import(
       '../../server/repositories/supabase/client.js'
     );
-    expect(createSupabaseClientForRequest).toHaveBeenCalled();
+    expect(createSupabaseClientForRequest).toHaveBeenCalledTimes(1);
 
     // Ordering proof: the req passed to the client factory already
     // carries `req.user` from the requireAuth mock. This pins the

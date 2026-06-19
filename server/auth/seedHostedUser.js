@@ -30,7 +30,7 @@ import { createSupabaseClientForRequest } from '../repositories/supabase/client.
  */
 export async function seedHostedUserIfNeeded(req, _res, next) {
   try {
-    const client = createSupabaseClientForRequest(req);
+    const client = req.supabase ?? createSupabaseClientForRequest(req);
     const { error } = await client.rpc('claim_and_seed_starter');
     if (error) {
       return next(error);
