@@ -16,7 +16,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T001 `[ ]` — Create `src/services/aiErrors.js`
+### T001 `[x]` — Create `src/services/aiErrors.js`
 
 - **Target**: `src/services/aiErrors.js` (new file)
 - **Expected behavior**:
@@ -29,7 +29,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T002 `[ ]` — Create `src/services/providers/openrouter.js`
+### T002 `[x]` — Create `src/services/providers/openrouter.js`
 
 - **Target**: `src/services/providers/openrouter.js` (new file; directory `src/services/providers/` must be created first)
 - **Expected behavior**:
@@ -45,7 +45,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T003 `[ ]` — Create `src/services/aiProvider.js`
+### T003 `[x]` — Create `src/services/aiProvider.js`
 
 - **Target**: `src/services/aiProvider.js` (new file)
 - **Expected behavior**:
@@ -62,7 +62,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T004 `[ ]` — Create `src/services/aiService.js`
+### T004 `[x]` — Create `src/services/aiService.js`
 
 - **Target**: `src/services/aiService.js` (new file)
 - **Expected behavior**:
@@ -81,7 +81,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T005 `[ ]` [P] — Add `tests/services/providers/openrouter.test.js`
+### T005 `[x]` [P] — Add `tests/services/providers/openrouter.test.js`
 
 - **Target**: `tests/services/providers/openrouter.test.js` (new file; directory `tests/services/providers/` must be created)
 - **Expected behavior**: Unit tests for `openrouterProvider` using `vi.stubGlobal('fetch', ...)`. Use `vi.resetModules()` + dynamic import (same pattern as `tests/services/llmParser.test.js`). Cover:
@@ -106,7 +106,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T006 `[ ]` [P] — Add `tests/services/aiService.test.js`
+### T006 `[x]` [P] — Add `tests/services/aiService.test.js`
 
 - **Target**: `tests/services/aiService.test.js` (new file)
 - **Expected behavior**: Unit tests for `aiService.js`. Mock `aiProvider.js` with `vi.mock` to inject a fake provider object. Cover:
@@ -133,7 +133,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T007 `[ ]` — Update `src/services/llmParser.js`
+### T007 `[x]` — Update `src/services/llmParser.js`
 
 - **Target**: `src/services/llmParser.js`
 - **Expected behavior**:
@@ -153,7 +153,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T008 `[ ]` — Update `src/services/compatNotesService.js`
+### T008 `[x]` — Update `src/services/compatNotesService.js`
 
 - **Target**: `src/services/compatNotesService.js`
 - **Expected behavior**:
@@ -167,7 +167,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T009 `[ ]` — Update `src/data/aiSettings.js`
+### T009 `[x]` — Update `src/data/aiSettings.js`
 
 - **Target**: `src/data/aiSettings.js`
 - **Expected behavior**:
@@ -179,7 +179,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T010 `[ ]` — Update `src/pages/Profile.js`
+### T010 `[x]` — Update `src/pages/Profile.js`
 
 - **Target**: `src/pages/Profile.js`
 - **Expected behavior**:
@@ -191,7 +191,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T011 `[ ]` — Update `tests/services/compatNotesService.test.js`
+### T011 `[x]` — Update `tests/services/compatNotesService.test.js`
 
 - **Target**: `tests/services/compatNotesService.test.js`
 - **Expected behavior**:
@@ -205,7 +205,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T012 `[ ]` — Update `tests/services/llmParser.test.js`
+### T012 `[x]` — Update `tests/services/llmParser.test.js`
 
 - **Target**: `tests/services/llmParser.test.js`
 - **Expected behavior**:
@@ -219,7 +219,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T013 `[ ]` — Update `tests/services/llmParser.jd.test.js`
+### T013 `[x]` — Update `tests/services/llmParser.jd.test.js`
 
 - **Target**: `tests/services/llmParser.jd.test.js`
 - **Expected behavior**:
@@ -232,7 +232,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T014 `[ ]` — Update `tests/pages/profile.aiSettings.test.js`
+### T014 `[x]` — Update `tests/pages/profile.aiSettings.test.js`
 
 - **Target**: `tests/pages/profile.aiSettings.test.js`
 - **Expected behavior**:
@@ -245,7 +245,7 @@ Phase dependency: 01 → 02 → 03 → 04.
 
 ---
 
-### T015 `[ ]` — Delete `src/services/llmClient.js`
+### T015 `[x]` — Delete `src/services/llmClient.js`
 
 - **Target**: `src/services/llmClient.js` (delete)
 - **Expected behavior**:
@@ -269,7 +269,7 @@ grep -r "OPENROUTER_URL"        src/ tests/   # must appear only in providers/op
 
 ## Phase 03 — Release Prep
 
-### T016 `[ ]` — Release Prep
+### T016 `[x]` — Release Prep
 
 - **Targets**: `package.json`, `package-lock.json`, `CHANGELOG.md`, `docs/REPO_MAP.md`, `docs/feature_roadmap.md`
 - **Expected behavior**:

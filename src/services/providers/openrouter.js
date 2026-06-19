@@ -1,56 +1,10 @@
-export const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
-export const LLM_TIMEOUT_MS = 30_000;
-export const MAX_INPUT_CHARS = 24_000;
-export const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+import { createLlmError, mapErrorToReason } from '../aiErrors.js';
 
-export function createLlmError(code, message, status) {
-  const error = new Error(message);
-  error.code = code;
-  if (status) {
-    error.status = status;
-  }
-  return error;
-}
-
-export function mapErrorToReason(errorOrStatus) {
-  const status = typeof errorOrStatus === 'number'
-    ? errorOrStatus
-    : errorOrStatus?.status;
-  const code = typeof errorOrStatus === 'string'
-    ? errorOrStatus
-    : errorOrStatus?.code;
-  const name = errorOrStatus?.name;
-
-  if (code === 'NO_TEXT' || code === 'LLM_EMPTY_RESPONSE') {
-    return 'NO_TEXT';
-  }
-
-  if (code === 'LLM_TIMEOUT' || name === 'AbortError' || status === 408) {
-    return 'timeout';
-  }
-
-  if (code === 'LLM_NETWORK_ERROR') {
-    return 'network';
-  }
-
-  if (status === 401 || status === 403) {
-    return 'invalid_key';
-  }
-
-  if (status === 402) {
-    return 'quota';
-  }
-
-  if (status === 429) {
-    return 'rate_limit';
-  }
-
-  if (status >= 500 && status <= 599) {
-    return 'server';
-  }
-
-  return 'rate_limit';
-}
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
+const LLM_TIMEOUT_MS = 30_000;
+const MAX_INPUT_CHARS = 24_000;
 
 function parseAssistantJson(content) {
   if (typeof content !== 'string') {
@@ -68,18 +22,13 @@ function parseAssistantJson(content) {
   }
 }
 
-export async function requestChatCompletion({
-  text,
+async function complete({
   userContent,
   key,
   model = DEFAULT_MODEL,
   systemPrompt,
 }) {
-  const rawText = typeof userContent === 'string'
-    ? userContent
-    : typeof text === 'string'
-      ? text
-      : '';
+  const rawText = typeof userContent === 'string' ? userContent : '';
   const truncated = rawText.length > MAX_INPUT_CHARS;
   const input = truncated ? rawText.slice(0, MAX_INPUT_CHARS) : rawText;
   const modelSlug = typeof model === 'string' && model.trim() ? model.trim() : DEFAULT_MODEL;
@@ -133,3 +82,42 @@ export async function requestChatCompletion({
 
   return { parsed, truncated };
 }
+
+async function validateKey(key) {
+  const controller = new globalThis.AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
+  try {
+    const response = await globalThis.fetch(OPENROUTER_MODELS_URL, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+      signal: controller.signal,
+    });
+
+    if (response.ok) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      reason: mapErrorToReason(response.status),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: mapErrorToReason(error?.name === 'AbortError'
+        ? error
+        : createLlmError('LLM_NETWORK_ERROR', 'The provider request failed.')),
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export const openrouterProvider = {
+  defaultModel: DEFAULT_MODEL,
+  complete,
+  validateKey,
+};

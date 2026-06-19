@@ -1,21 +1,17 @@
 import { normalizeApplication, validateApplication } from '../models/application.js';
 import { normaliseProfile } from '../models/profile.js';
 import {
+  complete,
   DEFAULT_MODEL,
-  LLM_TIMEOUT_MS,
   createLlmError,
-  mapErrorToReason,
-  requestChatCompletion,
-} from './llmClient.js';
+} from './aiService.js';
 
 export {
   DEFAULT_MODEL,
-  LLM_TIMEOUT_MS,
-  MAX_INPUT_CHARS,
   mapErrorToReason,
-} from './llmClient.js';
+  REASON_CODES,
+} from './aiService.js';
 
-const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 const JOB_OUTPUT_FIELDS = [
   'companyName',
   'jobTitle',
@@ -29,44 +25,6 @@ const JOB_OUTPUT_FIELDS = [
   'recruiter',
   'jobPostingUrl',
 ];
-
-export const REASON_CODES = Object.freeze({
-  rate_limit: Object.freeze({
-    code: 'HTTP 429',
-    message: 'Rate limit reached — too many requests in a short time.',
-    fix: 'wait',
-  }),
-  timeout: Object.freeze({
-    code: 'TIMEOUT',
-    message: 'The AI model took too long to respond.',
-    fix: 'wait',
-  }),
-  server: Object.freeze({
-    code: 'HTTP 503',
-    message: 'The AI provider is temporarily unavailable.',
-    fix: 'wait',
-  }),
-  network: Object.freeze({
-    code: 'NETWORK',
-    message: "Couldn't reach the AI service — check your connection.",
-    fix: 'wait',
-  }),
-  invalid_key: Object.freeze({
-    code: 'HTTP 401',
-    message: 'Invalid API key — your AI provider key was rejected.',
-    fix: 'settings',
-  }),
-  quota: Object.freeze({
-    code: 'HTTP 402',
-    message: 'Out of credits — your AI provider account has no remaining balance.',
-    fix: 'settings',
-  }),
-  NO_TEXT: Object.freeze({
-    code: 'NO_TEXT',
-    message: 'No machine-readable text found — the file looks scanned or image-only.',
-    fix: 'dead-end',
-  }),
-});
 
 function hasValue(value) {
   if (typeof value === 'string') {
@@ -142,8 +100,8 @@ function buildJobSystemPrompt() {
 }
 
 export async function parseWithLlm(text, key, model = DEFAULT_MODEL) {
-  const { parsed, truncated } = await requestChatCompletion({
-    text,
+  const { parsed, truncated } = await complete({
+    userContent: text,
     key,
     model,
     systemPrompt: buildResumeSystemPrompt(),
@@ -221,8 +179,8 @@ function buildJobDraft(parsed) {
 }
 
 export async function parseJobWithLlm(text, key, model = DEFAULT_MODEL) {
-  const { parsed, truncated } = await requestChatCompletion({
-    text,
+  const { parsed, truncated } = await complete({
+    userContent: text,
     key,
     model,
     systemPrompt: buildJobSystemPrompt(),
@@ -235,37 +193,4 @@ export async function parseJobWithLlm(text, key, model = DEFAULT_MODEL) {
   }
 
   return { draft, truncated };
-}
-
-export async function validateKey(key) {
-  const controller = new globalThis.AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
-
-  try {
-    const response = await globalThis.fetch(OPENROUTER_MODELS_URL, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${key}`,
-      },
-      signal: controller.signal,
-    });
-
-    if (response.ok) {
-      return { ok: true };
-    }
-
-    return {
-      ok: false,
-      reason: mapErrorToReason(response.status),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      reason: mapErrorToReason(error?.name === 'AbortError'
-        ? error
-        : createLlmError('LLM_NETWORK_ERROR', 'The provider request failed.')),
-    };
-  } finally {
-    clearTimeout(timeoutId);
-  }
 }

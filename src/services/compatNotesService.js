@@ -1,7 +1,7 @@
 import {
+  complete,
   mapErrorToReason,
-  requestChatCompletion,
-} from './llmClient.js';
+} from './aiService.js';
 import { resolveSkillMatches } from '../utils/skillProficiency.js';
 
 const SUMMARY_LIMIT = 34;
@@ -117,7 +117,7 @@ function normalizeNotes(parsed, application = null) {
 }
 
 export async function generateNotes(application, profile, aiSettings) {
-  const { parsed } = await requestChatCompletion({
+  const { parsed } = await complete({
     key: aiSettings?.getKey?.(),
     model: aiSettings?.getModel?.(),
     systemPrompt: buildCompatSystemPrompt(),
