@@ -44,5 +44,5 @@ export function mapErrorToReason(errorOrStatus) {
     return 'server';
   }
 
-  return 'rate_limit';
+  return 'server';
 }

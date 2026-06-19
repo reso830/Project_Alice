@@ -163,7 +163,8 @@ describe('llmParser', () => {
     ['LLM_EMPTY_RESPONSE', 'NO_TEXT'],
     ['LLM_TIMEOUT', 'timeout'],
     ['LLM_NETWORK_ERROR', 'network'],
-    [418, 'rate_limit'],
+    [418, 'server'],
+    ['LLM_INVALID_RESPONSE', 'server'],
   ])('maps %s to shared reason %s', (input, reason) => {
     expect(llmParser.mapErrorToReason(input)).toBe(reason);
   });

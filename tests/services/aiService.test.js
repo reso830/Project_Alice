@@ -62,6 +62,7 @@ describe('aiService', () => {
     expect(mapErrorToReason({ code: 'LLM_TIMEOUT' })).toBe('timeout');
     expect(mapErrorToReason({ status: 401 })).toBe('invalid_key');
     expect(mapErrorToReason({ status: 402 })).toBe('quota');
+    expect(mapErrorToReason({ code: 'LLM_INVALID_RESPONSE' })).toBe('server');
 
     const timeoutError = createLlmError('LLM_TIMEOUT', 'msg');
     expect(timeoutError).toBeInstanceOf(Error);

@@ -1,5 +1,4 @@
 import { getActiveProvider } from './aiProvider.js';
-import { createLlmError, mapErrorToReason } from './aiErrors.js';
 import { openrouterProvider } from './providers/openrouter.js';
 
 export const DEFAULT_MODEL = openrouterProvider.defaultModel;
@@ -50,4 +49,4 @@ export async function validateKey(key) {
   return getActiveProvider().validateKey(key);
 }
 
-export { createLlmError, mapErrorToReason };
+export { createLlmError, mapErrorToReason } from './aiErrors.js';

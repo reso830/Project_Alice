@@ -98,6 +98,21 @@ describe('compatNotesService', () => {
     expect(result.summary.length).toBeLessThanOrEqual(34);
   });
 
+  it('replaces over-target summaries even when they fit the hard UI limit', async () => {
+    aiServiceMock.complete.mockResolvedValue({
+      parsed: {
+        summary: 'This summary is thirty chars!',
+        body: 'Concise body.',
+      },
+    });
+    const { generateNotes } = await import('../../src/services/compatNotesService.js');
+
+    const result = await generateNotes(application({ compat: 60 }), profile(), aiSettings());
+
+    expect(result.summary).toBe('Some fit, clear gaps');
+    expect(result.summary.length).toBeLessThanOrEqual(34);
+  });
+
   it('handles empty application and profile fields gracefully', async () => {
     aiServiceMock.complete.mockResolvedValue({
       parsed: {

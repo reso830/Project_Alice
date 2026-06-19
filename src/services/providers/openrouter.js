@@ -6,6 +6,16 @@ const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
 const LLM_TIMEOUT_MS = 30_000;
 const MAX_INPUT_CHARS = 24_000;
 
+function createTimeoutController() {
+  const controller = new globalThis.AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
+  return {
+    controller,
+    clear: () => clearTimeout(timeoutId),
+  };
+}
+
 function parseAssistantJson(content) {
   if (typeof content !== 'string') {
     throw createLlmError('LLM_INVALID_RESPONSE', 'The provider returned an invalid response.');
@@ -32,8 +42,7 @@ async function complete({
   const truncated = rawText.length > MAX_INPUT_CHARS;
   const input = truncated ? rawText.slice(0, MAX_INPUT_CHARS) : rawText;
   const modelSlug = typeof model === 'string' && model.trim() ? model.trim() : DEFAULT_MODEL;
-  const controller = new globalThis.AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  const timeout = createTimeoutController();
 
   let response;
 
@@ -52,7 +61,7 @@ async function complete({
           { role: 'user', content: input },
         ],
       }),
-      signal: controller.signal,
+      signal: timeout.controller.signal,
     });
   } catch (error) {
     if (error?.name === 'AbortError') {
@@ -60,7 +69,7 @@ async function complete({
     }
     throw createLlmError('LLM_NETWORK_ERROR', 'The provider request failed.');
   } finally {
-    clearTimeout(timeoutId);
+    timeout.clear();
   }
 
   if (!response.ok) {
@@ -84,8 +93,7 @@ async function complete({
 }
 
 async function validateKey(key) {
-  const controller = new globalThis.AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  const timeout = createTimeoutController();
 
   try {
     const response = await globalThis.fetch(OPENROUTER_MODELS_URL, {
@@ -93,7 +101,7 @@ async function validateKey(key) {
       headers: {
         Authorization: `Bearer ${key}`,
       },
-      signal: controller.signal,
+      signal: timeout.controller.signal,
     });
 
     if (response.ok) {
@@ -105,14 +113,19 @@ async function validateKey(key) {
       reason: mapErrorToReason(response.status),
     };
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      return {
+        ok: false,
+        reason: mapErrorToReason(createLlmError('LLM_TIMEOUT', 'The provider request timed out.')),
+      };
+    }
+
     return {
       ok: false,
-      reason: mapErrorToReason(error?.name === 'AbortError'
-        ? error
-        : createLlmError('LLM_NETWORK_ERROR', 'The provider request failed.')),
+      reason: mapErrorToReason(createLlmError('LLM_NETWORK_ERROR', 'The provider request failed.')),
     };
   } finally {
-    clearTimeout(timeoutId);
+    timeout.clear();
   }
 }
 
