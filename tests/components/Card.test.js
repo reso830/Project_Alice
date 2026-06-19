@@ -98,6 +98,16 @@ describe('Card', () => {
     expect(mainCss).toContain('cursor: not-allowed;');
   });
 
+  it('clamps skill tags to two rows so long skill lists do not stretch cards', () => {
+    const skillsRule = [...mainCss.matchAll(/\.skills\s*\{[^}]+\}/gu)]
+      .map((match) => match[0])
+      .find((rule) => rule.includes('display: flex;'));
+
+    expect(skillsRule).toContain('flex-wrap: wrap;');
+    expect(skillsRule).toContain('max-height: calc(((11px * 1.45) + 4px) * 2 + 5px);');
+    expect(skillsRule).toContain('overflow: hidden;');
+  });
+
   it('keeps the status button enabled for active states', () => {
     const card = Card.render(application({ status: 'applied' }));
     const statusButton = card.querySelector('[aria-label="Change status"]');
