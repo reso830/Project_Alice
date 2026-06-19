@@ -51,7 +51,7 @@ function makeLogger() {
 }
 
 function allProbeResponses(overrideByIndex = {}) {
-  return Array.from({ length: 7 }, (_, index) => overrideByIndex[index] ?? { error: null });
+  return Array.from({ length: 9 }, (_, index) => overrideByIndex[index] ?? { error: null });
 }
 
 const ALL_PROBE_TABLES = [
@@ -61,6 +61,8 @@ const ALL_PROBE_TABLES = [
   'applications',
   'applications',
   'profile_skill',
+  'applications',
+  'applications',
   'applications',
 ];
 
@@ -280,6 +282,30 @@ describe('assertHostedSchema', () => {
         assertHostedSchema(hostedConfig()),
       ).rejects.toThrow(
         /applications\.min_years_experience.*specs\/036-compatibility-engine\/data-model\.md/s,
+      );
+    });
+
+    it('throws on 42703 for applications.compat_analysis with the 037 data-model hint', async () => {
+      setupClient(allProbeResponses({
+        7: { error: { code: '42703', message: 'column compat_analysis does not exist' } },
+      }));
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(
+        /applications\.compat_analysis.*specs\/037-compatibility-insights-panel\/data-model\.md/s,
+      );
+    });
+
+    it('throws on 42703 for applications.compat_scored_at with the 037 data-model hint', async () => {
+      setupClient(allProbeResponses({
+        8: { error: { code: '42703', message: 'column compat_scored_at does not exist' } },
+      }));
+
+      await expect(
+        assertHostedSchema(hostedConfig()),
+      ).rejects.toThrow(
+        /applications\.compat_scored_at.*specs\/037-compatibility-insights-panel\/data-model\.md/s,
       );
     });
 

@@ -142,6 +142,11 @@ export function saveProfile(profile) {
   return request('PUT', '/api/profile', profile);
 }
 
+export function saveCompatNotes(id, { summary, body }) {
+  if (isDemo()) return fromDemo(() => demoStore.saveCompatNotes(id, { summary, body }));
+  return request('POST', `/api/applications/${id}/compat-notes`, { summary, body });
+}
+
 // Account deletion (hosted) / clear all data (local). The caller passes the
 // mode-appropriate body: hosted `{ password }`, local `{ confirm: 'DELETE' }`.
 // Demo has no real account — short-circuit with a no-fetch rejection to keep

@@ -129,15 +129,14 @@ describe('Profile — AI resume parsing settings', () => {
     expect(cvToggle.getAttribute('aria-pressed')).toBe('true');
     expect(cvToggle.disabled).toBe(false);
     expect(jdToggle.disabled).toBe(false);
-    expect(compatToggle.disabled).toBe(true);
+    expect(compatToggle.disabled).toBe(false);
     expect(section.textContent).toContain('ENABLED FEATURES');
-    expect(section.textContent).toContain('Coming soon');
     expect(getFeatureItem(section, 'jd').textContent).not.toContain('Coming soon');
-    expect(getFeatureItem(section, 'compat').textContent).toContain('Coming soon');
+    expect(getFeatureItem(section, 'compat').textContent).not.toContain('Coming soon');
     expect(section.textContent).toContain('Stored only in this browser');
   });
 
-  it('lets users toggle job-description parsing while compatibility remains coming soon', async () => {
+  it('lets users toggle job-description parsing and compatibility analysis', async () => {
     const features = { cv: true, jd: false, compat: false };
 
     aiSettings.setFeature.mockImplementation((key, value) => {
@@ -158,9 +157,15 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(aiSettings.setFeature).toHaveBeenCalledWith('jd', true);
     expect(section.querySelector('[data-ai-feature="jd"]').getAttribute('aria-pressed')).toBe('true');
-    expect(compatToggle.disabled).toBe(true);
-    expect(getFeatureItem(section, 'compat').classList.contains('is-disabled')).toBe(true);
-    expect(getFeatureItem(section, 'compat').textContent).toContain('Coming soon');
+    expect(compatToggle.disabled).toBe(false);
+    expect(compatToggle.getAttribute('aria-pressed')).toBe('false');
+    expect(getFeatureItem(section, 'compat').classList.contains('is-disabled')).toBe(false);
+    expect(getFeatureItem(section, 'compat').textContent).not.toContain('Coming soon');
+
+    compatToggle.click();
+
+    expect(aiSettings.setFeature).toHaveBeenCalledWith('compat', true);
+    expect(section.querySelector('[data-ai-feature="compat"]').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('gates the AI body when the master toggle is off', async () => {

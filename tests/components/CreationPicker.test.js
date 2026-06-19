@@ -75,11 +75,15 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
     const onApplicationCreate = vi.fn();
     const onApplicationUpdate = vi.fn();
     const onArchiveSuccess = vi.fn();
+    const onUnarchiveSuccess = vi.fn();
+    const profile = { firstName: 'Alex' };
 
     CreationPicker.open({
       onApplicationCreate,
       onApplicationUpdate,
       onArchiveSuccess,
+      onUnarchiveSuccess,
+      profile,
       prefill: { companyName: 'Should not leak' },
       mode: 'edit',
       onSubmit: vi.fn(),
@@ -93,6 +97,8 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
       onApplicationCreate,
       onApplicationUpdate,
       onArchiveSuccess,
+      onUnarchiveSuccess,
+      profile,
     });
   });
 
@@ -105,6 +111,8 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
       onApplicationCreate: undefined,
       onApplicationUpdate: undefined,
       onArchiveSuccess: undefined,
+      onUnarchiveSuccess: undefined,
+      profile: undefined,
     });
   });
 

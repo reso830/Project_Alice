@@ -38,6 +38,7 @@ let _currentView = 'active';
 let _viewCounts = { activeCount: 0, archivedCount: 0 };
 let _viewBusy = false;
 let _navigate = () => {};
+let _profile = null;
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
 const APPLICATIONS_LOAD_ERROR_MESSAGE = "Couldn't load your applications. Check your connection or try again.";
@@ -315,13 +316,15 @@ async function loadList({ preserveFilters = false } = {}) {
 }
 
 async function loadInitialLists() {
-  const [currentList, activeList, archivedList] = await Promise.all([
+  const [currentList, activeList, archivedList, profile] = await Promise.all([
     api.getAll(getListOptions()),
     isArchivedView() ? api.getAll({}) : Promise.resolve(null),
     isArchivedView() ? Promise.resolve(null) : api.getAll({ view: 'archived' }),
+    Promise.resolve(api.getProfile()).catch(() => null),
   ]);
 
   _applications = currentList;
+  _profile = profile;
   _viewCounts = {
     activeCount: (isArchivedView() ? activeList : currentList).length,
     archivedCount: (isArchivedView() ? currentList : archivedList).length,
@@ -440,7 +443,7 @@ function applicationMutationCallbacks() {
 }
 
 function onAddApplication() {
-  CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate });
+  CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate, profile: _profile });
 }
 
 function onFabAddApplication() {
@@ -519,6 +522,7 @@ function createCallbacks() {
       try {
         const application = await api.getById(coerceId(id));
         Modal.open(application, {
+          profile: _profile,
           onApplicationUpdate: (updated) => {
             replaceApplication(updated);
             renderPage();
@@ -536,6 +540,12 @@ function createCallbacks() {
             focusCardList();
           },
           onUnarchiveSuccess: applicationMutationCallbacks().onUnarchiveSuccess,
+          onOpenSettings: () => {
+            _navigate('profile', { focusSettings: true });
+          },
+          onOpenProfile: () => {
+            _navigate('profile');
+          },
         });
       } catch {
         Toast.show('Application details failed to load', 'failure');
@@ -654,6 +664,7 @@ export async function mount(container, { navigate } = {}) {
   _viewCounts = { activeCount: 0, archivedCount: 0 };
   _viewBusy = false;
   _navigate = typeof navigate === 'function' ? navigate : () => {};
+  _profile = null;
 
   const toolbar = QuickFiltersToolbar.render({
     apps: _applications,
@@ -721,6 +732,7 @@ export function unmount() {
   _viewCounts = { activeCount: 0, archivedCount: 0 };
   _viewBusy = false;
   _navigate = () => {};
+  _profile = null;
 }
 
 export const Tracker = { mount, unmount };

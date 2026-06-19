@@ -33,6 +33,12 @@ function validRecord(overrides = {}) {
     shift: 'Day',
     workSetup: 'Remote',
     compatNotes: 'Strong match',
+    compatAnalysis: {
+      summary: 'Strong React fit',
+      body: 'React and TypeScript line up with the role.',
+      generatedAt: '2026-06-17T10:34:56.789Z',
+    },
+    compatScoredAt: '2026-06-17T10:00:00.000Z',
     generalNotes: 'Applied via referral',
     preferredSkills: ['GraphQL'],
     minYearsExperience: null,
@@ -193,7 +199,7 @@ describe('normalizeApplication', () => {
     expect(record.location).toBe('');
     expect(record.shift).toBe('');
     expect(record.workSetup).toBe('');
-    expect(record.compatNotes).toBe('');
+    expect(record.compatNotes).toBeNull();
     expect(record.generalNotes).toBe('');
     expect(record.minYearsExperience).toBeNull();
   });
@@ -220,6 +226,29 @@ describe('normalizeApplication', () => {
       .toEqual([]);
     expect(normalizeApplication(validRecord({ preferredSkills: 'GraphQL' })).preferredSkills)
       .toEqual([]);
+  });
+
+  it('defaults server-managed compatibility analysis fields without coercing valid values', () => {
+    const notes = {
+      summary: 'Strong React fit',
+      body: 'React and TypeScript line up with the role.',
+      generatedAt: '2026-06-17T10:34:56.789Z',
+    };
+
+    expect(normalizeApplication(validRecord({
+      compatAnalysis: notes,
+      compatScoredAt: notes.generatedAt,
+    }))).toMatchObject({
+      compatAnalysis: notes,
+      compatScoredAt: notes.generatedAt,
+    });
+    expect(normalizeApplication(validRecord({
+      compatAnalysis: undefined,
+      compatScoredAt: undefined,
+    }))).toMatchObject({
+      compatAnalysis: null,
+      compatScoredAt: null,
+    });
   });
 
   it('preserves positive integer salary values', () => {

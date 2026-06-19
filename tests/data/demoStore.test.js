@@ -162,6 +162,24 @@ describe('demoStore.loadSeed + parity with SQLite seed', () => {
       expect(row.compat).toBe(expectedCompat(row, profile));
     });
   });
+
+  it('seeds compatibility timestamps on every row and includes fresh, stale, and empty analyses', () => {
+    const { applications } = buildDemoSeed();
+    const analyses = applications.map((row) => row.compatAnalysis);
+
+    expect(applications.every((row) => typeof row.compatScoredAt === 'string')).toBe(true);
+    expect(analyses.some((analysis) => analysis === null)).toBe(true);
+    expect(applications.some((row) => (
+      row.compatAnalysis?.generatedAt
+      && row.compatScoredAt
+      && row.compatAnalysis.generatedAt >= row.compatScoredAt
+    ))).toBe(true);
+    expect(applications.some((row) => (
+      row.compatAnalysis?.generatedAt
+      && row.compatScoredAt
+      && row.compatAnalysis.generatedAt < row.compatScoredAt
+    ))).toBe(true);
+  });
 });
 
 // --- getAll / getById defensive clones --------------------------------------
@@ -242,6 +260,7 @@ describe('demoStore.create', () => {
   });
 
   it('computes compatibility from the demo profile and ignores client-supplied compat', () => {
+    vi.setSystemTime(new Date('2026-06-17T10:00:00.000Z'));
     demoStore.loadSeed();
 
     const created = demoStore.create({
@@ -257,6 +276,7 @@ describe('demoStore.create', () => {
 
     expect(created.compat).toBe(expectedCompat(created));
     expect(created.compat).not.toBe(1);
+    expect(created.compatScoredAt).toBe('2026-06-17T10:00:00.000Z');
   });
 });
 
@@ -324,6 +344,7 @@ describe('demoStore.update', () => {
   });
 
   it('recomputes compatibility on update and ignores client-supplied compat', () => {
+    vi.setSystemTime(new Date('2026-06-17T11:00:00.000Z'));
     demoStore.loadSeed();
 
     const updated = demoStore.update(1, {
@@ -335,6 +356,58 @@ describe('demoStore.update', () => {
 
     expect(updated.compat).toBe(expectedCompat(updated));
     expect(updated.compat).not.toBe(1);
+    expect(updated.compatScoredAt).toBe('2026-06-17T11:00:00.000Z');
+  });
+
+  it('preserves compatScoredAt when only non-compat fields change', () => {
+    vi.setSystemTime(new Date('2026-06-17T12:00:00.000Z'));
+    demoStore.loadSeed();
+    const before = demoStore.getById(1);
+
+    const updated = demoStore.update(1, {
+      notes: 'non-compat edit',
+      jobTitle: before.jobTitle,
+      responsibilities: before.responsibilities,
+      skills: before.skills,
+      preferredSkills: before.preferredSkills,
+      minYearsExperience: before.minYearsExperience,
+    });
+
+    expect(updated.notes).toBe('non-compat edit');
+    expect(updated.compatScoredAt).toBe(before.compatScoredAt);
+  });
+});
+
+// --- compatibility notes ----------------------------------------------------
+
+describe('demoStore.saveCompatNotes', () => {
+  it('persists compatibility analysis and returns the API-shaped notes payload', () => {
+    vi.setSystemTime(new Date('2026-06-17T13:00:00.000Z'));
+    demoStore.loadSeed();
+    const before = demoStore.getById(1);
+
+    const result = demoStore.saveCompatNotes(1, {
+      summary: 'Strong fit',
+      body: 'React and TypeScript line up with the job.',
+    });
+
+    const expected = {
+      summary: 'Strong fit',
+      body: 'React and TypeScript line up with the job.',
+      generatedAt: '2026-06-17T13:00:00.000Z',
+    };
+    expect(result).toEqual({ data: expected });
+    expect(demoStore.getById(1).compatAnalysis).toEqual(expected);
+    expect(demoStore.getById(1).compatScoredAt).toBe(before.compatScoredAt);
+  });
+
+  it('throws NOT_FOUND for an unknown id', () => {
+    demoStore.loadSeed();
+
+    expect(() => demoStore.saveCompatNotes(9_999, {
+      summary: 'Fit',
+      body: 'Body',
+    })).toThrow(expect.objectContaining({ code: 'NOT_FOUND' }));
   });
 });
 

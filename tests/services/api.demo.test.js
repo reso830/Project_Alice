@@ -22,6 +22,7 @@ const demoStoreMock = {
   unarchive: vi.fn(() => 'sentinel:unarchive'),
   getProfile: vi.fn(() => 'sentinel:getProfile'),
   saveProfile: vi.fn(() => 'sentinel:saveProfile'),
+  saveCompatNotes: vi.fn(() => 'sentinel:saveCompatNotes'),
   loadSeed: vi.fn(),
   clear: vi.fn(),
 };
@@ -115,6 +116,14 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('saveCompatNotes(id, notes) returns demoStore.saveCompatNotes(id, notes) and does not call fetch', async () => {
+    const api = await import('../../src/services/api.js');
+    const notes = { summary: 'Good fit', body: 'React aligns well.' };
+    await expect(api.saveCompatNotes(9, notes)).resolves.toBe('sentinel:saveCompatNotes');
+    expect(demoStoreMock.saveCompatNotes).toHaveBeenCalledWith(9, notes);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('an end-to-end CRUD sequence triggers zero fetch calls in total', async () => {
     const api = await import('../../src/services/api.js');
     await api.getAll();
@@ -126,6 +135,7 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     await api.getAll({ view: 'archived' });
     await api.getProfile();
     await api.saveProfile({ firstName: 'D' });
+    await api.saveCompatNotes(1, { summary: 'Fit', body: 'Body' });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

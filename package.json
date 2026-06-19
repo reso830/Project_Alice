@@ -1,6 +1,6 @@
 {
   "name": "project-alice",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "server:start:hosted": "node --env-file=.env.local server/index.js",
     "db:init": "node server/db-init.js",
     "db:seed": "node server/db-seed.js",
+    "db:seed:demo": "npm run db:seed && npm run db:seed:profile",
     "db:clear": "node server/db-clear.js",
     "db:seed:profile": "node server/db-seed-profile.js",
     "db:clear:profile": "node server/db-clear-profile.js",

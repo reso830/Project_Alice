@@ -10,7 +10,8 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Inline edit modal** — click any field to edit it directly in the detail view; outside-click commits to draft; Esc reverts the field; Cmd/Ctrl+S saves; discard confirmation guard on close
 - **Create mode** — `+ New application` opens an empty draft; status defaults to Wishlisted; saving creates the record and switches to edit mode
 - **Compatibility scoring** — each application shows a deterministic, explainable compatibility score (0–100) and a Low / Medium / High / Great band, computed locally from your profile vs. the job across weighted categories (skills weighted by 1–5 proficiency, role alignment, experience, keywords, certifications) — no AI, no network. Scores recompute when the application or your profile changes; archived records stay frozen. See [`specs/036-compatibility-engine/`](specs/036-compatibility-engine/). (036-compatibility-engine)
-- **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility, minimum years of experience, source URL, recruiter, location, shift, work setup, preferred skills, compatibility notes, and general notes
+- **Compatibility Insights Panel** — the Application Edit Modal's compatibility section is a collapsible panel with a score ring, tier-coloured verdict pill, and profile-aware skill proficiency chips (Required Skills and Preferred Skills coded as Proficient / Learning / Missing against your profile with a legend). Optionally, AI-generated notes explain the score in prose with freshness states (none, fresh, stale, error); staleness triggers when compat-relevant fields or your profile change; non-compat edits (URL, General Notes, recruiter) do not trigger staleness. Generation is always user-initiated and AI failure never blocks the score or modal. See [`specs/037-compatibility-insights-panel/`](specs/037-compatibility-insights-panel/). (037-compatibility-insights-panel)
+- **Full detail view** — modal with all application fields: job title, company, status, salary, compatibility panel, minimum years of experience, source URL, recruiter, location, shift, work setup, skills with proficiency coding, and general notes
 - **Application Timeline** — detail overlays show a chronological Timeline with inline add, edit, delete, automatic status-change entries, and future-dated reminders
 - **Calendar page** — month-grid view of all Timeline activity with an Action Panel showing Today events, rule-based Suggested Actions (follow-up, feedback, ghost-flag, offer-expiry), and Upcoming entries; status filter; day popovers; Mark Ghosted from suggestion rows
 - **Status workflow** — ten states (Wishlist → Applied → Phone Screen → Interview → Technical Assessment → Offer → Accepted / Rejected / Withdrawn / Ghosted)
@@ -107,6 +108,7 @@ Two independent checks guard against a hosted deployment with missing config:
 |---|---|
 | `npm run db:init` | Initialize (or re-initialize) the SQLite database |
 | `npm run db:seed` | Clear the database and load 23 demo application records |
+| `npm run db:seed:demo` | Load demo applications, then seed the demo profile and recompute compatibility scores |
 | `npm run db:clear` | Delete all application records from the database |
 | `npm run db:seed:profile` | Populate the profile table with demo profile data |
 | `npm run db:clear:profile` | Clear the profile table (resets to no-profile state) |
@@ -125,14 +127,16 @@ Two independent checks guard against a hosted deployment with missing config:
 Two scripts are provided for demos and local development:
 
 ```bash
-# Load 23 pre-written records (clears any existing data first)
-npm run db:seed
+# Load scored demo applications and Alex Rivera's demo profile
+npm run db:seed:demo
 
 # Remove all records without touching the schema
 npm run db:clear
 ```
 
-`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Accepted, Rejected, Withdrawn, and Ghosted — plus one archived record. Records have varied dates, compatibility scores, notes, skills, and salary ranges so the UI renders a representative view.
+`db:seed:demo` is the recommended local demo command. It runs `db:seed` followed by `db:seed:profile`, so the applications are inserted, Alex Rivera's demo profile is saved, and compatibility scores are recomputed from the deterministic engine.
+
+`db:seed` inserts 23 realistic applications covering every status — Wishlist, Applied, Phone Screen, Interview, Technical Assessment, Offer, Accepted, Rejected, Withdrawn, and Ghosted — plus one archived record. It intentionally does not write compatibility scores directly; rows stay at the default score of `0` until `db:seed:profile` saves a profile and runs the compatibility backfill.
 
 `db:clear` is a hard delete of all rows. The schema (tables and indexes) is left intact, so the server keeps running and `db:seed` can be run again without `db:init`.
 
@@ -144,8 +148,7 @@ npm run db:clear
 
 ```bash
 npm run db:init              # first time only
-npm run db:seed              # load demo applications
-npm run db:seed:profile      # load demo profile
+npm run db:seed:demo         # load demo applications, profile, and scores
 npm run server:dev           # terminal 1
 npm run dev                  # terminal 2 — open http://localhost:5173
 # ... demo ...
@@ -217,7 +220,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.6.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.7.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

@@ -142,10 +142,25 @@ export function initSchema(targetDb = db, { compatBackfillAsOf = currentDate() }
   ensureColumn(targetDb, 'applications', 'shift', 'TEXT');
   ensureColumn(targetDb, 'applications', 'work_setup', 'TEXT');
   ensureColumn(targetDb, 'applications', 'compat_notes', 'TEXT');
+  ensureColumn(targetDb, 'applications', 'compat_analysis', 'TEXT');
+  const addedCompatScoredAtColumn = ensureColumn(targetDb, 'applications', 'compat_scored_at', 'TEXT');
   ensureColumn(targetDb, 'applications', 'general_notes', 'TEXT');
   ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
   ensureColumn(targetDb, 'applications', 'timeline', "TEXT NOT NULL DEFAULT '[]'");
   const addedMinYearsColumn = ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
+
+  targetDb.prepare(`
+    UPDATE applications
+    SET compat_scored_at = created_at
+    WHERE compat_scored_at IS NULL
+  `).run();
+  if (addedCompatScoredAtColumn) {
+    targetDb.prepare(`
+      UPDATE applications
+      SET compat_notes = NULL
+      WHERE compat_notes IS NOT NULL
+    `).run();
+  }
 
   // One-time legacy backfill: run ONLY on the boot that first adds the
   // min_years_experience column (the 036 migration). Re-running it on every

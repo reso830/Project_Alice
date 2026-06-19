@@ -7,6 +7,102 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-06-18
+
+Compatibility Insights Panel — the Application Edit Modal's compatibility
+section is replaced with a collapsible **Compatibility Insights Panel**.
+The score is always live (deterministic, from 036) and presented as a ring
+visualization with a tier-coloured verdict pill. Required and Preferred
+Skill chips in modal row 6 are upgraded to **proficiency-coded chips**
+(`✓ Proficient` / `● Learning` / `✕ Missing`) mapped against the user's
+profile with a legend. An optional **AI-generated analysis** explains the
+score in prose — citing tier, skill gaps, and alignment observations — and
+carries a freshness lifecycle: `none`, `generating`, `fresh`, `stale`,
+`error`. Staleness is signalled by a new `compat_scored_at` timestamp
+stamped on every score recompute; notes go stale when a compat-relevant
+application field or the profile changes after `notes.generatedAt`.
+Non-compat edits (URL, General Notes, recruiter) do not trigger staleness.
+Generation is always user-initiated (never automatic); AI failure never
+blocks the score or modal. Requires an OpenRouter key in Settings.
+A shared `llmClient.js` is extracted from `llmParser.js` for reuse.
+(037-compatibility-insights-panel)
+
+### Added
+
+- **Compatibility Insights Panel** — collapsible full-width module (modal
+  row 7) replacing the old `CompatBar` + `compatNotes` textarea in the
+  Application Edit Modal. Presents a score ring (SVG donut), tier-coloured
+  verdict pill (Low / Medium / High / Great), and an expand/collapse
+  toggle. (037-compatibility-insights-panel)
+- **Proficiency-coded skill chips** — Required Skills and Preferred Skills
+  chip editors in modal row 6 now resolve each skill against the user's
+  profile: `✓ Proficient` (rating ≥ 3), `● Learning` (rating < 3),
+  `✕ Missing` (not on profile). A colour-and-glyph legend sits below both
+  columns. (037-compatibility-insights-panel)
+- **AI-generated compatibility notes** — `compatNotesService.generateNotes`
+  calls OpenRouter client-side with score, tier, resolved skill matches,
+  JD fields, and profile fields; the model explains the deterministic score
+  rather than re-assessing fit. Notes carry `none` / `generating` / `fresh`
+  / `stale` / `error` freshness states with dedicated UI for each.
+  (037-compatibility-insights-panel)
+- **`compat_scored_at` staleness signal** — new `TEXT` column on
+  `applications`; stamped by `recomputeActive` on every score-computation
+  attempt (not only on value change) and by the application create/update
+  route when compat-relevant fields are present; notes go stale when
+  `notes.generatedAt < compat_scored_at`. (037-compatibility-insights-panel)
+- **`compat_analysis TEXT` column** — JSON-encoded `CompatNotes` or `null`;
+  written only by the new `POST /api/applications/:id/compat-notes` route,
+  never via standard PATCH. (037-compatibility-insights-panel)
+- **`POST /api/applications/:id/compat-notes`** — thin persistence route;
+  receives client-generated `{ summary, body }`, validates, adds
+  `generatedAt`, saves to `compat_analysis`. (037-compatibility-insights-panel)
+- **`src/services/llmClient.js`** — extracted shared OpenRouter HTTP
+  caller (`requestChatCompletion`, `mapErrorToReason`, `LLM_TIMEOUT_MS`)
+  from `llmParser.js`. (037-compatibility-insights-panel)
+- **`src/services/compatNotesService.js`** — notes generation: prompt
+  assembly + LLM call, imports from `llmClient.js`.
+  (037-compatibility-insights-panel)
+- **`src/components/CompatibilityModule.js`** — standalone module component
+  owning all states and the generation orchestration; Modal.js only calls
+  `render()`. (037-compatibility-insights-panel)
+- **`src/utils/skillProficiency.js`** — pure `resolveSkillLevel(name,
+  profileSkills)` and `resolveSkillMatches` utilities.
+  (037-compatibility-insights-panel)
+- **`no-profile` state** — when skills, experience, and summary are all
+  absent, the module shows "Compatibility unavailable" with a "Complete
+  profile →" action. (037-compatibility-insights-panel)
+
+### Changed
+
+- **`compat_notes` retired** — existing values nulled during migration;
+  field removed from the writable API surface; column kept in schema
+  (additive-only policy). The "Compat Notes" inline textarea is removed
+  from the modal. (037-compatibility-insights-panel)
+- **`src/services/llmParser.js`** now imports the shared HTTP transport
+  from `llmClient.js`; all existing exports (`parseWithLlm`,
+  `parseJobWithLlm`, `validateKey`, `REASON_CODES`) are unchanged.
+  (037-compatibility-insights-panel)
+- **`server/services/compatibility.js` `recomputeActive`** stamps
+  `compat_scored_at` on every score-computation attempt, not only on value
+  change, so notes reliably go stale after any compat-relevant data change
+  regardless of whether the score numerically shifted.
+  (037-compatibility-insights-panel)
+- **Modal.js field order** updated to match design doc §4 (Shift / Work
+  Setup before Min Years; Compatibility module at row 7).
+  (037-compatibility-insights-panel)
+
+### Deployment
+
+- **Hosted schema migration** — adds two additive columns to
+  `applications`: `compat_analysis text` (nullable) and `compat_scored_at
+  text` (nullable). A `compat_scored_at` backfill sets it to `created_at`
+  for existing rows (prevents false staleness on pre-037 records). Existing
+  `compat_notes` values are nulled (column retained). Apply the SQL from
+  [`specs/037-compatibility-insights-panel/data-model.md §1, §2`](specs/037-compatibility-insights-panel/data-model.md)
+  before promoting a v1.7.0+ hosted deploy. `assertHostedSchema` probes
+  both new columns and fails boot if they are missing.
+  (037-compatibility-insights-panel)
+
 ## [1.6.0] — 2026-06-11
 
 Compatibility Engine — the `compat` score shown on every application is now a
@@ -995,7 +1091,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/reso830/Project_Alice/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/reso830/Project_Alice/compare/v1.3.0...v1.4.0
