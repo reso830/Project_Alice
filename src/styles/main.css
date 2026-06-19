@@ -3554,6 +3554,12 @@ button:focus-visible,
   color: var(--indigo);
 }
 
+.skill-tag--more {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--t3);
+}
+
 .skill-tag.lvl-high,
 .skill-tag.lvl-low,
 .skill-tag.miss {

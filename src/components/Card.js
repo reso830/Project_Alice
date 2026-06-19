@@ -8,6 +8,8 @@ import * as api from '../services/api.js';
 import { CompatBar } from './CompatBar.js';
 import { StatusDropdown } from './StatusDropdown.js';
 
+const CARD_SKILL_SUMMARY_LIMIT = 6;
+
 function createActionButton(className, icon) {
   const button = document.createElement('button');
   button.className = `card-btn ${className}`;
@@ -38,11 +40,26 @@ function createSkills(skills) {
     return wrapper;
   }
 
-  for (const skill of skills) {
+  const visibleSkills = skills.slice(0, CARD_SKILL_SUMMARY_LIMIT);
+  const hiddenCount = skills.length - visibleSkills.length;
+
+  wrapper.title = hiddenCount > 0
+    ? `${skills.length} required skills. Open details to view all.`
+    : skills.join(', ');
+
+  for (const skill of visibleSkills) {
     const tag = document.createElement('span');
     tag.className = 'skill-tag';
     tag.textContent = skill;
     wrapper.append(tag);
+  }
+
+  if (hiddenCount > 0) {
+    const more = document.createElement('span');
+    more.className = 'skill-tag skill-tag--more';
+    more.textContent = `+${hiddenCount} more`;
+    more.setAttribute('aria-label', `${hiddenCount} more required skills`);
+    wrapper.append(more);
   }
 
   return wrapper;
