@@ -86,7 +86,7 @@ Alice is evolving through four major phases:
 - [x]  036-compatibility-engine  ·  shipped v1.6.0
 - [x]  037-compatibility-insights-panel  ·  shipped v1.7.0
 - [x]  038-ai-provider-abstraction  ·  shipped v1.7.1
-- [ ]  039-ats-resume-quality-checks
+- [ ]  039-desktop-workspace-refresh
 
 ---
 
@@ -101,6 +101,8 @@ Alice is evolving through four major phases:
 - Expand analytics capabilities
 
 ## Features
+- [ ] 040-profile-page-refresh
+- [ ] 041-ats-resume-quality-checks
 - [ ] 040-preference-engine-foundation
 - [ ] 041-role-based-salary-preferences
 - [ ] 042-shift-setup-employment-preferences
