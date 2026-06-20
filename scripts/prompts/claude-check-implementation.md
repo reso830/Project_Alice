@@ -20,7 +20,7 @@ Review for:
 
 Constitution-specific checks, when the relevant files changed:
 - Validation logic changed → confirm tests cover status transitions, required-field enforcement, URL validation, and date handling.
-- Data layer changed → confirm all three persistence modes are handled (local / hosted / demo via `createRepositories`).
+- Data layer changed → confirm both persistence runtimes are handled (local / hosted via `createRepositories`). Demo mode runs on the local path with seeded data — check it only if the change affects it.
 - UI changed → confirm empty / loading / error states are handled, status is not color-only, and the surface is keyboard-navigable.
 
 The first line of your response must be exactly one of:

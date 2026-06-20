@@ -29,9 +29,11 @@ Include:
 - risks and tradeoffs
 - validation approach
 
-If the feature touches the data layer, address all three persistence runtimes routed
-through `createRepositories(config)`: **local** (SQLite), **hosted** (Supabase), and
-**demo**. A plan that only handles one mode is incomplete.
+If the feature touches the data layer, address both persistence runtimes routed
+through `createRepositories(config)`: **local** (SQLite) and **hosted** (Supabase).
+A plan that handles only one is incomplete. Demo mode is not a separate
+`createRepositories` runtime — it runs on the local path with seeded data and a demo
+auth state; call it out only when the change affects it.
 
 Add a constitution compliance note covering:
 - required-field impact (company, job title, status, last_status_update, responsibilities)
