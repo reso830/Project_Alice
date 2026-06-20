@@ -1,7 +1,7 @@
 Review this Spec Kit package as a software architect.
 
 Instructions:
-- Read the spec, plan, tasks, and workflow ledger if one exists.
+- Read the spec, plan, tasks, the `checklists/plan-review.md` checklist, and the workflow ledger if one exists.
 - Honor user notes, accepted findings, and prior review history unless they conflict with the project constitution.
 - This is a review only. Do not edit files.
 

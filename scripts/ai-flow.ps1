@@ -967,7 +967,7 @@ function Run-ClaudePrReview {
     Ensure-AiWorkflow
     Require-Approval "Is the PR open and ready for Claude final review comments?"
     $ReviewLog = New-LogPath -BaseName "08-claude-pr-review"
-    Run-Claude -Prompt (Load-Prompt -TemplateName "claude-pr-review" -Phase (Get-CurrentPhase)) -LogFile $ReviewLog
+    Run-Claude -Prompt (Load-Prompt -TemplateName "pr-review" -Phase (Get-CurrentPhase)) -LogFile $ReviewLog
     $Verdict = Get-ReviewVerdict -LogFile $ReviewLog -AllowedVerdicts @("Pass", "Needs Changes")
     $Status = if ($Verdict -eq "Pass") { "READY" } else { "NOT_READY" }
     Set-AiWorkflowStatus -ActionName "Claude PR Review" -SectionHeading "Claude PR Review" -Status $Status
@@ -979,7 +979,7 @@ function Run-CodexPrReview {
     Ensure-AiWorkflow
     Require-Approval "Is the PR open and ready for Codex final review comments?"
     $ReviewLog = New-LogPath -BaseName "09-codex-pr-review"
-    Run-Codex -Prompt (Load-Prompt -TemplateName "codex-pr-review" -Phase (Get-CurrentPhase)) -LogFile $ReviewLog
+    Run-Codex -Prompt (Load-Prompt -TemplateName "pr-review" -Phase (Get-CurrentPhase)) -LogFile $ReviewLog
     $Verdict = Get-ReviewVerdict -LogFile $ReviewLog -AllowedVerdicts @("Pass", "Needs Changes")
     $Status = if ($Verdict -eq "Pass") { "READY" } else { "NOT_READY" }
     Set-AiWorkflowStatus -ActionName "Codex PR Review" -SectionHeading "Codex PR Review" -Status $Status

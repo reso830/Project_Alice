@@ -2,8 +2,11 @@ Review one implemented Spec Kit phase.
 
 Instructions:
 - Read the workflow ledger, phase tasks, plan, spec, and changed files.
+- Scope the review to the diff this phase introduced (per the ledger / phase commit range), not the whole branch.
+- Run `npm run test:run` and `npm run lint`. A phase must leave the tree green — treat any test or lint failure as CRITICAL. Confirm no earlier-phase behavior regressed.
+- Judge this phase against its declared tasks only. Do NOT flag as missing any work the plan or a later phase explicitly defers — incompleteness a subsequent phase will fill is expected, not a finding.
 - Honor user notes, accepted findings, and prior review history unless they conflict with the project constitution.
-- This is a read-only review. Do not edit source files, tests, specs, tasks, or the workflow ledger.
+- This is a read-only review of source. Do not edit source files, tests, specs, tasks, or the workflow ledger (running tests and lint is allowed).
 
 Review for:
 - correctness
@@ -13,7 +16,12 @@ Review for:
 - test coverage
 - UX risks
 - missed phase tasks
-- unintended out-of-scope changes
+- unintended out-of-scope changes — verify changed files match the phase tasks' target files and the plan's `Affected Areas`; flag any file modified that no task in this phase authorized
+
+Constitution-specific checks, when the relevant files changed:
+- Validation logic changed → confirm tests cover status transitions, required-field enforcement, URL validation, and date handling.
+- Data layer changed → confirm both persistence runtimes are handled (local / hosted via `createRepositories`). Demo mode runs on the local path with seeded data — check it only if the change affects it.
+- UI changed → confirm empty / loading / error states are handled, status is not color-only, and the surface is keyboard-navigable.
 
 The first line of your response must be exactly one of:
 Pass

@@ -931,7 +931,7 @@ function runPrReview(reviewer) {
   requireApproval(`Is the PR open and ready for ${reviewer} final review comments?`);
   const isClaude = reviewer === 'Claude';
   const log = newLogPath(isClaude ? '08-claude-pr-review' : '09-codex-pr-review');
-  const prompt = loadPrompt(isClaude ? 'claude-pr-review' : 'codex-pr-review', { phase: getCurrentPhase() });
+  const prompt = loadPrompt('pr-review', { phase: getCurrentPhase() });
   if (isClaude) runClaude(prompt, log);
   else runCodex(prompt, log);
   const verdict = getReviewVerdict(log, ['Pass', 'Needs Changes']);
