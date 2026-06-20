@@ -152,8 +152,7 @@ Stored in `scripts/prompts/`. Each is a Markdown file with `{{PLACEHOLDER}}` tok
 | `codex-check-requirements.md` | `req-review` | `Ready` / `Not Ready` |
 | `codex-implement-phase.md` | `implement` | — |
 | `claude-check-implementation.md` | `check-next` | `Pass` / `Needs Changes` |
-| `claude-pr-review.md` | `claude-pr-review` | `Pass` / `Needs Changes` |
-| `codex-pr-review.md` | `codex-pr-review` | `Pass` / `Needs Changes` |
+| `pr-review.md` | `claude-pr-review`, `codex-pr-review` | `Pass` / `Needs Changes` |
 
 Available placeholders: `{{FEATURE_NAME}}`, `{{FEATURE_ID}}`, `{{SPEC_DIR}}`, `{{FEATURE_BRIEF}}`, `{{DESIGN_DOC}}`, `{{PHASE}}`, `{{BASE_BRANCH}}`.
 
