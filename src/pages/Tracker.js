@@ -1,6 +1,7 @@
 import { Card } from '../components/Card.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { CreationPicker } from '../components/CreationPicker.js';
+import { EmptyPane } from '../components/EmptyPane.js';
 import { Fab } from '../components/Fab.js';
 import { Modal } from '../components/Modal.js';
 import { Pagination } from '../components/Pagination.js';
@@ -24,6 +25,10 @@ import { renderInlineError } from '../utils/asyncUI.js';
 import { buildApplicationListSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
+let _workspaceEl = null;
+let _masterEl = null;
+let _detailPaneEl = null;
+let _paginationHostEl = null;
 let _cardList = null;
 let _listStateEl = null;
 let _currentPage = 1;
@@ -39,9 +44,18 @@ let _viewCounts = { activeCount: 0, archivedCount: 0 };
 let _viewBusy = false;
 let _navigate = () => {};
 let _profile = null;
+let _isDesktop = false;
+let _desktopMql = null;
+let _desktopMqlHandler = null;
+let _selectedId = null;
+let _modalApplicationId = null;
+let _suppressPaneClosed = false;
+let _footerMeasureFrame = null;
+let _footerMeasureHandler = null;
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
 const APPLICATIONS_LOAD_ERROR_MESSAGE = "Couldn't load your applications. Check your connection or try again.";
+const DESKTOP_WORKSPACE_QUERY = '(min-width: 1100px)';
 
 function coerceId(id) {
   return typeof id === 'number' ? id : parseInt(id, 10);
@@ -61,6 +75,92 @@ function replaceApplication(application) {
 function removeApplication(id) {
   const numericId = coerceId(id);
   _applications = _applications.filter((application) => application.id !== numericId);
+}
+
+function getVisibleFooterHeight() {
+  if (!_isDesktop) {
+    return 0;
+  }
+
+  const footer = document.querySelector('.site-footer');
+
+  if (!(footer instanceof HTMLElement)) {
+    return 0;
+  }
+
+  const rect = footer.getBoundingClientRect();
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  if (viewportHeight <= 0) {
+    return 0;
+  }
+
+  const actualVisible = rect.top >= viewportHeight || rect.bottom <= 0
+    ? 0
+    : Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0));
+
+  if (!(_masterEl instanceof HTMLElement)) {
+    return actualVisible;
+  }
+
+  const masterRect = _masterEl.getBoundingClientRect();
+  const naturalVisible = Math.max(
+    0,
+    Math.min(rect.height, viewportHeight - Math.max(masterRect.bottom, 0)),
+  );
+
+  return Math.max(actualVisible, naturalVisible);
+}
+
+function updateFooterVisibleHeight() {
+  if (!_workspaceEl) {
+    return;
+  }
+
+  _workspaceEl.style.setProperty('--footer-visible-h', `${Math.round(getVisibleFooterHeight())}px`);
+}
+
+function scheduleFooterVisibleHeightUpdate() {
+  if (_footerMeasureFrame !== null) {
+    return;
+  }
+
+  if (typeof window.requestAnimationFrame === 'function') {
+    _footerMeasureFrame = window.requestAnimationFrame(() => {
+      _footerMeasureFrame = null;
+      updateFooterVisibleHeight();
+    });
+    return;
+  }
+
+  updateFooterVisibleHeight();
+}
+
+function openApplicationPane(application) {
+  const numericId = coerceId(application.id);
+
+  _suppressPaneClosed = true;
+  try {
+    Modal.open(application, {
+      variant: 'pane',
+      target: _detailPaneEl,
+      profile: _profile ?? null,
+      ...detailCallbacks(numericId),
+      onClosed: () => {
+        if (_suppressPaneClosed) {
+          return;
+        }
+        if (_selectedId === numericId) {
+          clearSelectedPane();
+        }
+      },
+    });
+  } finally {
+    _suppressPaneClosed = false;
+  }
+
+  _modalApplicationId = null;
+  _selectedId = numericId;
 }
 
 function isArchivedView() {
@@ -190,7 +290,179 @@ function clampCurrentPage(filteredCount) {
 }
 
 function removeEmptyState() {
-  _container?.querySelector('.empty-state')?.remove();
+  getListHost()?.querySelector('.empty-state')?.remove();
+}
+
+function getListHost() {
+  return _isDesktop ? _masterEl : _container;
+}
+
+function getPaginationHost() {
+  return _isDesktop ? _paginationHostEl : _container;
+}
+
+function renderEmptyPane() {
+  if (!_detailPaneEl || _selectedId !== null) {
+    return;
+  }
+
+  _detailPaneEl.replaceChildren(EmptyPane.render());
+}
+
+function clearSelectedPane() {
+  _selectedId = null;
+  renderPage();
+  renderEmptyPane();
+}
+
+function moveListSurface(target) {
+  if (!target) {
+    return;
+  }
+
+  const emptyState = _masterEl?.querySelector('.empty-state')
+    ?? _container?.querySelector(':scope > .empty-state');
+
+  if (_listStateEl?.isConnected) {
+    target.append(_listStateEl);
+  }
+  if (_cardList?.isConnected) {
+    target.append(_cardList);
+  }
+  if (emptyState) {
+    target.append(emptyState);
+  }
+}
+
+function movePaginationSurface(target) {
+  if (target && _paginationEl?.isConnected) {
+    target.append(_paginationEl);
+  }
+}
+
+function ensureTrackerLayout() {
+  if (!_container) {
+    return;
+  }
+
+  if (_isDesktop) {
+    if (!_workspaceEl) {
+      _workspaceEl = document.createElement('div');
+      _workspaceEl.className = 'tracker-split';
+      _masterEl = document.createElement('section');
+      _masterEl.className = 'tracker-master';
+      _detailPaneEl = document.createElement('aside');
+      _detailPaneEl.className = 'tracker-detail';
+      _detailPaneEl.setAttribute('aria-label', 'Application details');
+      _workspaceEl.append(_masterEl, _detailPaneEl);
+      _container.append(_workspaceEl);
+    }
+
+    if (!_paginationHostEl) {
+      _paginationHostEl = document.createElement('div');
+      _paginationHostEl.className = 'split-pagination';
+      _container.append(_paginationHostEl);
+    }
+
+    moveListSurface(_masterEl);
+    movePaginationSurface(_paginationHostEl);
+    renderEmptyPane();
+    updateFooterVisibleHeight();
+    return;
+  }
+
+  moveListSurface(_container);
+  movePaginationSurface(_container);
+  _workspaceEl?.remove();
+  _paginationHostEl?.remove();
+  _workspaceEl = null;
+  _masterEl = null;
+  _detailPaneEl = null;
+  _paginationHostEl = null;
+  updateFooterVisibleHeight();
+}
+
+function setupDesktopQuery() {
+  _footerMeasureHandler = () => scheduleFooterVisibleHeightUpdate();
+  window.addEventListener('scroll', _footerMeasureHandler, { passive: true });
+  window.addEventListener('resize', _footerMeasureHandler);
+
+  _desktopMql = typeof window.matchMedia === 'function'
+    ? window.matchMedia(DESKTOP_WORKSPACE_QUERY)
+    : null;
+  _isDesktop = Boolean(_desktopMql?.matches);
+
+  if (!_desktopMql) {
+    return;
+  }
+
+  _desktopMqlHandler = async (event) => {
+    const wasDesktop = _isDesktop;
+    _isDesktop = Boolean(event.matches);
+    ensureTrackerLayout();
+    ensureCardList();
+    renderPage();
+
+    if (_isDesktop && _modalApplicationId !== null) {
+      const pendingId = _modalApplicationId;
+
+      if (!document.querySelector('.modal-backdrop')) {
+        _modalApplicationId = null;
+        renderEmptyPane();
+      } else if (!await Modal.requestClose()) {
+        return;
+      } else {
+        _modalApplicationId = null;
+        await selectApplication(pendingId, { skipGuard: true });
+        return;
+      }
+    }
+
+    if (_isDesktop && _selectedId !== null && !_detailPaneEl?.querySelector('.modal-panel')) {
+      await selectApplication(_selectedId, { skipGuard: true });
+      return;
+    }
+
+    if (!_isDesktop && wasDesktop && _selectedId !== null) {
+      _suppressPaneClosed = true;
+      Modal.close();
+      _suppressPaneClosed = false;
+      ensureTrackerLayout();
+      ensureCardList();
+      renderPage();
+    }
+  };
+
+  if (typeof _desktopMql.addEventListener === 'function') {
+    _desktopMql.addEventListener('change', _desktopMqlHandler);
+  } else if (typeof _desktopMql.addListener === 'function') {
+    _desktopMql.addListener(_desktopMqlHandler);
+  }
+}
+
+function teardownDesktopQuery() {
+  if (_footerMeasureHandler) {
+    window.removeEventListener('scroll', _footerMeasureHandler);
+    window.removeEventListener('resize', _footerMeasureHandler);
+  }
+  if (_footerMeasureFrame !== null && typeof window.cancelAnimationFrame === 'function') {
+    window.cancelAnimationFrame(_footerMeasureFrame);
+  }
+
+  _footerMeasureHandler = null;
+  _footerMeasureFrame = null;
+
+  if (_desktopMql && _desktopMqlHandler) {
+    if (typeof _desktopMql.removeEventListener === 'function') {
+      _desktopMql.removeEventListener('change', _desktopMqlHandler);
+    } else if (typeof _desktopMql.removeListener === 'function') {
+      _desktopMql.removeListener(_desktopMqlHandler);
+    }
+  }
+
+  _desktopMql = null;
+  _desktopMqlHandler = null;
+  _isDesktop = false;
 }
 
 function ensureCardList() {
@@ -198,6 +470,7 @@ function ensureCardList() {
     return;
   }
 
+  ensureTrackerLayout();
   removeEmptyState();
   _listStateEl?.remove();
   _listStateEl = null;
@@ -205,7 +478,7 @@ function ensureCardList() {
   _cardList.className = 'card-list';
   _cardList.tabIndex = -1;
   _cardList.setAttribute('aria-label', 'Application list');
-  _container.append(_cardList);
+  getListHost()?.append(_cardList);
 }
 
 function clearListDecorations() {
@@ -219,12 +492,13 @@ function renderApplicationListSkeleton() {
     return null;
   }
 
+  ensureTrackerLayout();
   clearListDecorations();
   _cardList?.remove();
   _cardList = null;
   _listStateEl?.remove();
   _listStateEl = buildApplicationListSkeleton();
-  _container.append(_listStateEl);
+  getListHost()?.append(_listStateEl);
   return _listStateEl;
 }
 
@@ -233,6 +507,7 @@ function showApplicationLoadError(onRetry) {
     return;
   }
 
+  ensureTrackerLayout();
   clearListDecorations();
   const target = document.createElement('div');
   target.className = 'list-load-state';
@@ -242,7 +517,7 @@ function showApplicationLoadError(onRetry) {
     _cardList.replaceWith(target);
     _cardList = null;
   } else {
-    _container.append(target);
+    getListHost()?.append(target);
   }
   _listStateEl = target;
   renderInlineError({
@@ -256,6 +531,17 @@ function focusCardList() {
   if (_cardList) {
     _cardList.focus({ preventScroll: true });
   }
+}
+
+function focusDetailPane() {
+  const panePanel = _detailPaneEl?.querySelector('.modal-panel--pane');
+
+  if (!(panePanel instanceof HTMLElement)) {
+    return;
+  }
+
+  panePanel.tabIndex = -1;
+  panePanel.focus({ preventScroll: true });
 }
 
 function onPageChange(page) {
@@ -414,6 +700,9 @@ function applicationMutationCallbacks() {
     },
     onArchiveSuccess: (updated) => {
       removeApplication(updated.id);
+      if (_selectedId === coerceId(updated.id)) {
+        _selectedId = null;
+      }
       _viewCounts = {
         activeCount: Math.max(0, _viewCounts.activeCount - 1),
         archivedCount: _viewCounts.archivedCount + 1,
@@ -421,6 +710,7 @@ function applicationMutationCallbacks() {
       _salaryBounds = getSalaryBounds(_applications);
       renderPage();
       updateToolbar();
+      renderEmptyPane();
       focusCardList();
     },
     onUnarchiveSuccess: (updated) => {
@@ -443,6 +733,21 @@ function applicationMutationCallbacks() {
 }
 
 function onAddApplication() {
+  if (_isDesktop && _detailPaneEl) {
+    clearSelectedPane();
+    CreationPicker.open({
+      ...applicationMutationCallbacks(),
+      navigate: _navigate,
+      profile: _profile ?? null,
+      createOptions: {
+        variant: 'pane',
+        target: _detailPaneEl,
+        onClosed: renderEmptyPane,
+      },
+    });
+    return;
+  }
+
   CreationPicker.open({ ...applicationMutationCallbacks(), navigate: _navigate, profile: _profile });
 }
 
@@ -478,8 +783,11 @@ function renderPage({ moveFocus = false } = {}) {
     return;
   }
 
+  ensureTrackerLayout();
   const filteredApplications = applyFilters(_applications, _filterState);
   const sortedApplications = sortApplications(filteredApplications, _sortState);
+  const listHost = getListHost();
+  const paginationHost = getPaginationHost();
 
   clampCurrentPage(sortedApplications.length);
   removeEmptyState();
@@ -492,13 +800,15 @@ function renderPage({ moveFocus = false } = {}) {
   const visibleApplications = sortedApplications.slice(startIndex, endIndex);
 
   for (const application of visibleApplications) {
-    _cardList.append(Card.render(application, createCallbacks()));
+    _cardList.append(Card.render(application, createCallbacks(), {
+      selected: application.id === _selectedId,
+    }));
   }
 
   if (sortedApplications.length === 0 && isAnyFilterActive(_filterState)) {
-    _container.append(renderFilterEmptyState());
+    listHost?.append(renderFilterEmptyState());
   } else if (sortedApplications.length === 0) {
-    _container.append(isArchivedView()
+    listHost?.append(isArchivedView()
       ? renderArchivedEmptyState()
       : renderMessage('No applications yet. Add your first one!'));
   }
@@ -507,8 +817,11 @@ function renderPage({ moveFocus = false } = {}) {
 
   if (model.hasPagination) {
     _paginationEl = Pagination.render(_currentPage, sortedApplications.length, onPageChange);
-    _container.append(_paginationEl);
+    paginationHost?.append(_paginationEl);
   }
+
+  renderEmptyPane();
+  scheduleFooterVisibleHeightUpdate();
 
   if (moveFocus) {
     window.scrollTo(0, 0);
@@ -516,37 +829,80 @@ function renderPage({ moveFocus = false } = {}) {
   }
 }
 
+function detailCallbacks(applicationId) {
+  return {
+    onApplicationUpdate: (updated) => {
+      replaceApplication(updated);
+      renderPage();
+      updateToolbar();
+    },
+    onArchiveSuccess: (updated) => {
+      removeApplication(updated.id);
+      if (_selectedId === coerceId(applicationId) || _selectedId === coerceId(updated.id)) {
+        _selectedId = null;
+      }
+      _viewCounts = {
+        activeCount: Math.max(0, _viewCounts.activeCount - 1),
+        archivedCount: _viewCounts.archivedCount + 1,
+      };
+      _salaryBounds = getSalaryBounds(_applications);
+      renderPage();
+      updateToolbar();
+      renderEmptyPane();
+      focusCardList();
+    },
+    onUnarchiveSuccess: applicationMutationCallbacks().onUnarchiveSuccess,
+    onOpenSettings: () => {
+      _navigate('profile', { focusSettings: true });
+    },
+    onOpenProfile: () => {
+      _navigate('profile');
+    },
+  };
+}
+
+async function openModalApplication(id) {
+  const numericId = coerceId(id);
+  const application = await api.getById(numericId);
+
+  _modalApplicationId = numericId;
+  Modal.open(application, {
+    profile: _profile ?? null,
+    ...detailCallbacks(numericId),
+  });
+}
+
+async function selectApplication(id, { skipGuard = false } = {}) {
+  const numericId = coerceId(id);
+
+  if (!_isDesktop) {
+    await openModalApplication(numericId);
+    return;
+  }
+
+  if (_selectedId === numericId && _detailPaneEl?.querySelector('.modal-panel')) {
+    return;
+  }
+
+  if (_selectedId !== null && !skipGuard) {
+    const canSwitch = await Modal.requestClose();
+    if (!canSwitch) {
+      return;
+    }
+  }
+
+  const application = await api.getById(numericId);
+
+  openApplicationPane(application);
+  renderPage();
+  focusDetailPane();
+}
+
 function createCallbacks() {
   return {
     onOpen: async (id) => {
       try {
-        const application = await api.getById(coerceId(id));
-        Modal.open(application, {
-          profile: _profile,
-          onApplicationUpdate: (updated) => {
-            replaceApplication(updated);
-            renderPage();
-            updateToolbar();
-          },
-          onArchiveSuccess: (updated) => {
-            removeApplication(updated.id);
-            _viewCounts = {
-              activeCount: Math.max(0, _viewCounts.activeCount - 1),
-              archivedCount: _viewCounts.archivedCount + 1,
-            };
-            _salaryBounds = getSalaryBounds(_applications);
-            renderPage();
-            updateToolbar();
-            focusCardList();
-          },
-          onUnarchiveSuccess: applicationMutationCallbacks().onUnarchiveSuccess,
-          onOpenSettings: () => {
-            _navigate('profile', { focusSettings: true });
-          },
-          onOpenProfile: () => {
-            _navigate('profile');
-          },
-        });
+        await (_isDesktop ? selectApplication(id) : openModalApplication(id));
       } catch {
         Toast.show('Application details failed to load', 'failure');
       }
@@ -572,6 +928,9 @@ function createCallbacks() {
         const updated = await api.update(coerceId(id), { fav: !application.fav });
         replaceApplication(updated);
         renderPage();
+        if (_isDesktop && _selectedId === coerceId(id) && _detailPaneEl?.querySelector('.modal-panel--pane')) {
+          openApplicationPane(updated);
+        }
         updateToolbar();
       } catch {
         Toast.show('Star update failed', 'failure');
@@ -643,7 +1002,9 @@ export function refreshCard(id) {
     return;
   }
 
-  currentCard.replaceWith(Card.render(application, createCallbacks()));
+  currentCard.replaceWith(Card.render(application, createCallbacks(), {
+    selected: application.id === _selectedId,
+  }));
 }
 
 export async function mount(container, { navigate } = {}) {
@@ -653,6 +1014,10 @@ export async function mount(container, { navigate } = {}) {
   _listStateEl = null;
   _currentPage = 1;
   _paginationEl = null;
+  _workspaceEl = null;
+  _masterEl = null;
+  _detailPaneEl = null;
+  _paginationHostEl = null;
   _applications = [];
   _filterState = loadPersistedFilterState();
   _salaryBounds = { min: 0, max: 200000, hasSalaryData: false };
@@ -665,6 +1030,11 @@ export async function mount(container, { navigate } = {}) {
   _viewBusy = false;
   _navigate = typeof navigate === 'function' ? navigate : () => {};
   _profile = null;
+  _selectedId = null;
+  _modalApplicationId = null;
+  _suppressPaneClosed = false;
+  teardownDesktopQuery();
+  setupDesktopQuery();
 
   const toolbar = QuickFiltersToolbar.render({
     apps: _applications,
@@ -689,6 +1059,7 @@ export async function mount(container, { navigate } = {}) {
   _fabEl = fab;
   setToolbarLoading(true);
   _container.append(...[toolbar, fab].filter(Boolean));
+  ensureTrackerLayout();
   renderApplicationListSkeleton();
 
   try {
@@ -714,11 +1085,17 @@ export async function mount(container, { navigate } = {}) {
 }
 
 export function unmount() {
+  teardownDesktopQuery();
+
   if (_container) {
     _container.replaceChildren();
   }
 
   _container = null;
+  _workspaceEl = null;
+  _masterEl = null;
+  _detailPaneEl = null;
+  _paginationHostEl = null;
   _cardList = null;
   _listStateEl = null;
   _currentPage = 1;
@@ -733,6 +1110,9 @@ export function unmount() {
   _viewBusy = false;
   _navigate = () => {};
   _profile = null;
+  _selectedId = null;
+  _modalApplicationId = null;
+  _suppressPaneClosed = false;
 }
 
 export const Tracker = { mount, unmount };

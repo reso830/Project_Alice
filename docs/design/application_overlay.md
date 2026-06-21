@@ -591,11 +591,11 @@ Compatibility opens **collapsed** by default. Collapsed body `.cx-collapsed-cont
 
 ### 14.9 · Section toggle (shared with Timeline)
 
-Single right-aligned control `.sec-toggle` that morphs in place — **no** left-edge chevron. Sora 11px / 500, color `--t3`, padding 2px 7px, radius 4px; hover color `--indigo`, bg `--indigo-soft`. Leading chevron `.sec-chev` (DM Mono 13px) points right when collapsed, **rotates 90°** when open. Label: **"Expand"** (collapsed) / **"Collapse"** (open). Lives in the section header’s right cluster (which holds **only** this toggle — the ✦ AI header tag was removed 2026-06-18, see §15.4 Panel 2). Timeline uses the identical control.
+Single right-aligned control `.sec-toggle` that morphs in place — **no** left-edge chevron. Sora 11px / 500, color `--t3`, padding 2px 7px, radius 4px; hover color `--indigo`, bg `--indigo-soft`. Leading chevron `.sec-chev` (DM Mono 13px) points right when collapsed, **rotates 90°** when open. Label: **"Expand"** (collapsed) / **"Collapse"** (open). Lives in the section header’s right cluster (which holds **only** this toggle — the ✦ AI header tag was removed 2026-06-18, see §15.4 Panel 3). Timeline uses the identical control.
 
 ### 14.10 · AI provenance, actions & copy
 
-- **✦ AI tag** `.ai-tag`: Sora 10px / 600, letter-spacing .2px, color `--indigo` `#4F46E5`, bg `--indigo-dim` `#EEF2FF`, padding 2px 8px, radius 999px. The sparkle marks **machine-written content**, never an action (consistent with §13.2). It appears **only** at 9px beside the "Analysis" sub-label (the score is deterministic, not AI-written). **It is no longer shown in the panel header** — that chip was removed 2026-06-18 in every Compatibility state (§14.7, §15.4 Panel 2).
+- **✦ AI tag** `.ai-tag`: Sora 10px / 600, letter-spacing .2px, color `--indigo` `#4F46E5`, bg `--indigo-dim` `#EEF2FF`, padding 2px 8px, radius 999px. The sparkle marks **machine-written content**, never an action (consistent with §13.2). It appears **only** at 9px beside the "Analysis" sub-label (the score is deterministic, not AI-written). **It is no longer shown in the panel header** — that chip was removed 2026-06-18 in every Compatibility state (§14.7, §15.4 Panel 3).
 - **Actions are buttons, not the sparkle.** Regenerate / Refresh / Generate notes / Try again carry a `↻` or `✦` glyph on the button itself.
 - Meta line uses `✦ Generated {Mon D}` (e.g. `✦ Generated Jun 9`) in DM Mono 10px `--t4`.
 - The notes are **read-only AI output** — there is no inline text editor; the only way to change them is Regenerate/Refresh (consistent with the answered design question).
@@ -677,7 +677,7 @@ Every body section is a `<section class="panel panel--elevated">`. **Elevated is
 - **Left cluster** `.panel-head-l` (`display:flex; align-items:center; gap:8px; min-width:0`):
   - **Icon** `.panel-ic`: `15×15px`, `color:var(--t3)`. Inline `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">`. One per panel (§15.4).
   - **Title** `.panel-title`: **Sora 11px / 600**, `color:var(--t2)`, `letter-spacing:0.6px`, `text-transform:uppercase`, `white-space:nowrap`. **Note:** this is heavier/uppercase and **supersedes** the old `.mfield-label`-style section labels (Sora 11px/500, `--t3`, sentence case) used in §14.3 and the Timeline doc's collapsed-label.
-- **Right cluster** `.panel-head-r` (`display:flex; align-items:center; gap:8px; flex-shrink:0`): an optional **accessory** slot then, on collapsible panels, the **Expand/Collapse** toggle. *(The Compatibility panel's accessory slot is empty — its former ✦ AI tag was removed; see §15.4 Panel 2.)*
+- **Right cluster** `.panel-head-r` (`display:flex; align-items:center; gap:8px; flex-shrink:0`): an optional **accessory** slot then, on collapsible panels, the **Expand/Collapse** toggle. *(The Compatibility panel's accessory slot is empty — its former ✦ AI tag was removed; see §15.4 Panel 3.)*
 
 **Collapsible header** adds `.clickable`: the *entire header* is the hit target — `cursor:pointer; margin:-3px -6px; padding:3px 6px; border-radius:var(--r-sm)`; `role="button"`, `tabIndex=0`; `Enter`/`Space` toggle. Hover `background:rgba(79,70,229,0.06)`; `focus-visible` outline `2px solid var(--indigo)` offset `1px`. The inner `.sec-toggle` button stops propagation so it doesn't double-fire.
 
@@ -687,17 +687,19 @@ Every body section is a `<section class="panel panel--elevated">`. **Elevated is
 
 Fixed top-to-bottom order. **Do not reorder without updating this section.**
 
+> **Order correction (2026-06-21, feature 039 as-built).** **Skills precedes Compatibility** — matching §4.1 and the shipped `Modal._renderBody()`. An earlier 2026-06-18 draft of this table listed Compatibility as panel #2 and Skills as #3; that ordering was never built and is superseded. Normative order: **Overview → Skills → Compatibility → Timeline → Notes & Links.**
+
 | # | Panel | `.panel-title` | Icon (20×20, stroke 1.5) | Collapsible? | Default state |
 | - | ----- | -------------- | ------------------------ | ------------ | ------------- |
 | 1 | **Overview** | `OVERVIEW` | rounded rect + 3 text lines | **Yes** | **Expanded** |
-| 2 | **Compatibility** | `COMPATIBILITY` | two concentric circles (target) | **Yes** | **Collapsed** |
-| 3 | **Skills** | `SKILLS` | two check-marks + two lines | **Yes** | **Collapsed** |
+| 2 | **Skills** | `SKILLS` | two check-marks + two lines | **Yes** | **Collapsed** |
+| 3 | **Compatibility** | `COMPATIBILITY` | two concentric circles (target) | **Yes** | **Collapsed** |
 | 4 | **Timeline** | `TIMELINE` | clock (circle + hands) | **Yes** | **Collapsed** |
 | 5 | **Notes & Links** | `NOTES & LINKS` | document with folded corner | **Yes** | **Collapsed** |
 
 > **Collapsibility is uniform across viewports (updated 2026-06-18):**
 > - **All five panels are collapsible on both desktop (≥ 640px) and mobile (< 640px).** Every panel renders the Expand/Collapse header toggle; there is no longer any viewport-conditional collapsibility.
-> - **Default-open set = Overview only**, on every viewport. The modal/bottom-sheet **opens with only Overview expanded**; Compatibility, Skills, Timeline, and Notes & Links all start **collapsed** to their one-line previews. Rationale: uniform behavior across breakpoints, maximally compact by default, while the most-scanned facts (Overview) stay visible.
+> - **Default-open set = Overview only**, on every viewport. The modal/bottom-sheet **opens with only Overview expanded**; Skills, Compatibility, Timeline, and Notes & Links all start **collapsed** to their one-line previews. Rationale: uniform behavior across breakpoints, maximally compact by default, while the most-scanned facts (Overview) stay visible.
 >
 > This supersedes **both** the original "Overview & Notes never collapsible" wording **and** the interim 2026-06-18 "collapsibility differs by viewport" note (desktop-keeps-Overview/Notes-open). Implementation: every panel passes `collapsible` unconditionally; `overviewOpen` defaults `true`, all four others default `false`, regardless of the `compact` flag.
 
@@ -722,7 +724,14 @@ Wrapper `.stacked-fields` (`display:flex; flex-direction:column; gap:12px`) hold
 
 2. **Responsibilities** — a full-width `.mfield` **moved out of its own row and into Overview** (supersedes §4 row #5 placement). Label `Responsibilities`; value rendered via the **`ClampText`** primitive (§15.5): clamps to **2 lines desktop / 4 lines mobile**, with a **Show more / Show less** toggle.
 
-#### Panel 2 · Compatibility
+#### Panel 2 · Skills
+
+Collapsible, **default collapsed**.
+
+- **Collapsed preview** `.skills-preview` (`display:flex; align-items:center; gap:14px; flex-wrap:wrap`): three count chips `.skp` (Sora 12px, `--t2`; count in `<b>` 600 `--t1`): **`✓ N proficient`** (`✓` `.hi` `#16A34A`) · **`● N learning`** (`●` `.lo` `#D97706`) · **`✕ N missing`** (`✕` `.ms` `#DC2626`). Counts aggregate Required + Preferred.
+- **Expanded body** = the §14.5 skills content: `.skills-grid` (`grid-template-columns:1fr 1fr; gap:13px 24px`; mobile → 1 column) with **Required Skills** / **Preferred Skills** columns of proficiency-coded `.chip`s, followed by `.skills-legend`.
+
+#### Panel 3 · Compatibility
 
 `.panel.panel-ai` (the AI-signal glow — §15.6). Collapsible, **default collapsed**.
 
@@ -730,13 +739,6 @@ Wrapper `.stacked-fields` (`display:flex; flex-direction:column; gap:12px`) hold
 
 - **Collapsed preview** (`.tl-collapsed-content`, `display:flex; align-items:center; gap:8px`): a **30px** mini score ring (stroke 4, number 11px) · verdict label in tier **ink** color · em-dash · the LLM `summary` (`.cx-summary`, single-line ellipsis). This replaces the §14.8 `.cx-collapsed-content` indigo-wash bar — in the panelized layout the surrounding card already carries the AI styling, so the preview sits directly in the panel body with no inner box.
 - **Expanded body** = the §14.4–14.6 content (`.cx-score-row` → `.cx-rule` → `.cx-notes-head` "Analysis" + ✦ AI → `.cx-notes` clamped prose with Show more → `.cx-foot` meta + Regenerate), rendered **directly in the panel body** (no inner `.cx-panel` wash box).
-
-#### Panel 3 · Skills
-
-Collapsible, **default collapsed**.
-
-- **Collapsed preview** `.skills-preview` (`display:flex; align-items:center; gap:14px; flex-wrap:wrap`): three count chips `.skp` (Sora 12px, `--t2`; count in `<b>` 600 `--t1`): **`✓ N proficient`** (`✓` `.hi` `#16A34A`) · **`● N learning`** (`●` `.lo` `#D97706`) · **`✕ N missing`** (`✕` `.ms` `#DC2626`). Counts aggregate Required + Preferred.
-- **Expanded body** = the §14.5 skills content: `.skills-grid` (`grid-template-columns:1fr 1fr; gap:13px 24px`; mobile → 1 column) with **Required Skills** / **Preferred Skills** columns of proficiency-coded `.chip`s, followed by `.skills-legend`.
 
 #### Panel 4 · Timeline
 

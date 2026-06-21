@@ -46,6 +46,17 @@ describe('Timeline collapsed render', () => {
     expect(el.querySelector('.status-badge')).toBeNull();
   });
 
+  it('renders bare collapsed content without the internal field label', () => {
+    const el = Timeline.render({
+      timeline: [{ id: 1, date: '2026-05-20', status: 'applied', text: 'Submitted.' }],
+    }, { currentStatus: 'applied', onChange: vi.fn(), bare: true });
+
+    expect(el.className).toContain('modal-field--full');
+    expect(el.querySelector('.modal-field__label')).toBeNull();
+    expect(el.querySelector('.tl-collapsed')).not.toBeNull();
+    expect(el.querySelector('.tl-text-line').textContent).toBe('Submitted.');
+  });
+
   it('toggles out of collapsed mode on click and keyboard activation', () => {
     const el = Timeline.render({ timeline: [] }, { currentStatus: 'applied', onChange: vi.fn() });
 
@@ -84,6 +95,19 @@ describe('Timeline expanded add-entry render', () => {
     el.querySelector('.tl-collapse-btn').click();
 
     expect(el.querySelector('.tl-collapsed')).not.toBeNull();
+  });
+
+  it('renders bare expanded content without the internal timeline header', () => {
+    const el = Timeline.render({
+      timeline: [{ id: 1, date: '2026-05-18', status: 'applied', text: 'Submitted.' }],
+    }, { currentStatus: 'applied', onChange: vi.fn(), bare: true });
+
+    el.querySelector('.tl-collapsed').click();
+
+    expect(el.querySelector('.tl-header')).toBeNull();
+    expect(el.querySelector('.tl-collapse-btn')).toBeNull();
+    expect(el.querySelector('.tl-row--add')).not.toBeNull();
+    expect(el.querySelector('.tl-row--entry .tl-text-line').textContent).toBe('Submitted.');
   });
 
   it('commits an add-row entry with Enter, resets inputs, refocuses text, and calls onChange once', () => {

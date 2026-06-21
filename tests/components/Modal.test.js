@@ -76,14 +76,52 @@ function hexToRgb(hex) {
 }
 
 function getSalaryFieldValue() {
-  return [...document.querySelectorAll('.modal-field')]
-    .find((field) => field.querySelector('.modal-field__label')?.textContent === 'Salary')
-    ?.querySelector('.modal-field__value');
+  return getFieldByLabel('Salary')?.querySelector('.modal-field__value');
+}
+
+function getPanelByTitle(title) {
+  return [...document.querySelectorAll('.panel')]
+    .find((panel) => panel.querySelector('.panel-title')?.textContent === title);
+}
+
+function expandPanel(title) {
+  const panel = getPanelByTitle(title);
+  if (panel?.querySelector('.panel-head')?.getAttribute('aria-expanded') === 'false') {
+    panel.querySelector('.panel-head').click();
+  }
+}
+
+function expandPanelForLabel(label) {
+  const panelByLabel = {
+    'Required Skills': 'Skills',
+    'Preferred Skills': 'Skills',
+    Responsibilities: 'Overview',
+    URL: 'Notes & Links',
+    'General Notes': 'Notes & Links',
+    Compatibility: 'Compatibility',
+    Timeline: 'Timeline',
+  };
+
+  if (panelByLabel[label]) {
+    expandPanel(panelByLabel[label]);
+  }
 }
 
 function getFieldByLabel(label) {
-  return [...document.querySelectorAll('.modal-field')]
+  let field = [...document.querySelectorAll('.modal-field')]
     .find((field) => field.querySelector('.modal-field__label')?.firstChild?.textContent === label);
+
+  if (!field) {
+    expandPanelForLabel(label);
+    field = [...document.querySelectorAll('.modal-field')]
+      .find((candidate) => candidate.querySelector('.modal-field__label')?.firstChild?.textContent === label);
+  }
+
+  if (!field && (label === 'Timeline' || label === 'Compatibility')) {
+    field = getPanelByTitle(label);
+  }
+
+  return field;
 }
 
 function inputField(label) {
@@ -325,6 +363,93 @@ describe('Modal', () => {
     expect(modalBackdrop()).not.toBeNull();
   });
 
+  it('renders the pane variant inside a target without modal chrome or scroll lock', () => {
+    const target = document.createElement('section');
+    const outside = document.createElement('button');
+    document.body.style.overflow = 'auto';
+    outside.textContent = 'After pane';
+    document.body.append(target, outside);
+
+    Modal.open(application(), { variant: 'pane', target });
+
+    const panel = target.querySelector('.modal-panel');
+
+    expect(panel).not.toBeNull();
+    expect(panel.classList.contains('modal-panel--pane')).toBe(true);
+    expect(panel.getAttribute('role')).toBe('region');
+    expect(panel.getAttribute('aria-modal')).toBeNull();
+    expect(panel.getAttribute('aria-labelledby')).toBe('modal-title');
+    expect(modalBackdrop()).toBeNull();
+    expect(document.body.style.overflow).toBe('auto');
+
+    const focusables = [...panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter((element) => !element.disabled);
+    focusables.at(-1).focus();
+    const tabEvent = new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+  });
+
+  it('does not close the pane variant from document Escape', () => {
+    const target = document.createElement('section');
+    document.body.append(target);
+
+    Modal.open(application(), { variant: 'pane', target });
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(target.querySelector('.modal-panel')).not.toBeNull();
+    expect(ConfirmDialog.show).not.toHaveBeenCalled();
+  });
+
+  it('invokes onClosed when a pane closes from its close action', async () => {
+    const target = document.createElement('section');
+    const onClosed = vi.fn();
+    document.body.append(target);
+
+    Modal.open(application(), { variant: 'pane', target, onClosed });
+    closeButton().click();
+    await flushPromises();
+
+    expect(target.querySelector('.modal-panel')).toBeNull();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+
+  it('requestClose resolves true for clean panes and false when dirty close is cancelled', async () => {
+    const target = document.createElement('section');
+    const onClosed = vi.fn();
+    document.body.append(target);
+
+    Modal.open(application(), { variant: 'pane', target, onClosed });
+    await expect(Modal.requestClose()).resolves.toBe(true);
+    expect(target.querySelector('.modal-panel')).toBeNull();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+
+    Modal.open(application(), { variant: 'pane', target, onClosed });
+    editTextField('Company', 'Globex');
+    ConfirmDialog.show.mockResolvedValueOnce(false);
+
+    await expect(Modal.requestClose()).resolves.toBe(false);
+
+    expect(target.querySelector('.modal-panel')).not.toBeNull();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+
+  it('requestClose resolves true and fires onClosed when a dirty pane is discarded', async () => {
+    const target = document.createElement('section');
+    const onClosed = vi.fn();
+    document.body.append(target);
+
+    Modal.open(application(), { variant: 'pane', target, onClosed });
+    editTextField('Company', 'Globex');
+    ConfirmDialog.show.mockResolvedValueOnce(true);
+
+    await expect(Modal.requestClose()).resolves.toBe(true);
+
+    expect(target.querySelector('.modal-panel')).toBeNull();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+
   it('opens create mode with an empty wishlisted draft and active Create validation', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
@@ -340,6 +465,7 @@ describe('Modal', () => {
     expect(inputField('Company').value).toBe('');
     document.querySelector('#modal-title').click();
     expect(document.querySelector('.modal-title-input').value).toBe('');
+    expandPanel('Compatibility');
     expect(document.querySelector('.cx-unsaved')?.textContent).toContain('Scored after you save');
   });
 
@@ -476,11 +602,149 @@ describe('Modal', () => {
     expect(getFieldByLabel('Skills')).toBeUndefined();
     expect(getFieldByLabel('Required Skills')).not.toBeUndefined();
     expect(getFieldByLabel('Compat Notes')).toBeUndefined();
+    expandPanel('Compatibility');
     expect(document.querySelector('.compatibility-module')).not.toBeNull();
 
-    for (const label of ['Timeline', 'Responsibilities', 'URL', 'General Notes']) {
+    for (const label of ['Responsibilities', 'URL', 'General Notes']) {
       expect(getFieldByLabel(label).classList.contains('modal-field--full')).toBe(true);
     }
+  });
+
+  it('renders the Phase 02 modal body as five ordered panels with only Overview open by default', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      timeline: [{ id: 1, date: '2026-05-08', status: 'applied', text: 'Submitted.' }],
+    }), { profile: profile() });
+
+    const panels = [...document.querySelectorAll('.pbody > .panel')];
+
+    expect(panels.map((panel) => panel.querySelector('.panel-title')?.textContent)).toEqual([
+      'Overview',
+      'Skills',
+      'Compatibility',
+      'Timeline',
+      'Notes & Links',
+    ]);
+    expect(panels.map((panel) => panel.querySelector('.panel-head')?.getAttribute('aria-expanded'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+      'false',
+    ]);
+    expect(getPanelByTitle('Compatibility').querySelector('.cx-collapsed-content')).not.toBeNull();
+    expect(getPanelByTitle('Compatibility').querySelector('.compatibility-module')).toBeNull();
+    expect(getPanelByTitle('Timeline').querySelector('.tl-collapsed')).not.toBeNull();
+    expect(getPanelByTitle('Timeline').querySelector('.tl-chev')).toBeNull();
+    expect(getPanelByTitle('Overview').textContent).toContain('Responsibilities');
+    expect(getPanelByTitle('Overview').querySelector('.panel-grid')).not.toBeNull();
+    expect(getFieldByLabel('Responsibilities').closest('.panel-grid')).toBeNull();
+    getPanelByTitle('Overview').querySelector('.panel-head').click();
+    expect(getPanelByTitle('Overview').querySelector('.panel-preview')?.textContent).toContain(formatPeso(150000));
+    expect(getPanelByTitle('Overview').querySelector('.panel-preview')?.textContent).not.toContain('Setup');
+    expect(getPanelByTitle('Notes & Links').textContent).not.toContain('Responsibilities');
+    expandPanel('Notes & Links');
+    expect(getPanelByTitle('Notes & Links').textContent).toContain('URL');
+    expect(getPanelByTitle('Notes & Links').textContent).toContain('General Notes');
+    expect(getPanelByTitle('Notes & Links').textContent).not.toContain('Responsibilities');
+  });
+
+  it('toggles modal panels without marking the draft dirty or changing footer visibility', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application(), { profile: profile() });
+    expect(document.querySelector('.modal-footer').hidden).toBe(true);
+
+    getPanelByTitle('Skills').querySelector('.panel-head').click();
+    getPanelByTitle('Compatibility').querySelector('.panel-head').click();
+
+    expect(document.querySelector('.modal-footer').hidden).toBe(true);
+    expect(api.update).not.toHaveBeenCalled();
+    expect(getPanelByTitle('Compatibility').querySelector('.compatibility-module--embedded')).not.toBeNull();
+    expect(getPanelByTitle('Compatibility').querySelector('.modal-field > .compatibility-module')).toBeNull();
+    expect(getPanelByTitle('Compatibility').querySelector('.compatibility-module .sec-toggle')).toBeNull();
+    expect(getPanelByTitle('Compatibility').querySelector('.compatibility-module .cx-header')).toBeNull();
+  });
+
+  it('renders the visual-refresh panel previews and icon assets', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application({
+      skills: ['JavaScript', 'Rust'],
+      preferredSkills: ['GraphQL'],
+      generalNotes: 'Recruiter mentioned onsite interview round 3 will include a design-system case study.',
+    }), { profile: profile() });
+
+    const panels = [...document.querySelectorAll('.pbody > .panel')];
+    const skillsPreview = getPanelByTitle('Skills').querySelector('.panel-preview--skills');
+    const notesPreview = getPanelByTitle('Notes & Links').querySelector('.panel-preview--notes');
+
+    expect(panels.every((panel) => panel.querySelector('.panel-ic img'))).toBe(true);
+    expect(skillsPreview.textContent).toContain('1 proficient');
+    expect(skillsPreview.textContent).toContain('1 learning');
+    expect(skillsPreview.textContent).toContain('1 missing');
+    expect(notesPreview.querySelector('.panel-preview__note-snippet')?.textContent)
+      .toContain('Recruiter mentioned onsite interview');
+    expect(notesPreview.textContent).not.toContain('URL');
+  });
+
+  it('uses the refreshed Skills collapsed preview in create mode with an empty profile-matched skill set', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(null, { mode: 'create', profile: profile() });
+
+    const skillsPreview = getPanelByTitle('Skills').querySelector('.panel-preview--skills');
+
+    expect(skillsPreview.textContent).toContain('0 proficient');
+    expect(skillsPreview.textContent).toContain('0 learning');
+    expect(skillsPreview.textContent).toContain('0 missing');
+    expect(skillsPreview.textContent).not.toContain('Required');
+    expect(skillsPreview.textContent).not.toContain('Preferred');
+  });
+
+  it('keeps the polished panel styles for Skills, clamps, and embedded Compatibility', () => {
+    expect(mainCss).toMatch(/\.skills-grid\s*\{[\s\S]*grid-template-columns:\s*1fr;[\s\S]*gap:\s*13px 24px;/);
+    expect(mainCss).toMatch(/\.clamp-toggle\s*\{[\s\S]*font:\s*800 11px\/1\.2 var\(--font-ui\);/);
+    expect(mainCss).toMatch(/\.compatibility-module--embedded \.cx-notes-region\s*\{[\s\S]*gap:\s*10px;/);
+  });
+
+  it('opens panels that contain smart-filled create fields', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(null, {
+      mode: 'create',
+      fillSource: 'ai',
+      aiFields: new Set(['skills', 'jobPostingUrl']),
+      prefill: {
+        skills: ['React'],
+        jobPostingUrl: 'https://example.com/job',
+      },
+    });
+
+    expect(getPanelByTitle('Overview').querySelector('.panel-head').getAttribute('aria-expanded')).toBe('true');
+    expect(getPanelByTitle('Skills').querySelector('.panel-head').getAttribute('aria-expanded')).toBe('true');
+    expect(getPanelByTitle('Notes & Links').querySelector('.panel-head').getAttribute('aria-expanded')).toBe('true');
+    expect(getFieldByLabel('Required Skills').querySelector('.modal-field-provenance')?.textContent).toBe('AI');
+    expect(getFieldByLabel('URL').querySelector('.modal-field-provenance')?.textContent).toBe('AI');
+  });
+
+  it('renders required Responsibilities errors in Overview and URL errors in Notes & Links', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    Modal.open(application());
+    editTextField('Responsibilities', '');
+    editTextField('URL', 'ftp://example.com/job');
+
+    saveButton().click();
+    await Promise.resolve();
+
+    expect(api.update).not.toHaveBeenCalled();
+    expect(getPanelByTitle('Overview').querySelector('.panel-head').getAttribute('aria-expanded')).toBe('true');
+    expect(getPanelByTitle('Overview').textContent).toContain('Responsibilities is required.');
+    expect(getPanelByTitle('Notes & Links').querySelector('.panel-head').getAttribute('aria-expanded')).toBe('true');
+    expect(getPanelByTitle('Notes & Links').textContent).toContain('Please enter a valid URL');
+    expect(getPanelByTitle('Notes & Links').textContent).not.toContain('Responsibilities is required.');
   });
 
   it('renders profile-coded skill chips and legend when profile skills are provided', () => {
@@ -646,13 +910,11 @@ describe('Modal', () => {
     }));
 
     const field = getFieldByLabel('Timeline');
-    const fields = [...document.querySelectorAll('.modal-field')];
 
     expect(field).not.toBeUndefined();
-    expect(field.classList.contains('modal-field--full')).toBe(true);
-    expect(fields.indexOf(field)).toBe(11);
+    expect(field.querySelector('.panel-title')?.textContent).toBe('Timeline');
     expect(document.querySelector('[data-modal-field="last-status-update"]')).toBeNull();
-    expect(field.querySelector('.tl-collapsed')).not.toBeNull();
+    expect(field.querySelector('.tl-row--add')).not.toBeNull();
   });
 
   it('clamps the modal panel height for tall Timeline content', () => {
@@ -1402,10 +1664,53 @@ describe('Modal', () => {
       .toBe('Line one\nLine two');
   });
 
+  it('clamps expanded Responsibilities and General Notes displays with Show more toggles', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return this.classList?.contains('clamp-text') ? 120 : 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get() {
+        return this.classList?.contains('clamp-text') ? 20 : 0;
+      },
+    });
+
+    Modal.open(application({
+      responsibilities: 'Own frontend architecture.\nCoordinate releases.\nDocument decisions.',
+      generalNotes: 'Ask about growth.\nCheck visa.\nConfirm team size.',
+    }));
+    await Promise.resolve();
+
+    const responsibilities = getFieldByLabel('Responsibilities');
+    const notes = getFieldByLabel('General Notes');
+    await Promise.resolve();
+
+    expect(responsibilities.querySelector('.clamp-wrap')).not.toBeNull();
+    expect(responsibilities.querySelector('.clamp-text')?.style.getPropertyValue('--lines')).toBe('2');
+    expect(responsibilities.querySelector('.clamp-text')?.style.getPropertyValue('--mlines')).toBe('4');
+    expect(responsibilities.querySelector('.clamp-toggle')?.textContent).toBe('Show more');
+
+    expect(notes.querySelector('.clamp-wrap')).not.toBeNull();
+    expect(notes.querySelector('.clamp-text')?.style.getPropertyValue('--lines')).toBe('3');
+    expect(notes.querySelector('.clamp-text')?.style.getPropertyValue('--mlines')).toBe('3');
+    expect(notes.querySelector('.clamp-toggle')?.textContent).toBe('Show more');
+
+    responsibilities.querySelector('.clamp-toggle').click();
+
+    expect(responsibilities.querySelector('.clamp-text')?.classList.contains('clamped')).toBe(false);
+    expect(responsibilities.querySelector('.clamp-toggle')?.textContent).toBe('Show less');
+    expect(document.querySelector('.modal-inline-control')).toBeNull();
+  });
+
   it('treats generated compatibility notes as already saved', async () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application());
+    expandPanel('Compatibility');
     document.querySelector('.compatibility-module').__compatibilityState.onNotesGenerated({
       summary: 'Generated fit',
       body: 'Generated body',
@@ -1429,6 +1734,7 @@ describe('Modal', () => {
     }));
 
     Modal.open(application());
+    expandPanel('Compatibility');
     document.querySelector('.compatibility-module').__compatibilityState.onNotesGenerated({
       summary: 'Generated fit',
       body: 'Generated body',
@@ -1450,7 +1756,7 @@ describe('Modal', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     Modal.open(application(), { profile: profile(), onOpenSettings });
-    document.querySelector('.sec-toggle').click();
+    expandPanel('Compatibility');
     document.querySelector('.cx-enable-ai').click();
     await Promise.resolve();
 
@@ -1466,6 +1772,7 @@ describe('Modal', () => {
       profile: { summary: '', skills: [], experience: [] },
       onOpenProfile,
     });
+    expandPanel('Compatibility');
     document.querySelector('.cx-empty-act').click();
     await Promise.resolve();
 
@@ -1808,6 +2115,62 @@ describe('Modal', () => {
     expect(document.querySelector('.modal-chip-input')).toBeNull();
   });
 
+  it('renders archived pane panels as read-only with archived actions only', () => {
+    const target = document.createElement('section');
+
+    document.body.append(target);
+
+    Modal.open(application({
+      archived: true,
+      archivedDate: '2026-05-01',
+      jobPostingUrl: 'https://example.com/job',
+      responsibilities: 'Build UI responsibilities that stay readable in the pane.',
+      generalNotes: 'Long-lived notes are visible but not editable from archived mode.',
+      skills: ['JavaScript'],
+      preferredSkills: ['React'],
+      timeline: [{ id: 1, date: '2026-05-01', status: 'archived', text: 'Archived.' }],
+    }), { variant: 'pane', target });
+
+    const panels = [...target.querySelectorAll('.pbody > .panel')];
+    const actions = [...target.querySelectorAll('.modal-quick-action')];
+
+    expect(target.querySelector('.modal-panel--pane')).not.toBeNull();
+    expect(document.querySelector('.modal-backdrop')).toBeNull();
+    expect(document.body.style.overflow).not.toBe('hidden');
+    expect(panels.map((panel) => panel.querySelector('.panel-title')?.textContent)).toEqual([
+      'Overview',
+      'Skills',
+      'Compatibility',
+      'Timeline',
+      'Notes & Links',
+    ]);
+    expect(target.querySelector('.modal-footer')).toBeNull();
+    expect(actions).toHaveLength(2);
+    expect(actions[0].classList.contains('modal-quick-action--unarchive')).toBe(true);
+    expect(actions[1].classList.contains('modal-quick-action--close')).toBe(true);
+    expect(target.querySelector('.modal-quick-action--favorite')).toBeNull();
+    expect(target.querySelector('.modal-quick-action--status')).toBeNull();
+    expect(target.querySelector('.modal-quick-action--archive')).toBeNull();
+
+    for (const title of ['Skills', 'Compatibility', 'Timeline', 'Notes & Links']) {
+      expandPanel(title);
+    }
+
+    expect([...target.querySelectorAll('.modal-field--editable')]).toHaveLength(0);
+    expect(target.querySelector('.modal-inline-control')).toBeNull();
+    expect(target.querySelector('.modal-chip-input')).toBeNull();
+    expect(target.querySelector('.skill-tag__remove')).toBeNull();
+    expect(target.querySelector('.tl-row--add')).toBeNull();
+    expect(target.querySelector('.tl-del')).toBeNull();
+
+    getFieldByLabel('Shift').click();
+    getFieldByLabel('Work Setup').click();
+    getFieldByLabel('Responsibilities').click();
+    getFieldByLabel('General Notes').click();
+    expect(target.querySelector('select, input, textarea')).toBeNull();
+    expect(document.querySelector('.status-dropdown')).toBeNull();
+  });
+
   it('renders Timeline read-only in archived mode — no add row, no delete buttons, inert entry affordances', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
@@ -1940,7 +2303,7 @@ describe('Modal', () => {
     });
 
     Modal.open(application({ jobPostingUrl: 'https://example.com/job' }));
-    document.querySelector('button[aria-label="Copy job posting URL"]').click();
+    getFieldByLabel('URL').querySelector('button[aria-label="Copy job posting URL"]').click();
     await Promise.resolve();
 
     expect(writeText).toHaveBeenCalledWith('https://example.com/job');
@@ -1964,7 +2327,7 @@ describe('Modal', () => {
 
     Modal.open(record);
     record.jobPostingUrl = 'https://example.com/stale-source';
-    document.querySelector('button[aria-label="Copy job posting URL"]').click();
+    getFieldByLabel('URL').querySelector('button[aria-label="Copy job posting URL"]').click();
     await Promise.resolve();
 
     expect(writeText).toHaveBeenCalledWith('https://example.com/original');
@@ -1978,7 +2341,7 @@ describe('Modal', () => {
     });
 
     Modal.open(application({ jobPostingUrl: 'https://example.com/job' }));
-    document.querySelector('button[aria-label="Copy job posting URL"]').click();
+    getFieldByLabel('URL').querySelector('button[aria-label="Copy job posting URL"]').click();
     await Promise.resolve();
 
     expect(document.body.textContent).toContain('Could not copy link');

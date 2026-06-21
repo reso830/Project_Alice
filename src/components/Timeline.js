@@ -13,6 +13,7 @@ let _expanded = false;
 let _onChange = null;
 let _currentStatus = null;
 let _readOnly = false;
+let _bare = false;
 let _addDate = toISODate();
 let _addStatus = null;
 let _addText = '';
@@ -439,7 +440,7 @@ function createEntryRow(entry) {
 }
 
 function createExpandedContents() {
-  const contents = [createHeader()];
+  const contents = _bare ? [] : [createHeader()];
   if (!_readOnly) {
     contents.push(createAddRow());
   }
@@ -454,6 +455,10 @@ function createExpandedContents() {
 function renderContents() {
   if (_expanded) {
     return createExpandedContents();
+  }
+
+  if (_bare) {
+    return [createCollapsedRow()];
   }
 
   const label = document.createElement('span');
@@ -563,11 +568,16 @@ function openInlineStatusPicker(anchor, currentValue, onPick) {
   document.addEventListener('keydown', _pickerKeydownHandler, true);
 }
 
-export function render(draft, { currentStatus, onChange, readOnly = false } = {}) {
+export function render(draft, { currentStatus, onChange, readOnly = false, bare = false, expanded = false } = {}) {
   _draft = draft;
   _currentStatus = currentStatus;
   _onChange = onChange;
   _readOnly = readOnly === true;
+  _bare = bare === true;
+  if (expanded) {
+    _expanded = true;
+    resetAddRow();
+  }
   _addStatus = currentStatus || 'wishlisted';
 
   const wrapper = document.createElement('div');
@@ -609,6 +619,7 @@ export function reset() {
   _onChange = null;
   _currentStatus = null;
   _readOnly = false;
+  _bare = false;
   _editingTextEntryId = null;
   _editingDateEntryId = null;
   resetAddRow();

@@ -37,6 +37,7 @@ vi.mock('../../src/components/ConfirmDialog.js', () => ({
 import * as api from '../../src/services/api.js';
 import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
 import { CreationPicker } from '../../src/components/CreationPicker.js';
+import { Modal } from '../../src/components/Modal.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
@@ -48,6 +49,7 @@ afterEach(() => {
   toolbarRenderOptions.length = 0;
   toolbarUpdateOptions.length = 0;
   window.localStorage.clear();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
@@ -79,7 +81,602 @@ function createApplication(id, overrides = {}) {
   };
 }
 
+function mockDesktopMedia(matches) {
+  const listeners = new Set();
+  const mediaQueryList = {
+    matches,
+    media: '(min-width: 1100px)',
+    onchange: null,
+    addEventListener: vi.fn((event, listener) => {
+      if (event === 'change') {
+        listeners.add(listener);
+      }
+    }),
+    removeEventListener: vi.fn((event, listener) => {
+      if (event === 'change') {
+        listeners.delete(listener);
+      }
+    }),
+    addListener: vi.fn((listener) => listeners.add(listener)),
+    removeListener: vi.fn((listener) => listeners.delete(listener)),
+    dispatch(matchesNext) {
+      this.matches = matchesNext;
+      const event = { matches: matchesNext, media: this.media };
+      listeners.forEach((listener) => listener(event));
+    },
+  };
+
+  vi.stubGlobal('matchMedia', vi.fn(() => mediaQueryList));
+
+  return mediaQueryList;
+}
+
 describe('Tracker quick filter toolbar integration', () => {
+  it('renders the desktop master-detail shell with an empty pane and full-width pagination', async () => {
+    const container = document.createElement('main');
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue(Array.from({ length: 12 }, (_, index) => createApplication(index + 1)));
+
+    await Tracker.mount(container);
+
+    const split = container.querySelector('.tracker-split');
+    const master = split?.querySelector('.tracker-master');
+    const detail = split?.querySelector('.tracker-detail');
+
+    expect(split).not.toBeNull();
+    expect(master?.querySelector('.card-list')).not.toBeNull();
+    expect(detail?.querySelector('.empty-pane')).not.toBeNull();
+    expect(detail?.querySelector('.empty-pane__icon')).not.toBeNull();
+    expect(detail?.textContent).toContain('Nothing open yet');
+    expect(detail?.textContent)
+      .toContain('Pick an application on the left and its full breakdown');
+    expect(container.querySelector('.split-pagination > .pagination')).not.toBeNull();
+    expect(master?.querySelector('.pagination')).toBeNull();
+  });
+
+  it('reserves visible footer height for desktop short lists without shrinking to content', async () => {
+    const container = document.createElement('main');
+    const footer = document.createElement('footer');
+    const frameCallbacks = [];
+    let footerTop = 640;
+    let footerBottom = 760;
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    window.requestAnimationFrame = vi.fn((callback) => {
+      frameCallbacks.push(callback);
+      return frameCallbacks.length;
+    });
+    window.cancelAnimationFrame = vi.fn();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+    footer.className = 'site-footer';
+    footer.getBoundingClientRect = vi.fn(() => ({
+      top: footerTop,
+      bottom: footerBottom,
+      height: 120,
+      left: 0,
+      right: 1200,
+      width: 1200,
+      x: 0,
+      y: 640,
+      toJSON: () => {},
+    }));
+    document.body.append(container, footer);
+    api.getAll.mockResolvedValue([
+      createApplication(1, { archived: true }),
+      createApplication(2, { archived: true }),
+    ]);
+
+    const flushFrames = () => {
+      const pending = frameCallbacks.splice(0);
+      pending.forEach((callback) => callback());
+    };
+
+    await Tracker.mount(container);
+    flushFrames();
+
+    expect(container.querySelector('.tracker-split')?.style.getPropertyValue('--footer-visible-h'))
+      .toBe('120px');
+    expect(container.querySelector('.split-pagination > .pagination')).toBeNull();
+
+    container.querySelector('.tracker-master').getBoundingClientRect = vi.fn(() => ({
+      top: 120,
+      bottom: 900,
+      height: 780,
+      left: 0,
+      right: 720,
+      width: 720,
+      x: 0,
+      y: 120,
+      toJSON: () => {},
+    }));
+    footerTop = 900;
+    footerBottom = 1020;
+    window.dispatchEvent(new Event('scroll'));
+    flushFrames();
+
+    expect(container.querySelector('.tracker-split')?.style.getPropertyValue('--footer-visible-h'))
+      .toBe('0px');
+  });
+
+  it('remeasures visible footer height after switching from a paginated view to a short view', async () => {
+    const container = document.createElement('main');
+    const footer = document.createElement('footer');
+    const frameCallbacks = [];
+    let footerTop = 900;
+    let footerBottom = 1020;
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    window.requestAnimationFrame = vi.fn((callback) => {
+      frameCallbacks.push(callback);
+      return frameCallbacks.length;
+    });
+    window.cancelAnimationFrame = vi.fn();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+    footer.className = 'site-footer';
+    footer.getBoundingClientRect = vi.fn(() => ({
+      top: footerTop,
+      bottom: footerBottom,
+      height: 120,
+      left: 0,
+      right: 1200,
+      width: 1200,
+      x: 0,
+      y: footerTop,
+      toJSON: () => {},
+    }));
+    document.body.append(container, footer);
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve([createApplication(30, { archived: true }), createApplication(31, { archived: true })])
+        : Promise.resolve(Array.from({ length: 25 }, (_, index) => createApplication(index + 1)))
+    ));
+
+    const flushFrames = () => {
+      const pending = frameCallbacks.splice(0);
+      pending.forEach((callback) => callback());
+    };
+
+    await Tracker.mount(container);
+    container.querySelector('.tracker-master').getBoundingClientRect = vi.fn(() => ({
+      top: 120,
+      bottom: 900,
+      height: 780,
+      left: 0,
+      right: 720,
+      width: 720,
+      x: 0,
+      y: 120,
+      toJSON: () => {},
+    }));
+    flushFrames();
+
+    expect(container.querySelector('.tracker-split')?.style.getPropertyValue('--footer-visible-h'))
+      .toBe('0px');
+
+    const switchPromise = toolbarRenderOptions[0].onViewChange('archived');
+    await switchPromise;
+
+    container.querySelector('.tracker-master').getBoundingClientRect = vi.fn(() => ({
+      top: 120,
+      bottom: 650,
+      height: 530,
+      left: 0,
+      right: 720,
+      width: 720,
+      x: 0,
+      y: 120,
+      toJSON: () => {},
+    }));
+    footerTop = 650;
+    footerBottom = 770;
+    flushFrames();
+
+    expect(container.querySelector('.tracker-split')?.style.getPropertyValue('--footer-visible-h'))
+      .toBe('120px');
+  });
+
+  it('keeps the single-column Tracker layout below the desktop breakpoint', async () => {
+    const container = document.createElement('main');
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue(Array.from({ length: 12 }, (_, index) => createApplication(index + 1)));
+
+    await Tracker.mount(container);
+
+    expect(container.querySelector('.tracker-split')).toBeNull();
+    expect(container.querySelector('.tracker-detail')).toBeNull();
+    expect(container.querySelector('.card-list')).not.toBeNull();
+    expect(container.querySelector('.pagination')).not.toBeNull();
+    expect(container.querySelector('.split-pagination')).toBeNull();
+  });
+
+  it('relayouts on desktop breakpoint changes and removes the listener on unmount', async () => {
+    const container = document.createElement('main');
+    const mediaQueryList = mockDesktopMedia(false);
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([]);
+
+    await Tracker.mount(container);
+
+    expect(container.querySelector('.tracker-detail')).toBeNull();
+    expect(mediaQueryList.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+
+    mediaQueryList.dispatch(true);
+
+    expect(container.querySelector('.tracker-split')).not.toBeNull();
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+    expect(container.querySelector('.tracker-master .empty-state')?.textContent)
+      .toBe('No applications yet. Add your first one!');
+    expect([...container.children].some((child) => child.classList.contains('empty-state')))
+      .toBe(false);
+
+    Tracker.unmount();
+
+    expect(mediaQueryList.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+  });
+
+  it('selects desktop cards into the detail pane without opening a modal backdrop', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const second = createApplication(2);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => Promise.resolve(id === 1 ? first : second));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    const selected = container.querySelector('[data-id="1"]');
+
+    expect(api.getById).toHaveBeenCalledWith(1);
+    expect(openSpy).toHaveBeenCalledWith(first, expect.objectContaining({
+      variant: 'pane',
+      target: container.querySelector('.tracker-detail'),
+      profile: null,
+    }));
+    expect(selected.classList.contains('card--selected')).toBe(true);
+    expect(selected.getAttribute('aria-selected')).toBe('true');
+    expect(document.querySelector('.modal-backdrop')).toBeNull();
+
+    openSpy.mock.calls.at(-1)[1].onClosed();
+
+    expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(false);
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+  });
+
+  it('moves focus into the pane after a desktop card selection', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+
+    document.body.append(container);
+    vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      const panel = document.createElement('div');
+      const title = document.createElement('h2');
+
+      panel.className = 'modal-panel modal-panel--pane';
+      panel.setAttribute('role', 'region');
+      panel.setAttribute('aria-labelledby', 'modal-title');
+      title.id = 'modal-title';
+      title.textContent = application.jobTitle;
+      panel.append(title);
+      options.target.replaceChildren(panel);
+    });
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').focus();
+    container.querySelector('[data-id="1"]').dispatchEvent(new window.KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+    }));
+    await Promise.resolve();
+
+    const panePanel = container.querySelector('.tracker-detail .modal-panel--pane');
+
+    expect(panePanel.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(panePanel);
+  });
+
+  it('keeps sub-desktop card clicks on the modal variant', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledWith(first, expect.not.objectContaining({ variant: 'pane' }));
+    expect(container.querySelector('.tracker-detail')).toBeNull();
+  });
+
+  it('opens the panelized centered modal below desktop without engaging the detail pane', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1, {
+      responsibilities: 'Own the panelized tablet modal regression.',
+      generalNotes: 'Tablet keeps the centered overlay while reusing the same panel body.',
+      jobPostingUrl: 'https://example.com/job',
+    });
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const backdrop = document.querySelector('.modal-backdrop');
+    const panel = backdrop?.querySelector('.modal-panel');
+    const panels = [...document.querySelectorAll('.pbody > .panel')];
+
+    expect(container.querySelector('.tracker-split')).toBeNull();
+    expect(container.querySelector('.tracker-detail')).toBeNull();
+    expect(backdrop).not.toBeNull();
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(panel?.classList.contains('modal-panel--pane')).toBe(false);
+    expect(mainCss).toMatch(/\.modal-backdrop \{[\s\S]*align-items: center;[\s\S]*justify-content: center;/);
+    expect(panels.map((panelNode) => panelNode.querySelector('.panel-title')?.textContent)).toEqual([
+      'Overview',
+      'Skills',
+      'Compatibility',
+      'Timeline',
+      'Notes & Links',
+    ]);
+  });
+
+  it('guards dirty pane switches and only changes selection after discard', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const second = createApplication(2);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose')
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => Promise.resolve(id === 1 ? first : second));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    container.querySelector('[data-id="2"]').click();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+    expect(api.getById).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    container.querySelector('[data-id="2"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(2);
+    expect(api.getById).toHaveBeenLastCalledWith(2);
+    expect(openSpy).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('[data-id="2"]').getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 2');
+  });
+
+  it('keeps the selected pane across filter, sort, pagination, and view changes', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1, { status: 'applied', fav: false, salary: 90000 });
+    const second = createApplication(2, { status: 'interview', fav: true, salary: 130000 });
+    const archived = createApplication(30, { archived: true, status: 'interview' });
+
+    vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    vi.spyOn(Modal, 'requestClose').mockResolvedValue(true);
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockImplementation((options) => (
+      options?.view === 'archived'
+        ? Promise.resolve([archived])
+        : Promise.resolve(Array.from({ length: 25 }, (_, index) => (
+          index === 0 ? first : createApplication(index + 2, { status: 'interview', salary: 120000 + index })
+        )))
+    ));
+    api.getById.mockImplementation((id) => Promise.resolve(id === 1 ? first : second));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    toolbarRenderOptions[0].onFilterChange({
+      ...toolbarRenderOptions[0].filterState,
+      statuses: ['interview'],
+    });
+    expect(container.querySelector('[data-id="1"]')).toBeNull();
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    toolbarRenderOptions[0].onSortChange({ field: 'salary', direction: 'desc' });
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    [...container.querySelectorAll('.pagination__btn')]
+      .find((button) => button.textContent === '2')
+      .click();
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    await toolbarRenderOptions[0].onViewChange('archived');
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    container.querySelector('[data-id="30"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 2');
+  });
+
+  it('hands an open modal up into the pane and tears pane chrome down below desktop', async () => {
+    const container = document.createElement('main');
+    const mediaQueryList = mockDesktopMedia(false);
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options = {}) => {
+      if (options.variant === 'pane') {
+        options.target.replaceChildren(Object.assign(document.createElement('div'), {
+          className: 'modal-panel modal-panel--pane',
+          textContent: application.jobTitle,
+        }));
+        return;
+      }
+      document.body.append(Object.assign(document.createElement('div'), {
+        className: 'modal-backdrop',
+      }));
+    });
+    const closeSpy = vi.spyOn(Modal, 'close').mockImplementation(() => {});
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(true);
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.not.objectContaining({ variant: 'pane' }));
+
+    mediaQueryList.dispatch(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).toHaveBeenCalled();
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.objectContaining({ variant: 'pane' }));
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+
+    mediaQueryList.dispatch(false);
+
+    expect(closeSpy).toHaveBeenCalled();
+    expect(openSpy.mock.calls.filter(([, options]) => options?.variant !== 'pane')).toHaveLength(1);
+    expect(container.querySelector('.tracker-detail')).toBeNull();
+
+    mediaQueryList.dispatch(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.objectContaining({ variant: 'pane' }));
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+  });
+
+  it('does not auto-select the last closed modal when resizing up to desktop', async () => {
+    const container = document.createElement('main');
+    const mediaQueryList = mockDesktopMedia(false);
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(true);
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.not.objectContaining({ variant: 'pane' }));
+
+    Modal.close();
+    mediaQueryList.dispatch(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+  });
+
+  it('restores a retained pane selection when a stale closed modal id is cleared on resize-up', async () => {
+    const container = document.createElement('main');
+    const mediaQueryList = mockDesktopMedia(true);
+    const first = createApplication(1);
+    const second = createApplication(2);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options = {}) => {
+      if (options.variant === 'pane') {
+        options.target.replaceChildren(Object.assign(document.createElement('div'), {
+          className: 'modal-panel modal-panel--pane',
+          textContent: application.jobTitle,
+        }));
+        return;
+      }
+      document.body.append(Object.assign(document.createElement('div'), {
+        className: 'modal-backdrop',
+      }));
+    });
+    const closeSpy = vi.spyOn(Modal, 'close').mockImplementation(() => {});
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(true);
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => Promise.resolve(id === 1 ? first : second));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+    const retainedCard = container.querySelector('[data-id="1"]');
+
+    mediaQueryList.dispatch(false);
+    await Promise.resolve();
+    retainedCard.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.not.objectContaining({ variant: 'pane' }));
+    document.querySelector('.modal-backdrop')?.remove();
+    Modal.close();
+
+    mediaQueryList.dispatch(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenLastCalledWith(first, expect.objectContaining({ variant: 'pane' }));
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
   it('initializes archived view from the URL and fetches archived rows first', async () => {
     const container = document.createElement('main');
     const archived = createApplication(9, { archived: true, archivedDate: '2026-05-01' });
@@ -463,6 +1060,40 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.textContent).toContain('New Role');
   });
 
+  it('keeps the New Application gate on desktop and opens manual create in the detail pane', async () => {
+    const container = document.createElement('main');
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options = {}) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application?.jobTitle ?? 'Create application',
+      }));
+    });
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([createApplication(1)]);
+
+    await Tracker.mount(container);
+    toolbarRenderOptions[0].onAddApplication();
+
+    expect(document.querySelector('.creation-picker-backdrop')).not.toBeNull();
+    [...document.querySelectorAll('.creation-picker-card')]
+      .find((card) => card.textContent.includes('Manual entry'))
+      .click();
+
+    expect(openSpy).toHaveBeenCalledWith(null, expect.objectContaining({
+      mode: 'create',
+      variant: 'pane',
+      target: container.querySelector('.tracker-detail'),
+      profile: null,
+      onApplicationCreate: expect.any(Function),
+    }));
+    expect(container.querySelector('.tracker-detail .modal-panel--pane')).not.toBeNull();
+
+    openSpy.mock.calls.at(-1)[1].onClosed();
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+  });
+
   it('opens the creation picker from the mobile FAB', async () => {
     const container = document.createElement('main');
     const navigate = vi.fn();
@@ -517,6 +1148,29 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(mainCss).toMatch(
       /\.modal-backdrop \{\r?\n  position: fixed;\r?\n  inset: 0;\r?\n  z-index: var\(--z-modal\);/,
     );
+  });
+
+  it('defines the desktop master-detail layout styles', () => {
+    expect(mainCss).toContain('--header-h: 106px;');
+    expect(mainCss).toContain('--footer-visible-h: 0px;');
+    expect(mainCss).toContain('@media (min-width: 1100px)');
+    expect(mainCss).toMatch(/\.tracker-split \{[\s\S]*display: flex;[\s\S]*gap: 18px;/);
+    expect(mainCss).toMatch(/\.tracker-master \{[\s\S]*flex: 0 1 60%;/);
+    expect(mainCss).toMatch(/\.tracker-split \{[\s\S]*--footer-visible-h: 0px;[\s\S]*align-items: flex-start;[\s\S]*min-height: calc\(100vh - var\(--header-h\) - var\(--footer-visible-h\) - 18px\);/);
+    expect(mainCss).toMatch(/\.tracker-detail \{[\s\S]*position: sticky;[\s\S]*display: flex;[\s\S]*align-self: flex-start;[\s\S]*height: calc\(100vh - var\(--header-h\) - var\(--footer-visible-h\) - 34px\);[\s\S]*overflow: hidden;/);
+    expect(mainCss).toMatch(/\.modal-panel--pane \{[\s\S]*border-radius: var\(--r-md\);[\s\S]*box-shadow: var\(--shadow-sm\);/);
+    expect(mainCss).toMatch(/\.modal-panel--pane \.modal-body \{[\s\S]*flex: 1 1 auto;[\s\S]*min-height: 0;/);
+    expect(mainCss).toMatch(/\.modal-panel--pane \.modal-footer \{[\s\S]*position: sticky;[\s\S]*box-shadow: 0 -10px 24px rgba\(15, 23, 42, \.08\);/);
+    expect(mainCss).toMatch(/\.split-pagination \{[\s\S]*grid-column: 1 \/ -1;/);
+    expect(mainCss).toMatch(/\.empty-pane \{[\s\S]*text-align: center;/);
+    expect(mainCss).toMatch(/\.tracker-master \.card--selected \{[\s\S]*border-color: var\(--indigo\);[\s\S]*0 0 0 1px var\(--indigo\),[\s\S]*0 0 18px 1px rgba\(79, 70, 229, \.28\)/);
+    expect(mainCss).toMatch(/\.tracker-master \.card\.card-archived\.card--selected \{[\s\S]*border-color: var\(--indigo\);[\s\S]*0 0 0 1px var\(--indigo\),[\s\S]*0 0 18px 1px rgba\(79, 70, 229, \.28\)/);
+    expect(mainCss).toMatch(/\.tracker-master \.card--selected:hover,\s*\.tracker-master \.card\.card-archived\.card--selected:hover \{[\s\S]*transform: translateY\(-1px\);[\s\S]*0 0 0 1px var\(--indigo\),/);
+  });
+
+  it('keeps the mobile application modal on the bottom-sheet CSS path below 640px', () => {
+    expect(mainCss).toMatch(/@media \(max-width: 639px\) \{[\s\S]*\.modal-backdrop \{[\s\S]*align-items: flex-end;[\s\S]*padding: 0;/);
+    expect(mainCss).toMatch(/@media \(max-width: 639px\) \{[\s\S]*\.modal-panel \{[\s\S]*position: fixed;[\s\S]*bottom: 0;[\s\S]*width: 100%;[\s\S]*border-radius: 16px 16px 0 0;[\s\S]*animation: sheet-up 250ms ease-out;/);
   });
 
   it('disables skeleton shimmer when reduced motion is requested', () => {
@@ -725,6 +1379,41 @@ describe('Tracker quick filter toolbar integration', () => {
       .toBe(true);
   });
 
+  it('refreshes the selected desktop pane after card favorite updates', async () => {
+    const container = document.createElement('main');
+    const original = createApplication(1, { fav: false });
+    const updated = { ...original, fav: true };
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.fav ? 'Starred' : 'Unstarred',
+      }));
+    });
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([original]);
+    api.getById.mockResolvedValue(original);
+    api.update.mockResolvedValue(updated);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Unstarred');
+
+    container.querySelector('.card-btn--star').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api.update).toHaveBeenCalledWith(1, { fav: true });
+    expect(openSpy).toHaveBeenLastCalledWith(
+      updated,
+      expect.objectContaining({ variant: 'pane', target: container.querySelector('.tracker-detail') }),
+    );
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Starred');
+  });
+
   it('fetches the profile at mount and passes it into opened application modals', async () => {
     const container = document.createElement('main');
     const navigate = vi.fn();
@@ -740,10 +1429,17 @@ describe('Tracker quick filter toolbar integration', () => {
     await Promise.resolve();
 
     expect(api.getProfile).toHaveBeenCalledTimes(1);
+    [...document.querySelectorAll('.panel')]
+      .find((panel) => panel.querySelector('.panel-title')?.textContent === 'Skills')
+      .querySelector('.panel-head')
+      .click();
+    [...document.querySelectorAll('.panel')]
+      .find((panel) => panel.querySelector('.panel-title')?.textContent === 'Compatibility')
+      .querySelector('.panel-head')
+      .click();
     expect(document.querySelector('.compatibility-module')).not.toBeNull();
     expect(document.querySelector('.skill-tag.lvl-high')?.textContent).toContain('JavaScript');
 
-    document.querySelector('.sec-toggle').click();
     document.querySelector('.cx-enable-ai').click();
     await Promise.resolve();
 
@@ -764,6 +1460,10 @@ describe('Tracker quick filter toolbar integration', () => {
     container.querySelector('.card').click();
     await Promise.resolve();
 
+    [...document.querySelectorAll('.panel')]
+      .find((panel) => panel.querySelector('.panel-title')?.textContent === 'Compatibility')
+      .querySelector('.panel-head')
+      .click();
     document.querySelector('.cx-empty-act').click();
     await Promise.resolve();
 

@@ -7,6 +7,11 @@ import {
 } from '../models/application.js';
 import { computeCompatibility } from '../models/compatibility.js';
 import aiSparkle from '../assets/AI_sparkle.png';
+import compatibilityIcon from '../assets/icons/compatibility.svg';
+import notesLinksIcon from '../assets/icons/notes-links.svg';
+import overviewIcon from '../assets/icons/overview.svg';
+import skillsIcon from '../assets/icons/skills.svg';
+import timelineIcon from '../assets/icons/timeline.svg';
 import * as api from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
@@ -17,13 +22,17 @@ import { validateUrl } from '../utils/validate.js';
 import { valuesDiffer } from '../../shared/compatFields.js';
 import { CompatibilityModule } from './CompatibilityModule.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { OPanel } from './OPanel.js';
 import { StatusDropdown } from './StatusDropdown.js';
 import { Timeline, appendStatusChangeTimelineEntry } from './Timeline.js';
 import { Toast } from './Toast.js';
+import { createClampText } from '../utils/clampText.js';
 
 let _savedScrollY = 0;
 let _backdrop = null;
+let _panel = null;
 let _keydownHandler = null;
+let _panelKeydownHandler = null;
 let _draft = null;
 let _original = null;
 let _profile = null;
@@ -50,10 +59,20 @@ let _onApplicationCreate = null;
 let _onUnarchiveSuccess = null;
 let _onOpenSettings = null;
 let _onOpenProfile = null;
+let _onClosed = null;
+let _variant = 'modal';
+let _target = null;
 let _aiFields = new Set();
 let _fillSource = null;
 let _flashFields = new Set();
 let _fillNotice = '';
+let _panelOpen = {
+  overview: true,
+  skills: false,
+  compat: false,
+  timeline: false,
+  notes: false,
+};
 
 function trackBusyBinding(binding) {
   _busyBindings.push(binding);
@@ -321,6 +340,15 @@ function showTitleError(message) {
   _titleRow?.append(error);
 }
 
+function ensurePanelOpen(id) {
+  if (_panelOpen[id]) {
+    return;
+  }
+
+  _panelOpen[id] = true;
+  _renderBody();
+}
+
 function appendFieldLabel(labelEl, label, required) {
   labelEl.textContent = label;
 
@@ -333,10 +361,10 @@ function appendFieldLabel(labelEl, label, required) {
   }
 }
 
-function createEditableShell(label, fullSpan = false, { required = false } = {}) {
+function createEditableShell(label, fullSpan = false, { required = false, valueTag = 'span' } = {}) {
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
-  const valueEl = document.createElement('span');
+  const valueEl = document.createElement(valueTag);
 
   row.className = fullSpan ? 'modal-field modal-field--full' : 'modal-field';
   if (canEdit()) {
@@ -362,10 +390,15 @@ async function copyJobPostingUrl(event) {
   }
 }
 
-function renderTextDisplay(valueEl, key, formatter) {
+function renderTextDisplay(valueEl, key, formatter, clampOptions = null) {
   valueEl.replaceChildren();
   const value = formatter ? formatter(_draft[key]) : _draft[key];
-  valueEl.textContent = displayValue(value);
+
+  if (clampOptions) {
+    valueEl.append(createClampText(displayValue(value), clampOptions));
+  } else {
+    valueEl.textContent = displayValue(value);
+  }
 
   if (key === 'jobPostingUrl' && typeof _draft.jobPostingUrl === 'string' && _draft.jobPostingUrl.trim() !== '') {
     const copyButton = document.createElement('button');
@@ -400,11 +433,19 @@ function refreshCompatibilityField() {
   recomputeDraftCompatibility();
 
   if (!_compatibilityField?.isConnected) {
+    const compatibilityPanel = [...document.querySelectorAll('.panel')]
+      .find((panel) => panel.querySelector('.panel-title')?.textContent === 'Compatibility');
+    const preview = compatibilityPanel?.querySelector('.panel-body .cx-collapsed-content');
+    if (preview) {
+      preview.replaceWith(CompatibilityModule.renderCollapsedPreview({ application: _draft }));
+    }
     return;
   }
 
   const currentField = _compatibilityField;
-  const nextField = createCompatibilityField();
+  const nextField = createCompatibilityField({
+    embedded: currentField?.classList?.contains('compatibility-module--embedded') === true,
+  });
   currentField.replaceWith(nextField);
 }
 
@@ -499,9 +540,17 @@ function makeMinYearsField() {
 }
 
 function makeInlineText({ label, key, multiline = false, fullSpan = false, required = false }) {
-  const { row, labelEl, valueEl } = createEditableShell(label, fullSpan, { required });
+  const { row, labelEl, valueEl } = createEditableShell(label, fullSpan, {
+    required,
+    valueTag: multiline ? 'div' : 'span',
+  });
   const formatter = key === 'salary' ? formatPeso : null;
   const displayClass = multiline ? ' modal-field__display--multiline' : '';
+  const clampOptionsByKey = {
+    responsibilities: { lines: 2, mlines: 4 },
+    generalNotes: { lines: 3, mlines: 3 },
+  };
+  const clampOptions = multiline ? (clampOptionsByKey[key] ?? null) : null;
 
   appendProvenance(labelEl, key, row);
 
@@ -510,7 +559,7 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
       ? parseSalaryInput(input.value)
       : input.value.trim();
     clearProvenance(key, row);
-    renderTextDisplay(valueEl, key, formatter);
+    renderTextDisplay(valueEl, key, formatter, clampOptions);
     row.classList.remove('modal-field--editing');
     _syncFooter();
   }
@@ -519,7 +568,7 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
     if (multiline) {
       valueEl.className += displayClass;
     }
-    renderTextDisplay(valueEl, key, formatter);
+    renderTextDisplay(valueEl, key, formatter, clampOptions);
     return row;
   }
 
@@ -554,7 +603,7 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
         keyboardEvent.stopPropagation();
         finished = true;
         _draft[key] = previousValue;
-        renderTextDisplay(valueEl, key, formatter);
+        renderTextDisplay(valueEl, key, formatter, clampOptions);
         row.classList.remove('modal-field--editing');
         return;
       }
@@ -583,7 +632,7 @@ function makeInlineText({ label, key, multiline = false, fullSpan = false, requi
     valueEl.className += displayClass;
   }
 
-  renderTextDisplay(valueEl, key, formatter);
+  renderTextDisplay(valueEl, key, formatter, clampOptions);
 
   return row;
 }
@@ -762,6 +811,7 @@ function makeChipEditor({ label, key, profileSkills = null }) {
     const input = document.createElement('input');
     let committingByKeyboard = false;
     input.className = 'modal-chip-input';
+    input.placeholder = '+ Add';
     input.setAttribute('aria-label', `Add ${label}`);
 
     function addChip() {
@@ -809,7 +859,21 @@ function makeChipEditor({ label, key, profileSkills = null }) {
   return row;
 }
 
-function createCompatibilityField() {
+function createCompatibilityField({ embedded = false } = {}) {
+  if (embedded) {
+    const module = CompatibilityModule.render({
+      application: _draft,
+      profile: _profile,
+      onNotesGenerated: _handleNotesGenerated,
+      onOpenSettings: _handleOpenSettings,
+      onOpenProfile: _handleOpenProfile,
+      readOnly: _mode === 'archived',
+      embedded,
+    });
+    _compatibilityField = module;
+    return module;
+  }
+
   const row = document.createElement('div');
   const labelEl = document.createElement('span');
 
@@ -824,6 +888,8 @@ function createCompatibilityField() {
       onNotesGenerated: _handleNotesGenerated,
       onOpenSettings: _handleOpenSettings,
       onOpenProfile: _handleOpenProfile,
+      readOnly: _mode === 'archived',
+      embedded,
     }),
   );
   _compatibilityField = row;
@@ -932,10 +998,182 @@ function renderTitle() {
   }
 }
 
+function fieldsHaveProvenance(fields) {
+  return fields.some((field) => _aiFields.has(field));
+}
+
+function defaultPanelOpenState() {
+  return {
+    overview: true,
+    skills: fieldsHaveProvenance(['skills', 'preferredSkills']),
+    compat: false,
+    timeline: false,
+    notes: fieldsHaveProvenance(['jobPostingUrl', 'generalNotes']),
+  };
+}
+
+function makePanelPreview(className, children = []) {
+  const preview = document.createElement('div');
+  preview.className = `panel-preview ${className}`;
+  preview.append(...children.filter(Boolean));
+  return preview;
+}
+
+function makePanelIcon(src) {
+  const icon = document.createElement('img');
+  icon.src = src;
+  icon.alt = '';
+  icon.setAttribute('aria-hidden', 'true');
+  return icon;
+}
+
+function wrapFields(className, fields) {
+  const wrapper = document.createElement('div');
+  wrapper.className = className;
+  wrapper.append(...fields.filter(Boolean));
+  return wrapper;
+}
+
+function makePreviewText(label, value) {
+  const item = document.createElement('span');
+  const name = document.createElement('span');
+  const text = document.createElement('span');
+
+  item.className = 'panel-preview__item';
+  name.className = 'panel-preview__label';
+  text.className = 'panel-preview__value';
+  name.textContent = label;
+  text.textContent = displayValue(value);
+  item.append(name, text);
+  return item;
+}
+
+function makeSkillsPreview() {
+  const allSkills = [
+    ...(Array.isArray(_draft.skills) ? _draft.skills : []),
+    ...(Array.isArray(_draft.preferredSkills) ? _draft.preferredSkills : []),
+  ];
+
+  if (!Array.isArray(_profile?.skills)) {
+    const required = Array.isArray(_draft.skills) ? _draft.skills.length : 0;
+    const preferred = Array.isArray(_draft.preferredSkills) ? _draft.preferredSkills.length : 0;
+
+    return makePanelPreview('panel-preview--skills', [
+      makePreviewText('Required', `${required}`),
+      makePreviewText('Preferred', `${preferred}`),
+    ]);
+  }
+
+  const counts = allSkills.reduce((next, skill) => {
+    const level = resolveSkillLevel(skill, _profile.skills);
+    next[level] = (next[level] ?? 0) + 1;
+    return next;
+  }, { proficient: 0, learning: 0, missing: 0 });
+
+  return makePanelPreview('panel-preview--skills', [
+    makeSkillPreviewMetric('proficient', '✓', counts.proficient, 'proficient'),
+    makeSkillPreviewMetric('learning', '•', counts.learning, 'learning'),
+    makeSkillPreviewMetric('missing', '×', counts.missing, 'missing'),
+  ]);
+}
+
+function makeSkillPreviewMetric(className, glyph, count, label) {
+  const item = document.createElement('span');
+  const icon = document.createElement('span');
+  const value = document.createElement('span');
+
+  item.className = `panel-preview__skill panel-preview__skill--${className}`;
+  icon.className = 'panel-preview__skill-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = glyph;
+  value.textContent = `${count} ${label}`;
+  item.append(icon, value);
+  return item;
+}
+
+function makeNotesPreview() {
+  const snippet = document.createElement('span');
+  snippet.className = 'panel-preview__note-snippet';
+  snippet.textContent = displayValue(_draft.generalNotes || 'No notes yet.');
+
+  return makePanelPreview('panel-preview--notes', [
+    snippet,
+  ]);
+}
+
+function makeTimelinePreview() {
+  const latest = Array.isArray(_draft.timeline) && _draft.timeline.length > 0
+    ? [..._draft.timeline].sort((first, second) => {
+      if (first.date === second.date) return (second.id ?? 0) - (first.id ?? 0);
+      return String(second.date).localeCompare(String(first.date));
+    })[0]
+    : null;
+  const row = document.createElement('div');
+
+  row.className = 'tl-collapsed';
+  row.setAttribute('role', 'button');
+  row.tabIndex = 0;
+
+  if (latest) {
+    const date = document.createElement('span');
+    const dash = document.createElement('span');
+
+    date.className = 'tl-date-text';
+    date.textContent = latest.date ?? '';
+    dash.className = 'tl-dash';
+    dash.textContent = '—';
+    row.append(date, dash, createStatusBadge(latest.status));
+
+    if (latest.text !== '') {
+      const text = document.createElement('span');
+      text.className = 'tl-text-line';
+      text.textContent = latest.text;
+      row.append(text);
+    }
+  } else {
+    const empty = document.createElement('span');
+    empty.className = 'tl-empty';
+    empty.textContent = _mode === 'archived'
+      ? 'No timeline entries.'
+      : 'No entries yet — click to add';
+    row.append(empty);
+  }
+
+  function openTimelinePanel() {
+    _panelOpen.timeline = true;
+    _renderBody();
+  }
+
+  row.addEventListener('click', openTimelinePanel);
+  row.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openTimelinePanel();
+    }
+  });
+
+  return row;
+}
+
+function buildPanel({ id, icon, title, tone, preview, children }) {
+  return OPanel({
+    icon,
+    title,
+    tone,
+    open: _panelOpen[id],
+    preview,
+    children,
+    onToggle: () => {
+      _panelOpen[id] = !_panelOpen[id];
+      _renderBody();
+    },
+  });
+}
+
 function _renderBody() {
   const profileSkills = _profile?.skills ?? null;
   const skillsLegend = makeSkillLegend(profileSkills);
-  const fields = [
+  const overviewGrid = wrapFields('panel-grid', [
     makeInlineText({ label: 'Company', key: 'companyName', required: true }),
     makeInlineText({ label: 'Recruiter', key: 'recruiter' }),
     makeInlineText({ label: 'Location', key: 'location' }),
@@ -943,19 +1181,74 @@ function _renderBody() {
     makeInlineSelect({ label: 'Shift', key: 'shift', options: SHIFT_VALUES }),
     makeInlineSelect({ label: 'Work Setup', key: 'workSetup', options: WORK_SETUP_VALUES }),
     makeMinYearsField(),
+  ]);
+  const overviewFields = [
+    overviewGrid,
     makeInlineText({ label: 'Responsibilities', key: 'responsibilities', multiline: true, fullSpan: true, required: true }),
-    makeChipEditor({ label: 'Required Skills', key: 'skills', profileSkills }),
-    makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills', profileSkills }),
-    ...(skillsLegend ? [skillsLegend] : []),
-    createCompatibilityField(),
-    Timeline.render(_draft, {
-      currentStatus: _draft.status,
-      onChange: _syncFooter,
-      readOnly: _mode === 'archived',
-    }),
+  ];
+  const skillsFields = [
+    wrapFields('skills-grid', [
+      makeChipEditor({ label: 'Required Skills', key: 'skills', profileSkills }),
+      makeChipEditor({ label: 'Preferred Skills', key: 'preferredSkills', profileSkills }),
+    ]),
+    skillsLegend,
+  ];
+  const notesFields = [
     makeInlineText({ label: 'URL', key: 'jobPostingUrl', fullSpan: true }),
     makeInlineText({ label: 'General Notes', key: 'generalNotes', multiline: true, fullSpan: true }),
   ];
+  const pbody = document.createElement('div');
+  const fields = [
+    buildPanel({
+      id: 'overview',
+      icon: makePanelIcon(overviewIcon),
+      title: 'Overview',
+      preview: makePanelPreview('panel-preview--overview', [
+        makePreviewText('Company', _draft.companyName),
+        makePreviewText('Location', _draft.location),
+        makePreviewText('Salary', formatPeso(_draft.salary)),
+      ]),
+      children: overviewFields,
+    }),
+    buildPanel({
+      id: 'skills',
+      icon: makePanelIcon(skillsIcon),
+      title: 'Skills',
+      preview: makeSkillsPreview(),
+      children: skillsFields,
+    }),
+    buildPanel({
+      id: 'compat',
+      icon: makePanelIcon(compatibilityIcon),
+      title: 'Compatibility',
+      tone: 'ai',
+      preview: CompatibilityModule.renderCollapsedPreview({ application: _draft }),
+      children: _panelOpen.compat ? createCompatibilityField({ embedded: true }) : null,
+    }),
+    buildPanel({
+      id: 'timeline',
+      icon: makePanelIcon(timelineIcon),
+      title: 'Timeline',
+      preview: makeTimelinePreview(),
+      children: _panelOpen.timeline ? Timeline.render(_draft, {
+        currentStatus: _draft.status,
+        onChange: _syncFooter,
+        readOnly: _mode === 'archived',
+        bare: true,
+        expanded: true,
+      }) : null,
+    }),
+    buildPanel({
+      id: 'notes',
+      icon: makePanelIcon(notesLinksIcon),
+      title: 'Notes & Links',
+      preview: makeNotesPreview(),
+      children: notesFields,
+    }),
+  ];
+
+  pbody.className = 'pbody';
+  _body.classList.add('modal-body--panelized');
 
   if (_mode === 'create' && _fillNotice) {
     const notice = document.createElement('p');
@@ -1008,7 +1301,8 @@ function _renderBody() {
     fields.unshift(banner);
   }
 
-  _body.replaceChildren(...fields);
+  pbody.append(...fields);
+  _body.replaceChildren(pbody);
 }
 
 function copyApplication(application) {
@@ -1110,6 +1404,18 @@ function buildFooter(savePeers = []) {
 function validateDraft() {
   clearInlineErrors();
   let isValid = true;
+  const hasResponsibilitiesError = typeof _draft.responsibilities !== 'string' || _draft.responsibilities.trim() === '';
+  const urlError = typeof _draft.jobPostingUrl === 'string' && _draft.jobPostingUrl.trim() !== ''
+    ? validateUrl(_draft.jobPostingUrl)
+    : '';
+
+  if (hasResponsibilitiesError) {
+    ensurePanelOpen('overview');
+  }
+
+  if (urlError) {
+    ensurePanelOpen('notes');
+  }
 
   if (typeof _draft.jobTitle !== 'string' || _draft.jobTitle.trim() === '') {
     showTitleError('Job Title is required.');
@@ -1121,18 +1427,14 @@ function validateDraft() {
     isValid = false;
   }
 
-  if (typeof _draft.responsibilities !== 'string' || _draft.responsibilities.trim() === '') {
+  if (hasResponsibilitiesError) {
     showFieldError('Responsibilities', 'Responsibilities is required.');
     isValid = false;
   }
 
-  if (typeof _draft.jobPostingUrl === 'string' && _draft.jobPostingUrl.trim() !== '') {
-    const urlError = validateUrl(_draft.jobPostingUrl);
-
-    if (urlError) {
-      showFieldError('URL', urlError);
-      isValid = false;
-    }
+  if (urlError) {
+    showFieldError('URL', urlError);
+    isValid = false;
   }
 
   if (
@@ -1313,13 +1615,12 @@ async function _attemptClose() {
 }
 
 export function close() {
-  const hadOpenModal = Boolean(_backdrop);
+  const hadOpenModal = _variant === 'modal' && Boolean(_backdrop);
+  const hadOpenPane = _variant === 'pane' && Boolean(_panel);
+  const onClosed = _onClosed;
 
-  document.body.style.overflow = '';
-
-  if (_backdrop) {
-    _backdrop.remove();
-    _backdrop = null;
+  if (hadOpenModal) {
+    document.body.style.overflow = '';
   }
 
   if (_keydownHandler) {
@@ -1327,8 +1628,27 @@ export function close() {
     _keydownHandler = null;
   }
 
+  if (_panelKeydownHandler) {
+    _panel?.removeEventListener('keydown', _panelKeydownHandler);
+    _panelKeydownHandler = null;
+  }
+
+  if (_backdrop) {
+    _backdrop.remove();
+    _backdrop = null;
+  }
+
+  if (_panel) {
+    _panel.remove();
+    _panel = null;
+  }
+
   if (hadOpenModal) {
     window.scrollTo(0, _savedScrollY);
+  }
+
+  if (hadOpenPane) {
+    onClosed?.();
   }
 
   CompatibilityModule.setDirty(false);
@@ -1363,15 +1683,21 @@ export function close() {
   _onUnarchiveSuccess = null;
   _onOpenSettings = null;
   _onOpenProfile = null;
+  _onClosed = null;
+  _variant = 'modal';
+  _target = null;
   _aiFields = new Set();
   _fillSource = null;
   _flashFields = new Set();
   _fillNotice = '';
+  _panelOpen = defaultPanelOpenState();
   Timeline.reset();
 }
 
 export function open(application, {
   mode,
+  variant = 'modal',
+  target = null,
   profile,
   prefill,
   aiFields,
@@ -1383,16 +1709,24 @@ export function open(application, {
   onUnarchiveSuccess,
   onOpenSettings,
   onOpenProfile,
+  onClosed,
 } = {}) {
   const nextMode = mode === 'create' || application === null
     ? 'create'
     : (application.archived === true ? 'archived' : 'edit');
+  const nextVariant = variant === 'pane' ? 'pane' : 'modal';
 
   if (nextMode === 'edit' && !application) {
     return;
   }
 
+  if (nextVariant === 'pane' && !(target instanceof HTMLElement)) {
+    throw new TypeError('Modal pane variant requires a target HTMLElement.');
+  }
+
   close();
+  _variant = nextVariant;
+  _target = target;
   _mode = nextMode;
   _fillSource = nextMode === 'create' && (fillSource === 'ai' || fillSource === 'basic')
     ? fillSource
@@ -1414,11 +1748,15 @@ export function open(application, {
   _onUnarchiveSuccess = onUnarchiveSuccess;
   _onOpenSettings = typeof onOpenSettings === 'function' ? onOpenSettings : null;
   _onOpenProfile = typeof onOpenProfile === 'function' ? onOpenProfile : null;
+  _onClosed = typeof onClosed === 'function' ? onClosed : null;
+  _panelOpen = defaultPanelOpenState();
 
-  _savedScrollY = window.scrollY;
-  document.body.style.overflow = 'hidden';
+  if (_variant === 'modal') {
+    _savedScrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+  }
 
-  const backdrop = document.createElement('div');
+  const backdrop = _variant === 'modal' ? document.createElement('div') : null;
   const panel = document.createElement('div');
   const header = document.createElement('div');
   const headerMeta = document.createElement('div');
@@ -1480,10 +1818,16 @@ export function open(application, {
     });
   }
 
-  backdrop.className = 'modal-backdrop';
-  panel.className = 'modal-panel';
-  panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-modal', 'true');
+  if (backdrop) {
+    backdrop.className = 'modal-backdrop';
+  }
+  panel.className = _variant === 'pane'
+    ? 'modal-panel modal-panel--pane'
+    : 'modal-panel';
+  panel.setAttribute('role', _variant === 'pane' ? 'region' : 'dialog');
+  if (_variant === 'modal') {
+    panel.setAttribute('aria-modal', 'true');
+  }
   panel.setAttribute('aria-labelledby', 'modal-title');
   header.className = 'modal-header';
   headerMeta.className = 'modal-header__meta';
@@ -1612,13 +1956,15 @@ export function open(application, {
 
   closeButton.addEventListener('click', _attemptClose);
 
-  backdrop.addEventListener('click', (event) => {
-    if (event.target === backdrop) {
-      _attemptClose();
-    }
-  });
+  if (backdrop) {
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) {
+        _attemptClose();
+      }
+    });
+  }
 
-  _keydownHandler = (event) => {
+  function handleSaveShortcut(event) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
       if (_mode === 'archived') {
@@ -1628,8 +1974,24 @@ export function open(application, {
         document.activeElement.blur();
       }
       runSave();
-      return;
+      return true;
     }
+
+    return false;
+  }
+
+  if (_variant === 'pane') {
+    _panelKeydownHandler = (event) => {
+      handleSaveShortcut(event);
+    };
+    panel.addEventListener('keydown', _panelKeydownHandler);
+  }
+
+  if (_variant === 'modal') {
+    _keydownHandler = (event) => {
+      if (handleSaveShortcut(event)) {
+        return;
+      }
 
     if (event.key === 'Escape') {
       if (event.target && typeof event.target.closest === 'function'
@@ -1664,8 +2026,9 @@ export function open(application, {
         firstElement.focus();
       }
     }
-  };
-  document.addEventListener('keydown', _keydownHandler);
+    };
+    document.addEventListener('keydown', _keydownHandler);
+  }
 
   headerMeta.append(idPill, statusBadge);
   if (_mode === 'archived') {
@@ -1693,10 +2056,19 @@ export function open(application, {
     panel.append(buildFooter([favoriteButton, archiveButton, statusButton]));
   }
   _syncFooter();
-  backdrop.append(panel);
-  document.body.append(backdrop);
-  _backdrop = backdrop;
-  getFocusableElements(panel)[0]?.focus();
+  _panel = panel;
+  if (_variant === 'pane') {
+    _target.replaceChildren(panel);
+  } else {
+    backdrop.append(panel);
+    document.body.append(backdrop);
+    _backdrop = backdrop;
+    getFocusableElements(panel)[0]?.focus();
+  }
 }
 
-export const Modal = { open, close };
+export function requestClose() {
+  return _attemptClose();
+}
+
+export const Modal = { open, close, requestClose };

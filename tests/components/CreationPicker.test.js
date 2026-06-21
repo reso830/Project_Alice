@@ -187,10 +187,15 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
 
   it('opens Create modal with provenance params when the JD flow succeeds', () => {
     const onApplicationCreate = vi.fn();
+    const onClosed = vi.fn();
+    const target = document.createElement('aside');
     const draft = { companyName: 'Acme', jobTitle: 'Frontend Engineer' };
     const aiFieldSet = new Set(['companyName', 'jobTitle']);
 
-    CreationPicker.open({ onApplicationCreate });
+    CreationPicker.open({
+      onApplicationCreate,
+      createOptions: { variant: 'pane', target, onClosed },
+    });
     findCardByTitle('Smart entry').click();
 
     JobPostingImport.create.mock.calls[0][0].onSuccess({
@@ -209,14 +214,24 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
       onApplicationCreate,
       onApplicationUpdate: undefined,
       onArchiveSuccess: undefined,
+      onUnarchiveSuccess: undefined,
+      profile: undefined,
+      variant: 'pane',
+      target,
+      onClosed,
     });
     expect(document.querySelector('.creation-picker-backdrop')).toBeNull();
   });
 
   it('opens the Create modal when the JD flow asks for manual entry', () => {
     const onApplicationCreate = vi.fn();
+    const onClosed = vi.fn();
+    const target = document.createElement('aside');
 
-    CreationPicker.open({ onApplicationCreate });
+    CreationPicker.open({
+      onApplicationCreate,
+      createOptions: { variant: 'pane', target, onClosed },
+    });
     findCardByTitle('Smart entry').click();
 
     JobPostingImport.create.mock.calls[0][0].onManual();
@@ -226,6 +241,11 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
       onApplicationCreate,
       onApplicationUpdate: undefined,
       onArchiveSuccess: undefined,
+      onUnarchiveSuccess: undefined,
+      profile: undefined,
+      variant: 'pane',
+      target,
+      onClosed,
     });
     expect(document.querySelector('.creation-picker-backdrop')).toBeNull();
   });
