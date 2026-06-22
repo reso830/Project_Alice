@@ -31,14 +31,14 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 **Purpose**: Let the Express app serve the built `dist/` + SPA fallback in portable/local mode only, so one origin serves UI + `/api`. Gated off by default → hosted (Vercel) and local dev (Vite) are untouched. The frontend already uses relative `/api/` URLs, so **no frontend change**.
 
-### T001 `[ ]` — Add gated `serveStatic` branch to `createApp`
+### T001 `[x]` — Add gated `serveStatic` branch to `createApp`
 - **Target**: [server/index.js](../../server/index.js) (`createApp`)
 - **Expected behavior**: Add an opt-in option `serveStatic` (and a `distDir`, default resolved to the package `dist/`). When truthy, after the `/api/*` routers and **before** the error handler, register: (1) `express.static(distDir)`; (2) an SPA fallback that, for **GET** requests whose path does **not** start with `/api`, returns `distDir/index.html` (200). When falsy/unset, register none of this (behavior byte-for-byte unchanged).
 - **Constraints**: `/api/*` MUST never be shadowed by static or the fallback; non-GET and `/api` requests MUST NOT be rewritten to `index.html`. No new dependency (use `express.static` + `res.sendFile`). Do not alter existing routers, the health route, or the error handler. Per [contracts/api.md §1](contracts/api.md).
 - **Validation/test**: T002.
 - **Out of scope**: localhost binding, port selection, browser open (Phase 02); any hosted/`api/index` change.
 
-### T002 `[ ]` [P] — Unit tests for static serving + serving-off safety
+### T002 `[x]` [P] — Unit tests for static serving + serving-off safety
 - **Target**: `tests/server/staticServing.test.js` (new)
 - **Expected behavior**: Build the app via `createApp({ repositories: wrapAsDispatcher(...), config, serveStatic, distDir })` against a temp `distDir` containing `index.html` + an asset. Start with `app.listen(0)` and assert via global `fetch` (no supertest): with `serveStatic:true` → `GET /asset` serves the file, `GET /some/spa/route` returns `index.html` (200), `GET /api/health` returns the health JSON (not index.html), `POST /not-api` is **not** rewritten to index.html; with `serveStatic` unset → `GET /some/spa/route` does **not** return index.html (404/next). Close the server in `afterEach`.
 - **Constraints**: Vitest + Node `http`/`fetch`; ephemeral port `0`; use `wrapAsDispatcher` from [tests/server/helpers.js](../../tests/server/helpers.js) with a memory DB repo bundle. No network beyond loopback.
@@ -53,49 +53,49 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 **Purpose**: A dedicated local-only entry that reads `config/` launch settings, wires env to the package's `data/`, selects a localhost port (pinned default, auto-increment on conflict), starts the server with static serving, opens the browser, and stops cleanly on console close. Leaves [server/index.js](../../server/index.js)'s dev/hosted CLI boot intact.
 
-### T003 `[ ]` — Settings reader module
+### T003 `[x]` — Settings reader module
 - **Target**: `server/portable/settings.js` (new)
 - **Expected behavior**: Export `readLaunchSettings(configDir)` returning `{ port:number, openBrowser:boolean }`. Read `<configDir>/settings.json`; apply defaults `port:3001`, `openBrowser:true`. Missing file → all defaults. Malformed JSON, non-integer/out-of-range `port` (not 1024–65535) → default port + a non-fatal warning; never throw. Unknown keys ignored. Per [data-model.md §2](data-model.md).
 - **Constraints**: Pure (filesystem-read only); no server/network. No new dependency.
 - **Validation/test**: T006.
 - **Out of scope**: writing settings; UI for settings.
 
-### T004 `[ ]` — Port-selection helper
+### T004 `[x]` — Port-selection helper
 - **Target**: `server/portable/listen.js` (new)
 - **Expected behavior**: Export `listenWithFallback(app, { host:'127.0.0.1', port, maxTries })` that attempts `app.listen(port, host)`, and on `EADDRINUSE` increments the port (bounded by `maxTries`, default ~10) and retries; resolves with the bound `{ server, port }` or rejects after exhausting tries. Always binds the given host (localhost).
 - **Constraints**: No new dependency; use the `error`/`listening` events. Must not bind any non-loopback interface.
 - **Validation/test**: T007.
 - **Out of scope**: browser open; settings parsing.
 
-### T005 `[ ]` — Portable bootstrap entry
+### T005 `[x]` — Portable bootstrap entry
 - **Target**: `server/portable.js` (new)
 - **Expected behavior**: When run as the main module, call an exported `run({ root, open })`. Inside `run`: resolve the **package root** from `import.meta.url` (not CWD); set `process.env.APP_RUNTIME='local'` and `process.env.ALICE_DB_PATH=<root>/data/alice.db`; read launch settings (T003) — these top-level helpers are safe to static-import; **then** load the env-dependent modules via **dynamic `import()`** (`./config.js`, `./repositories/index.js` → `createRepositories`, `./index.js` → `createApp`) so they evaluate *after* the env is set; build `createApp({ repositories, config, serveStatic:true, distDir:<root>/app/dist })`; `listenWithFallback` (T004) on `127.0.0.1`; after listening, if `openBrowser` open `http://127.0.0.1:<port>` via the injected `open` (default: Windows `start` through `child_process`), else print the URL; log to console + `<root>/logs/alice.log`. Handle `SIGINT`/console close → close the server and exit cleanly (no orphaned process). On a missing `dist/`/required file, print a clear error and exit non-zero (US4).
 - **Constraints**: Local-only; do not change `server/index.js`'s boot block. **No top-level static import of `./config.js`, `./db.js`, `./repositories/index.js`, or `./index.js`** — they must be loaded via dynamic `import()` only after env is set, because `config.js` evaluates `loadConfig()` at module load ([server/config.js:44](../../server/config.js#L44)) and `db.js` resolves `ALICE_DB_PATH` **and opens the database** at module load ([server/db.js:13](../../server/db.js#L13)). The browser `open` MUST be injectable so tests don't spawn a browser. No new dependency (`child_process` only). Unexecutable/missing **runtime** errors are owned by the launcher (T010), not here.
 - **Validation/test**: T008 (bootstrap wiring with injected opener + temp root; asserts env set before dynamic loads); manual launch covered by the build dry run (T014) and Phase 06.
 - **Out of scope**: assembling the package layout (Phase 03); detecting an unexecutable Node runtime (T010).
 
-### T006 `[ ]` [P] — Tests: settings reader
+### T006 `[x]` [P] — Tests: settings reader
 - **Target**: `tests/server/portableSettings.test.js` (new)
 - **Expected behavior**: Assert defaults when file absent; valid JSON parsed; malformed JSON → defaults (no throw); out-of-range/non-integer `port` → default 3001; unknown keys ignored; `openBrowser` boolean coercion.
 - **Constraints**: Vitest; temp dir for config fixtures; no network.
 - **Validation/test**: this is the test task.
 - **Out of scope**: bootstrap.
 
-### T007 `[ ]` [P] — Tests: port-selection helper
+### T007 `[x]` [P] — Tests: port-selection helper
 - **Target**: `tests/server/portableListen.test.js` (new)
 - **Expected behavior**: Occupy a port with a throwaway loopback server, then assert `listenWithFallback` increments to the next free port and resolves with the higher port; assert the bound address is `127.0.0.1`; assert rejection after `maxTries` exhausted. Close all servers in cleanup.
 - **Constraints**: Vitest + Node `http`; loopback only.
 - **Validation/test**: this is the test task.
 - **Out of scope**: full bootstrap.
 
-### T008 `[ ]` — Tests: bootstrap wiring (injected opener, no real browser)
+### T008 `[x]` — Tests: bootstrap wiring (injected opener, no real browser)
 - **Target**: `tests/server/portableBootstrap.test.js` (new)
 - **Expected behavior**: Import the bootstrap's run function with an injected fake opener and a temp package root containing a minimal `app/dist/index.html` and writable `data/`/`logs/`. Assert: `APP_RUNTIME` and `ALICE_DB_PATH` are set to the package `data/`; **the SQLite file is created under `<root>/data/` (proving env was applied before the dynamic `db.js` load, i.e. the finding-1 ordering holds)**; the server binds `127.0.0.1`; the opener is called with `http://127.0.0.1:<port>` when `openBrowser:true` and **not** called when `false` (URL printed instead); a clear error + non-zero exit path when `dist/index.html` is missing. Shut the server down in cleanup.
 - **Constraints**: Refactor `server/portable.js` so its run logic is exported and accepts injectable `{ open, root }` for testability (the main-module guard calls it with real defaults). No real browser spawned. No network beyond loopback.
 - **Validation/test**: this is the test task.
 - **Out of scope**: download/zip (Phase 03).
 
-### T009 `[ ]` — Lint pass for new bootstrap modules
+### T009 `[x]` — Lint pass for new bootstrap modules
 - **Target**: `server/portable.js`, `server/portable/*.js`
 - **Expected behavior**: `npm run lint` passes for the new files (imports, `process`/`globalThis` usage consistent with existing server modules).
 - **Constraints**: Match existing ESLint config; no disables without reason.
@@ -110,35 +110,35 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 **Purpose**: A repeatable `npm run build:portable` that assembles the standardized `alice/` layout, bundles a pinned Node runtime + ABI-matched `better-sqlite3`, writes the version marker, zips, and emits a checksum. Reproducible from source.
 
-### T010 `[ ]` — Layout templates (committed)
+### T010 `[x]` — Layout templates (committed)
 - **Target**: `config/settings.default.json` (new), `scripts/portable/Start-Alice.cmd` (new template)
 - **Expected behavior**: `settings.default.json` = `{ "port": 3001, "openBrowser": true }`. `Start-Alice.cmd` = a launcher that, from the extracted package root (`%~dp0`), **owns runtime-launch error handling (FR-021)**: (1) if `"%~dp0runtime\node.exe"` does not exist → print a clear error ("bundled runtime missing — the package may be incomplete") and `pause` (do not vanish); (2) run `"%~dp0runtime\node.exe" "%~dp0app\server\portable.js"`; (3) on a non-zero `errorlevel` (runtime failed to execute, or the bootstrap exited with an error) → print a meaningful error and `pause`. The window title indicates "close this window to stop Alice" (US3). The build copies these into the package (`config/settings.json`, root `Start-Alice.cmd`).
 - **Constraints**: Templates are reviewable in source control. The `.cmd` must work regardless of extraction path (quoted `%~dp0`-relative paths; no hard-coded absolute path). The runtime existence/executability check lives here because if `node.exe` cannot run, `portable.js` never executes and cannot report it (the contracts/api §4 owner for the "runtime cannot execute" case is the launcher).
 - **Validation/test**: exercised by T014 dry run + Phase 06.
 - **Out of scope**: the build orchestration (T011).
 
-### T011 `[ ]` — Portable build script
+### T011 `[x]` — Portable build script
 - **Target**: `scripts/build-portable.mjs` (new)
 - **Expected behavior**: (1) run `vite build` → `dist/`; (2) stage `alice/`: `app/` = `server/`, `src/`, `shared/` (if present), `dist/`, prod `node_modules/`, `package.json`, plus a root `VERSION` (from `package.json` version) and `app/package.json`; `runtime/` = a **pinned** `node-win-x64` (version constant) downloaded via Node built-in `fetch`/`https` and verified against the official `SHASUMS256`; empty `data/` + `logs/`; `config/settings.json` from the template; root `Start-Alice.cmd`; (3) ensure the staged `better-sqlite3` native `.node` matches the pinned Node ABI (prefer the matching prebuilt; rebuild against the pinned runtime if absent) and run a quick DB-open smoke check; (4) zip via Windows `Compress-Archive` → `alice-v<version>-win-x64.zip`; (5) write `alice-v<version>-win-x64.zip.sha256` (SHA-256 via `node:crypto`). Exclude `.env`, Supabase creds, AI keys, and dev-only files from `app/`.
 - **Constraints**: **No new dependency** — Node built-ins + `Compress-Archive`. Deterministic enough to reproduce an equivalent layout/ZIP from a clean checkout. Pin the Node version as a single constant (Node 24 LTS line per [research.md R-2](research.md)). Fail loudly if the Node download checksum mismatches or the DB smoke fails.
 - **Validation/test**: T014 (dry run).
 - **Out of scope**: CI (Phase 04); self-update (041).
 
-### T012 `[ ]` — Add `build:portable` npm script
+### T012 `[x]` — Add `build:portable` npm script
 - **Target**: [package.json](../../package.json) (`scripts`)
 - **Expected behavior**: Add `"build:portable": "node scripts/build-portable.mjs"`.
 - **Constraints**: Do not alter existing scripts.
 - **Validation/test**: `npm run build:portable` resolves (T014).
 - **Out of scope**: version bump (Release Prep).
 
-### T013 `[ ]` [P] — Exclude build output from VCS
+### T013 `[x]` [P] — Exclude build output from VCS
 - **Target**: [.gitignore](../../.gitignore)
 - **Expected behavior**: Ignore the portable build output dir and artifacts (`alice/` staging, `*.zip`, `*.zip.sha256`) so generated packages are not committed.
 - **Constraints**: Do not ignore the committed templates (`config/settings.default.json`, `scripts/portable/Start-Alice.cmd`) or `scripts/build-portable.mjs`.
 - **Validation/test**: `git status` clean after a build (checked in T014).
 - **Out of scope**: other ignore rules.
 
-### T014 `[ ]` — Build dry-run verification (manual)
+### T014 `[x]` — Build dry-run verification (manual)
 - **Target**: build output (no source change)
 - **Expected behavior**: From a clean checkout run `npm ci` then `npm run build:portable`; verify per [quickstart.md §A](quickstart.md): ZIP extracts to `alice/` with all five dirs + launcher + `VERSION`; `app/` excludes `.env`/secrets; `runtime\node.exe -v` prints the pinned version; checksum matches the ZIP; launching the staged `alice/` opens `data/alice.db` without a native-module error; `git status` shows no stray committed artifacts.
 - **Constraints**: Run on Windows. This is verification, not an automated test (downloads Node + runs Vite).

@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { createRequireAuth } from './auth/middleware.js';
@@ -22,6 +23,8 @@ export function createApp({
   config: appConfig,
   requireAuth: explicitRequireAuth,
   seedHostedUserIfNeeded,
+  serveStatic = false,
+  distDir = path.resolve('dist'),
 } = {}) {
   if (!repositories) {
     throw new Error('createApp: repositories is required');
@@ -78,6 +81,13 @@ export function createApp({
   // Account deletion. Intentionally NO seedHostedUserIfNeeded — the delete
   // path must never re-seed (research.md R-3 / specs/030).
   app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
+
+  if (serveStatic) {
+    app.use(express.static(distDir));
+    app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  }
 
   app.use((err, _req, res, _next) => {
     if (err?.status === 400 && err?.type === 'entity.parse.failed') {
