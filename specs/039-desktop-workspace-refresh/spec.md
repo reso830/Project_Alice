@@ -25,7 +25,7 @@ On desktop, the Tracker opens every application's details in a centered modal th
 
 This wastes the large screen real estate desktop users have and adds friction to the core job of managing applications. A persistent **master-detail workspace** — the application list beside a docked detail pane, modelled on a mail client's reading pane — lets users browse, compare, review compatibility, and edit without leaving the list. Tablet and mobile, where horizontal space is limited, keep the existing centered-modal and bottom-sheet workflows unchanged.
 
-This is a user-experience and workflow refresh only. It introduces no changes to compatibility scoring, timeline behavior, application creation, the data model, or the backend.
+This is a user-experience and workflow refresh only. It introduces no changes to compatibility scoring, timeline behavior, the application creation choices, the data model, or the backend. On desktop, Create mode now renders in the docked pane after the existing Add-application gate.
 
 ---
 
@@ -45,7 +45,7 @@ This is a user-experience and workflow refresh only. It introduces no changes to
 
 - No changes to the **compatibility scoring algorithm or engine** (036), the compatibility analysis/notes lifecycle (037), or how scores are computed or displayed on cards.
 - No changes to **timeline** functionality or its data (025).
-- No changes to the **application creation** flow — the Add-application gate, Smart Entry, Manual Entry, and job-posting parsing (013/035) remain exactly as today, including remaining a centered overlay on desktop.
+- No changes to the **application creation choices** — the Add-application gate, Smart Entry, Manual Entry, and job-posting parsing (013/035) remain exactly as today. Only the desktop Create-mode surface changes: after the gate, Create mode renders in the docked pane at ≥1100px.
 - No changes to the **application data model**, database schema, or any backend route (no new/changed columns, no migrations).
 - No new **AI capabilities** and no changes to AI provider configuration (038).
 - No changes to **Dashboard** or **Calendar** (026) functionality.
@@ -197,7 +197,7 @@ The Application Details body is organized into five labeled, collapsible panels 
 ### Edge Cases
 
 - **Archived card on desktop**: clicking a card whose `archived` flag is true loads the existing read-only Archived mode of the Application Details component in the docked pane (per `application_overlay.md` §12 — archived mode shares the same frame and renders in the pane variant). No editing footer; Unarchive/Close actions only.
-- **Create on desktop**: starting a new application still opens the Add-application gate and the Create-mode overlay as a centered modal — Create does **not** render in the docked pane. The empty pane is unaffected by the create flow.
+- **Create on desktop**: starting a new application still opens the Add-application gate first. After the user chooses Manual Entry or completes Smart Entry / job-posting parsing, Create mode renders in the docked pane at ≥1100px; closing or discarding Create mode restores the empty-pane placeholder.
 - **Selected application archived or deleted from the pane**: if the user archives the currently loaded application from within the pane, the pane returns to the empty state and the card leaves the Active list (existing archive behavior, applied to the pane variant).
 - **Viewport crosses 1100px while an application is open**: shrinking below 1100px with an application selected falls back to the modal/sheet workflow for that application; growing to ≥ 1100px restores the docked pane. (Selection is preserved across the transition where feasible.)
 - **No applications at all / filter returns nothing**: the list column shows the existing empty/no-results state and the detail pane shows the "Nothing open yet" empty state.
@@ -250,9 +250,9 @@ The Application Details body is organized into five labeled, collapsible panels 
 - **FR-017**: Compatibility scores MUST remain visible on application cards, and detailed compatibility information MUST remain available within the Application Details Compatibility panel; compatibility analysis MUST appear only within the Compatibility panel. No compatibility scoring behavior MUST change.
 - **FR-018**: Timeline functionality MUST remain unchanged and MUST be available within the Application Details Timeline panel in the pane variant.
 
-**Creation (unchanged)**
+**Creation**
 
-- **FR-019**: The application creation workflow (Add-application gate → Smart Entry / Manual Entry / job-posting parsing → Create mode) MUST remain unchanged and MUST continue to open as a centered overlay on desktop, not in the docked pane.
+- **FR-019**: The application creation workflow MUST continue to start with the Add-application gate (Smart Entry / Manual Entry / job-posting parsing). At ≥1100px, the resulting Create mode MUST render in the docked pane; below 1100px it MUST continue to use the centered modal / bottom-sheet surfaces.
 
 **Regression protection**
 
@@ -319,6 +319,6 @@ This feature introduces no new persisted entities and changes no existing applic
 - The normative panel order is **Overview → Skills → Compatibility → Timeline → Notes & Links** (clarified 2026-06-20). Where `application_overlay.md` §15.4 currently shows Compatibility before Skills, that doc is to be corrected to match this spec during Release Prep; this spec is authoritative for ordering.
 - `application_overlay.md` §15 (Panelized body redesign) is the **normative visual/structural build target** for the panelized body (panel shells, collapse toggle, one-line previews, `ClampText`, default-open Overview-only), **except** for the panel order, which follows the clarified Skills-before-Compatibility order above. The panelization replaces the current flat `.modal-field` grid in `Modal.js` and is shared by all render variants.
 - Clicking an archived card on desktop loads the existing read-only Archived mode in the pane variant (no editing footer), consistent with `application_overlay.md` §12.
-- Create mode remains a centered overlay on every viewport (FR-019); the docked pane is for viewing/editing existing applications only.
+- Create mode uses the same responsive surface as application details: docked pane at ≥1100px after the Add-application gate, centered modal / bottom sheet below 1100px (FR-019).
 - The ~60/40 list-to-pane split and the ≥ 1100px activation threshold follow the design docs; exact pixel values and styling are an implementation/design concern, not a spec requirement.
 - Application data is private and local-first; this feature introduces no external service, analytics, or tracking.

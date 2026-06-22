@@ -235,7 +235,7 @@ No changes shall be made to compatibility scoring behavior.
 
 ### Application Creation
 
-The existing application creation workflow shall remain unchanged.
+The application creation entry workflow shall remain unchanged.
 
 Users shall continue to create applications through:
 
@@ -243,7 +243,9 @@ Users shall continue to create applications through:
 * Manual Entry
 * Job Posting Parsing
 
-Application creation shall continue to utilize the existing Create Mode workflow.
+Application creation shall continue to utilize the existing Create Mode workflow after the Add-application gate.
+
+On desktop viewports where the master-detail workspace is active, Create Mode shall render in the docked detail pane after the user chooses Manual Entry or completes Smart Entry / Job Posting Parsing. Tablet and mobile shall continue to use the existing centered modal and bottom-sheet surfaces.
 
 ---
 

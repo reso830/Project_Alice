@@ -204,7 +204,7 @@ Modal.close() (pane) → onClosed() → Tracker shows .empty-pane, _selectedId s
 ### Explicitly **out of scope**
 - Compatibility scoring/engine (036), compatibility analysis/notes lifecycle (037) — reused unchanged
 - Timeline data/behavior (025) — reused unchanged
-- Application creation flow (013/035) — Add-application gate + Create mode remain a centered overlay
+- Application creation flow (013/035) — Add-application gate remains first; Create mode renders in the docked pane at ≥1100px and keeps existing modal / bottom-sheet surfaces below desktop
 - Any backend route, DB schema/column, migration, or `createRepositories` change
 - The denser one-line `compact` card row (deferred to a future Settings toggle)
 - Persisting selection or panel-open state across reloads

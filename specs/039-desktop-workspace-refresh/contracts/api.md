@@ -12,7 +12,7 @@ The UI continues to consume the **existing**, unchanged client API surface (`src
 | `api.getById(id)` | `Tracker.js` → pane/modal open | Loads the full application for the detail surface (pane or modal). Unchanged. |
 | `api.getProfile()` | `Tracker.js` | Already fetched at page init; passed into the detail surface for skill proficiency + compatibility. Unchanged. |
 | `api.update(id, payload, opts)` | `Modal.js` (save, favorite, status) | Persists edits from either variant. Unchanged. |
-| `api.create(payload)` | `Modal.js` (Create mode) | Creation flow unchanged (still a centered overlay). |
+| `api.create(payload)` | `Modal.js` (Create mode) | Creation still starts from the Add-application gate; at ≥1100px Create mode renders in the docked pane, below 1100px it keeps the modal / bottom-sheet surfaces. |
 | `api.archive(id)` / `api.unarchive(id)` | `Card.js`, `Modal.js` | Archive/unarchive unchanged. |
 
 ## Internal component contracts (frontend, not HTTP)
