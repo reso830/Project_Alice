@@ -86,7 +86,7 @@ Alice is evolving through four major phases:
 - [x]  036-compatibility-engine  ·  shipped v1.6.0
 - [x]  037-compatibility-insights-panel  ·  shipped v1.7.0
 - [x]  038-ai-provider-abstraction  ·  shipped v1.7.1
-- [ ]  039-desktop-workspace-refresh
+- [x]  039-desktop-workspace-refresh  ·  shipped v1.8.0
 
 ---
 

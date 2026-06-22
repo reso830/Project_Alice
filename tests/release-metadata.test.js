@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.7.1 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.7.1');
-    expect(APP_VERSION).toBe('v1.7.1');
+  it('keeps the 1.8.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.8.0');
+    expect(APP_VERSION).toBe('v1.8.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.7.1');
-    expect(lock.packages['']?.version).toBe('1.7.1');
+    expect(lock.version).toBe('1.8.0');
+    expect(lock.packages['']?.version).toBe('1.8.0');
 
-    expect(read('README.md')).toContain('Current version: **1.7.1**');
+    expect(read('README.md')).toContain('Current version: **1.8.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.8.0] — 2026-06-21');
     expect(read('CHANGELOG.md')).toContain('## [1.7.1] — 2026-06-19');
     expect(read('CHANGELOG.md')).toContain('## [1.7.0] — 2026-06-18');
     expect(read('CHANGELOG.md')).toContain('## [1.6.0] — 2026-06-11');
@@ -28,7 +29,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.1...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.8.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0');
     expect(read('CHANGELOG.md')).toContain('[1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1');
     expect(read('CHANGELOG.md')).toContain('[1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0');
     expect(read('CHANGELOG.md')).toContain('[1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0');
@@ -270,6 +272,30 @@ describe('release metadata', () => {
       'server/routes/account.js',
       'server/repositories/supabase/adminClient.js',
       'src/components/DeleteAccountModal.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Desktop Workspace Refresh release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const repoMap = read('docs/REPO_MAP.md');
+
+    expect(readme).toContain('Desktop master-detail workspace');
+    expect(repoMap).toContain('src/components/OPanel.js');
+    expect(repoMap).toContain('src/components/EmptyPane.js');
+    expect(repoMap).toContain('src/utils/clampText.js');
+    expect(repoMap).toContain('renderCollapsedPreview');
+    expect(read('docs/feature_roadmap.md')).toContain('[x]  039-desktop-workspace-refresh  ·  shipped v1.8.0');
+
+    for (const path of [
+      'specs/039-desktop-workspace-refresh',
+      'docs/features/039-desktop-workspace-refresh.md',
+      'src/components/OPanel.js',
+      'src/components/EmptyPane.js',
+      'src/utils/clampText.js',
+      'tests/components/OPanel.test.js',
+      'tests/utils/clampText.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }
