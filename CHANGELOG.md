@@ -7,6 +7,47 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-06-21
+
+Desktop Workspace Refresh — on wide desktops (≥ 1100px) the Tracker becomes a
+master-detail workspace: the application list sits beside a docked detail pane,
+and clicking a card selects it and loads its details inline instead of opening a
+centered modal. The Application Details overlay body is restructured into five
+collapsible panels shared across every surface. Tablet (640–1099px) and mobile
+(< 640px) keep their existing centered-modal and bottom-sheet workflows.
+UI-only — no data model, schema, or backend changes. (039-desktop-workspace-refresh)
+
+### Added
+
+- **Desktop master-detail workspace** (≥ 1100px) — the Tracker splits into a
+  list column (~60%) and a sticky docked detail pane (~40%) with full-width
+  pagination below both. Clicking a card selects it (indigo glow +
+  `aria-selected`) and renders its details in the pane — no backdrop, no
+  page-scroll lock. An empty "Nothing open yet" pane shows when nothing is
+  selected (including on load). (039-desktop-workspace-refresh)
+- **Pane render variant of the Application Details overlay** — the existing
+  overlay now renders either as the centered `modal` (tablet/mobile) or a
+  borderless `pane` (desktop), sharing all editing logic. The pane is
+  non-modal: no focus trap, no document-level Esc capture. (039-desktop-workspace-refresh)
+- **Panelized overlay body** — the flat field grid is replaced by five
+  collapsible panels in fixed order: Overview → Skills → Compatibility →
+  Timeline → Notes & Links. Only Overview is expanded by default; the rest show
+  one-line previews. Long Responsibilities / General Notes clamp with a
+  Show more / Show less toggle. New `OPanel` shell and `ClampText` primitive.
+  (039-desktop-workspace-refresh)
+- **Selection guards** — switching to another application with unsaved edits
+  reuses the existing discard confirmation; the open application persists in the
+  pane across filter, sort, pagination, and Active/Archived changes until another
+  card is clicked. Resizing across 1100px hands off cleanly between the modal and
+  the pane. (039-desktop-workspace-refresh)
+
+### Changed
+
+- The Application Details body is now a panel stack in **all** render variants
+  (desktop pane, tablet modal, mobile sheet); archived applications render the
+  same five panels read-only with no footer. No editing behavior or validation
+  changed. (039-desktop-workspace-refresh)
+
 ## [1.7.1] — 2026-06-19
 
 ### Changed
@@ -1097,7 +1138,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/reso830/Project_Alice/compare/v1.5.0...v1.6.0

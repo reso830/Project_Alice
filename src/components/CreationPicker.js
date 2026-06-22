@@ -30,8 +30,9 @@ function _modalCallbacks(callbacks = {}) {
     onArchiveSuccess,
     onUnarchiveSuccess,
     profile,
+    createOptions,
   } = callbacks;
-  return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess, onUnarchiveSuccess, profile };
+  return { onApplicationCreate, onApplicationUpdate, onArchiveSuccess, onUnarchiveSuccess, profile, ...(createOptions ?? {}) };
 }
 
 function _isParserVisible() {

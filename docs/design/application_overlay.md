@@ -35,6 +35,10 @@ Both modes share identical layout, validation, dirty-state tracking, and discard
 
 The header background uses the **status accent color** for the active status (same palette as the card left-border / status badge in the Tracker spec). Foreground auto-picks light/dark for contrast.
 
+> **Status pill border (2026-06):** since the header background and the status badge are the same accent color, the header badge would blend in. The badge inside `.modal-pills` carries a **1px defining border** — `rgba(33,37,41,.32)` on light headers, `rgba(255,255,255,.45)` on dark headers. Header pill only; card/timeline badges stay unbordered.
+
+> **Render variants:** this overlay renders in two forms from one component — the centered **`modal`** variant (dimmed backdrop, body-scroll lock; used on tablet ≤1099px and mobile bottom-sheet) and a borderless **`pane`** variant that fills the desktop docked detail pane at ≥1100px (no backdrop, no scroll-lock; its body scrolls internally). See [`tracker.md`](tracker.md) § *Desktop Detail Pane*. Editing behavior is identical across both.
+
 ### Row 1 — meta + actions
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -54,36 +58,60 @@ The header background uses the **status accent color** for the active status (sa
 
 ---
 
-## 4 · Body — field order & layout
+## 4 · Body — collapsible panels
 
-18px padding (desktop) / 14px padding (mobile). 14px row gap, 24px column gap. Two-column grid: `grid-template-columns: 1fr 1fr`.
+> **⚠ Structural rewrite (2026-06).** The body is **no longer a flat two-column field grid.** It is a vertical stack of **five collapsible panels** ("the panelled overlay"), live in both the centered modal and the docked detail pane (Tracker `pane` variant). The old field-grid layout is fully retired. Implementation: `Modal` → `.pbody` → five `OPanel` components.
 
-**Order matches the spec — DO NOT reorder without updating this doc.** (Reordered in the 2026-06 redesign.)
+### 4.1 · Body container
 
-| # | Col 1                   | Col 2                   | Notes                                                              |
-| - | ----------------------- | ----------------------- | ------------------------------------------------------------------ |
-| 1 | Company                 | Recruiter               | Both single-line text                                              |
-| 2 | Location                | Salary                  | Salary parsed as PHP (₱); accepts `50k`, `50,000`, `50000-80000`   |
-| 3 | Shift                   | Work Setup              | Both dropdowns                                                     |
-| 4 | Min Years (half)        |                         | Numeric — minimum years of experience the role asks for; single-line. Sits directly above Responsibilities. |
-| 5 | Responsibilities (full) |                         | `grid-column: 1 / -1`; multiline textarea                          |
-| 6 | Required Skills         | Preferred Skills        | **2-column skills grid + legend, full-width** (`grid-column: 1 / -1`; inner grid `1fr 1fr`, 13px row / 24px col gap). Chips are **proficiency-coded** against the user profile — see §14.5. Stacks to one column < 640px. |
-| 7 | Compatibility (full)    |                         | **Collapsible module** — full normative spec in §14. Replaces the old bar + notes cells. |
-| 8 | Timeline (full)         |                         | Collapsible. **Detailed spec out of scope this round** (separate doc update). |
-| 9 | URL (full)              |                         | Single-line, validates `https://`                                  |
-| 10 | General Notes (full)   |                         | Multiline; longest field, anchors bottom of body                   |
+- Root: `.pbody` — `display:flex; flex-direction:column; gap:13px; padding:16px; overflow-y:auto; flex:1; background:#FAF8F4` (a hair warmer than `--surface` so the white panels lift off it).
+- Mobile (< 640px): padding `12px 12px 18px`; every panel's inner 2-column grid collapses to one column.
+- Panel **order is normative — DO NOT reorder without updating this doc:** **Overview → Skills → Compatibility → Timeline → Notes & Links.** (Skills now sits **before** Compatibility — reversed from the retired grid spec.)
 
-> **✓ Removed (confirmed 2026-06):** the old **"Last Updated"** half-width read-only field is gone — it is not present in the current code, and the Timeline already surfaces the most-recent status-change date. A new **"Min Years"** field (row 4) takes the slot above Responsibilities.
+### 4.2 · The `OPanel` component (one collapsible panel)
 
-### Dropdown values
-- **Shift:** Day · Mid · Night · Flexible
-- **Work Setup:** Remote · Hybrid · On-site · Field
+Every panel is rendered by the shared `OPanel({ icon, title, tone, open, onToggle, preview, children })`. Anatomy:
+
+- `<section class="panel">` — white card: `border:1px solid rgba(26,26,46,.05); border-radius:--r-md (10px); box-shadow:0 1px 2px rgba(26,26,46,.05), 0 8px 20px rgba(26,26,46,.07); padding:14px 16px`. The Compatibility panel passes `tone="ai"` → `.panel.panel-ai` (purple-glow AI card, §14.3).
+- `.panel-head.clickable` — the whole header row is the toggle (`role="button"`, `tabIndex=0`, `aria-expanded`; click and Enter/Space fire `onToggle`):
+  - Left `.panel-head-l`: a 15px line **icon** (`PanelIcon`, `currentColor` `--t3`, 1.5 stroke) + **title** `.panel-title` (Sora 11px / 600, uppercase, letter-spacing .6px, color `--t2`).
+  - Right `.panel-head-r`: the **Expand/Collapse toggle** `.sec-toggle` — a `.sec-chev` "›" that rotates 90° when open, then **"Expand"** (collapsed) / **"Collapse"** (open). Identical control to Timeline's (§14.9).
+- `.panel-body` — renders **`children` when `open`**, otherwise the **`preview`** node (a compact one-line summary).
+
+**Default open/closed state** (`pOpen` initial value): `{ overview:true, compat:false, skills:false, timeline:<archived>, notes:false }`. On open **only Overview is expanded**; Timeline is *also* expanded **when the row is archived**. Toggling is local UI state — **not** part of the draft; it never marks the modal dirty.
+
+### 4.3 · Panel inventory
+
+| # | Panel | `icon` | Expanded content | Collapsed `preview` |
+| - | ----- | ------ | ---------------- | ------------------- |
+| 1 | **Overview** | `overview` | Inner `.panel-grid` (2-col): **Company, Recruiter, Location, Salary, Shift, Work Setup, Min Years** — then **Responsibilities** full-width below the grid. | `{Company} · {Location} · {Salary}` (location/salary only when present). |
+| 2 | **Skills** | `skills` | `.skills-grid` (2-col): **Required Skills** + **Preferred Skills**, each a `SkillChips` editor (§4.5). | `{n} required · {m} preferred` (live counts). |
+| 3 | **Compatibility** | `compat` | `CompatPanelBody` — score ring + verdict + summary + analysis + footer. Full spec §14. Panel uses `tone="ai"`. | Mini ring (30px) + verdict text in tier ink + `{summary}` when present. |
+| 4 | **Timeline** | `timeline` | `TimelineField` in **`bare`** mode (the panel header replaces the field's own header). Full spec: [`application_timeline.md`](application_timeline.md). | `TimelinePreviewLine` — latest entry: `{date} — {status badge} {text} (+N earlier)`, else "No entries yet". |
+| 5 | **Notes & Links** | `notes` | `.stacked-fields`: **Job Posting URL** (single-line, validates `https://`) + **General Notes** (multiline). | First non-empty of `{General Notes}` / `{URL}`, else "Add notes & links…". |
+
+- **Field widgets:** Company/Recruiter/Location/Min Years = single-line `EditableText`; Salary = `EditableSalary` (PHP ₱; accepts `50k`, `50,000`, `50000-80000`); Shift/Work Setup = `EditableSelect`; Responsibilities/General Notes = multiline `EditableText` (`mono`); URL = single-line `EditableText` (`mono`).
+- **Dropdown values:** Shift = Day · Mid · Night · Flexible; Work Setup = Remote · Hybrid · On-site · Field.
+- **Min Years** (`minYears`, string, e.g. "5+ years") lives in the Overview grid. The retired "Last Updated" field stays removed — the Timeline surfaces the latest status-change date.
+
+### 4.4 · Inline editing inside panels
+
+Editing is identical to §5 — every field is click-to-edit, outside-click commits to draft, `Esc` reverts, `Enter` / `Cmd-Ctrl+Enter` commit. **The panel chrome does not interfere:** clicking a field inside an open panel edits it; only the header row toggles collapse. This holds in both render variants — the docked **`pane`** variant is fully editable, exactly like the centered modal.
+
+> **Exception — Compatibility summary & analysis are read-only.** The `compatSummary` headline and `compatNotes` analysis are **not** click-to-edit; they are AI output and change only via Regenerate/Refresh (decided 2026-06, §14.0 / §14.10). Every other field across the panels is click-to-edit.
+
+### 4.5 · `SkillChips` editor (Required / Preferred)
+
+- Container `.cx-chips.skill-edit-row`: wraps; existing skills render as `.chip` with a `.chip-x` "×" remove button; a trailing `.skill-add-pill` ("**+ Add**") reveals an inline `.skill-add-input`.
+- Commit a new skill on **Enter** or **comma**; **Esc** cancels; duplicates (case-insensitive) ignored. Removing a chip commits immediately.
+- **As-built:** chips are **neutral** (no proficiency color) — profile-matching data is not yet wired.
+- **Target:** chips are **proficiency-coded** against the user profile (Proficient / Learning / Missing) with a legend — full normative spec in §14.5. Build the neutral chips now; proficiency coding is the planned end state.
 
 ### Provenance (smart-filled Create)
-When Create mode is reached via a parse, filled fields carry provenance markers (fill banner, per-field **✦ AI** / **⚙ Auto** tag, one-time flash, clear-on-edit). Full rules in §13.6.
+When Create mode is reached via a parse, filled fields carry provenance markers (fill banner, per-field **✦ AI** / **⚙ Auto** tag, one-time flash, clear-on-edit). Full rules in §13.6. Markers attach to the field inside whichever panel holds it; panels containing smart-filled fields should open so the markers are visible.
 
 ### Mobile collapse
-At < 640px the body grid collapses to single column. All 2-up rows stack; field order is preserved top-to-bottom.
+At < 640px each panel's inner grid collapses to a single column; panel order and the collapsible behavior are unchanged.
 
 ---
 
@@ -372,7 +400,25 @@ type AddFlowState = {
 
 ## 14 · Compatibility module (2026-06 redesign)
 
-Full-width, collapsible module at body order #7 (between Skills and Timeline). Replaces the retired half-width bar + "Compatibility Notes" textarea. **All values below are normative — implement to the number.** Type: **Sora** for UI/labels/buttons, **DM Mono** for numbers/meta/chips (same two families as the rest of the Tracker).
+The Compatibility **collapsible panel** — panel **#3** of the panelled body (§4.3), between Skills and Timeline. Rendered by `CompatPanelBody` inside an `OPanel` with `tone="ai"`. **All values below are normative — implement to the number.** Type: **Sora** for UI/labels/buttons, **DM Mono** for numbers/meta/chips.
+
+### 14.0 · As-built vs target (read first)
+
+This section specifies the **target** Compatibility module — a deterministic score plus an LLM-written analysis with a full freshness/state machine. The **live `CompatPanelBody`** implements the spine of that design; several states are **not yet wired**. Build toward the target; treat the table below as the current ground truth.
+
+| Aspect | As-built (live `CompatPanelBody`) | Target (this §14) |
+| --- | --- | --- |
+| Score ring + verdict pill | ✅ Live, deterministic, ramp §14.4 | Same |
+| Deterministic score / LLM notes split | ✅ Conceptually (score is computed; notes/headline are LLM output) | §14.1 |
+| Headline / summary (`compatSummary`) | ⚠ Inline-editable today (interim) | **Read-only** LLM output — DECIDED (§14.10) |
+| Analysis prose (`compatNotes`) | ⚠ Inline-editable today (interim) + clamp + Show more/less | **Read-only** LLM output; Regenerate/Refresh only — DECIDED (§14.10) |
+| Footer meta | ✅ `✦ Generated {compatGeneratedOn}` + `↻ Regenerate` button | Same, plus freshness-aware label (§14.6) |
+| Regenerate action | ⚠ **Stub** — toasts "AI scoring isn't connected in this prototype." | Calls the LLM (§14.6) |
+| Freshness states (fresh/stale/none/generating/error) | ❌ Not implemented (always renders the "fresh-like" body) | §14.6 |
+| AI-off / empty / unavailable states | ❌ Not implemented | §14.6a, §14.7 |
+| Skill proficiency coding | ❌ Neutral chips (§4.5) | §14.5 |
+
+> **Editability — DECIDED (2026-06): read-only.** The AI summary (`compatSummary`) and analysis (`compatNotes`) are **read-only output**. Users do **not** hand-edit them; the only way to change them is **Regenerate / Refresh** (§14.10). No manual-edit override. The live prototype still renders them as inline-editable purely as an interim stand-in (AI generation isn't wired yet); when the LLM is connected, **remove the inline editors** (the `editingSummary` / `editingNotes` click-to-edit affordances in `CompatPanelBody`) and serve both fields read-only.
 
 ### 14.1 · Core concept — two things, two lifecycles
 
@@ -407,7 +453,7 @@ type CompatNotes = {
 };
 
 // ── derived UI state ──
-type CompatAvailability = 'scored' | 'no-profile';        // score never errors (D5)
+type CompatAvailability = 'scored' | 'no-profile' | 'unsaved';  // 'unsaved' = Create mode, no id yet; score never errors (D5)
 type NotesState = 'fresh' | 'stale' | 'none' | 'generating' | 'error';  // 'error' = LLM call failed
 // none      = notes === null
 // stale     = notes != null && (profile.updatedAt > notes.generatedAt || application.updatedAt > notes.generatedAt)
@@ -416,24 +462,35 @@ type NotesState = 'fresh' | 'stale' | 'none' | 'generating' | 'error';  // 'erro
 // error     = the last LLM generate/refresh call failed (retryable)
 ```
 
+> **As-built field shape (live `draft`).** The prototype stores Compatibility as **flat row fields**, not the nested `Compatibility` object above. Map target → as-built when wiring:
+>
+> | Target | As-built field | Type | Notes |
+> | --- | --- | --- | --- |
+> | `score` | `compat` | `number` 0–100 | Deterministic; drives ring + verdict + card CompatBar |
+> | `notes.summary` | `compatSummary` | `string` | One-line headline; **inline-editable** in the live build |
+> | `notes.body` | `compatNotes` | `string` | Analysis prose; **inline-editable**; clamp + Show more/less |
+> | `notes.generatedAt` | `compatGeneratedOn` | `string` | Display string (e.g. "Jun 9") shown in the footer meta; not yet an ISO timestamp, so staleness can't be derived yet |
+> | `required`/`preferred` (`SkillMatch[]`) | `skills` / `preferredSkills` | `string[]` | Neutral chips; no `level` resolved yet (§4.5) |
+>
+> Reaching the target requires promoting `compatGeneratedOn` to an ISO timestamp (for staleness) and resolving skills into `SkillMatch` against the profile.
+
 ### 14.3 · Container & section frame
 
-- Wrapper is a full-width body field: `.mfield.full` (`grid-column: 1 / -1`).
-- **Section header row** (`.cx-header`, `display:flex; justify-content:space-between; align-items:center; margin-bottom:2px`):
-  - Left: label **"Compatibility"** — Sora 11px / 500, color `--t3` `#9CA3AF` (matches every other `.mfield-label`).
-  - Right (`.sec-head-r`, gap 8px): the **✦ AI** provenance tag (§14.10) then the **Expand/Collapse** toggle (§14.9).
-- **Expanded panel** (`.cx-panel`): `display:flex; flex-direction:column; gap:11px; padding:14px; border-radius:10px (--r-md);` background `rgba(79,70,229,0.045)`, border `1px solid rgba(79,70,229,0.14)`. This soft indigo box is the **AI-content affordance** — only the Compatibility module gets it; ordinary fields stay borderless. Inner fade var `--box-bg:#F8F8FE`.
-- Internal vertical order inside the panel: **(1)** score row → **(2)** divider `.cx-rule` (`border-top:1px solid rgba(79,70,229,0.14); margin:1px 0`) → **(3)** notes region.
+- **The Compatibility module is panel #3 of the panelled body** (§4.2), not a free-standing `.mfield.full`. Its container is the standard `OPanel` `<section class="panel panel-ai">`.
+- **`.panel-ai` is the AI affordance** — same white card as the other panels but with a soft purple glow: `border-color:#DCD4F3; box-shadow:0 0 0 1px rgba(79,70,229,0.08), 0 2px 10px rgba(79,70,229,0.12), 0 14px 36px rgba(79,70,229,0.18)`. Only the Compatibility panel gets it; ordinary panels stay neutral.
+- **Header** is the shared `OPanel` header (§4.2): `compat` icon + title **"Compatibility"** on the left, the **Expand/Collapse** `.sec-toggle` on the right. (No ✦ AI chip in the header — the score is deterministic; the ✦ AI tag appears only beside the "Analysis" sub-label, §14.10.)
+- **Expanded body** is `CompatPanelBody` wrapped in `.cx-flow` (`display:flex; flex-direction:column; gap:11px`). Internal vertical order: **(1)** `.cx-score-row` (ring + meta) → **(2)** divider `.cx-rule` (`border-top:1px solid rgba(79,70,229,0.12); margin:1px 0`) → **(3)** `ANALYSIS` sub-head + notes → **(4)** `.cx-foot` footer (Show more · Generated meta · Regenerate).
+- **Collapsed preview** (`.op-preview`): 30px mini score ring + verdict text in tier ink + the `compatSummary` one-liner when present.
 
 ### 14.4 · Score block (always live)
 
 **Layout** `.cx-score-row` — `display:flex; gap:14px; align-items:center`. Left = ring; right = `.cx-score-meta` (`flex-direction:column; gap:6px`) holding the verdict pill then the headline.
 
 **Score ring** (SVG donut, number only — no "%"):
-- Diameter: **64px desktop**, **58px mobile** (`.compact`). Collapsed mini-ring: **30px** (§14.8).
+- Diameter (as-built): **60px**, fixed across breakpoints (`ScoreRing size={60}`). Collapsed mini-ring: **30px / stroke 4 / number 11px** (§14.8). *(Target: 64px desktop / 58px mobile; the live component currently uses one 60px ring.)*
 - Stroke width: **8px** (mini-ring 4px). Two stacked circles; arc starts at **12 o’clock** (`rotate(-90)`), sweeps **clockwise**, `stroke-linecap:round`.
 - **Track circle** color: `#EDE8DF`. **Progress arc** color: the tier color from the ramp below.
-- **Center number**: DM Mono, weight 500, color `--t1` `#1A1A2E`, font-size `round(diameter × 0.32)` (64→20px, 58→19px); mini-ring forced to 11px. Integer score, no suffix.
+- **Center number**: DM Mono, weight 500, color `--t1` `#1A1A2E`, font-size `round(diameter × 0.32)` (60→19px; mini-ring forced to 11px). Integer score, no suffix.
 - **The score never errors (D5).** With sparse or missing application data the deterministic scorer defaults to **0 / a very low score** (rendered as a Low-tier red ring) rather than failing — so the score block always renders.
 
 **Compatibility ramp** (normative — drives ring arc, verdict-pill dot, and verdict label):
@@ -484,16 +541,39 @@ The notes region sits below the divider and swaps by `NotesState`. The score blo
 
 > **Refresh policy (decision D1, §11):** stale never auto-regenerates — the user clicks Refresh. The score stays trustworthy regardless; only the prose waits.
 
+### 14.6a · AI provider OFF (notes locked, score intact) — added 2026-06-18
+
+> **Gap resolution.** Closes the undefined case where `hasAiConfigured()` is false (AI provider disabled, no key, or the `compat` feature toggled off) **but the score and/or notes already exist**. Today `renderNoneState` swaps in the "Enable AI in Settings →" link, but `renderFreshLikeState` does **not** — so Regenerate/Refresh buttons render yet silently no-op (gated by `hasAiConfigured()` in `generate()`). This section defines the locked presentation. Reference drawing: [`mockups/Compatibility States.html`](../mockups/Compatibility%20States.html) §D.
+
+**Governing principle:** the **score is deterministic** (§14.1, `computeCompatibility`) and is **never** affected by the AI setting — it always renders normally when a profile exists. AI-off **only** locks *written-analysis generation*. Every AI action (Generate / Regenerate / Refresh / Try again) is replaced by the **`.cx-enable-ai` link** — Sora 11.5px / 600, `color:--indigo`, text **"Enable AI →"** (shortened from the §13.1 "Enable AI in Settings →" to fit the footer/inline rows without crowding the meta line), click → `actions.openSettings()`.
+
+Behavior per `NotesState` when `!hasAiConfigured()`:
+
+| `NotesState` | Notes body | Replaces the AI action with… | Other changes |
+| --- | --- | --- | --- |
+| `fresh` | shown, **read-only**, slightly muted (`.cx-notes.muted`, `opacity:.62`) | footer **Regenerate** → `.cx-enable-ai` link | `✦ Generated {date}` meta stays |
+| `stale` | shown, dimmed (`.cx-notes.stale`, `opacity:.5`) | the amber **stale bar is replaced** by a neutral **`.cx-aioff-bar`** | footer **Refresh** action removed (meta only) |
+| `none` | — | inline prompt **Generate** → `.cx-enable-ai` link *(already shipped)* | dashed `.cx-gen-inline` retained |
+| `generating` | n/a — can't start while AI is off; never reached | — | — |
+| `error` | n/a — implies a prior attempt; once AI is off, fall back to `fresh`/`stale`/`none` rules | — | — |
+
+**`.cx-aioff-bar`** (neutral replacement for the amber stale bar): `display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:6px; background:#F6F6F8; border:1px solid var(--border)`. Lock glyph `.cx-aioff-ic` (15px inline SVG, `--t3`) · text `.cx-aioff-txt` (Sora 11.5px, `--t2`): *"These notes are out of date and can't be refreshed while AI is off. The score above is current."* · trailing `.cx-enable-ai` link. **Neutral, not amber** — amber implies a one-tap fix, but the action is two steps away (enable AI first), so it must not read as an urgent in-place action.
+
+**Collapsed preview is unchanged by the AI setting.** AI-off + `stale` collapses **identically to normal stale** (keeps the `● Update available` marker); AI-off + `fresh` shows the normal summary. The AI-off notice surfaces **only on expand** (the `.cx-aioff-bar` / locked footer above) — expanding is exactly how the user discovers they must enable AI to refresh, so the collapsed marker needs no special variant.
+
 ### 14.7 · Empty / unavailable states (no score)
 
-When `CompatAvailability === 'no-profile'` the whole module is **non-collapsible** (no Expand/Collapse toggle — nothing to expand) but keeps the section label and the **✦ AI** tag (dimmed to `opacity:.5` for `no-profile`). Body is a single `.cx-empty` block: `display:flex; align-items:center; gap:13px; padding:14px; border-radius:10px; border:1px dashed --border-2 (#D1CCB9); background:#FBFAF8`. Icon `.cx-empty-ic` = 34px circle (mobile 30px), bg `#fff`, border `1px solid --border`. (A `.warn` red/amber icon variant also exists for notes-level errors, §14.6.) Title `.cx-empty-title` Sora 13px / 600 `--t1`; sub `.cx-empty-sub` Sora 12px `--t3` line-height 1.5. Action `.cx-empty-act` Sora 12px / 600, padding 7px 13px, radius 6px.
+When `CompatAvailability === 'no-profile'` the whole module is **non-collapsible** (no Expand/Collapse toggle — nothing to expand) and keeps the section label only — the **✦ AI** header tag was **removed** (2026-06-18, see §15.4 note); the score is deterministic, not AI-written, so no panel-header AI chip is shown in any Compatibility state. Body is a single `.cx-empty` block: `display:flex; align-items:center; gap:13px; padding:14px; border-radius:10px; border:1px dashed --border-2 (#D1CCB9); background:#FBFAF8`. Icon `.cx-empty-ic` = 34px circle (mobile 30px), bg `#fff`, border `1px solid --border`, holding an 18px inline SVG (stroke `--t3`). For `no-profile` the glyph is a **person/profile outline** (head circle + shoulders) — it echoes the "add your profile" CTA rather than a plain ring that would read as an empty score donut. (A `.warn` red/amber icon variant also exists for notes-level errors, §14.6.) Title `.cx-empty-title` Sora 13px / 600 `--t1`; sub `.cx-empty-sub` Sora 12px `--t3` line-height 1.5. Action `.cx-empty-act` Sora 12px / 600, padding 7px 13px, radius 6px.
 
 | Availability | Box | Icon | Title | Sub-copy | Action (style) |
 | --- | --- | --- | --- | --- | --- |
-| `no-profile` | neutral dashed | `○` (`--t3`) | **Compatibility unavailable** | "Add your profile so Alice can score how well you match this role." | **Complete profile →** (secondary) |
+| `no-profile` | neutral dashed | profile glyph (person outline, `--t3`) | **Compatibility unavailable** | "Add your profile so Alice can score how well you match this role." | **Complete profile →** (secondary) |
+| `unsaved` | neutral dashed | **AI sparkle** (`assets/AI_sparkle.png`, ~19px, in an indigo-soft `.cx-empty-ic--ai` circle) | **Scored after you save** | "Create this application and Alice scores it against your profile." | **none** — the modal footer **Create** is the only action |
 | `not-generated`* | `.gen` solid indigo (`border rgba(79,70,229,0.18)`, `bg rgba(79,70,229,0.04)`) | `✦` (`--indigo`) | **Not scored yet** | "Run Alice to analyze this posting against your profile." | **✦ Generate** (primary) |
 
 Secondary action: border `1.5px solid --border`, bg `#fff`, color `--t2`; hover → indigo border/text + `--indigo-soft` bg. Primary action: bg `--indigo`, color `#fff`; hover `--indigo-hover`.
+
+> **`unsaved` (Create mode, added 2026-06-18).** When the modal is in Create mode and the draft has no `id` yet (`availability === 'unsaved'`, code: `renderUnsavedState`), the score can't be computed against a non-existent record, so the module is **non-collapsible** and shows the empty box with the **AI-sparkle glyph** and **no button** — the score appears automatically once the user hits the footer **Create**. Do **not** add a "Create →" affordance; it duplicates the footer action and misleads (the box isn't what saves). Matches `renderUnsavedState`, which appends `createSparkleIcon()` + copy only.
 
 > *`not-generated` is the empty-state equivalent of the inline `none` notes prompt. Because the score auto-computes (and never errors — D5), the score is normally present and the *notes* use the inline `none` prompt (§14.6); reserve this full-module `not-generated` state for the rare case where scoring itself has not yet run. A failed LLM notes call is **not** a module-empty state — it is the notes-level `error` state (§14.6).
 
@@ -511,11 +591,11 @@ Compatibility opens **collapsed** by default. Collapsed body `.cx-collapsed-cont
 
 ### 14.9 · Section toggle (shared with Timeline)
 
-Single right-aligned control `.sec-toggle` that morphs in place — **no** left-edge chevron. Sora 11px / 500, color `--t3`, padding 2px 7px, radius 4px; hover color `--indigo`, bg `--indigo-soft`. Leading chevron `.sec-chev` (DM Mono 13px) points right when collapsed, **rotates 90°** when open. Label: **"Expand"** (collapsed) / **"Collapse"** (open). Lives in the section header’s right cluster, after the ✦ AI tag. Timeline uses the identical control.
+Single right-aligned control `.sec-toggle` that morphs in place — **no** left-edge chevron. Sora 11px / 500, color `--t3`, padding 2px 7px, radius 4px; hover color `--indigo`, bg `--indigo-soft`. Leading chevron `.sec-chev` (DM Mono 13px) points right when collapsed, **rotates 90°** when open. Label: **"Expand"** (collapsed) / **"Collapse"** (open). Lives in the section header’s right cluster (which holds **only** this toggle — the ✦ AI header tag was removed 2026-06-18, see §15.4 Panel 3). Timeline uses the identical control.
 
 ### 14.10 · AI provenance, actions & copy
 
-- **✦ AI tag** `.ai-tag`: Sora 10px / 600, letter-spacing .2px, color `--indigo` `#4F46E5`, bg `--indigo-dim` `#EEF2FF`, padding 2px 8px, radius 999px. The sparkle marks **machine-written content**, never an action (consistent with §13.2). It appears in the section header (both states) and again at 9px beside the "Analysis" sub-label.
+- **✦ AI tag** `.ai-tag`: Sora 10px / 600, letter-spacing .2px, color `--indigo` `#4F46E5`, bg `--indigo-dim` `#EEF2FF`, padding 2px 8px, radius 999px. The sparkle marks **machine-written content**, never an action (consistent with §13.2). It appears **only** at 9px beside the "Analysis" sub-label (the score is deterministic, not AI-written). **It is no longer shown in the panel header** — that chip was removed 2026-06-18 in every Compatibility state (§14.7, §15.4 Panel 3).
 - **Actions are buttons, not the sparkle.** Regenerate / Refresh / Generate notes / Try again carry a `↻` or `✦` glyph on the button itself.
 - Meta line uses `✦ Generated {Mon D}` (e.g. `✦ Generated Jun 9`) in DM Mono 10px `--t4`.
 - The notes are **read-only AI output** — there is no inline text editor; the only way to change them is Regenerate/Refresh (consistent with the answered design question).
@@ -554,3 +634,149 @@ Indigo panel tints (`rgba(79,70,229,…)`) are derived from `--indigo`; keep the
 ### 14.14 · Class → purpose quick reference
 
 `.cx-header` section title row · `.sec-head-r` right cluster · `.sec-toggle`/`.sec-chev` expand control · `.cx-panel` expanded box · `.cx-score-row`/`.cx-score-meta` live score · `.ring-wrap`/`.ring-num` donut · `.verdict-pill`/`.vd` tier pill · `.cx-headline` LLM summary · `.cx-rule` divider · `.cx-notes-head`/`.cx-notes-h` Analysis label · `.cx-notes` prose (`.clamp`, `.stale`) · `.cx-foot`/`.cx-showmore`/`.cx-meta`/`.cx-regen` notes footer · `.cx-stale-bar`/`.cx-stale-txt`/`.cx-stale-btn` staleness · `.cx-gen-inline`/`.cx-gen-btn` generate prompt · `.cx-skel`/`.cx-skel-line` generating · `.cx-collapsed-content`/`.cx-verdict-text`/`.cx-summary`/`.cx-update-dot` collapsed bar · `.cx-empty`/`.cx-empty-ic`/`.cx-empty-act` unavailable · `.chip.lvl-high`/`.lvl-low`/`.miss` skill coding · `.skills-legend` legend.
+
+---
+
+## 15 · Panelized body redesign (2026-06-18)
+
+> **History-preserving revision.** This section is **normative and authoritative** for the modal **body** as built in `Application Overlay - Panels.html` / `overlay-panels.jsx`. Where it conflicts with earlier sections it **wins**; the superseded text is left in place as history. Specifically it **supersedes**:
+> - **§4 · Body — field order & layout** — the flat two-column field grid (`.modal-body`, `grid-template-columns:1fr 1fr`) is **replaced** by a single vertical column of **5 cards** (`.pbody` → `.panel`). The §4 field *table* still defines which fields exist, their input types, dropdown values, validation, and inline-edit behavior (§5) — only their **grouping and container** change.
+> - **§14.3 · Layout & containers (Compatibility)** — the compat module is no longer a bare `.mfield.full` with an inner indigo-wash `.cx-panel` box. It is now a **panel card** (`.panel.panel-ai`) whose header is a `.panel-head` and whose body renders the §14.4–14.6 score/notes content **directly** (the inner `.cx-panel` wash box is dropped). §14.4 (score ring + ramp), §14.5 (skill coding), §14.6 (notes lifecycle), §14.7 (empty states), §14.10 (✦ AI tag), §14.11 (copy budget) are **unchanged**.
+>
+> **The header, footer, modes (§1), frame width (§2), header rows (§3), inline-edit (§5), save/discard (§6–7), quick actions (§8), keyboard (§9), archived mode (§12), and Create/smart-fill (§13) are NOT changed by this revision.**
+
+### 15.1 · Body container
+
+The scrollable body is `.pbody` (replaces `.modal-body`):
+
+| Property | Desktop (`.pbody`) | Mobile (`.pbody.compact`) |
+| --- | --- | --- |
+| `display` | `flex` | `flex` |
+| `flex-direction` | `column` | `column` |
+| `gap` (between panels) | `13px` | `11px` |
+| `padding` | `16px` | `12px 12px 18px` |
+| `background` | `#FAF8F4` (warm off-white, one step warmer than `--surface`; makes the white cards read as raised) | same |
+| `overflow-y` | `auto` (real modal). *In the design-canvas demo only, `.modal{height:auto}` + `.pbody{overflow:visible}` let the card grow — production keeps the modal height-clamped per `application_timeline.md › Modal vertical sizing` and scrolls inside `.pbody`.* | same |
+
+### 15.2 · Panel card — the shared shell
+
+Every body section is a `<section class="panel panel--elevated">`. **Elevated is the chosen and only production card style** (the `--fill` and `--outline` variants explored on the canvas are **not** shipped — do not implement them).
+
+`.panel` (base): `display:flex; flex-direction:column; gap:11px; border-radius:var(--r-md)` (= **10px**); CSS var `--box-bg:#fff` (consumed by the notes fade-gradient in §14.6).
+
+`.panel--elevated`:
+- `background: var(--surface)` (`#FFFFFF`)
+- `border: 1px solid rgba(26,26,46,0.05)`
+- `box-shadow: 0 1px 2px rgba(26,26,46,0.05), 0 8px 20px rgba(26,26,46,0.07)`
+- `padding: 14px 16px`
+
+### 15.3 · Panel header — `.panel-head`
+
+`display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:18px`.
+
+- **Left cluster** `.panel-head-l` (`display:flex; align-items:center; gap:8px; min-width:0`):
+  - **Icon** `.panel-ic`: `15×15px`, `color:var(--t3)`. Inline `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">`. One per panel (§15.4).
+  - **Title** `.panel-title`: **Sora 11px / 600**, `color:var(--t2)`, `letter-spacing:0.6px`, `text-transform:uppercase`, `white-space:nowrap`. **Note:** this is heavier/uppercase and **supersedes** the old `.mfield-label`-style section labels (Sora 11px/500, `--t3`, sentence case) used in §14.3 and the Timeline doc's collapsed-label.
+- **Right cluster** `.panel-head-r` (`display:flex; align-items:center; gap:8px; flex-shrink:0`): an optional **accessory** slot then, on collapsible panels, the **Expand/Collapse** toggle. *(The Compatibility panel's accessory slot is empty — its former ✦ AI tag was removed; see §15.4 Panel 3.)*
+
+**Collapsible header** adds `.clickable`: the *entire header* is the hit target — `cursor:pointer; margin:-3px -6px; padding:3px 6px; border-radius:var(--r-sm)`; `role="button"`, `tabIndex=0`; `Enter`/`Space` toggle. Hover `background:rgba(79,70,229,0.06)`; `focus-visible` outline `2px solid var(--indigo)` offset `1px`. The inner `.sec-toggle` button stops propagation so it doesn't double-fire.
+
+**Toggle control** `.sec-toggle` (reused from §14.9, unchanged): `background:none; border:none; cursor:pointer`; **Sora 11px / 500**, `color:var(--t3)`; label text **"Expand"** (collapsed) / **"Collapse"** (open). Chevron `.sec-chev`: DM Mono `›`, 13px; `transform:rotate(90deg)` when open (`.open`); transitions `.15s`. Hover (whole header or button) recolors chevron + label to `--indigo`.
+
+### 15.4 · The 5 panels — order, contents, collapse behavior
+
+Fixed top-to-bottom order. **Do not reorder without updating this section.**
+
+> **Order correction (2026-06-21, feature 039 as-built).** **Skills precedes Compatibility** — matching §4.1 and the shipped `Modal._renderBody()`. An earlier 2026-06-18 draft of this table listed Compatibility as panel #2 and Skills as #3; that ordering was never built and is superseded. Normative order: **Overview → Skills → Compatibility → Timeline → Notes & Links.**
+
+| # | Panel | `.panel-title` | Icon (20×20, stroke 1.5) | Collapsible? | Default state |
+| - | ----- | -------------- | ------------------------ | ------------ | ------------- |
+| 1 | **Overview** | `OVERVIEW` | rounded rect + 3 text lines | **Yes** | **Expanded** |
+| 2 | **Skills** | `SKILLS` | two check-marks + two lines | **Yes** | **Collapsed** |
+| 3 | **Compatibility** | `COMPATIBILITY` | two concentric circles (target) | **Yes** | **Collapsed** |
+| 4 | **Timeline** | `TIMELINE` | clock (circle + hands) | **Yes** | **Collapsed** |
+| 5 | **Notes & Links** | `NOTES & LINKS` | document with folded corner | **Yes** | **Collapsed** |
+
+> **Collapsibility is uniform across viewports (updated 2026-06-18):**
+> - **All five panels are collapsible on both desktop (≥ 640px) and mobile (< 640px).** Every panel renders the Expand/Collapse header toggle; there is no longer any viewport-conditional collapsibility.
+> - **Default-open set = Overview only**, on every viewport. The modal/bottom-sheet **opens with only Overview expanded**; Skills, Compatibility, Timeline, and Notes & Links all start **collapsed** to their one-line previews. Rationale: uniform behavior across breakpoints, maximally compact by default, while the most-scanned facts (Overview) stay visible.
+>
+> This supersedes **both** the original "Overview & Notes never collapsible" wording **and** the interim 2026-06-18 "collapsibility differs by viewport" note (desktop-keeps-Overview/Notes-open). Implementation: every panel passes `collapsible` unconditionally; `overviewOpen` defaults `true`, all four others default `false`, regardless of the `compact` flag.
+
+**Collapsed previews for Overview & Notes (all viewports).** When collapsed, each shows a single-line preview in the panel body (same `.tl-collapsed-content` container as the other previews):
+- **Overview** → `OverviewPreview`: `Company` (Sora 12px / 600, `--t1`) · `Location` (12px, `--t2`) · `Salary` (DM Mono 11px, `--t2`), middot-separated.
+- **Notes & Links** → `NotesPreview`: the General Notes text on one line, ellipsis-truncated (`.tl-text-line`).
+
+#### Panel 1 · Overview
+
+Wrapper `.stacked-fields` (`display:flex; flex-direction:column; gap:12px`) holding, in order:
+
+1. A `.panel-grid` (`display:grid; grid-template-columns:1fr 1fr; gap:13px 22px`; mobile `.compact` → `gap:12px 16px`; **stays 2-column on mobile** — it does not collapse to 1 column) containing **7 fields**, filling left-to-right, top-to-bottom:
+
+   | Row | Left | Right |
+   | --- | ---- | ----- |
+   | 1 | Company | Recruiter |
+   | 2 | Location | Salary *(mono)* |
+   | 3 | Shift | Work Setup |
+   | 4 | **Min Years** | *(empty cell)* |
+
+   `Min Years` is the **new** field resolved in §11 · D3 — here it lands as the **left cell of row 4**, last in the grid, directly above Responsibilities. Salary value uses `.mfield-val.mono` (DM Mono 12px); all others `.mfield-val` (Sora 13px, `--t1`, line-height 1.5; inside a panel `min-height:0; padding:1px 0`). Labels `.mfield-label` (Sora 11px / 500, `--t3`).
+
+2. **Responsibilities** — a full-width `.mfield` **moved out of its own row and into Overview** (supersedes §4 row #5 placement). Label `Responsibilities`; value rendered via the **`ClampText`** primitive (§15.5): clamps to **2 lines desktop / 4 lines mobile**, with a **Show more / Show less** toggle.
+
+#### Panel 2 · Skills
+
+Collapsible, **default collapsed**.
+
+- **Collapsed preview** `.skills-preview` (`display:flex; align-items:center; gap:14px; flex-wrap:wrap`): three count chips `.skp` (Sora 12px, `--t2`; count in `<b>` 600 `--t1`): **`✓ N proficient`** (`✓` `.hi` `#16A34A`) · **`● N learning`** (`●` `.lo` `#D97706`) · **`✕ N missing`** (`✕` `.ms` `#DC2626`). Counts aggregate Required + Preferred.
+- **Expanded body** = the §14.5 skills content: `.skills-grid` (`grid-template-columns:1fr 1fr; gap:13px 24px`; mobile → 1 column) with **Required Skills** / **Preferred Skills** columns of proficiency-coded `.chip`s, followed by `.skills-legend`.
+
+#### Panel 3 · Compatibility
+
+`.panel.panel-ai` (the AI-signal glow — §15.6). Collapsible, **default collapsed**.
+
+> **No header AI chip (2026-06-18).** The Compatibility panel header carries **no ✦ AI tag** — its `.panel-head-r` accessory slot is empty (only the Expand/Collapse toggle renders). Rationale: the **score is deterministic** (computed from profile vs. posting, §14.1), not AI-written, so an AI badge on the whole panel would be misleading; the only machine-written content is the **Analysis prose**, which already carries its own inline ✦ AI tag in `.cx-notes-head` (§14.6). This holds in **every** Compatibility state (fresh / stale / generating / error / no-profile), superseding §14.7's "keeps the ✦ AI tag" and §15.4's earlier "Header accessory = ✦ AI tag."
+
+- **Collapsed preview** (`.tl-collapsed-content`, `display:flex; align-items:center; gap:8px`): a **30px** mini score ring (stroke 4, number 11px) · verdict label in tier **ink** color · em-dash · the LLM `summary` (`.cx-summary`, single-line ellipsis). This replaces the §14.8 `.cx-collapsed-content` indigo-wash bar — in the panelized layout the surrounding card already carries the AI styling, so the preview sits directly in the panel body with no inner box.
+- **Expanded body** = the §14.4–14.6 content (`.cx-score-row` → `.cx-rule` → `.cx-notes-head` "Analysis" + ✦ AI → `.cx-notes` clamped prose with Show more → `.cx-foot` meta + Regenerate), rendered **directly in the panel body** (no inner `.cx-panel` wash box).
+
+#### Panel 4 · Timeline
+
+Collapsible, **default collapsed**. Full normative spec lives in [`application_timeline.md`](application_timeline.md) (and its 2026-06-18 revision). In this layout the Timeline is **its own panel** — this supersedes that doc's "row 5 of the modal body grid" placement. The Expand/Collapse control is the panel header toggle (§15.3).
+
+- **Collapsed preview** (`.tl-collapsed-content`): latest entry — `.tl-date-text` · status `.badge` · note `.tl-text-line` (single-line ellipsis) · `.tl-more-hint` `+N earlier` (DM Mono 10px, `--t4`) when >1 entry.
+
+#### Panel 5 · Notes & Links
+
+Collapsible; default **collapsed** (all viewports). `.stacked-fields` with:
+1. **Job Posting URL** — `.mfield` rendered as `.url-val` (indigo, DM Mono 12px, underlined, `word-break:break-all`).
+2. **General Notes** — `.mfield` whose value uses **`ClampText`** clamped to **3 lines on both desktop and mobile** (`lines=3, mlines=3`), with Show more / Show less.
+
+> **Renamed:** the cluster previously sketched as "Description & Notes" is shipped as **"Notes & Links"**, and it holds **only** URL + General Notes — Responsibilities moved up into Overview (above).
+
+### 15.5 · `ClampText` primitive (Responsibilities + General Notes)
+
+A reusable line-clamp + toggle. Markup: `.clamp-wrap` (`display:flex; flex-direction:column; align-items:flex-start; gap:2px`) → value div `.mfield-val.clamp-text` + optional `.clamp-toggle` button.
+
+- Clamped state adds `.clamped`: `display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:var(--lines, 2)`. Inside `.compact` (mobile) the clamp uses `-webkit-line-clamp:var(--mlines, 4)` instead. `--lines` / `--mlines` are set per instance: Responsibilities `2 / 4`, General Notes `3 / 3`.
+- **Toggle** `.clamp-toggle`: **Sora 11.5px / 600**, `color:var(--indigo)`, `background:none; border:none; padding:2px 0; margin-top:2px`; label **"Show more"** (clamped) / **"Show less"** (expanded); hover `text-decoration:underline`.
+- **Visibility rule:** the toggle renders **only when the text actually overflows** the clamp (measured on mount: `scrollHeight − clientHeight > 2`) **or** once expanded. Short values that fit show no toggle.
+
+### 15.6 · Compatibility AI glow — `.panel.panel-ai`
+
+The single visual cue that marks Compatibility as the AI-generated panel. Applied **in addition to** `.panel--elevated`, on the Compatibility card only:
+
+- `background: var(--surface)` (stays white — **not** a fill)
+- `border-color: #DCD4F3` (soft lavender hairline)
+- `box-shadow: 0 0 0 1px rgba(79,70,229,0.10), 0 2px 10px rgba(79,70,229,0.16), 0 16px 40px rgba(79,70,229,0.26)` — a layered indigo **glow/halo** (`--indigo` = `#4F46E5`).
+
+> **Supersedes** the §14.3 "indigo wash `.cx-panel` box" and the §14.13 note to "keep tints as a soft wash" **for the panel container**: the AI signal is now a *white card with a purple glow*, not a tinted fill. (The score ring, verdict pill, and chip tints inside the panel are unchanged.) Design intent landed after iterating from a heavy purple fill → whisper tint → this glow; treat the glow values as final.
+
+### 15.7 · Mobile bottom-sheet
+
+At `< 640px` the modal is a bottom-sheet; the body is `.pbody.compact`. Differences from desktop:
+- **Grab handle** `.sheet-grab` at the top of the header: `36×4px`, `border-radius:99px`, `margin:0 auto 4px`; `background:rgba(255,255,255,.55)` on dark headers, `rgba(0,0,0,.18)` on light (`.hdr-dark`).
+- Tighter `.pbody` gap/padding (§15.1); `.panel-grid` keeps 2 columns; `.skills-grid` → 1 column.
+- `ClampText` uses the `--mlines` budget (Responsibilities 4 lines).
+- **Collapse behavior is identical to desktop** — all five panels collapsible, only Overview open by default (§15.4). No mobile-specific collapse logic remains: `Modal` passes `collapsible` unconditionally to every panel, and the default open-state is `overviewOpen = true` with Compatibility/Skills/Timeline/Notes all `false`, regardless of the `compact` flag.
+- Timeline rows reflow to two lines — see the timeline doc's 2026-06-18 revision.

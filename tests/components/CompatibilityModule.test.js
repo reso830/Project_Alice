@@ -56,9 +56,11 @@ function render(props = {}) {
     application: application(props.application),
     profile: props.profile === undefined ? profile() : props.profile,
     aiSettings: props.aiSettings ?? aiSettings(),
+    embedded: props.embedded === true,
     onNotesGenerated: props.onNotesGenerated ?? vi.fn(),
     onOpenSettings: props.onOpenSettings ?? vi.fn(),
     onOpenProfile: props.onOpenProfile ?? vi.fn(),
+    readOnly: props.readOnly === true,
   });
 }
 
@@ -159,6 +161,36 @@ describe('CompatibilityModule rendering', () => {
     expect(root.querySelector('.ring-num')?.textContent).toBe('86');
     expect(root.querySelector('.cx-verdict-text')?.textContent).toBe('Great');
     expect(root.textContent).toContain('Notes not generated');
+  });
+
+  it('renders embedded scored content without its own header or toggle', async () => {
+    const module = await loadModule();
+    const root = render({ module, embedded: true });
+
+    expect(root.classList.contains('compatibility-module--embedded')).toBe(true);
+    expect(root.querySelector('.cx-header')).toBeNull();
+    expect(root.querySelector('.sec-toggle')).toBeNull();
+    expect(root.querySelector('.cx-panel')).toBeNull();
+    expect(root.querySelector('.cx-flow')).not.toBeNull();
+    expect(root.querySelector('.cx-score-row svg')?.getAttribute('width')).toBe('64');
+    expect(root.querySelector('.cx-gen-inline')?.textContent).toContain('No written analysis yet');
+  });
+
+  it('exposes the collapsed score preview for panel shells', async () => {
+    const module = await loadModule();
+    const preview = module.CompatibilityModule.renderCollapsedPreview({
+      application: application({
+        compatAnalysis: {
+          summary: 'Panel-ready fit',
+          body: 'Body.',
+          generatedAt: '2026-06-17T10:00:00.000Z',
+        },
+      }),
+    });
+
+    expect(preview.className).toBe('cx-collapsed-content');
+    expect(preview.querySelector('.ring-num')?.textContent).toBe('86');
+    expect(preview.textContent).toContain('Panel-ready fit');
   });
 
   it('expands and collapses the full panel with a 64px score ring', async () => {
@@ -324,6 +356,42 @@ describe('CompatibilityModule rendering', () => {
     expect(root.querySelector('.ring-num')?.textContent).toBe('86');
   });
 
+  it('keeps archived compatibility notes read-only without generation actions', async () => {
+    const module = await loadModule();
+    const noNotes = render({
+      module,
+      readOnly: true,
+      application: { archived: true },
+    });
+    noNotes.querySelector('.sec-toggle').click();
+
+    expect(noNotes.querySelector('.cx-gen-inline')?.textContent).toBe('No written analysis yet.');
+    expect(noNotes.querySelector('.cx-gen-btn')).toBeNull();
+    expect(noNotes.querySelector('.cx-enable-ai')).toBeNull();
+
+    module.resetCompatibilityModuleState();
+    const staleNotes = render({
+      module,
+      readOnly: true,
+      application: {
+        archived: true,
+        compatAnalysis: {
+          summary: 'Archived fit',
+          body: 'Historical analysis.',
+          generatedAt: '2026-06-08T10:00:00.000Z',
+        },
+        compatScoredAt: '2026-06-09T10:00:00.000Z',
+      },
+    });
+    staleNotes.querySelector('.sec-toggle').click();
+
+    expect(staleNotes.querySelector('.cx-stale-bar')?.classList.contains('cx-stale-bar--readonly')).toBe(true);
+    expect(staleNotes.querySelector('.cx-stale-btn')).toBeNull();
+    expect(staleNotes.querySelector('.cx-regen')).toBeNull();
+    expect(staleNotes.querySelector('.cx-enable-ai')).toBeNull();
+    expect(staleNotes.querySelector('.cx-notes')?.classList.contains('cx-notes--readonly')).toBe(true);
+  });
+
   it('renders fresh notes with clamped prose, formatted date, and show more toggle', async () => {
     const module = await loadModule();
     const root = render({
@@ -349,11 +417,12 @@ describe('CompatibilityModule rendering', () => {
     expect(root.querySelector('.cx-notes strong')?.textContent).toBe('strong');
     expect(root.querySelector('.cx-meta')?.textContent).toContain('Generated Jun 9');
     expect(root.querySelector('.cx-regen')?.textContent).toContain('Regenerate');
+    expect(root.querySelector('.cx-showmore')?.textContent).toBe('Show more');
     expect(root.querySelector('.cx-showmore')?.getAttribute('aria-expanded')).toBe('false');
 
     root.querySelector('.cx-showmore').click();
     expect(root.querySelector('.cx-notes')?.classList.contains('clamp')).toBe(false);
-    expect(root.querySelector('.cx-showmore')?.textContent).toContain('Show less');
+    expect(root.querySelector('.cx-showmore')?.textContent).toBe('Show less');
     expect(root.querySelector('.cx-showmore')?.getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -364,6 +433,7 @@ describe('CompatibilityModule rendering', () => {
     expect(mainCss).toContain('.cx-foot-r {\n  display: flex;\n  align-items: center;\n  gap: 10px;');
     expect(mainCss).toContain('.cx-meta {\n  color: var(--t3);\n  font: 10px/1.2 var(--font-mono);');
     expect(mainCss).toContain('.cx-regen {\n  font-size: 11px;');
+    expect(mainCss).toContain('.cx-showmore {\n  font: 800 11px/1.2 var(--font-ui);');
     expect(mainCss).toContain('.cx-collapsed-content {\n  min-height: 34px;');
     expect(mainCss).toContain('.cx-collapsed-content {\n  min-height: 34px;\n  gap: 9px;\n  padding: 0;');
     expect(mainCss).toContain('.cx-gen-inline {\n  display: flex;');

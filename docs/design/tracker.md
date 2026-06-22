@@ -136,7 +136,7 @@ A single `borderAccent` color is used for all three surfaces (badge bg = left bo
 | `applied` | Applied | `#003049` | `#ffffff` |
 | `phone_screen` | Phone Screen | `#f4a259` | `#212529` |
 | `interview` | Interview | `#f9c74f` | `#212529` |
-| `assessment` | Technical Assessment | `#e0aaff` | `#212529` |
+| `assessment` | Technical | `#e0aaff` | `#212529` |
 | `offer` | Offer | `#09bc8a` | `#212529` |
 | `rejected` | Rejected | `#9d0208` | `#ffffff` |
 | `withdrawn` | Withdrawn | `#343a40` | `#ffffff` |
@@ -145,6 +145,8 @@ A single `borderAccent` color is used for all three surfaces (badge bg = left bo
 Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 
 > **Note on modal header contrast:** The modal header background is the status `borderAccent` color. The header text/icon color is determined at runtime via relative-luminance contrast calculation — not hard-coded — and resolves to either `modal-header--light` (white text) or `modal-header--dark` (black text).
+
+> **Header status pill border (2026-06):** Because the header background and the status badge share the same accent color, the badge would otherwise disappear into the header. The badge inside `.modal-pills` therefore carries a **1px defining border** — `rgba(33,37,41,.32)` on light (`hdr-dark`) headers, `rgba(255,255,255,.45)` on dark (`hdr-light`) headers. This applies to the header pill only; badges on cards / timeline rows stay unbordered.
 
 ---
 
@@ -262,7 +264,7 @@ For archived cards, Row 1 reads:
 **Card layout (3 rows, desktop):**
 
 ```
-Row 1: [ID Pill]  [Status Badge]  [Updated date]  →  [✎] [⇄] [🔗] [★] [×]
+Row 1: [ID Pill]  [Status Badge]  [Updated date]  →  [edit] [status] [copy] [star] [archive]  (SVG icon buttons)
 Row 2: Position · Company                         →  [Compat Bar — 30%]
 Row 3: Responsibilities (2-line clamp) | Skills tags | Salary
 ```
@@ -278,8 +280,18 @@ Row 3 grid: `minmax(0, 2fr) minmax(140px, 1fr) minmax(90px, .6fr)`
 ### Compatibility Bar
 - Height: `18px`, pill border-radius
 - Background track: `#EDE8DF`
-- Fill colors: `#22C55E` (score ≥ 80), `#EAB308` (score ≥ 60), `#4F46E5` (score < 60)
-- Label text color: `#FFFFFF` when score ≥ 50, `#4B5563` when score < 50
+- Fill color follows the shared compatibility ramp (see table below) — a single source of truth used by both the card bar and the detail overlay's score ring
+
+| Score | Fill | Verdict (overlay ring) |
+|---|---|---|
+| ≥ 85 | `#2563EB` (blue) | Great match |
+| 65–84 | `#15803D` (green) | High match |
+| 40–64 | `#EAB308` (amber) | Medium match |
+| 1–39 | `#EF4444` (red) | Low match |
+| 0 | `#C4BDB5` (grey) | Not scored |
+
+> Supersedes the earlier 3-stop ramp (`#22C55E`/`#EAB308`/`#4F46E5` at ≥80/≥60/<60), which did not match the overlay's score ring. Both surfaces now read from `compatRamp(pct)`.
+- Label text color: `#4B5563` when score < 50; `#212529` in the amber band (50–64); `#FFFFFF` when score ≥ 65
 - Label: DM Mono 9px / 500, centered absolutely over bar
 - Width: 30% of middle row on desktop (min 150px); 36% on tablet; 100% on mobile
 
@@ -288,6 +300,7 @@ Row 3 grid: `minmax(0, 2fr) minmax(140px, 1fr) minmax(90px, .6fr)`
 - Border: `1px solid --border`, radius `--r-sm`
 - Default color: `--t3`
 - Hover: border `--indigo`, color `--indigo`, bg `--indigo-dim`
+- **Icons are inline SVG line icons** (14px, `1.4` stroke, `currentColor`) — they replace the earlier text-glyph set (✎ ⇄ 🔗 ★ ×), which rendered inconsistently across platforms. The table below names each icon; glyphs are shown only as shorthand.
 
 | Button | Icon | `aria-label` |
 |---|---|---|
@@ -336,6 +349,35 @@ Starred state: color `#D97706`, border `#FDE68A`, bg `#FFFBEB`.
 - Overlay: `rgba(0,0,0,.55)` + `backdrop-filter: blur(4px)`; body scroll locked while open; `z-index: var(--z-modal)` (300)
 - Entrance: scale `0.97→1` + `translateY(8px→0)` + fade in, 200ms ease
 - **Header background:** status `borderAccent` color — NOT `--navy`
+- **Two render variants, one component:** the centered overlay above (`modal` variant, used on tablet/mobile) and a borderless in-column **`pane` variant** used by the desktop docked detail pane (see below). The pane variant drops the dimmed backdrop and body-scroll lock and fills its column; editing behavior is identical.
+
+---
+
+### Desktop Detail Pane (docked master–detail, ≥ 1100px)
+
+On wide desktops the Tracker switches from "list + centered modal" to a persistent **master–detail split**, modelled on a mail client's reading pane. The centered modal is retained for narrower viewports.
+
+**Activation**
+- Engaged at viewport width **≥ 1100px**.
+- **640–1099px (tablet):** the centered Detail Modal is still used — clicking a card opens the modal, not a pane.
+- **< 640px (mobile):** the modal renders as a bottom-sheet (unchanged).
+
+**Layout**
+- Two columns in a flex row, `gap: 18px`, padding `16px 24px 0`:
+  - **Master column (left, ~60%)** — the application list. Cards render in their normal rich form. (A denser one-line `compact` row variant exists in code but is off by default, pending a future Settings toggle.)
+  - **Detail pane (right, ~40%, `--pane-w: 40%`)** — the overlay component in its `pane` variant. The 60/40 ratio keeps the list the primary scanning surface while giving the detail room to breathe. The pane body is the **5-panel collapsible stack** (Overview / Skills / Compatibility / Timeline / Notes & Links) — full spec in [`application_overlay.md`](application_overlay.md) §4.
+- The page **scrolls naturally** (no fixed-height workspace). The detail pane is **`position: sticky`**, pinned at `top: calc(--header-h + 16px)` (`--header-h` = 106px = topbar 52 + toolbar ~54), so its top edge never collides with the sticky topbar+toolbar; the pane's own body scrolls internally while it's pinned.
+- **Pagination** spans the **full width below both columns** (`.split-pagination`), not nested inside the list column.
+- The site footer remains reachable at the bottom of the page.
+
+**Selection**
+- Clicking a card **selects** it (it does not open a separate modal). The selected card carries an **indigo glow**: `border-color: --indigo` plus a soft `0 0 0 4px rgba(79,70,229,.06)` halo (matched to the resume-import card treatment).
+- Editing happens inline in the pane exactly as in the modal (click-to-edit fields, status dropdown, timeline add/remove, Save / Discard).
+
+**Empty state (`.empty-pane`)**
+- When nothing is selected the pane shows a friendly placeholder: a layered-cards illustration with a cursor, title **"Nothing open yet"**, and the line *"Pick an application on the left and its full breakdown — compatibility, skills, timeline and notes — lands right here."* No call-to-action button (a "+ New application" button was removed — creation already lives in the toolbar).
+
+> **Consistency note:** the master–detail split is the desktop counterpart to the Calendar page's two-column layout. The Tracker uses a **60/40 list-forward** ratio (vs. Calendar's 40/60 context-forward ratio) because the application list is the primary surface here.
 
 ### Bottom Tab Bar (mobile-only)
 
@@ -385,8 +427,9 @@ The user's `email` is the only identity field shown in chrome. Avatar, display n
 
 | Breakpoint | Layout changes |
 |---|---|
-| **Desktop** `> 1024px` | 3-row card, compat bar 30%, 2-col modal, toolbar single row, top-bar nav inline beside brand |
-| **Tablet** `640–1023px` | Compat bar 36%, Responsibilities spans full detail row, modal 1-col |
+| **Wide desktop** `≥ 1100px` | **Master–detail split:** rich card list (~60%) beside a sticky docked **detail pane** (~40%); clicking a card selects it and opens its detail **inline in the pane** (no centered modal); selected card carries an indigo glow; pagination spans full width below both columns; empty pane shows the "Nothing open yet" placeholder |
+| **Desktop** `1025–1099px` | 3-row card, compat bar 30%, **2-col centered modal** (no pane yet), toolbar single row, top-bar nav inline beside brand |
+| **Tablet** `640–1099px` | Compat bar 36%, Responsibilities spans full detail row, modal 1-col (centered modal retained — the docked pane does **not** apply below 1100px) |
 | **Mobile** `< 640px` | Card collapses to flex-column via CSS `order` (ID/badge/date → title → company → responsibilities → skills → salary → compat bar → actions); compat bar full-width; modal is bottom-sheet; toolbar is 2-row grid; filter panels expand inline; **page nav moves to bottom tab bar**; **+ New application becomes a FAB**; sign-out collapses to icon-only; email hidden; thin scrollbar (4px) on `<html>` |
 | **Fold-narrow** `< 380px` | "Project Alice" wordmark hides — only the 38px logo mark remains beside the sign-out icon |
 
@@ -460,7 +503,7 @@ Mobile bottom-tab icons:
 | `companyName` | String | Card secondary text, company filter |
 | `status` | Enum | See Status System; drives badge + left border |
 | `lastStatusUpdate` | ISO date (`YYYY-MM-DD`) | Displayed as "Mon DD" format |
-| `compat` | Integer 0–100 | Compat bar fill + percentage label |
+| `compat` | Integer 0–100 | Compat-bar fill + percentage label (card) and score ring (overlay). Deterministic score — see `application_overlay.md` §14.1. |
 | `fav` | Boolean | Star button state |
 | `responsibilities` | String | DM Mono, 2-line clamp in card, full in modal |
 | `skills` | String[] | Rendered as pill tags |
@@ -470,7 +513,10 @@ Mobile bottom-tab icons:
 | `location` | String \| null | Optional free text; filter dimension (Location filter) |
 | `shift` | Enum \| null | `Day` · `Mid` · `Night` · `Flexible`; modal dropdown; filter dimension |
 | `workSetup` | Enum \| null | `Remote` · `Hybrid` · `On-site` · `Field`; modal dropdown; filter dimension |
-| `compatNotes` | String \| null | Editable notes alongside the read-only compatibility bar |
+| `compatNotes` | String \| null | Compatibility **analysis prose** (LLM-written, target). Shown in the Compatibility panel; inline-editable in the live build. |
+| `compatSummary` | String \| null | Compatibility **one-line headline** (LLM-written, target). Shown beside the verdict and in the collapsed panel preview; inline-editable in the live build. |
+| `compatGeneratedOn` | String \| null | Display string (e.g. "Jun 9") for when the analysis was generated; rendered in the Compatibility footer meta. Not yet an ISO timestamp (so staleness isn't derived yet). |
+| `minYears` | String | Minimum years of experience the role asks for (free text, e.g. "5+ years"); lives in the Overview panel. |
 | `generalNotes` | String \| null | Free-text notes; full-span field at bottom of modal body |
 | `preferredSkills` | String[] | Chip editor in modal; separate from `skills` (required skills); starts empty for all records |
 | `_corrupt` | Boolean | Validation flag — set when `id`, `jobTitle`, or `companyName` is invalid |

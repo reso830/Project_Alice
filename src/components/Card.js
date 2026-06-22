@@ -70,7 +70,7 @@ function stopAction(event, callback) {
   return callback();
 }
 
-export function render(application, callbacks = {}) {
+export function render(application, callbacks = {}, { selected = false } = {}) {
   const config = STATUS_CONFIG[application.status] ?? STATUS_CONFIG.wishlisted;
   const card = document.createElement('article');
   const rowOne = document.createElement('div');
@@ -126,6 +126,11 @@ export function render(application, callbacks = {}) {
 
   if (application._corrupt) {
     card.classList.add('card--corrupt');
+  }
+
+  if (selected) {
+    card.classList.add('card--selected');
+    card.setAttribute('aria-selected', 'true');
   }
 
   rowOne.className = 'card__row card__row--top';

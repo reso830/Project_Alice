@@ -403,6 +403,11 @@ function renderNoneState(state, actions) {
   );
   box.append(copy);
 
+  if (state.readOnly) {
+    copy.textContent = 'No written analysis yet.';
+    return box;
+  }
+
   if (!hasAiConfigured(state.aiSettings)) {
     copy.textContent = 'No written analysis yet. Turn on AI to generate notes for this score.';
     box.append(createEnableAiLink(actions));
@@ -451,7 +456,7 @@ function renderFreshLikeState(state, actions) {
   const fragment = document.createDocumentFragment();
   const notes = state.application?.compatAnalysis ?? {};
   const isStale = state.notesState === 'stale';
-  const canGenerate = hasAiConfigured(state.aiSettings);
+  const canGenerate = !state.readOnly && hasAiConfigured(state.aiSettings);
 
   if (isStale) {
     const stale = el('div', canGenerate ? 'cx-stale-bar' : 'cx-stale-bar cx-stale-bar--readonly');
@@ -469,6 +474,15 @@ function renderFreshLikeState(state, actions) {
           'Your profile or job data changed after these notes were written. The score above is current — refresh the notes to match.',
         ),
         refreshBtn,
+      );
+    } else if (state.readOnly) {
+      stale.append(
+        createLockIcon(),
+        el(
+          'span',
+          'cx-stale-txt',
+          'These notes are out of date. The score above is current.',
+        ),
       );
     } else {
       stale.append(
@@ -493,10 +507,10 @@ function renderFreshLikeState(state, actions) {
   ].filter(Boolean).join(' '));
   renderBoldText(prose, notes.body ?? '');
   const foot = el('div', 'cx-foot');
-  const showMore = button('cx-showmore', 'Show more ▾', () => {
+  const showMore = button('cx-showmore', 'Show more', () => {
     prose.classList.toggle('clamp');
     const clamped = prose.classList.contains('clamp');
-    showMore.textContent = clamped ? 'Show more ▾' : 'Show less ▴';
+    showMore.textContent = clamped ? 'Show more' : 'Show less';
     showMore.setAttribute('aria-expanded', String(!clamped));
   });
   showMore.setAttribute('aria-expanded', 'false');
@@ -513,7 +527,7 @@ function renderFreshLikeState(state, actions) {
       regenBtn.title = 'Save your changes first';
     }
     right.append(regenBtn);
-  } else if (!isStale) {
+  } else if (!isStale && !state.readOnly) {
     right.append(createEnableAiLink(actions));
   }
   foot.append(showMore, right);
@@ -548,6 +562,12 @@ function renderNotesRegion(state, actions) {
 
 function renderPanel(state, actions) {
   const panel = el('div', 'cx-panel');
+  panel.append(renderScoreRow(state), el('div', 'cx-rule'), renderNotesRegion(state, actions));
+  return panel;
+}
+
+function renderEmbeddedPanel(state, actions) {
+  const panel = el('div', 'cx-flow');
   panel.append(renderScoreRow(state), el('div', 'cx-rule'), renderNotesRegion(state, actions));
   return panel;
 }
@@ -604,9 +624,13 @@ function createState(options = {}) {
     onOpenProfile: typeof options.onOpenProfile === 'function'
       ? options.onOpenProfile
       : () => {},
-    root: el('section', 'compatibility-module'),
+    root: el('section', options.embedded === true
+      ? 'compatibility-module compatibility-module--embedded'
+      : 'compatibility-module'),
     key,
     open: _open,
+    embedded: options.embedded === true,
+    readOnly: options.readOnly === true || application.archived === true,
     localState: _localState,
     inFlight: _inFlight,
     isModalDirty: _modalDirty,
@@ -631,12 +655,17 @@ function renderInto(state) {
   };
 
   state.root.replaceChildren();
-  state.root.append(renderHeader(viewState, actions));
+
+  if (!state.embedded) {
+    state.root.append(renderHeader(viewState, actions));
+  }
 
   if (availability === 'unsaved') {
     state.root.append(renderUnsavedState());
   } else if (availability === 'no-profile') {
     state.root.append(renderEmptyState(actions));
+  } else if (state.embedded) {
+    state.root.append(renderEmbeddedPanel(viewState, actions));
   } else if (state.open) {
     state.root.append(renderPanel(viewState, actions));
   } else {
@@ -645,7 +674,13 @@ function renderInto(state) {
 }
 
 async function generateForState(state) {
-  if (_inFlight || !state.application?.id || !hasAiConfigured(state.aiSettings) || state.isModalDirty) {
+  if (
+    _inFlight
+    || state.readOnly
+    || !state.application?.id
+    || !hasAiConfigured(state.aiSettings)
+    || state.isModalDirty
+  ) {
     return;
   }
 
@@ -690,4 +725,12 @@ export function render(options = {}) {
   return state.root;
 }
 
-export const CompatibilityModule = { render, setDirty };
+export function renderCollapsedPreview(options = {}) {
+  const application = { ...(options.application ?? {}) };
+  return renderCollapsed({
+    application,
+    notesState: deriveNotesState(application, options.localState ?? null),
+  });
+}
+
+export const CompatibilityModule = { render, renderCollapsedPreview, setDirty };
