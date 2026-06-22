@@ -35,6 +35,7 @@ let _keydownHandler = null;
 let _panelKeydownHandler = null;
 let _draft = null;
 let _original = null;
+let _favoriteButton = null;
 let _profile = null;
 let _compatibilityField = null;
 let _body = null;
@@ -1662,6 +1663,7 @@ export function close() {
   _original = null;
   _body = null;
   _titleRow = null;
+  _favoriteButton = null;
   _profile = null;
   _compatibilityField = null;
   _footer = null;
@@ -1788,6 +1790,7 @@ export function open(application, {
   _titleRow = titleRow;
   _idPill = idPill;
   _archiveButton = archiveButton;
+  _favoriteButton = favoriteButton;
   _quickActions = quickActions;
   let currentStatus = _draft.status;
   const isTerminal = TERMINAL_STATES.has(currentStatus);
@@ -2071,4 +2074,23 @@ export function requestClose() {
   return _attemptClose();
 }
 
-export const Modal = { open, close, requestClose };
+export function syncApplication(updated) {
+  if (!_draft || !updated || Number(updated.id) !== Number(_draft.id)) {
+    return false;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updated, 'fav')) {
+    const nextFavorite = updated.fav === true;
+    _draft.fav = nextFavorite;
+    if (_original) {
+      _original.fav = nextFavorite;
+    }
+    if (_favoriteButton) {
+      updateFavoriteButton(_favoriteButton, nextFavorite);
+    }
+  }
+
+  return true;
+}
+
+export const Modal = { open, close, requestClose, syncApplication };

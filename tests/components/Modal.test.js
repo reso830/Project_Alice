@@ -1931,6 +1931,25 @@ describe('Modal', () => {
     expect(onApplicationUpdate).toHaveBeenCalledWith(expect.objectContaining({ fav: true }));
   });
 
+  it('syncs external favorite updates without dropping dirty field edits', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    api.update.mockResolvedValue({ ...application(), fav: true, companyName: 'Globex' });
+
+    Modal.open(application({ fav: false }));
+    editTextField('Company', 'Globex');
+
+    expect(Modal.syncApplication({ id: 1, fav: true })).toBe(true);
+    expect(document.querySelector('.modal-quick-action--favorite')?.getAttribute('aria-pressed')).toBe('true');
+
+    saveButton().click();
+    await flushPromises();
+
+    expect(api.update).toHaveBeenCalledWith(1, expect.objectContaining({
+      companyName: 'Globex',
+      fav: true,
+    }), expect.any(Object));
+  });
+
   it('routes modal status changes through the draft without PATCH', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 

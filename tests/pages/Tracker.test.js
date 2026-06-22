@@ -586,8 +586,10 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
 
     mediaQueryList.dispatch(false);
+    await Promise.resolve();
 
-    expect(closeSpy).toHaveBeenCalled();
+    expect(requestCloseSpy).toHaveBeenCalledTimes(2);
+    expect(closeSpy).not.toHaveBeenCalled();
     expect(openSpy.mock.calls.filter(([, options]) => options?.variant !== 'pane')).toHaveLength(1);
     expect(container.querySelector('.tracker-detail')).toBeNull();
 
@@ -597,6 +599,35 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(openSpy).toHaveBeenLastCalledWith(first, expect.objectContaining({ variant: 'pane' }));
     expect(container.querySelector('.tracker-detail').textContent).toBe('Role 1');
+  });
+
+  it('keeps a dirty desktop pane open when breakpoint teardown is cancelled', async () => {
+    const container = document.createElement('main');
+    const mediaQueryList = mockDesktopMedia(true);
+    const first = createApplication(1);
+    vi.spyOn(Modal, 'open').mockImplementation((application, options = {}) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(false);
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    mediaQueryList.dispatch(false);
+    await Promise.resolve();
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.tracker-split')).not.toBeNull();
+    expect(container.querySelector('.tracker-detail .modal-panel--pane')?.textContent).toBe('Role 1');
+    expect(container.querySelector('[data-id="1"]')?.getAttribute('aria-selected')).toBe('true');
   });
 
   it('does not auto-select the last closed modal when resizing up to desktop', async () => {
@@ -666,6 +697,7 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(openSpy).toHaveBeenLastCalledWith(first, expect.not.objectContaining({ variant: 'pane' }));
     document.querySelector('.modal-backdrop')?.remove();
     Modal.close();
+    requestCloseSpy.mockClear();
 
     mediaQueryList.dispatch(true);
     await Promise.resolve();
@@ -1094,6 +1126,61 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
   });
 
+  it('guards dirty desktop panes before opening the New Application gate', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    vi.spyOn(Modal, 'open').mockImplementation((application, options = {}) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application?.jobTitle ?? 'Create application',
+      }));
+    });
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(false);
+    const pickerSpy = vi.spyOn(CreationPicker, 'open');
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    await toolbarRenderOptions[0].onAddApplication();
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+    expect(pickerSpy).not.toHaveBeenCalled();
+    expect(container.querySelector('.tracker-detail .modal-panel--pane')?.textContent).toBe('Role 1');
+    expect(container.querySelector('[data-id="1"]')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('guards dirty create panes before selecting a desktop card', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    const requestCloseSpy = vi.spyOn(Modal, 'requestClose').mockResolvedValue(false);
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('.tracker-detail').replaceChildren(Object.assign(document.createElement('div'), {
+      className: 'modal-panel modal-panel--pane',
+      textContent: 'Create application',
+    }));
+
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+    expect(api.getById).not.toHaveBeenCalled();
+    expect(container.querySelector('.tracker-detail .modal-panel--pane')?.textContent).toBe('Create application');
+    expect(container.querySelector('[data-id="1"]')?.getAttribute('aria-selected')).not.toBe('true');
+  });
+
   it('opens the creation picker from the mobile FAB', async () => {
     const container = document.createElement('main');
     const navigate = vi.fn();
@@ -1379,7 +1466,7 @@ describe('Tracker quick filter toolbar integration', () => {
       .toBe(true);
   });
 
-  it('refreshes the selected desktop pane after card favorite updates', async () => {
+  it('syncs selected desktop pane metadata after card favorite updates', async () => {
     const container = document.createElement('main');
     const original = createApplication(1, { fav: false });
     const updated = { ...original, fav: true };
@@ -1389,6 +1476,7 @@ describe('Tracker quick filter toolbar integration', () => {
         textContent: application.fav ? 'Starred' : 'Unstarred',
       }));
     });
+    const syncSpy = vi.spyOn(Modal, 'syncApplication').mockReturnValue(true);
 
     mockDesktopMedia(true);
     window.scrollTo = vi.fn();
@@ -1407,11 +1495,9 @@ describe('Tracker quick filter toolbar integration', () => {
     await Promise.resolve();
 
     expect(api.update).toHaveBeenCalledWith(1, { fav: true });
-    expect(openSpy).toHaveBeenLastCalledWith(
-      updated,
-      expect.objectContaining({ variant: 'pane', target: container.querySelector('.tracker-detail') }),
-    );
-    expect(container.querySelector('.tracker-detail').textContent).toBe('Starred');
+    expect(syncSpy).toHaveBeenCalledWith(updated);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.tracker-detail').textContent).toBe('Unstarred');
   });
 
   it('fetches the profile at mount and passes it into opened application modals', async () => {

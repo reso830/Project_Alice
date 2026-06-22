@@ -309,6 +309,10 @@ function renderEmptyPane() {
   _detailPaneEl.replaceChildren(EmptyPane.render());
 }
 
+function hasOpenPane() {
+  return Boolean(_detailPaneEl?.querySelector('.modal-panel--pane'));
+}
+
 function clearSelectedPane() {
   _selectedId = null;
   renderPage();
@@ -398,7 +402,18 @@ function setupDesktopQuery() {
 
   _desktopMqlHandler = async (event) => {
     const wasDesktop = _isDesktop;
-    _isDesktop = Boolean(event.matches);
+    const nextIsDesktop = Boolean(event.matches);
+
+    if (!nextIsDesktop && wasDesktop && hasOpenPane()) {
+      _suppressPaneClosed = true;
+      const canClosePane = await Modal.requestClose();
+      _suppressPaneClosed = false;
+      if (!canClosePane) {
+        return;
+      }
+    }
+
+    _isDesktop = nextIsDesktop;
     ensureTrackerLayout();
     ensureCardList();
     renderPage();
@@ -423,7 +438,7 @@ function setupDesktopQuery() {
       return;
     }
 
-    if (!_isDesktop && wasDesktop && _selectedId !== null) {
+    if (!_isDesktop && wasDesktop && _selectedId !== null && hasOpenPane()) {
       _suppressPaneClosed = true;
       Modal.close();
       _suppressPaneClosed = false;
@@ -732,8 +747,15 @@ function applicationMutationCallbacks() {
   };
 }
 
-function onAddApplication() {
+async function onAddApplication() {
   if (_isDesktop && _detailPaneEl) {
+    if (hasOpenPane()) {
+      const canOpenCreate = await Modal.requestClose();
+      if (!canOpenCreate) {
+        return;
+      }
+    }
+
     clearSelectedPane();
     CreationPicker.open({
       ...applicationMutationCallbacks(),
@@ -884,7 +906,7 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     return;
   }
 
-  if (_selectedId !== null && !skipGuard) {
+  if (hasOpenPane() && !skipGuard) {
     const canSwitch = await Modal.requestClose();
     if (!canSwitch) {
       return;
@@ -929,7 +951,7 @@ function createCallbacks() {
         replaceApplication(updated);
         renderPage();
         if (_isDesktop && _selectedId === coerceId(id) && _detailPaneEl?.querySelector('.modal-panel--pane')) {
-          openApplicationPane(updated);
+          Modal.syncApplication(updated);
         }
         updateToolbar();
       } catch {
