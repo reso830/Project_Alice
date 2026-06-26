@@ -58,6 +58,7 @@ The `release-portable.yml` workflow (windows-latest) runs `npm ci` → `npm run 
 - Windows may show a one-time SmartScreen prompt for the downloaded launcher — expected.
 - Double-clicking the launcher again while Alice is already running just **re-opens your browser to the existing instance** — it doesn't start a second copy (single instance).
 - If port 3001 is busy with a *different* (non-Alice) program, Alice automatically uses the next free local port and opens the browser there. To keep a fixed port (and keep your saved AI key stable), set `port` in `config\settings.json`.
+- **Running two separate copies of Alice at once?** Give each its own `port` in `config\settings.json` (e.g. 3001 and 3011). The single-instance check matches on port only, so two copies left on the same default port will make the second launch focus the first copy instead of starting its own. (A more robust per-install guard arrives with the self-update feature, 041.)
 - Alice is reachable only from this PC (`127.0.0.1`); it is not exposed to your network.
 
 ---

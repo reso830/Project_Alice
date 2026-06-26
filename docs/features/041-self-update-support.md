@@ -167,6 +167,48 @@ The application shall restart when required.
 
 ---
 
+### Single-Instance Coordination & Restart Handshake (carried over from 040)
+
+> **Context for the requirements agent.** Feature 040 added a *single-instance*
+> launch guard (040 FR-033): on startup the portable launcher probes the
+> configured port's `/api/health` and, if Alice already answers there, re-opens
+> the browser to the running instance instead of starting a second server. That
+> guard is **deliberately minimal** — it keys on *port + health response only*,
+> not on install identity, and it only checks the configured port. 040 accepted
+> two known limitations and explicitly deferred the robust fix to 041:
+> (1) two *separate* installs sharing the default port can be mistaken for each
+> other; (2) it does not reliably detect the same install when it is running on a
+> fallback port. 041 makes robust coordination load-bearing and MUST replace the
+> port-only probe.
+
+The update process shall guarantee that **exactly one** Alice instance is running
+across the stop → swap → restart sequence.
+
+The system shall ensure the currently running instance is **fully stopped**
+before replacing program files. On Windows the bundled runtime (`runtime\node.exe`)
+and the native `better-sqlite3` binary are file-locked while the process is alive,
+so the swap shall occur only after the old process has exited and released those
+locks (e.g. a swap-on-restart helper, or download-to-staging then swap on next
+launch).
+
+Instance detection shall be **robust to port fallback and install identity** —
+a per-install lock (e.g. a lock file under `data/`/`config/` recording the live
+PID and bound port, with stale-lock liveness handling) is preferred over a
+port-only health probe, because it (a) detects the same install regardless of
+which port it bound to, and (b) distinguishes separate installs.
+
+The coordination mechanism shall be **forward-compatible across versions.** Because
+an update replaces `server/portable.js` itself, the *new* version's launcher must
+be able to detect (and cleanly hand off from / wait for) an *old* version's still-
+running instance during the update window. The lock-file schema or health-identity
+contract shall therefore be stable and versioned.
+
+A second concurrent connection to `data/alice.db` shall never occur during a
+migration — overlapping old/new instances mid-migration is a data-integrity risk
+and must be prevented by the coordination mechanism above.
+
+---
+
 ### Data Preservation
 
 The update process shall preserve:
