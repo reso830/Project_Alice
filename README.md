@@ -83,7 +83,8 @@ Your data is saved to `data\alice.db` and launch settings live in
 `config\settings.json` (`port`, `openBrowser`) — both survive updates. AI
 features are optional: paste your OpenRouter key in Settings (stored in your
 browser, never on disk). Alice is reachable only from this PC; it is not exposed
-to your network.
+to your network. Launching again while Alice is already running just re-opens
+your browser to the existing instance — it never starts a second copy.
 
 **Build the portable package (maintainers):** on Windows, run
 `npm run build:portable`. This builds the frontend, bundles a pinned Node

@@ -57,6 +57,7 @@ describe('portable bootstrap', () => {
       open: async (url) => {
         opened.push(url);
       },
+      probe: async () => false,
       maxTries: 1,
     });
 
@@ -84,6 +85,7 @@ describe('portable bootstrap', () => {
       open: async (url) => {
         opened.push(url);
       },
+      probe: async () => false,
       maxTries: 1,
     });
 
@@ -93,6 +95,38 @@ describe('portable bootstrap', () => {
     );
 
     await result.stop();
+  });
+
+  test('reuses an already-running instance instead of starting a second server', async () => {
+    vi.resetModules();
+    const { run } = await import('../../server/portable.js');
+    const root = await makePackageRoot();
+    const configuredPort = JSON.parse(
+      fs.readFileSync(path.join(root, 'config', 'settings.json'), 'utf8'),
+    ).port;
+    const probed = [];
+    const opened = [];
+
+    const result = await run({
+      root,
+      open: async (url) => {
+        opened.push(url);
+      },
+      probe: async (baseUrl) => {
+        probed.push(baseUrl);
+        return true;
+      },
+      maxTries: 1,
+    });
+
+    expect(probed).toEqual([`http://127.0.0.1:${configuredPort}`]);
+    expect(result).toEqual({ alreadyRunning: true, port: configuredPort });
+    expect(result.server).toBeUndefined();
+    expect(opened).toEqual([`http://127.0.0.1:${configuredPort}`]);
+    expect(fs.existsSync(path.join(root, 'data', 'alice.db'))).toBe(false);
+    expect(fs.readFileSync(path.join(root, 'logs', 'alice.log'), 'utf8')).toContain(
+      'Existing instance detected',
+    );
   });
 
   test('fails clearly when dist/index.html is missing', async () => {

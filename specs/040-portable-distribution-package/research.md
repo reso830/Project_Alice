@@ -86,6 +86,14 @@ Decision log for the technical unknowns behind the plan. Each entry: **Decision 
 
 ---
 
+## R-9 — Single instance via health-probe reuse (amendment 2026-06-22)
+
+**Decision**: Before binding, the bootstrap probes the configured port's `/api/health` (1s timeout, bundled-Node global `fetch`). If it returns `{ status:'ok', runtime }`, Alice is already running → open the browser to the existing instance and exit without starting a second server. Anything else (non-Alice response, refused connection, timeout) is treated as "not running" and the launcher proceeds to the normal port-fallback path.
+
+**Rationale**: Without this, a second double-click spawned a second server on a different port — a second window, a separate `localStorage` origin (so the BYOK AI key/prefs were "missing"), and a second SQLite connection to the same DB. Health-probe reuse gives the expected "focus the running app" desktop behavior, is **dependency-free** (global `fetch`), preserves FR-032 for the genuinely-busy-by-something-else case, and needs no lock files or OS primitives.
+
+**Alternatives rejected**: PID/port **lock file** (needs stale-lock liveness handling on crash); Windows **named mutex** (no Node built-in → new native dependency); keeping the original auto-second-instance behavior (the dual-origin / dual-DB footgun above).
+
 ## Open items deferred to implementation/tasks
 
 - Exact bounded retry count and default port constant (pick during implementation; 3001 default).

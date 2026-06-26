@@ -68,10 +68,13 @@ Gating: only the **portable bootstrap** sets `serveStatic: true`. Hosted (`api/i
 A new entry (`server/portable.js`) imports `createApp` + `createRepositories` and owns portable orchestration, leaving `server/index.js`'s dev/hosted CLI boot intact:
 1. Resolve launch settings from `config/settings.json` (preferred port; default **3001**).
 2. Set `process.env.APP_RUNTIME='local'` and `process.env.ALICE_DB_PATH=<package>/data/alice.db` before importing config/db.
-3. Build the app with `serveStatic: true`; `listen(port, '127.0.0.1')`.
-4. On `EADDRINUSE`, increment the port (bounded retries) and try again — staying localhost-bound.
-5. After listening, open the default browser to `http://127.0.0.1:<port>` via Windows `start` (no dep); if that fails, print the URL.
-6. Keep the process in the foreground console; `SIGINT`/window-close stops it cleanly.
+3. **Single-instance probe**: before binding, fetch the configured port's `/api/health` (1s timeout). If it returns `{ status:'ok', runtime }`, Alice is already running → open the browser to that instance and **exit without starting a second server** (FR-033). A non-Alice port, refused connection, or timeout → treat as "not running" and continue.
+4. Build the app with `serveStatic: true`; `listen(port, '127.0.0.1')`.
+5. On `EADDRINUSE` from a **non-Alice** holder, increment the port (bounded retries) and try again — staying localhost-bound (FR-032).
+6. After listening, open the default browser to `http://127.0.0.1:<port>` via Windows `start` (no dep); if that fails, print the URL.
+7. Keep the process in the foreground console; `SIGINT`/window-close stops it cleanly.
+
+The probe is injectable (like the browser opener) for hermetic tests; it uses the bundled Node 24's global `fetch` — no new dependency.
 
 ### Decision 3 — Standardized layout assembled by a Node build script
 
@@ -95,9 +98,11 @@ A new entry (`server/portable.js`) imports `createApp` + `createRepositories` an
 User double-clicks Start-Alice.cmd
   → runtime\node.exe app\server\portable.js
       → read config/settings.json (port)
+      → probe http://127.0.0.1:<port>/api/health
+          → already Alice? open browser to it, EXIT (single instance, FR-033)
       → set APP_RUNTIME=local, ALICE_DB_PATH=data/alice.db
       → createRepositories(local) → better-sqlite3 opens data/alice.db (initSchema)
-      → createApp({ serveStatic:true }) → listen(127.0.0.1, port [+retry])
+      → createApp({ serveStatic:true }) → listen(127.0.0.1, port [+retry if non-Alice])
       → open default browser → http://127.0.0.1:<port>
   Browser → GET / → dist/index.html (+ static assets)
   Browser → /api/* → Express routers → SQLite
@@ -150,7 +155,7 @@ Close console window / Ctrl+C → server stops, no orphaned process
 ## Risks & Tradeoffs
 
 - **R-1 `better-sqlite3` ABI mismatch** — the bundled native binary must match the pinned Node ABI, or the app crashes on DB open. *Mitigation*: pin an exact Node version; ensure the matching prebuilt is staged (rebuild against the pinned runtime if absent); smoke-test DB open in the build. (research R-2)
-- **R-2 Port drift orphaning `localStorage`** — if the default port is busy and Alice shifts ports, the browser origin changes and the stored AI key/UI prefs appear gone (SQLite data is safe). *Mitigation*: stable default port + `config/` pinned port; document. (spec edge case)
+- **R-2 Port drift orphaning `localStorage`** — if the default port is busy and Alice shifts ports, the browser origin changes and the stored AI key/UI prefs appear gone (SQLite data is safe). *Mitigation*: stable default port + `config/` pinned port; and the single-instance probe (FR-033) removes the most common cause — a second launch now focuses the existing instance instead of spawning a different-port one. Drift only remains possible when a **non-Alice** process holds the default port. (spec edge case)
 - **R-3 Windows SmartScreen / mark-of-the-web** — the `.cmd` may prompt once on first run. Acceptable (no self-extracting EXE; official signed `node.exe`); document the expected one-time prompt.
 - **R-4 ZIP size** — shipping `node_modules` makes a larger archive than an esbuild bundle. Accepted per spec clarification (simplicity + AV safety + 041 parity over size).
 - **R-5 Build only validated on Windows** — `Compress-Archive` and `node-win-x64` are Windows-specific by design (v1 is Windows-only). CI uses `windows-latest`. Cross-platform build is a future concern.

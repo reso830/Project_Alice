@@ -49,6 +49,7 @@ Responsibilities are split between the **launcher** (`Start-Alice.cmd`) and the 
 | Port | preferred port from `config/settings.json` if free, else next free local port (bounded retry) |
 
 The bootstrap, in return:
+- **single instance**: before binding, probes `http://127.0.0.1:<configured-port>/api/health`; if it returns `{ status:'ok', runtime }`, opens the browser to that instance and exits without starting a second server (FR-033). A non-Alice port / refused connection / timeout → treated as "not running";
 - opens/creates `data/alice.db` via the existing `initSchema()` (no schema change);
 - after `listen`, opens the default browser to `http://127.0.0.1:<port>` (when `openBrowser`), else prints the URL;
 - on `SIGINT`/console close, shuts down cleanly with no orphaned process holding the port;
@@ -79,7 +80,8 @@ See [data-model.md §2](../data-model.md). Summary:
 | Bundled runtime missing / cannot execute | **launcher** (`.cmd`) | clear error + `pause`; **no** silent exit (the bootstrap can't run, so the launcher must report) |
 | Required `app/` file(s) missing (e.g. `portable.js`) | launcher via `errorlevel` | node exits non-zero → launcher surfaces a meaningful message + `pause` |
 | Missing `dist/`/required app file at startup | **bootstrap** (`portable.js`) | clear error, exit non-zero (launcher surfaces the `errorlevel`) |
-| Default port busy | bootstrap | **auto-select** next free local port and open browser there (no failure); indicate the port in use |
+| Configured port already serving **Alice** (second launch) | bootstrap | **single instance** — open browser to the existing instance and exit; do not start a second server (FR-033) |
+| Default port busy with a **non-Alice** process | bootstrap | **auto-select** next free local port and open browser there (no failure); indicate the port in use (FR-032) |
 
 Errors are surfaced in the visible console window and/or `logs/alice.log`.
 

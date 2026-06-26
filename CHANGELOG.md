@@ -35,7 +35,13 @@ upcoming self-update feature (041), but ships no update logic.
 - **Portable bootstrap** — `server/portable.js` wires `APP_RUNTIME=local` and
   `ALICE_DB_PATH` to the package's `data/`, reads `config/settings.json`
   (`port`, `openBrowser`), binds to `127.0.0.1` only, and auto-selects the next
-  free local port when the default is busy. (040-portable-distribution-package)
+  free local port when the default is busy with a non-Alice process.
+  (040-portable-distribution-package)
+- **Single instance** — launching the package while Alice is already running
+  detects the running instance via a `/api/health` probe on the configured port
+  and re-opens the browser to it instead of starting a second server (avoiding a
+  duplicate window, a separate `localStorage` origin, and a second SQLite
+  connection). (040-portable-distribution-package)
 - **Repeatable build + release** — `npm run build:portable` builds the frontend,
   bundles a pinned official Node runtime (with an ABI-matched `better-sqlite3`
   and a DB-open smoke check), assembles the standardized

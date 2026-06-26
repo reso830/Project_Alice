@@ -39,9 +39,34 @@ async function defaultOpen(url) {
   console.log(`Open Alice in your browser: ${url}`);
 }
 
+// Single-instance probe: returns true only when an Alice instance is already
+// serving on the given origin (its /api/health returns `{ status:'ok', runtime }`).
+// A non-Alice process on the port, a refused connection, or a timeout → false,
+// so the launcher falls through to the normal port-fallback path.
+async function defaultProbe(baseUrl) {
+  const controller = new globalThis.AbortController();
+  const timer = setTimeout(() => controller.abort(), 1000);
+
+  try {
+    const response = await globalThis.fetch(`${baseUrl}/api/health`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const body = await response.json();
+    return body?.status === 'ok' && typeof body?.runtime === 'string';
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function run({
   root = defaultRoot(),
   open = defaultOpen,
+  probe = defaultProbe,
   maxTries,
 } = {}) {
   const packageRoot = path.resolve(root);
@@ -55,6 +80,22 @@ export async function run({
   fs.mkdirSync(path.join(packageRoot, 'logs'), { recursive: true });
 
   const settings = readLaunchSettings(configDir);
+  const configuredUrl = `http://127.0.0.1:${settings.port}`;
+
+  // Single-instance: if Alice is already running on the configured port, don't
+  // start a second server (which would open a second window on a different port
+  // and a separate localStorage origin). Just focus the existing instance.
+  if (await probe(configuredUrl)) {
+    appendLog(packageRoot, `[portable] Existing instance detected at ${configuredUrl}; focusing it.`);
+    console.log(`Alice is already running at ${configuredUrl}; opening your browser.`);
+    if (settings.openBrowser) {
+      await open(configuredUrl);
+    } else {
+      console.log(`Open Alice in your browser: ${configuredUrl}`);
+    }
+    return { alreadyRunning: true, port: settings.port };
+  }
+
   process.env.APP_RUNTIME = 'local';
   process.env.ALICE_DB_PATH = dataPath;
   process.env.PORT = String(settings.port);

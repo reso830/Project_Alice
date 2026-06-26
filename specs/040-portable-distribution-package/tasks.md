@@ -6,7 +6,7 @@ Conventions: tasks are small and ordered; `[P]` marks tasks that can run in para
 
 Status legend: `[x]` done · `[ ]` pending · `[~]` skipped.
 
-Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
+Phase dependency: 01 → 02 → 03 → 04 → 05 → 06; **07** (amendment, 2026-06-22 — single-instance launch).
 
 **Additive rule**: every phase leaves `npm run test:run` green. Each phase's change is additive and gated (static serving defaults off; the bootstrap/build/CI are new files), so no existing behavior breaks at a phase boundary.
 
@@ -24,6 +24,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 | 04 | CI release workflow (tag/dispatch only) | T015–T016 | US5 |
 | 05 | Release Prep | T017–T022 | — |
 | 06 | Package Smoke Test (built package) — UI-rendering smoke N/A (no UI change) | T023 | all |
+| 07 | Amendment — single-instance launch (health-probe reuse) | T024–T025 | US4, FR-033 |
 
 ---
 
@@ -237,7 +238,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
   - **US1**: double-click `Start-Alice.cmd` → server starts on bundled runtime, browser opens, add an application works.
   - **US2**: data persists — add data, close (console window), relaunch → data present; `data/alice.db` is under `data/`.
   - **US3**: single double-click starts everything + opens browser; closing the console (or Ctrl+C) stops Alice with no orphaned `node.exe`.
-  - **US4**: remove an `app/` file → clear error (no silent exit); occupy port 3001 → auto-recovers on next port and opens browser there.
+  - **US4**: remove an `app/` file → clear error (no silent exit); occupy port 3001 with a non-Alice process → auto-recovers on next port and opens browser there; launch a **second** time while Alice is already running → focuses the existing instance (opens browser to it), no second server/window (FR-033).
   - **US6**: AI features disabled without a key; enter an OpenRouter key in Settings → AI works; no key on disk.
   - **US7**: `VERSION` readable; `data/`+`config/`+`logs/` separate from `app/`+`runtime/`.
   - **US8**: confirm hosted build unaffected (`vercel.json`/`api/index` unchanged) and `npm run test:run` + `npm run lint` green.
@@ -246,3 +247,25 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 - **Out of scope**: self-update behavior (041).
 
 **Checkpoint**: all stories verified against the built package; `npm run test:run` + `npm run lint` green.
+
+---
+
+## Phase 07 — Amendment: single-instance launch (2026-06-22)
+
+**Purpose**: A second launch while Alice is already running should focus the existing instance, not start a second server on a different port (which orphans the `localStorage` AI key on a new origin and opens a second SQLite connection). Adds **FR-033**; refines **FR-032** (next-port fallback now applies only when a *non-Alice* process holds the port). Per [research R-9](research.md) and the spec's 2026-06-22 amendment clarification.
+
+### T024 `[x]` — Health-probe single-instance reuse in the bootstrap
+- **Target**: [server/portable.js](../../server/portable.js)
+- **Expected behavior**: Add an injectable `probe(baseUrl)` (default: `fetch(<base>/api/health)` with a 1s `AbortController` timeout, true only when the body is `{ status:'ok', runtime:<string> }`). In `run()`, after reading settings and before setting env / dynamic imports, probe `http://127.0.0.1:<configured-port>`; if it reports a running Alice, log it, open the browser to that URL (or print it when `openBrowser:false`), and return `{ alreadyRunning: true, port }` without starting a server. Otherwise proceed exactly as before (env → dynamic imports → `createApp` → `listenWithFallback`).
+- **Constraints**: No new dependency (bundled Node 24 global `fetch`). A non-Alice port / refused connection / timeout MUST be treated as "not running" so FR-032 fallback still applies. `probe` injectable for tests like `open`.
+- **Validation/test**: T025.
+- **Out of scope**: lock files / OS mutexes (rejected, research R-9); changing the non-Alice fallback.
+
+### T025 `[x]` [P] — Tests for single-instance reuse
+- **Target**: [tests/server/portableBootstrap.test.js](../../tests/server/portableBootstrap.test.js)
+- **Expected behavior**: New test — with an injected `probe` returning `true`, `run()` probes the configured-port `/api/health`, returns `{ alreadyRunning: true, port }` with **no** `server`, opens the browser to the configured URL, creates **no** `data/alice.db`, and logs "Existing instance detected". Existing start-a-server tests inject `probe: async () => false` for determinism.
+- **Constraints**: Vitest; injected `probe`/`open`; no real browser/network.
+- **Validation/test**: this is the test task.
+- **Out of scope**: build/CI changes (none needed).
+
+**Checkpoint**: `npm run test:run` + `npm run lint` green; single-instance verified by unit test and exercised in the Phase 06 package smoke (second launch focuses the running instance).
