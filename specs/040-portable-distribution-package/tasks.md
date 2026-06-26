@@ -12,7 +12,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 **Validation-logic note**: this feature changes **no** application validation, data model, schema, migration, `createRepositories`, or `/api` route behavior. The constitution's required-area tests (status transitions, required-field enforcement, URL validation, date handling) are therefore **unaffected and need no new tasks** — the existing suites must stay green throughout (verified each phase and in Release Prep). The only server code change is gated single-origin static serving (Phase 01).
 
-**User-story coverage**: Phase 01 → enables US1/US8 (serving); Phase 02 → **US1, US2, US3, US4, US6** (launch, persistence, stop, errors, localhost, port-select, AI-gating preserved); Phase 03 → **US5, US7** (reproducible build, version marker, separation) + assembles US1–US4/US6 into the package; Phase 04 → **US5** (release publication); Phase 06 Browser Smoke Test walks **all** stories. US8 (hosted compatibility) is preserved by gating and verified in 01 + Release Prep.
+**User-story coverage**: Phase 01 → enables US1/US8 (serving); Phase 02 → **US1, US2, US3, US4, US6** (launch, persistence, stop, errors, localhost, port-select, AI-gating preserved); Phase 03 → **US5, US7** (reproducible build, version marker, separation) + assembles US1–US4/US6 into the package; Phase 04 → **US5** (release publication); Phase 06 Package Smoke Test walks **all** stories against the built ZIP. US8 (hosted compatibility) is preserved by gating and verified in 01 + Release Prep. **Note**: the constitution's *Browser Smoke Test* (UI-rendering verification, Amendment 1.1.0) is **N/A** for 040 — it changes no UI (no components, CSS, rendering, keyboard, or viewport behavior); Phase 06 is instead a packaging/integration smoke that exercises what automated tests cannot (the bundled runtime, native binary, and real launch).
 
 ## Phase summary
 
@@ -23,7 +23,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 | 03 | Build script + standardized layout | T010–T014 | US5, US7 |
 | 04 | CI release workflow (tag/dispatch only) | T015–T016 | US5 |
 | 05 | Release Prep | T017–T022 | — |
-| 06 | Browser Smoke Test (built package) | T023 | all |
+| 06 | Package Smoke Test (built package) — UI-rendering smoke N/A (no UI change) | T023 | all |
 
 ---
 
@@ -153,14 +153,14 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 **Purpose**: Build and publish the artifact to GitHub Releases automatically, but only on a deliberate version tag or manual dispatch — never per-feature merge (free-tier quota).
 
-### T015 `[ ]` — Release workflow
+### T015 `[x]` — Release workflow
 - **Target**: `.github/workflows/release-portable.yml` (new)
 - **Expected behavior**: Triggers: `push` of `tags: ['v*']` and `workflow_dispatch` **only**. Runner: `windows-latest`. Steps: checkout → setup Node (pinned line) → `npm ci` → `npm run build:portable` → attach `alice-v<version>-win-x64.zip` + `.sha256` to the GitHub Release for the tag (`gh release upload` or an equivalent action). Per [research.md R-8](research.md) / [contracts/api.md §5](contracts/api.md).
 - **Constraints**: MUST NOT trigger on ordinary `push`/`pull_request`. Do not modify the existing `.github/workflows/node-ci.yml`. Use `GITHUB_TOKEN`; no extra secrets.
 - **Validation/test**: T016.
 - **Out of scope**: changing the test CI.
 
-### T016 `[ ]` — Verify trigger discipline (review)
+### T016 `[x]` — Verify trigger discipline (review)
 - **Target**: `.github/workflows/release-portable.yml`
 - **Expected behavior**: Confirm by inspection that `on:` contains only `push.tags: ['v*']` and `workflow_dispatch`; no `branches`, `pull_request`, or schedule triggers; the upload step is the only publish action. Record the confirmation in the PR.
 - **Constraints**: Static review against the file.
@@ -225,13 +225,15 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06.
 
 ---
 
-## Phase 06 — Browser Smoke Test (built package)
+## Phase 06 — Package Smoke Test (built package)
 
 **Purpose**: Walk each user story's Independent Test against the **actual built package** on a clean Windows path with no global Node (final phase, after Release Prep, so it exercises the merge state). Per [quickstart.md §D](quickstart.md).
 
-### T023 `[ ]` — Smoke-test the portable package
+**Constitution note — UI-rendering Browser Smoke Test is N/A.** Amendment 1.1.0 mandates a Browser Smoke Test "for features with user-facing UI" to verify rendering, CSS layout, keyboard interaction, and mobile viewports. Feature 040 changes **no** UI — no components, styles, rendering, interaction, or viewport behavior; it only packages and serves the *existing* UI. The UI-rendering smoke is therefore documented as a **skip (N/A)**. **Residual risk**: low — any incidental UI regression would be caught by the unchanged Vitest component suite and by simply loading the app during this package smoke. What *cannot* be covered by automated tests — the bundled Node runtime, the ABI-matched native `better-sqlite3`, and a real extract→launch on clean Windows — **is** verified here.
+
+### T023 `[x]` — Package smoke-test the portable build
 - **Target**: the `alice-v1.9.0-win-x64.zip` produced by `npm run build:portable`
-- **Expected behavior**: On a Windows machine/profile with **no** global Node and no repo checkout, extract the ZIP and verify each story:
+- **Expected behavior**: On a Windows machine/profile with **no** global Node and no repo checkout, extract the ZIP and verify each story (packaging/integration behavior, not UI rendering):
   - **US1**: double-click `Start-Alice.cmd` → server starts on bundled runtime, browser opens, add an application works.
   - **US2**: data persists — add data, close (console window), relaunch → data present; `data/alice.db` is under `data/`.
   - **US3**: single double-click starts everything + opens browser; closing the console (or Ctrl+C) stops Alice with no orphaned `node.exe`.

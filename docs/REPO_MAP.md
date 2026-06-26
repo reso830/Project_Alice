@@ -91,8 +91,11 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 
 | Path | Purpose |
 |------|---------|
-| `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only |
+| `server/index.js` | Express app factory `createApp({ repositories, config, requireAuth?, seedHostedUserIfNeeded?, serveStatic?, distDir? })`; `GET /api/health` returns `{ status, runtime }`; `logBoot()`. CLI boot block lazy-imports the seed middleware in hosted mode only. Feature 040: opt-in `serveStatic` (default off) registers `express.static(distDir)` + an SPA fallback for non-`/api` GETs after the routers — used only by the portable bootstrap; hosted/dev are byte-for-byte unchanged |
 | `api/index.js` | Vercel serverless entry — lazy-imports the seed middleware in hosted mode; passes `config` + dispatcher + seed middleware into `createApp` |
+| `server/portable.js` | Portable/local launcher entry (feature 040) — exported `run({ root, open })`; resolves the package root, sets `APP_RUNTIME=local` + `ALICE_DB_PATH`, then **dynamically** imports `config.js`/`repositories`/`index.js` (so they evaluate after env is set), builds the app with `serveStatic:true`, binds `127.0.0.1` via `listenWithFallback`, opens the browser (injectable), logs to `logs/alice.log`, and stops cleanly on `SIGINT` |
+| `server/portable/settings.js` | `readLaunchSettings(configDir)` (feature 040) — reads `config/settings.json` → `{ port, openBrowser }`; defaults `3001`/`true`; missing/malformed/non-object/out-of-range degrade to defaults with a warning, never throws |
+| `server/portable/listen.js` | `listenWithFallback(app, { host, port, maxTries })` (feature 040) — binds the given localhost host; on `EADDRINUSE` increments the port (bounded) and retries; resolves `{ server, port }` or rejects after exhausting tries |
 | `server/health.js` | `assertHostedSchema(config, { logger? })` — hosted-mode boot check; PostgREST sentinel probes against `applications` (including `applications.timeline`, `applications.min_years_experience` (036), `applications.compat_analysis` (037), `applications.compat_scored_at` (037)), `profile`, `profile_skill` (032), and `user_seed_state`; throws on `42703` / `42P01` (migration not applied); soft-warns on transient errors |
 | `server/routes/applications.js` | CRUD route handlers — accepts `{ repos, requireAuth?, seedHostedUserIfNeeded? }`; uses `attachRepos(repos)` to populate `req.repos`; all handlers `async` with `await` on every repo call (Supabase adapter returns Promises). `GET /` accepts `?view=archived` (strict scalar equality; unknown values fall back to active). `POST /:id/unarchive` mirrors archive. On create/update, computes the server-authoritative `compat` from the current profile via `server/services/compatibility.js` (036; any client-supplied `compat` is ignored). Feature 037: create always stamps `compatScoredAt`; update stamps only when compat-relevant fields (`skills`, `preferredSkills`, `responsibilities`, `jobTitle`, `minYearsExperience`) are present in the body. New `POST /:id/compat-notes` accepts `{ summary, body }` from the client, validates, adds `generatedAt`, persists to `compat_analysis` |
 | `server/routes/profile.js` | Profile route handlers — same `{ repos, requireAuth, seedHostedUserIfNeeded }` shape. On `PUT /`, after upsert calls `recomputeActive` (036) to rescore all active applications against the saved profile (archived frozen) |
@@ -123,6 +126,18 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `server/seeds/profileData.js` | Side-effect-free module exporting `DEMO_PROFILE` (frontend shape); consumed by `db-seed-profile.js` and the demo-store parity test |
 
 **API proxy:** Vite dev server proxies `/api/*` → Express on port 3001.
+
+---
+
+## Build / Release
+
+| Path | Purpose |
+|------|---------|
+| `scripts/build-portable.mjs` | `npm run build:portable` (feature 040) — Windows-only. Builds the frontend (`--mode portable`), stages the standardized `alice/{app,runtime,data,config,logs}` layout, bundles a pinned official `node-win-x64` runtime (verified vs the official `SHASUMS256`, with an ABI-matched `better-sqlite3` and a DB-open smoke), writes the `VERSION` marker, prunes dev deps, then emits `alice-v<version>-win-x64.zip` + a `.sha256` checksum under `portable-dist/`. Node built-ins + `Compress-Archive` only — no new dependency |
+| `scripts/portable/Start-Alice.cmd` | Portable launcher template (feature 040) — checks `runtime\node.exe` exists, runs `app\server\portable.js`, keeps the console window open ("close to stop"), and surfaces a clear error + `pause` on a missing runtime or non-zero `errorlevel` |
+| `config/settings.default.json` | Default portable launch settings (feature 040) — `{ "port": 3001, "openBrowser": true }`; copied to `config/settings.json` in the package |
+| `.github/workflows/release-portable.yml` | Release workflow (feature 040) — `windows-latest`; `npm ci` → `npm run build:portable` → attaches the ZIP + `.sha256` to the GitHub Release. Triggers **only** on a `v*` tag or `workflow_dispatch` (never on per-feature pushes/PRs) |
+| `.github/workflows/node-ci.yml` | CI — lint, build (stub Supabase env), and `test:ci` on Node 20.x/22.x for pushes/PRs to `main` |
 
 ---
 

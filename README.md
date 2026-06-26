@@ -23,6 +23,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Profile editing** — centralized editor with sticky Save/Cancel controls, dirty-state tracking, and discard confirmation; first-time users see a guided Setup and Import flow with Smart entry and Manual entry choices, while existing profiles get an Import Bar. Smart imports support paste/upload, ask-first AI-unavailable dialogs with reason codes, basic-parser fallback by explicit choice, AI-filled / Auto-filled provenance tags, Undo, and reduced-motion-safe highlighting; structured sections and Skills retain inline validation and keyboard-friendly overlays.
 - **AI resume parsing (BYOK)** — optional browser-direct OpenRouter parsing is configured from the Profile page's unified Settings card: save a browser-local key, choose a model slug, and toggle CV/JD/compatibility AI features independently. Saving a key is the consent boundary; deleting it withdraws AI access. Alice's server never receives the key, no environment variables are required, and manual/profile-local paths remain available. See [`specs/034-profile-page-refresh/quickstart.md`](specs/034-profile-page-refresh/quickstart.md). (034-profile-page-refresh)
 - **AI job-description parsing (BYOK)** — from the Add-application gate's Smart entry, paste a job posting and have an LLM (via OpenRouter) pre-fill a new application for review before saving. Gated by the master AI toggle plus the live Job-description parsing switch and a browser-local key; with AI off the Smart card is locked ("Enable AI in Settings →") and Manual entry remains. Recoverable failures offer a basic rule-based parser, an empty result ends in a clear dead-end, and pasted text is preserved across retries. Status is never parsed (stays Wishlisted) and no job text is persisted. See [`specs/035-llm-jd-parser/quickstart.md`](specs/035-llm-jd-parser/quickstart.md). (035-llm-jd-parser)
+- **Portable Windows package** — run Alice with no Node.js install, no repository clone, and no terminal: download the release ZIP, extract it anywhere, and double-click `Start-Alice.cmd`. A bundled Node runtime serves the app on `127.0.0.1` (localhost-only) and opens your browser automatically; close the console window to stop. Your data lives in `data/alice.db` and your settings in `config/` — both preserved across launches and outside the replaceable program files. The same codebase still deploys to hosted (Vercel) unchanged. See [`specs/040-portable-distribution-package/quickstart.md`](specs/040-portable-distribution-package/quickstart.md). (040-portable-distribution-package)
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
@@ -64,6 +65,33 @@ npm run dev
 ```
 
 Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests to the backend automatically.
+
+## Run the Portable Package (Windows)
+
+End users don't need any of the above. The portable release is a self-contained
+ZIP — no Node.js install, no clone, no terminal:
+
+1. Download `alice-v<version>-win-x64.zip` from GitHub Releases.
+2. Extract it anywhere (Desktop is fine). No installer, no admin rights.
+3. Double-click **`Start-Alice.cmd`**. A console window opens, the bundled Node
+   runtime starts the server on `127.0.0.1`, and your default browser opens to
+   the app. (Windows may show a one-time SmartScreen prompt for the downloaded
+   script — that's expected.)
+4. To stop Alice, close the console window (or press Ctrl+C in it).
+
+Your data is saved to `data\alice.db` and launch settings live in
+`config\settings.json` (`port`, `openBrowser`) — both survive updates. AI
+features are optional: paste your OpenRouter key in Settings (stored in your
+browser, never on disk). Alice is reachable only from this PC; it is not exposed
+to your network.
+
+**Build the portable package (maintainers):** on Windows, run
+`npm run build:portable`. This builds the frontend, bundles a pinned Node
+runtime, assembles the standardized `alice/` layout, and emits
+`alice-v<version>-win-x64.zip` plus a `.sha256` checksum under `portable-dist/`.
+A tag/dispatch-only GitHub Actions workflow (`release-portable.yml`) attaches
+those artifacts to the matching GitHub Release. See
+[`specs/040-portable-distribution-package/quickstart.md`](specs/040-portable-distribution-package/quickstart.md).
 
 ## Hosted Mode (Supabase Authentication)
 
@@ -221,7 +249,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.8.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.9.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

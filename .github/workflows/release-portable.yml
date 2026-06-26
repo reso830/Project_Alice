@@ -1,0 +1,64 @@
+name: Release portable package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing or new GitHub Release tag, for example v1.9.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release-portable:
+    name: Build portable Windows package
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.1'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build portable package
+        run: npm run build:portable
+
+      - name: Resolve artifact names
+        id: artifacts
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem -Path portable-dist -Filter 'alice-v*-win-x64.zip' | Select-Object -First 1
+          if (-not $zip) {
+            throw 'Portable ZIP was not produced.'
+          }
+
+          $checksum = Get-Item "$($zip.FullName).sha256"
+          "zip=$($zip.FullName)" >> $env:GITHUB_OUTPUT
+          "checksum=$($checksum.FullName)" >> $env:GITHUB_OUTPUT
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "release_tag=${{ inputs.release_tag }}" >> $env:GITHUB_OUTPUT
+          } else {
+            "release_tag=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Ensure GitHub Release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "${{ steps.artifacts.outputs.release_tag }}" 2>$null || gh release create "${{ steps.artifacts.outputs.release_tag }}" --title "${{ steps.artifacts.outputs.release_tag }}" --notes ""
+
+      - name: Upload portable artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.artifacts.outputs.release_tag }}" "${{ steps.artifacts.outputs.zip }}" "${{ steps.artifacts.outputs.checksum }}" --clobber

@@ -114,7 +114,7 @@ Close console window / Ctrl+C → server stops, no orphaned process
 3. **Build script + layout** — `scripts/build-portable.mjs`, default `config/settings.json`, `VERSION` marker, launcher `.cmd`, checksum; verified via quickstart dry run.
 4. **CI release workflow** — tag/dispatch-gated `release-portable.yml`.
 5. **Release Prep** (second-to-last) — version bump, CHANGELOG, README (portable run instructions), `docs/deployment.md` (new local runtime/env: `ALICE_DB_PATH`, localhost binding, `serveStatic`), `docs/REPO_MAP.md` (new files), `package-lock.json` root version sync, `docs/feature_roadmap.md` tick.
-6. **Browser Smoke Test** (final) — walk each user story's Independent Test against the **built package** on a clean Windows path with no global Node.
+6. **Package Smoke Test** (final) — walk each user story's Independent Test against the **built package** on a clean Windows path with no global Node. The constitution's UI-rendering Browser Smoke Test (Amendment 1.1.0) is **N/A** — 040 changes no UI; this phase verifies packaging/integration (bundled runtime, native binary, real launch/persist/stop) that automated tests cannot.
 
 ---
 
@@ -162,7 +162,7 @@ Close console window / Ctrl+C → server stops, no orphaned process
 
 - **Unit (Vitest)**: SPA-fallback routing (non-`/api` GET → `index.html`; `/api` and static assets unaffected; serving stays off when `serveStatic` is unset → hosted/dev safe); port auto-select increments on `EADDRINUSE` and binds `127.0.0.1`; `config/settings.json` parsing (valid, missing, malformed → default port).
 - **Build dry run (quickstart)**: `npm run build:portable` produces the standardized layout, ZIP, `.sha256`, and `VERSION`; the staged `app/` excludes `.env`/secrets; checksum verifies.
-- **Manual Browser Smoke Test (final phase)**: on a clean Windows path with no global Node, extract → double-click → add an application → close → relaunch (data persists) → confirm localhost-only, busy-port recovery, clear startup errors, console-close shutdown, and AI gating/enable via Settings.
+- **Manual Package Smoke Test (final phase)**: on a clean Windows path with no global Node, extract → double-click → add an application → close → relaunch (data persists) → confirm localhost-only, busy-port recovery, clear startup errors, console-close shutdown, and AI gating/enable via Settings. (The constitution's UI-rendering Browser Smoke Test is N/A — no UI change; see tasks.md Phase 06.)
 - **Regression**: full `npm run test:run` + `npm run lint` green; hosted build unaffected (inspect `vercel.json`/`api/index`).
 
 ### Dual persistence runtimes
