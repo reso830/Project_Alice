@@ -18,7 +18,8 @@
    - 4.4 [Profile Section](#44-profile-section)
    - 4.5 [Settings Section](#45-settings-section)
      - 4.5.1 [AI sub-group](#451-ai-sub-group)
-     - 4.5.2 [Account sub-group](#452-account-sub-group)
+     - 4.5.2 [Updates sub-group](#452-updates-sub-group)
+     - 4.5.3 [Account sub-group](#453-account-sub-group)
 5. [Edit / Setup Profile Page → separate doc](#5-edit--setup-profile-page)
 6. [Interactions & Behaviour](#6-interactions--behaviour)
 7. [Data Model](#7-data-model)
@@ -52,7 +53,7 @@ The page has two primary states driven by whether a profile has been set up.
 - Profile section renders all filled sub-sections.
 - An **Edit Profile** button appears right-aligned in the Profile section header.
 
-> Both states also render the **Settings** section (§4.5) last, regardless of whether a profile exists — it hosts AI configuration and a runtime-mode-aware account control, neither of which is tied to profile setup.
+> Both states also render the **Settings** section (§4.5) last, regardless of whether a profile exists — it hosts AI configuration, app-update controls, and a runtime-mode-aware account control, none of which is tied to profile setup.
 
 ---
 
@@ -70,8 +71,8 @@ The page has two primary states driven by whether a profile has been set up.
   ├── Welcome Heading
   ├── Applications Section Card
   ├── Profile Section Card
-  └── Settings Section Card   (AI sub-group + Account sub-group)
-[Footer]
+  └── Settings Section Card   (AI sub-group + Updates sub-group + Account sub-group)
+[Footer]   ← global chrome, see footer.md
 ```
 
 ### Grid & spacing
@@ -280,7 +281,7 @@ Clicking **Set Up Profile** navigates to the [Edit / Setup Profile page](edit_pr
 
 ### 4.5 Settings Section
 
-The final card on the page. A single **`Settings`** card that folds two labelled sub-groups into one surface — **Artificial Intelligence** (AI configuration) and **Account** (the destructive lifecycle control). It replaces the two separate cards that earlier builds shipped (a standalone "AI Resume Parsing" card + an "Account" card). Rendered regardless of whether a profile exists.
+The final card on the page. A single **`Settings`** card that folds three labelled sub-groups into one surface — **Artificial Intelligence** (AI configuration), **Updates** (app update controls), and **Account** (the destructive lifecycle control). It replaces the two separate cards that earlier builds shipped (a standalone "AI Resume Parsing" card + an "Account" card). Rendered regardless of whether a profile exists.
 
 #### Card structure
 ```
@@ -296,16 +297,15 @@ SETTINGS                                    ← card header (13px / 600)
 │   │   Job-description parsing   [ ⃝]           │
 │   │   Compatibility analysis    [⃝ ]           │
 │   └────────────────────────────────────────────┘
+├── UPDATES                                  ← sub-group label
+│   {status block: current version / available / progress}
+│   ── rule ──
+│   Check for updates automatically  [ ⃝]
+│   Update mode            Ask before installing  ⌄   (collapsible)
 └── ACCOUNT                                  ← sub-group label
     {mode-specific description copy}
     [ Destructive button ]
 ```
-
-Demo mode keeps the same two sub-group labels, but replaces both interactive
-surfaces with amber informational notes: AI / Smart features are not available
-in the demo, and Account management is not available in the demo. Demo mode
-does **not** render the OpenRouter key/model controls, AI feature toggles, or a
-disabled destructive account button.
 
 - Card: reuses `.section-card` chrome (white surface, `--border`, `--r-md`, `--shadow-sm`) with a single `.section-header` reading **Settings**.
 - Sub-groups: `.set-group`, `20px 22px` padding (`16px` on mobile), separated by a `1px solid #F2EFE9` top border. Each opens with an uppercase 9px label (`--t3`).
@@ -333,10 +333,12 @@ An inset panel (`.conn-panel`, light `#FBFAF6` surface, `--r-md`) grouping the k
 |---------|--------|
 | Panel header | `Connection` title (12px / 600) + **status pill**, right-aligned |
 | Status pill | One clear state (replaces the old two-line "Key saved / Consent granted"): `● Connected` (green, `--ok` on `--ok-dim`), `Not connected` (grey), `Testing…` (amber, pulsing dot), `Key invalid` (red) |
-| API key — unsaved | Masked text input (`type=password`) + **show/hide eye** icon-button + **Save key** (primary; click validates non-empty input) |
+| API key — unsaved | Masked text input (`type=password`) + **show/hide eye** icon-button + **Save key** (primary, disabled until non-empty) |
 | API key — saved | Masked code `sk-or-v1-••••••••••••{last4}` + **eye** (reveals full key) + **Test** (re-validates → `Testing…` → resolves) + **Replace** (swap for a new key) + **Delete** (muted button that turns destructive-red on hover; clears the key and resets status to `Not connected`) |
-| Model | **Free-text slug field** (`provider/model-slug`, e.g. `anthropic/claude-sonnet-4`) + hint line `Any OpenRouter model slug.` Lets users type any OpenRouter model rather than picking from a fixed dropdown. No dropdown or model suggestions are rendered. |
+| Model | **Free-text slug field** (`provider/model-slug`, e.g. `anthropic/claude-sonnet-4`) with a `datalist` of suggested models + a hint line. Lets users type any OpenRouter model rather than picking from a fixed dropdown. |
 | Helper | `Stored only in this browser — never sent to our servers. Using your own OpenRouter key is your responsibility.` (`DM Mono` 10.5px) |
+
+Suggested model slugs (datalist, not a hard list): `anthropic/claude-sonnet-4` · `openai/gpt-4o-mini` · `google/gemini-2.0-flash` · `meta-llama/llama-3.3-70b`.
 
 > **Consent is folded into the key flow.** Saving a key *is* the consent to use it for AI features — there is no separate "Clear Consent" button. Removing consent = **Delete** the key.
 
@@ -357,11 +359,23 @@ Verified at Tablet (768px), Mobile (390px), and slim Mobile (344px). The card it
 
 ---
 
-#### 4.5.2 Account sub-group (feature 030)
+#### 4.5.2 Updates sub-group
 
-Label: **`ACCOUNT`**. A mode-aware sub-group hosting account lifecycle controls
-for hosted/local users. Present in **every** runtime mode and independent of
-whether a profile exists. In demo mode it renders a warning note only.
+Label: **`UPDATES`**. The middle sub-group (AI → **Updates** → Account). The durable control centre for the **app update** flow — current version, manual check, an auto-check toggle, and a collapsible update-mode picker. Its status block mirrors the transient **update notification** toast; the two are views of the same available → downloading → installing state machine.
+
+> **Full spec:** [`updates.md`](updates.md) is canonical for the whole update feature — the footer **Download** control (hosted vs. local), the update **notifications** (3 states + responsive placement), and this Settings sub-group. Reference drawing: [`mockups/Updates Mockups.html`](../mockups/Updates%20Mockups.html).
+
+Key rules (see the full spec for detail):
+- **Status above, controls below**, split by a `1px solid #F2EFE9` rule. Contextual info (available banner, download/install progress) sits **above** the rule with the version — never beneath it.
+- **No redundant status pill** — the green **● Up to date** pill shows only in the calm idle state; active states convey status through the block title itself.
+- **Current version** binds to `APP_VERSION` (`v1.9.0`); **Check now** is always reachable.
+- **Update mode** is **collapsed by default** to one row (label + current choice + chevron) and expands to three radio cards (Notify only / Ask before installing / Install automatically) only while choosing.
+
+---
+
+#### 4.5.3 Account sub-group (feature 030)
+
+Label: **`ACCOUNT`**. A mode-aware sub-group hosting a single **destructive control** that closes the account lifecycle. Present in **every** runtime mode (hosted, local, demo) and independent of whether a profile exists.
 
 #### Layout
 ```
@@ -379,11 +393,9 @@ ACCOUNT
 |---------|------------------|----------|------------------|
 | Hosted  | `Delete account` | Yes      | "Permanently delete your account and all associated data." |
 | Local   | `Clear all data` | Yes      | "Permanently clear all locally stored applications and profile data." |
-| Demo    | _No button_ | No | Amber note: "Account management isn't available in the demo." + "Account deletion applies to a real hosted account and isn't available in the demo." |
+| Demo    | `Delete account` | **No** (disabled, `aria-disabled`) | "Account deletion applies to a real hosted account and isn't available in the demo." |
 
-Mode is resolved from `authStore` state: `authenticated` → hosted, demo status
-→ demo, otherwise local. Demo mode renders no destructive control, opens no
-modal, and fires no account-management network request.
+Mode is resolved from `authStore` state: `authenticated` → hosted, demo status → demo, otherwise local. The demo button is inert — clicking it opens no modal and fires no network request.
 
 #### Confirmation modal (`DeleteAccountModal`)
 
@@ -463,7 +475,7 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 | Click "Test" (API key)        | Re-validates the saved key: status → `Testing…` then resolves       |
 | Click "Replace" (API key)     | Swaps the saved key back to an editable input                      |
 | Click "Delete" (API key)      | Clears the key (= revokes consent); status → `Not connected`       |
-| Edit Model slug field         | Free-text entry of any `provider/model-slug`; no dropdown or suggestions |
+| Edit Model slug field         | Free-text entry of any `provider/model-slug`; datalist suggests common models |
 | Click "Go to Tracker"         | Navigates to Tracker page                                         |
 | Click "Archived applications" | Navigates to Tracker in the Archived view (`/?view=archived`)     |
 | Click "Edit Profile"          | Navigates to Edit Profile page                                    |
@@ -471,7 +483,7 @@ Clicking an enabled control opens a centered `alertdialog` (`role="alertdialog"`
 | Click link chip               | Opens URL in new tab                                              |
 | Click "Delete account" (hosted)| Opens DeleteAccountModal; password gate → permanent account deletion → sign out → Welcome |
 | Click "Clear all data" (local)| Opens DeleteAccountModal; typed-`DELETE` gate → clears local data → re-mounts empty states |
-| Demo Account subgroup         | Shows an amber "Account management isn't available in the demo" note; no destructive button |
+| Click "Delete account" (demo) | No-op — control is disabled                                       |
 
 ---
 
@@ -651,3 +663,4 @@ The Account section has no persisted model of its own. Its behaviour is derived 
 | 10 | How are skills captured beyond flat tags?                               | **Resolved** — 1–5 proficiency scale; graded meter rows on the Profile page (§4.4 Skills); the gated inline editor lives in [`edit_profile_page.md`](edit_profile_page.md#skills-editor) |
 | 11 | How does a user start a profile — guided vs. blank form?                | **In design** — proposed smart/manual entry gate + résumé import. See [`edit_profile_page.md` §3](edit_profile_page.md#3-entry-flow--states-proposed) |
 | 12 | How are AI features configured and consented to?                        | **Resolved (feature 033)** — unified Settings card (§4.5.1): a master toggle, browser-local OpenRouter key (consent folded into the key flow), free-text model slug, single connection status, and per-feature toggles (CV / JD / Compatibility) |
+| 13 | How does a user keep the app up to date?                                | **In design** — Updates sub-group (§4.5.2): current version + manual check, auto-check toggle, collapsible update mode; paired with a footer **Download** control and update notifications. See [`design/updates.md`](design/updates.md) |
