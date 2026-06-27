@@ -1,11 +1,12 @@
 {
   "name": "project-alice",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:portable": "node scripts/build-portable.mjs",
     "preview": "vite preview",
     "server:dev": "nodemon server/index.js",
     "server:start": "node server/index.js",

@@ -2,6 +2,10 @@ node_modules/
 dist/
 build/
 !tests/build/
+portable-dist/
+alice/
+*.zip
+*.zip.sha256
 coverage/
 data/*
 !data/.gitkeep

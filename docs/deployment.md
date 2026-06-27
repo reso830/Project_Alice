@@ -164,6 +164,52 @@ server log:
 
 ---
 
+## Portable Distribution Package (local, Windows)
+
+Feature `040-portable-distribution-package` packages the **local** runtime as a
+self-contained Windows ZIP so end users can run Alice with no Node.js install,
+no repository clone, and no terminal. This is a packaging of the existing local
+mode — it introduces **no new hosted behavior and no new environment
+variables**, and hosted (Vercel) deployment is unchanged.
+
+**Runtime entry.** The package launches `server/portable.js` (not the dev
+`server/index.js` CLI boot). The launcher (`Start-Alice.cmd`) runs the bundled
+`runtime\node.exe`; the bootstrap then:
+
+- sets `APP_RUNTIME=local` and points `ALICE_DB_PATH` at the package's
+  `data/alice.db` (so the SQLite file lives outside the replaceable program
+  files);
+- reads `config/settings.json` (`port`, default `3001`; `openBrowser`, default
+  `true`);
+- builds the app with the gated `serveStatic` branch of `createApp`, so one
+  Express origin serves the built `dist/` (SPA fallback) **and** `/api/*`;
+- binds to **`127.0.0.1` only** (never exposed to the network — local mode has
+  no auth, so nothing is reachable from other devices), auto-selecting the next
+  free local port if the default is busy;
+- opens the default browser, and writes startup/runtime diagnostics to
+  `logs/alice.log`.
+
+**Standardized layout.** The ZIP extracts to `alice/` with replaceable program
+files (`app/`, `runtime/`) kept separate from preserved user state (`data/`,
+`config/`, `logs/`) plus a root `VERSION` marker — the foundation a future
+self-update feature (041) builds on. No application data, schema, migration, or
+`/api` route behavior changes.
+
+**Build & release.** On Windows, `npm run build:portable`
+(`scripts/build-portable.mjs`) builds the frontend, bundles a pinned official
+Node runtime (verified against the official `SHASUMS256`, with an ABI-matched
+`better-sqlite3` and a DB-open smoke check), assembles the layout, and emits
+`alice-v<version>-win-x64.zip` plus a `.sha256` checksum under `portable-dist/`.
+The `release-portable.yml` GitHub Actions workflow builds and attaches those
+artifacts to a GitHub Release, triggered **only** on a `v*` tag or manual
+`workflow_dispatch` (never on per-feature merges, to conserve free-tier minutes).
+
+**AI in the portable package.** Unchanged from local mode — the OpenRouter key
+is a browser-local BYOK (`localStorage`), the server is never in the AI path,
+and no key ships on disk.
+
+---
+
 ## Supabase Project Setup
 
 1. Go to [supabase.com](https://supabase.com) and create a new project.

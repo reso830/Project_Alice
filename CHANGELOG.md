@@ -7,6 +7,58 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-06-22
+
+Portable Distribution Package — Alice can now be distributed and run as a
+self-contained portable Windows package: download a release ZIP, extract it
+anywhere, and double-click a launcher. No Node.js install, no repository clone,
+no installer, and no terminal. A bundled Node runtime serves the app on
+localhost only, opens the browser automatically, and persists data locally
+across launches. The same single codebase still deploys to hosted (Vercel)
+unchanged — all portable behavior is gated to local mode. This also lays the
+foundation (standardized layout, version marker, release checksum) for the
+upcoming self-update feature (041), but ships no update logic.
+(040-portable-distribution-package)
+
+### Added
+
+- **Single-action portable launcher** — a `Start-Alice.cmd` that runs the
+  bundled `runtime\node.exe`, starts the server, opens the default browser, and
+  surfaces a clear error (with a missing-runtime check and `errorlevel`
+  handling) instead of failing silently. Closing the console window or pressing
+  Ctrl+C stops Alice cleanly. (040-portable-distribution-package)
+- **Single-origin static serving (local only)** — `createApp` gains an opt-in
+  `serveStatic` branch that serves the built `dist/` with an SPA fallback
+  alongside `/api`, so one origin serves UI + API in the portable runtime. Gated
+  off by default; hosted (Vercel) and local dev (Vite) are byte-for-byte
+  unchanged. (040-portable-distribution-package)
+- **Portable bootstrap** — `server/portable.js` wires `APP_RUNTIME=local` and
+  `ALICE_DB_PATH` to the package's `data/`, reads `config/settings.json`
+  (`port`, `openBrowser`), binds to `127.0.0.1` only, and auto-selects the next
+  free local port when the default is busy with a non-Alice process.
+  (040-portable-distribution-package)
+- **Single instance** — launching the package while Alice is already running
+  detects the running instance via a `/api/health` probe on the configured port
+  and re-opens the browser to it instead of starting a second server (avoiding a
+  duplicate window, a separate `localStorage` origin, and a second SQLite
+  connection). (040-portable-distribution-package)
+- **Repeatable build + release** — `npm run build:portable` builds the frontend,
+  bundles a pinned official Node runtime (with an ABI-matched `better-sqlite3`
+  and a DB-open smoke check), assembles the standardized
+  `alice/{app,runtime,data,config,logs}` layout with a `VERSION` marker, and
+  emits `alice-v<version>-win-x64.zip` plus a SHA-256 checksum. A
+  tag/dispatch-only GitHub Actions workflow (`release-portable.yml`) publishes
+  them to the matching GitHub Release. (040-portable-distribution-package)
+
+### Notes
+
+- **AI is unchanged** — the OpenRouter key remains a client-side, browser-local
+  BYOK (the server is never in the AI request path); the portable package ships
+  no key and no AI configuration. (040-portable-distribution-package)
+- **No application data changes** — no data model, schema, migration, or
+  `/api` route behavior changed; the only server change is the gated static
+  serving. (040-portable-distribution-package)
+
 ## [1.8.0] — 2026-06-21
 
 Desktop Workspace Refresh — on wide desktops (≥ 1100px) the Tracker becomes a
@@ -1138,7 +1190,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/reso830/Project_Alice/compare/v1.6.0...v1.7.0
