@@ -105,19 +105,25 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T010 [P] [US1] Create unit tests for release parsing and checksum check in `tests/unit/update.test.js`
   - **Target**: `tests/unit/update.test.js` (new)
-  - **Expected behavior**: Test release tag comparisons (e.g. `'v1.9.0'` < `'v1.10.0'`), zip package integrity checks (comparing computed SHA256 hashes against checksum files), and settings validation. Must explicitly test normalization of the 'v' prefix (verifying that comparing `'v1.10.0'` against `'1.9.0'` or `'1.10.0'` against `'v1.10.1'` handles prefixes correctly by stripping them).
+  - **Expected behavior**: Test release tag comparisons (e.g. `'v1.7.0'` < `'v1.10.0'`), zip package integrity checks (comparing computed SHA256 hashes against checksum files), and settings validation. Must explicitly test normalization of the 'v' prefix (verifying that comparing `'v1.10.0'` against `'1.9.0'` or `'1.10.0'` against `'v1.10.1'` handles prefixes correctly by stripping them).
   - **Constraints**: Unit tests run locally using mock payloads.
   - **Validation/test**: Verify that tests run and fail.
 
+- [ ] T010b [US1] Create mock release zip and checksum test fixtures
+  - **Target**: `tests/fixtures/update-v1.10.0.zip` and `tests/fixtures/update-v1.10.0.zip.sha256` (new)
+  - **Expected behavior**: Create a mock update zip containing simple files (a dummy app structure and modified launcher script) to simulate a complete file-swap update. Calculate its SHA256 checksum and save it in a `.sha256` file next to it.
+  - **Constraints**: Files must match expected portable archive structure.
+  - **Validation/test**: Verify file existence and that SHA256 matches the zip file checksum.
+
 - [ ] T011 [US1] Implement version check endpoint `GET /api/update/check` in `server/routes/update.js`
   - **Target**: [server/routes/update.js](../../server/routes/update.js)
-  - **Expected behavior**: Query the GitHub API (`GET /repos/reso830/Project_Alice/releases/latest`) on demand, compare with current `APP_VERSION` (normalizing 'v' prefixes on both strings prior to SemVer comparison), cache results for 1 hour in-memory on the backend, and return update payload.
+  - **Expected behavior**: Query the GitHub API (`GET /repos/reso830/Project_Alice/releases/latest`) on demand, or fetch from local/mock URL if `ALICE_UPDATE_SOURCE_OVERRIDE` environment variable is defined. Compare with current `APP_VERSION` (normalizing 'v' prefixes on both strings prior to SemVer comparison), cache results for 1 hour in-memory on the backend, and return update payload.
   - **Constraints**: No tracking tokens or telemetry transmitted. Rate limits handled gracefully.
   - **Validation/test**: Unit tests in `tests/unit/update.test.js`.
 
 - [ ] T012 [US1] Implement update download and staging in `server/routes/update.js`
   - **Target**: [server/routes/update.js](../../server/routes/update.js)
-  - **Expected behavior**: Route `POST /api/update/download` triggers background download of release ZIP and SHA256 checksum file to `data/update-staging/`. Extracts archive to `data/update-staging/alice/` and verifies hash. Reports progress via status object.
+  - **Expected behavior**: Route `POST /api/update/download` triggers background download of release ZIP and SHA256 checksum file to `data/update-staging/`. Extracts archive to `data/update-staging/alice/` and verifies hash. In testing, the download URL is obtained from the mock check route (which can point to local test fixtures).
   - **Constraints**: Staging folder cleared on failure.
   - **Validation/test**: `tests/unit/update.test.js`.
 
@@ -262,7 +268,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 **Purpose**: Walk the spec's independent tests in a real browser session against the final state.
 
 - [ ] T032 [US1] Discover and Trigger Updates Browser Smoke Walkthrough
-  - **Expected behavior**: Mock old version tag `1.9.0` using environment variable `ALICE_VERSION_OVERRIDE=1.9.0` and start server. Observe Available toast display, click Install, verify downloading progress bar, and click Restart. App should exit and relaunch showing version `v1.10.0` in footer, keeping applications database intact.
+  - **Expected behavior**: Mock old version tag `1.9.0` using environment variable `ALICE_VERSION_OVERRIDE=1.9.0` and point the update source to the local fixture zip using `ALICE_UPDATE_SOURCE_OVERRIDE` pointing to the mock release server/endpoint. Start the server, observe Available toast display, click Install, verify downloading progress bar, and click Restart. App should exit and relaunch successfully using the mock staged package, showing version `v1.10.0` in the footer.
   - **Validation/test**: Walk independent test.
 
 - [ ] T033 [US2] Single Instance Lock Browser Smoke Walkthrough

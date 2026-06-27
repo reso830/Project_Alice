@@ -48,6 +48,17 @@ To cleanly update files on Windows, the running Node process must fully release 
 
 ---
 
+## Development & Test Update Mocking
+
+To support testing the end-to-end update process (download -> integrity check -> staging extraction -> restart -> script folder replacement) before any release is actually published to GitHub:
+
+1. **API Redirection**: When the `ALICE_UPDATE_SOURCE_OVERRIDE` environment variable is set, the update check logic in `/api/update/check` will fetch release metadata from that URL (or local server endpoint) instead of `api.github.com`.
+2. **Local Test Fixture**:
+   - A mock update package `tests/fixtures/update-v1.10.0.zip` containing a dummy update version and a modified launcher script, alongside its SHA256 checksum file `update-v1.10.0.zip.sha256`.
+   - The test script or development setup uses this override to point to the local server hosting these mock assets, testing the full staging flow without external network dependencies.
+
+---
+
 ## Constitution Check
 
 - **Data Fields**: Not adding new application business models. Configuration schemas are restricted to update behaviors.
