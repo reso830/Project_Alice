@@ -17,7 +17,7 @@ The instance lockfile is a transient JSON file written at startup and deleted on
     },
     "appVersion": {
       "type": "string",
-      "description": "The SemVer string of the running instance (e.g., '1.8.0')."
+      "description": "The SemVer string of the running instance (e.g., '1.9.0')."
     },
     "pid": {
       "type": "integer",
@@ -82,10 +82,10 @@ During updates, the SQLite database (`data/alice.db`) changes state as follows:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Active : Normal Operation (v1.7.0)
+    [*] --> Active : Normal Operation (v1.9.0)
     Active --> ExitNode : Trigger Restart to Update
     ExitNode --> SwapBinaries : Launcher moves app & runtime
-    SwapBinaries --> BootNewNode : Start v1.8.0 server
+    SwapBinaries --> BootNewNode : Start v1.10.0 server
     BootNewNode --> BackupCreated : Copy alice.db to alice.db.migration-backup
     
     state migration_gate <<choice>>
@@ -94,7 +94,7 @@ stateDiagram-v2
     migration_gate --> MigrationSuccess : Migrations Success
     migration_gate --> MigrationFailure : Migrations Fail
     
-    MigrationSuccess --> ActiveNew : Delete Backup, complete startup (v1.8.0)
+    MigrationSuccess --> ActiveNew : Delete Backup, complete startup (v1.10.0)
     ActiveNew --> [*]
     
     MigrationFailure --> RestoreBackup : Restore alice.db from migration-backup

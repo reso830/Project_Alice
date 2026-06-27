@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Unresolved [NEEDS CLARIFICATION] markers block validation completeness. Once resolved, these will be checked off.
+- All [NEEDS CLARIFICATION] markers have been resolved.

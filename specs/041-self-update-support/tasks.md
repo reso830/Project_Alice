@@ -75,7 +75,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T007 Create database migration registry in `server/db/migration.js`
   - **Target**: [server/db/migration.js](../../server/db/migration.js) (new)
-  - **Expected behavior**: Implement migration setup, parsing of schema folder scripts, run-once sequential checking, transaction boundaries, and the version downgrade check.
+  - **Expected behavior**: Implement migration setup, parsing of schema folder scripts, run-once sequential checking, transaction boundaries, and the version downgrade check. The runner MUST support legacy baselining: if `schema_migrations` does not exist but target tables (`applications` or `profile`) already exist, create `schema_migrations` and insert `001-init` as applied to skip running the initial schema creation script.
   - **Constraints**: Keep SQLite-specific methods clean.
   - **Validation/test**: `tests/unit/migration.test.js`
 
@@ -99,7 +99,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T010 [P] [US1] Create unit tests for release parsing and checksum check in `tests/unit/update.test.js`
   - **Target**: `tests/unit/update.test.js` (new)
-  - **Expected behavior**: Test release tag comparisons (e.g. `'v1.7.0'` < `'v1.8.0'`), zip package integrity checks (comparing computed SHA256 hashes against checksum files), and settings validation. Must explicitly test normalization of the 'v' prefix (verifying that comparing `'v1.9.0'` against `'1.8.0'` or `'1.9.0'` against `'v1.9.1'` handles prefixes correctly by stripping them).
+  - **Expected behavior**: Test release tag comparisons (e.g. `'v1.9.0'` < `'v1.10.0'`), zip package integrity checks (comparing computed SHA256 hashes against checksum files), and settings validation. Must explicitly test normalization of the 'v' prefix (verifying that comparing `'v1.10.0'` against `'1.9.0'` or `'1.10.0'` against `'v1.10.1'` handles prefixes correctly by stripping them).
   - **Constraints**: Unit tests run locally using mock payloads.
   - **Validation/test**: Verify that tests run and fail.
 
@@ -161,7 +161,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T018 [US2] Update launcher script `scripts/portable/Start-Alice.cmd` to perform updates swap
   - **Target**: [scripts/portable/Start-Alice.cmd](../../scripts/portable/Start-Alice.cmd)
-  - **Expected behavior**: Add script block at startup: if `data/update-staging/alice` exists, replace `app/` and `runtime/` directories, overwrite `VERSION` and `Start-Alice.cmd` itself, delete the staging folder, and re-execute `Start-Alice.cmd`.
+  - **Expected behavior**: Add script block at startup: if `data/update-staging/alice` exists, replace `app/` and `runtime/` directories, overwrite `Start-Alice.cmd` itself, delete the staging folder, and re-execute `Start-Alice.cmd`.
   - **Constraints**: Overwriting of `.cmd` script must be the final action, followed by absolute path invocation to avoid CMD parser errors.
   - **Validation/test**: Manual file swap verification.
 
@@ -183,14 +183,14 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Constraints**: central schema verification of values.
   - **Validation/test**: Verification of local settings file contents.
 
-- [ ] T021 [US3] Add Updates subgroup to `src/pages/profile/SettingsCard.js`
-  - **Target**: [src/pages/profile/SettingsCard.js](../../src/pages/profile/SettingsCard.js) (or equivalent settings component)
+- [ ] T021 [US3] Add Updates subgroup to `src/pages/Profile.js`
+  - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
   - **Expected behavior**: Renders `UPDATES` section containing current version, manual "Check now" button, auto-check toggle, collapsible update mode cards (Notify only, Ask, Auto), and explicit error layouts: Checking Failure (Connection Error amber status pill) and Download Failure (Update Failed red status pill with Retry button).
   - **Constraints**: Subgroup is hidden entirely on Hosted/Demo mode.
   - **Validation/test**: Verification of layout and error states in Local mode.
 
 - [ ] T022 [US3] Hide the Updates subgroup entirely on Hosted/Demo modes and non-Windows platforms
-  - **Target**: [src/pages/profile/SettingsCard.js](../../src/pages/profile/SettingsCard.js)
+  - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
   - **Expected behavior**: Ensure the subgroup is completely omitted from render in Hosted/Demo modes and non-Windows platform local environments to avoid UI clutter.
   - **Constraints**: Must not throw errors when accessing profile page.
   - **Validation/test**: Verify hidden state in demo/hosted mode and on non-Windows platforms.
@@ -202,7 +202,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 **Purpose**: Verify styling, lint rules, and baseline test suite.
 
 - [ ] T023 Accessibility and responsive review
-  - **Target**: [src/components/UpdateToast.js](../../src/components/UpdateToast.js), [src/pages/profile/SettingsCard.js](../../src/pages/profile/SettingsCard.js)
+  - **Target**: [src/components/UpdateToast.js](../../src/components/UpdateToast.js), [src/pages/Profile.js](../../src/pages/Profile.js)
   - **Expected behavior**: Confirm contrast, keyboard navigation tab-stops, form labels, and mobile stacking wrap behavior.
 
 - [ ] T024 Run project lint and format checks
@@ -217,7 +217,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T025 Bump version in `package.json`
   - **Target**: [package.json](../../package.json)
-  - **Expected behavior**: Increment version to `v1.9.0` or matching version bump.
+  - **Expected behavior**: Increment version to `v1.10.0` or matching version bump.
   - **Validation/test**: File check.
 
 - [ ] T026 Sync root fields in `package-lock.json`
@@ -256,7 +256,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 **Purpose**: Walk the spec's independent tests in a real browser session against the final state.
 
 - [ ] T032 [US1] Discover and Trigger Updates Browser Smoke Walkthrough
-  - **Expected behavior**: Mock old version tag `1.7.0` in `VERSION` and start server. Observe Available toast display, click Install, verify downloading progress bar, and click Restart. App should exit and relaunch showing version `v1.8.0`/`v1.9.0` in footer, keeping applications database intact.
+  - **Expected behavior**: Mock old version tag `1.9.0` using environment variable `ALICE_VERSION_OVERRIDE=1.9.0` and start server. Observe Available toast display, click Install, verify downloading progress bar, and click Restart. App should exit and relaunch showing version `v1.10.0` in footer, keeping applications database intact.
   - **Validation/test**: Walk independent test.
 
 - [ ] T033 [US2] Single Instance Lock Browser Smoke Walkthrough

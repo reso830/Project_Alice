@@ -13,7 +13,7 @@ Updated to expose the version for single-instance checks and updater handoffs.
   {
     "status": "ok",
     "runtime": "local",
-    "version": "1.8.0"
+    "version": "1.9.0"
   }
   ```
 
@@ -27,9 +27,9 @@ Checks for newer releases, proxying the GitHub Releases API. Implements 1-hour i
   ```json
   {
     "updateAvailable": true,
-    "currentVersion": "1.7.1",
-    "latestVersion": "1.8.0",
-    "releaseNotesUrl": "https://github.com/reso830/Project_Alice/releases/tag/v1.8.0",
+    "currentVersion": "1.9.0",
+    "latestVersion": "1.10.0",
+    "releaseNotesUrl": "https://github.com/reso830/Project_Alice/releases/tag/v1.10.0",
     "publishedAt": "2026-06-26T15:08:27Z"
   }
   ```

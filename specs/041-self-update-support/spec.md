@@ -33,7 +33,7 @@ To improve usability and maintain security, Alice needs a self-update mechanism.
 
 ### In Scope
 
-- **Release Detection**: Periodically query GitHub Releases (via client/server API) to compare the local `VERSION` against the latest release.
+- **Release Detection**: Periodically query GitHub Releases (via client/server API) to compare the local version (from package.json) against the latest release.
 - **Durable Settings Control Panel**: A dedicated Profile > Settings > Updates sub-group containing version information, update toggles, auto-check options, and manual checks.
 - **Toast / Card Notifications**: Mode-aware bottom-right toasts (desktop/tablet) or bottom cards (mobile) informing the user of available updates and staging progress.
 - **Background Downloading & Staging**: Safe downloading of release ZIPs, validation of package integrity (via SHA256 checksums), and staging extraction into a separate directory (`data/update-staging/`).
@@ -85,10 +85,10 @@ As a local user, I want Alice to notify me when a new update is available and le
 **Why this priority**: Core value proposition. Keeps the user cohort up-to-date with bug fixes and new features with minimal friction.
 
 **Independent Test**:
-1. Run Alice locally with a modified `VERSION` file (e.g. `v1.8.0`).
-2. Verify that an "update available" toast appears showing `v1.9.0` is ready.
+1. Run Alice locally with an overridden version (e.g. by setting `ALICE_VERSION_OVERRIDE=v1.9.0` in the environment).
+2. Verify that an "update available" toast appears showing `v1.10.0` is ready.
 3. Click **Install now**. Verify that the progress bar updates from downloading (`determinate`) to installing (`indeterminate`).
-4. Click **Restart to finish**. Verify the app exits, the console helper applies the update, and a new browser tab opens automatically showing version `v1.9.0` in the footer.
+4. Click **Restart to finish**. Verify the app exits, the console helper applies the update, and a new browser tab opens automatically showing version `v1.10.0` in the footer.
 5. Verify that previously entered job application records are still intact.
 
 **Acceptance Scenarios**:
@@ -165,7 +165,7 @@ As a user, I want to control how and when updates are checked and applied, so th
 - **FR-014**: The system MUST hide or disable update check triggers and preferences when running in Hosted or Demo modes.
 - **FR-015**: The system MUST render mode-aware update control links in the global footer brand row: it MUST render as a platform-agnostic "Download vX.Y.Z" button pointing to the latest GitHub Releases page in Hosted and Demo modes, and as an "Open hosted version ↗" link leading to the hosted application URL in Local mode.
 - **FR-016**: The system MUST render a subtle notification badge (colored dot) on the "Profile" navigation button (in both desktop `Navbar` and mobile `BottomTabBar`) when an update is available, downloading, or ready-to-restart, providing a persistent update reminder even if the user has dismissed the toast notification.
-- **FR-017**: The version comparison engine MUST normalize and compare version strings robustly. It MUST handle both prefixed versions (e.g., `v1.9.0`) and raw SemVer strings (e.g., `1.9.0`) by stripping any leading `v` character prior to parsing. The comparison logic MUST strictly compare major, minor, and patch numeric values (following Semantic Versioning rules) to verify if the fetched release version is strictly newer than the currently running version.
+- **FR-017**: The version comparison engine MUST normalize and compare version strings robustly. It MUST handle both prefixed versions (e.g., `v1.10.0`) and raw SemVer strings (e.g., `1.10.0`) by stripping any leading `v` character prior to parsing. The comparison logic MUST strictly compare major, minor, and patch numeric values (following Semantic Versioning rules) to verify if the fetched release version is strictly newer than the currently running version.
 - **FR-018**: The self-update API endpoints (`/api/update/*`) and updates configuration settings/toasts MUST be restricted to the Windows platform. The system MUST inspect `process.platform` on startup, and if it is not `win32`, the updates router MUST NOT be mounted and the frontend Updates sub-groups/toasts MUST be hidden, matching the hosted/demo mode-gate behaviors.
 
 ---
@@ -239,6 +239,10 @@ This feature introduces a greenfield database migration subsystem for the local/
   ```
 - Migration files are stored inside `server/db/migrations/` as numbered scripts (e.g., `001-init.js`, `002-add-update-preferences.js`).
 - Migrations MUST follow a run-once guarantee: the system reads `schema_migrations` on startup, compares it against the local migrations directory, and runs only the unapplied migrations in sequential order.
+- **Baseline Adoption Rule for Pre-041 Databases**: If a database contains pre-existing tables (specifically, the `applications` or `profile` table) but does NOT yet contain the `schema_migrations` ledger table, the migration system MUST:
+  1. Create the `schema_migrations` table.
+  2. Write a baseline entry for the initial schema version `001-init` (or equivalent legacy migration version) into the ledger table, marking it as applied without executing the migration script itself.
+  3. This ensures that the migration script for initial layout setup is skipped on existing databases, preventing collision errors and enabling correct run-once tracking.
 
 ### Version Compatibility & Downgrade Safety
 - On startup, the system MUST inspect the database to verify compatibility between the running application version and the database schema version.

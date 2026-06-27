@@ -53,7 +53,7 @@ The page has two primary states driven by whether a profile has been set up.
 - Profile section renders all filled sub-sections.
 - An **Edit Profile** button appears right-aligned in the Profile section header.
 
-> Both states also render the **Settings** section (§4.5) last, regardless of whether a profile exists — it hosts AI configuration, app-update controls, and a runtime-mode-aware account control, none of which is tied to profile setup.
+> Both states also render the **Settings** section (§4.5) last, regardless of whether a profile exists — it hosts AI configuration, app-update controls (only rendered in local mode, hidden in hosted/demo modes), and a runtime-mode-aware account control, none of which is tied to profile setup.
 
 ---
 
@@ -361,7 +361,7 @@ Verified at Tablet (768px), Mobile (390px), and slim Mobile (344px). The card it
 
 #### 4.5.2 Updates sub-group
 
-Label: **`UPDATES`**. The middle sub-group (AI → **Updates** → Account). The durable control centre for the **app update** flow — current version, manual check, an auto-check toggle, and a collapsible update-mode picker. Its status block mirrors the transient **update notification** toast; the two are views of the same available → downloading → installing state machine.
+Label: **`UPDATES`**. The middle sub-group (AI → **Updates** → Account). The durable control centre for the **app update** flow — current version, manual check, an auto-check toggle, and a collapsible update-mode picker. Its status block mirrors the transient **update notification** toast; the two are views of the same available → downloading → installing state machine. *Note: The Updates sub-group is only rendered in Local mode on Windows (process.platform === 'win32') and is hidden entirely in Hosted and Demo modes.*
 
 > **Full spec:** [`updates.md`](updates.md) is canonical for the whole update feature — the footer **Download** control (hosted vs. local), the update **notifications** (3 states + responsive placement), and this Settings sub-group. Reference drawing: [`mockups/Updates Mockups.html`](../mockups/Updates%20Mockups.html).
 

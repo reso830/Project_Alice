@@ -6,7 +6,7 @@
 
 ## Spec & Plan Scope Alignment
 
-- [x] All 14 functional requirements (FR-001 through FR-014) are mapped to architecture components.
+- [x] All 18 functional requirements (FR-001 through FR-018) are mapped to architecture components.
 - [x] All 3 P1/P2 user stories have clear validation flows.
 - [x] Explicit non-goals (e.g. silent foreground restarts, auto-rollback in v1) are respected.
 
