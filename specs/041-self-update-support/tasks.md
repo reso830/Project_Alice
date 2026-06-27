@@ -68,8 +68,8 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Validation/test**: Verify process exits cleanly during a simulated shutdown.
 
 - [ ] T005 Update health endpoint to expose app version and updates capability
-  - **Target**: [server/index.js](../../server/index.js) (and/or [server/health.js](../../server/health.js))
-  - **Expected behavior**: Include the `version` field mapped to the `APP_VERSION` constant, and the `updateSupported` capability boolean (which MUST evaluate to `true` only if `runtime === 'local'` and `process.platform === 'win32'`) in the `/api/health` JSON payload.
+  - **Target**: [server/health.js](../../server/health.js) and [server/index.js](../../server/index.js)
+  - **Expected behavior**: Implement and export a health payload generator in `server/health.js` containing `status`, `runtime`, `version` (mapped to the `APP_VERSION` constant), and `updateSupported` capability boolean (which MUST evaluate to `true` only if `runtime === 'local'` and `process.platform === 'win32'`). Update `server/index.js` to import and invoke this generator for the `/api/health` route handler response.
   - **Constraints**: Safe for both hosted and local runtimes.
   - **Validation/test**: `tests/server/health.test.js` or manual curl checks.
 

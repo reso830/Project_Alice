@@ -79,9 +79,10 @@ To support testing the end-to-end update process (download -> integrity check ->
 
 ### Files to Modify
 - `scripts/portable/Start-Alice.cmd` (add staging checks, folder moves, and script self-re-execution)
-- `server/portable.js` (implement lockfile checks, PID kill checks, and health version injection)
+- `server/portable.js` (implement lockfile checks and PID kill checks)
 - `server/portable/settings.js` (add defaults and parsing for `autoCheckUpdates` and `updateMode`)
-- `server/index.js` (mount update route handlers, accept `onShutdown` callback in `createApp` options, and expose `updateSupported` capability boolean and app `version` in `/api/health` response)
+- `server/health.js` (implement and export the health response payload generator including version and updates capability)
+- `server/index.js` (mount update route handlers, accept `onShutdown` callback in `createApp` options, and import and query the payload generator from `server/health.js` to serve `/api/health` response)
 - `server/routes/update.js` (new endpoints for check, download status, restart command, settings)
 - `server/db.js` (integrate migration initialization, ledger checks, and pre-migration backup triggers)
 - `server/db/migrations/` (new directory for SQLite schema version scripts)
