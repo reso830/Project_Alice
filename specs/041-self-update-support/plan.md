@@ -70,7 +70,7 @@ To cleanly update files on Windows, the running Node process must fully release 
 - `scripts/portable/Start-Alice.cmd` (add staging checks, folder moves, and script self-re-execution)
 - `server/portable.js` (implement lockfile checks, PID kill checks, and health version injection)
 - `server/portable/settings.js` (add defaults and parsing for `autoCheckUpdates` and `updateMode`)
-- `server/index.js` (mount update route handlers)
+- `server/index.js` (mount update route handlers, accept `onShutdown` callback in `createApp` options, and expose `updateSupported` capability boolean and app `version` in `/api/health` response)
 - `server/routes/update.js` (new endpoints for check, download status, restart command, settings)
 - `server/db.js` (integrate migration initialization, ledger checks, and pre-migration backup triggers)
 - `server/db/migrations/` (new directory for SQLite schema version scripts)

@@ -67,9 +67,9 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Constraints**: Must ensure all locks and files are cleanly released on shutdown.
   - **Validation/test**: Verify process exits cleanly during a simulated shutdown.
 
-- [ ] T005 Update health endpoint to expose app version in `server/health.js`
-  - **Target**: [server/health.js](../../server/health.js)
-  - **Expected behavior**: Include the `version` field mapped to the `APP_VERSION` constant in the JSON health payload.
+- [ ] T005 Update health endpoint to expose app version and updates capability
+  - **Target**: [server/index.js](../../server/index.js) (and/or [server/health.js](../../server/health.js))
+  - **Expected behavior**: Include the `version` field mapped to the `APP_VERSION` constant, and the `updateSupported` capability boolean (which MUST evaluate to `true` only if `runtime === 'local'` and `process.platform === 'win32'`) in the `/api/health` JSON payload.
   - **Constraints**: Safe for both hosted and local runtimes.
   - **Validation/test**: `tests/server/health.test.js` or manual curl checks.
 
@@ -142,7 +142,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 - [ ] T016 [US1] Mount `UpdateToast` in global layout `src/main.js`
   - **Target**: [src/main.js](../../src/main.js)
   - **Expected behavior**: Render the `UpdateToast` component in the main application layout.
-  - **Constraints**: Gated by local-mode and Windows platform client verification.
+  - **Constraints**: Gated on the client-side by checking the `updateSupported` capability flag returned from `/api/health`.
   - **Validation/test**: Verification of toast rendering on mock available version.
 
 - [ ] T017 [US1] Update `src/components/Footer.js` to render mode-aware controls
@@ -156,7 +156,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 - [ ] T017b [US1] Render persistent update notification badge on Navbar and BottomTabBar
   - **Target**: [src/components/Navbar.js](../../src/components/Navbar.js) and [src/components/BottomTabBar.js](../../src/components/BottomTabBar.js)
   - **Expected behavior**: If an update check indicates that a new version is available, downloading, or ready-to-restart, render a subtle colored dot on the "Profile" nav/tab button (amber for available/downloading, indigo for ready-to-restart).
-  - **Constraints**: Only active in Local mode. The badge must update dynamically as the update status changes and must disappear once the system restarts.
+  - **Constraints**: Gated on the client-side by checking the `updateSupported` capability flag returned from `/api/health`. The badge must update dynamically as the update status changes and must disappear once the system restarts.
   - **Validation/test**: Manual and visual checks of the nav buttons under simulated update states.
 
 ---
@@ -192,14 +192,14 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 - [ ] T021 [US3] Add Updates subgroup to `src/pages/Profile.js`
   - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
   - **Expected behavior**: Renders `UPDATES` section containing current version, manual "Check now" button, auto-check toggle, collapsible update mode cards (Notify only, Ask, Auto), and explicit error layouts: Checking Failure (Connection Error amber status pill) and Download Failure (Update Failed red status pill with Retry button).
-  - **Constraints**: Subgroup is hidden entirely on Hosted/Demo mode.
+  - **Constraints**: Gated by checking the `updateSupported` capability flag returned from `/api/health`.
   - **Validation/test**: Verification of layout and error states in Local mode.
 
-- [ ] T022 [US3] Hide the Updates subgroup entirely on Hosted/Demo modes and non-Windows platforms
+- [ ] T022 [US3] Hide the Updates subgroup entirely when updates are unsupported
   - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
-  - **Expected behavior**: Ensure the subgroup is completely omitted from render in Hosted/Demo modes and non-Windows platform local environments to avoid UI clutter.
+  - **Expected behavior**: Ensure the subgroup is completely omitted from render when the `updateSupported` capability flag returned from `/api/health` is false (covering Hosted, Demo, and non-Windows local environments).
   - **Constraints**: Must not throw errors when accessing profile page.
-  - **Validation/test**: Verify hidden state in demo/hosted mode and on non-Windows platforms.
+  - **Validation/test**: Verify hidden state when `updateSupported` is false.
 
 ---
 
