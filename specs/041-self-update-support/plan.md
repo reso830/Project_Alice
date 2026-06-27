@@ -121,9 +121,9 @@ server/
 ├── routes/
 │   └── update.js         # New update routes
 ├── db/
-│   ├── migrations/       # Greenfield migration folder
-│   │   └── [migration-scripts].js
-│   └── db.js             # Modified to integrate migrations and registry
+│   └── migrations/       # Greenfield migration folder
+│       └── [migration-scripts].js
+├── db.js                 # Modified to integrate migrations and registry
 └── portable/
     └── settings.js       # Modified to support update settings
 
