@@ -79,6 +79,12 @@ Exposes the current state of the download and staging state machine.
 
 Signals the active server to initiate graceful shutdown and write the pending update flag, triggering the launcher file-swap sequence.
 
+* **Behavior**:
+  1. Writes the update metadata file `data/update-pending.json`.
+  2. Responds with `200 OK` (payload below).
+  3. Schedules a 500ms delay.
+  4. Invokes the registered `onShutdown` callback. The callback gracefully closes the HTTP listener (`server.close()`), closes the active SQLite database connection (`db.close()`), and exits the process (`process.exit(0)`).
+
 * **Response (200 OK)**:
   ```json
   {
