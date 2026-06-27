@@ -176,21 +176,21 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06; **07** (amendment, 2026
 
 **Purpose**: Mandatory pre-merge housekeeping (constitution Amendment 1.3.0). Target version: **1.9.0** (new feature; confirm the exact bump against the current `package.json` at execution).
 
-### T017 `[ ]` — Version bump
+### T017 `[x]` — Version bump
 - **Target**: [package.json](../../package.json), [package-lock.json](../../package-lock.json) (root `version`), any in-app version display
 - **Expected behavior**: Bump `version` (e.g. 1.8.0 → 1.9.0) in `package.json` and the **root** `version` in `package-lock.json`; update any in-app version string if one exists. This version flows into the build's `VERSION` marker and ZIP name.
 - **Constraints**: Keep `package.json` and `package-lock.json` root versions in sync.
 - **Validation/test**: `npm run test:run` green; build name reflects the new version.
 - **Out of scope**: tagging (release time).
 
-### T018 `[ ]` [P] — CHANGELOG entry
+### T018 `[x]` [P] — CHANGELOG entry
 - **Target**: [CHANGELOG.md](../../CHANGELOG.md)
 - **Expected behavior**: Add a 1.9.0 entry summarizing the portable Windows package (bundled runtime, single-action launcher, localhost-only serving, local data persistence, repeatable build + checksum, CI release; 041 foundation; AI unchanged client-side BYOK).
 - **Constraints**: Match existing CHANGELOG format/voice.
 - **Validation/test**: docs sanity.
 - **Out of scope**: other versions.
 
-### T019 `[ ]` [P] — Roadmap reconcile (numbering drift fix)
+### T019 `[x]` [P] — Roadmap reconcile (numbering drift fix)
 - **Target**: [docs/feature_roadmap.md](../../docs/feature_roadmap.md)
 - **Expected behavior**: Reconcile the drifted 3.0.0 numbering per the 2026-06-22 decision (040/041 are operational features belonging to **v2.0.0**; ats-resume-quality-checks is **043** in **v3.0.0**). Concretely:
   1. **v2.0.0 — Smart Intake & AI Assistance**: append `- [x] 040-portable-distribution-package  ·  shipped v1.9.0` (this feature) and `- [ ] 041-self-update-support` (planned), so v2.0.0 spans 031–041.
@@ -201,21 +201,21 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06; **07** (amendment, 2026
 - **Validation/test**: docs sanity — no duplicate numbers remain across 2.0.0–4.0.0; ats = 043; 040 = portable-distribution under v2.0.0.
 - **Out of scope**: changing feature names, themes, or milestone goals; implementing any listed future feature.
 
-### T020 `[ ]` [P] — README portable instructions
+### T020 `[x]` [P] — README portable instructions
 - **Target**: [README.md](../../README.md)
 - **Expected behavior**: Add an end-user "Run the portable package" section (download → extract → double-click `Start-Alice.cmd` → browser opens; close console to stop; optional OpenRouter BYOK in Settings; localhost-only; SmartScreen one-time prompt note). Add a maintainer "Build the portable package" note (`npm run build:portable`).
 - **Constraints**: Concise; align with [quickstart.md](quickstart.md).
 - **Validation/test**: docs sanity.
 - **Out of scope**: deep architecture docs.
 
-### T021 `[ ]` [P] — Deployment docs
+### T021 `[x]` [P] — Deployment docs
 - **Target**: [docs/deployment.md](../../docs/deployment.md)
 - **Expected behavior**: Document the new **local/portable runtime**: the `server/portable.js` entry, env wiring (`APP_RUNTIME=local`, `ALICE_DB_PATH`), localhost-only binding, the gated `serveStatic` single-origin serving, `config/settings.json` (port/openBrowser), and that hosted (Vercel) is unchanged. Note the build/release flow and tag/dispatch-only CI.
 - **Constraints**: This feature adds runtime modes/env → deployment docs update is required.
 - **Validation/test**: docs sanity.
 - **Out of scope**: hosted env changes (none).
 
-### T022 `[ ]` [P] — REPO_MAP update
+### T022 `[x]` [P] — REPO_MAP update
 - **Target**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
 - **Expected behavior**: Add the new files/dirs: `server/portable.js`, `server/portable/`, `scripts/build-portable.mjs`, `scripts/portable/Start-Alice.cmd`, `config/settings.default.json`, `.github/workflows/release-portable.yml`.
 - **Constraints**: Match existing REPO_MAP structure.
