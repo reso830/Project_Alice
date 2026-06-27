@@ -229,7 +229,12 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T025 Bump version in `package.json`
   - **Target**: [package.json](../../package.json)
-  - **Expected behavior**: Increment version to `v1.10.0` or matching version bump.
+  - **Expected behavior**: Increment version to `1.10.0` (using raw SemVer without the `v` prefix).
+  - **Validation/test**: File check.
+
+- [ ] T025b Bump display version in `src/pages/welcome/shared/appMeta.js`
+  - **Target**: [src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js)
+  - **Expected behavior**: Increment `APP_VERSION` to `'v1.10.0'` in sync with the package version bump.
   - **Validation/test**: File check.
 
 - [ ] T026 Sync root fields in `package-lock.json`
