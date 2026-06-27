@@ -20,7 +20,7 @@ Updated to expose the version for single-instance checks, updates capability gat
 
 * **Fields**:
   - `status` (String): Overall status indicator (`"ok"`).
-  - `runtime` (String): Runtimes environment mode (`"local"` | `"hosted"` | `"demo"`).
+  - `runtime` (String): Runtimes environment mode (`"local"` | `"hosted"`).
   - `version` (String): Current display version of the running application (prefixed with `v`, e.g., `"v1.9.0"`).
   - `updateSupported` (Boolean): Dynamically computed flag indicating capability support. Evaluates to `true` only if `runtime === 'local'` and `process.platform === 'win32'`. Evaluates to `false` on all other platform/mode configurations.
 
