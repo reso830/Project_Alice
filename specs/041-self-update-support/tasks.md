@@ -28,8 +28,8 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T001 [P] Mount update router in `server/index.js`
   - **Target**: [server/index.js](../../server/index.js)
-  - **Expected behavior**: Import and mount a new update router under `/api/update` routes.
-  - **Constraints**: Gated to local mode only (`process.env.APP_RUNTIME === 'local'`) and Windows (`process.platform === 'win32'`). No routes are mounted on non-Windows local environments or hosted/Vercel environments.
+  - **Expected behavior**: Import and mount a new update router under `/api/update` routes. The `createApp` factory accepts `onShutdown` in its options, passing it down to the update router factory (`createUpdateRouter({ repos, onShutdown })`).
+  - **Constraints**: Gated to local mode only (`process.env.APP_RUNTIME === 'local'`) and Windows (`process.platform === 'win32'`). Pass a no-op fallback callback if `onShutdown` is omitted.
   - **Validation/test**: `tests/unit/update.test.js`
   - **Out of scope**: Update logic implementation.
 
@@ -60,6 +60,12 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Constraints**: Must fallback to subsequent ports if the port is bound by a non-Alice process. Lock must survive file replacements.
   - **Validation/test**: Double launch validation in development environment.
   - **Out of scope**: Staging file-swaps.
+
+- [ ] T004b [US2] Implement `onShutdown` callback in `server/portable.js`
+  - **Target**: [server/portable.js](../../server/portable.js)
+  - **Expected behavior**: Define an `onShutdown` callback function and pass it when calling `createApp({ repositories, config, onShutdown })`. The callback must invoke the portable server's `stop()` function (which closes the HTTP listener and database connection) and then call `process.exit(0)`.
+  - **Constraints**: Must ensure all locks and files are cleanly released on shutdown.
+  - **Validation/test**: Verify process exits cleanly during a simulated shutdown.
 
 - [ ] T005 Update health endpoint to expose app version in `server/health.js`
   - **Target**: [server/health.js](../../server/health.js)
@@ -123,9 +129,9 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [ ] T014 [US1] Implement update restart command route `POST /api/update/restart` in `server/routes/update.js`
   - **Target**: [server/routes/update.js](../../server/routes/update.js)
-  - **Expected behavior**: Writes a pending update metadata file (`data/update-pending.json`), closes native database connections, and shuts down Express with process code 0.
-  - **Constraints**: Locks must be fully released before exiting.
-  - **Validation/test**: Unit tests in `tests/unit/update.test.js`.
+  - **Expected behavior**: Writes a pending update metadata file (`data/update-pending.json`), returns a `200 OK` response to the client, and delegates the shutdown sequence by calling a registered `onShutdown` callback after a 500ms delay.
+  - **Constraints**: The router factory function must accept an options object containing `onShutdown`.
+  - **Validation/test**: Unit tests in `tests/unit/update.test.js` using a mocked callback.
 
 - [ ] T015 [US1] Create toast component `src/components/UpdateToast.js`
   - **Target**: `src/components/UpdateToast.js` (new)

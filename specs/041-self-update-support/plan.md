@@ -30,6 +30,24 @@ Additionally, this feature replaces the simple port-only health probe from 040 w
 
 ---
 
+## Restart Handoff & Shutdown Contract
+
+To cleanly update files on Windows, the running Node process must fully release all locks on files (like `better-sqlite3` native bindings and the `node.exe` executable).
+
+1. **createApp Options**: The Express app creator `createApp({ ..., onShutdown })` in `server/index.js` accepts an optional `onShutdown` callback function.
+2. **Update Router**: The router factory `createUpdateRouter({ onShutdown })` is created and mounted under `/api/update`.
+3. **POST /api/update/restart**:
+   - The route handler writes `data/update-pending.json` (specifying that the launcher should run the file-swap loop).
+   - The route handler returns a `200 OK` JSON response to the client.
+   - After responding, the route handler schedules a 500ms timeout to invoke `onShutdown()`.
+4. **onShutdown Callback**:
+   - In `server/portable.js`, the `onShutdown` callback is defined. It invokes the returned `stop()` function, which closes the HTTP `server` listener (`server.close()`) and the SQLite database (`db.close()`).
+   - Once all resources are cleanly released, the callback calls `process.exit(0)`.
+5. **Testing**: 
+   - A mock `onShutdown` callback is passed during unit tests for the `/api/update/restart` route. The test asserts that the route handler writes the pending file, returns 200 OK, and triggers the `onShutdown` callback.
+
+---
+
 ## Constitution Check
 
 - **Data Fields**: Not adding new application business models. Configuration schemas are restricted to update behaviors.
