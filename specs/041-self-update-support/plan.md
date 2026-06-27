@@ -118,12 +118,12 @@ specs/041-self-update-support/
     └── plan-review.md
 
 server/
-├── routes/
-│   └── update.js         # New update routes
+├── db.js                 # Modified to integrate migrations and registry
 ├── db/
 │   └── migrations/       # Greenfield migration folder
 │       └── [migration-scripts].js
-├── db.js                 # Modified to integrate migrations and registry
+├── routes/
+│   └── update.js         # New update routes
 └── portable/
     └── settings.js       # Modified to support update settings
 
