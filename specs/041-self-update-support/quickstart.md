@@ -18,11 +18,17 @@ This guide outlines how to manually test update checks, staging, Windows file sw
 
 ---
 
-## 2. Testing Update Checks (Mock Version)
+## 2. Testing Update Checks (Offline Mock / Local Fixture)
 
-1. Set the environment variable `ALICE_VERSION_OVERRIDE=1.9.0` (or run Alice with `ALICE_VERSION_OVERRIDE=1.9.0` in the environment).
-2. Also change the frontend `appMeta.js` version constant to `'v1.9.0'` to match.
-3. Start the application. The system will check GitHub (or a mocked release page) and display a toast: **"A new version is available: v1.10.0"**.
+To run a fully repeatable offline smoke test of the update flow:
+1. Start a local server (or mock endpoint) serving the mock release metadata JSON pointing to the test fixture zip `tests/fixtures/update-v1.10.0.zip` and checksum file `tests/fixtures/update-v1.10.0.zip.sha256`.
+2. Start the Alice application with the following environment variables:
+   ```bash
+   ALICE_VERSION_OVERRIDE=v1.9.0
+   ALICE_UPDATE_SOURCE_OVERRIDE=http://localhost:3000/mock-release-metadata.json
+   ```
+   *(Note: The frontend dynamically fetches the application version from `/api/health`, so there is no need to manually edit `src/pages/welcome/shared/appMeta.js` when these overrides are active).*
+3. Start the application. The system will check the mock release endpoint and display a toast: **"A new version is available: v1.10.0"**.
 4. In Settings > Updates, observe the current version shows `v1.9.0` and the status block displays `Update available v1.10.0`.
 
 ---
