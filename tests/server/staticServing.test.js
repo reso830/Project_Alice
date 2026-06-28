@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import { afterEach, describe, expect, test } from 'vitest';
 import { createApp } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 const servers = [];
@@ -63,7 +65,12 @@ describe('createApp static serving', () => {
 
     const healthResponse = await globalThis.fetch(`${baseUrl}/api/health`);
     expect(healthResponse.status).toBe(200);
-    expect(await healthResponse.json()).toEqual({ status: 'ok', runtime: 'local' });
+    expect(await healthResponse.json()).toEqual({
+      status: 'ok',
+      runtime: 'local',
+      version: APP_VERSION,
+      updateSupported: process.platform === 'win32',
+    });
 
     const postResponse = await globalThis.fetch(`${baseUrl}/not-api`, {
       method: 'POST',

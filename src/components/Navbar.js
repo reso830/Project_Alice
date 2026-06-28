@@ -13,6 +13,13 @@ const pages = [
 let _root = null;
 let _identityCluster = null;
 let _unsubscribe = null;
+let _updateStatus = 'idle';
+
+function badgeTone(status) {
+  if (status === 'ready-to-restart') return 'ready';
+  if (['available', 'downloading'].includes(status)) return 'active';
+  return null;
+}
 
 function createDoorArrowIcon() {
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -50,6 +57,31 @@ export function setActive(page) {
   for (const button of _root.querySelectorAll('.nav-btn')) {
     button.classList.toggle('nav-btn--active', button.dataset.page === page);
   }
+}
+
+export function setUpdateStatus(status) {
+  _updateStatus = status;
+  if (!_root) {
+    return;
+  }
+
+  const profile = _root.querySelector('.nav-btn[data-page="profile"]');
+  if (!profile) {
+    return;
+  }
+
+  profile.querySelector('.nav-btn__update-badge')?.remove();
+  const tone = badgeTone(status);
+  profile.classList.toggle('nav-btn--update', Boolean(tone));
+  profile.classList.toggle('nav-btn--update-ready', tone === 'ready');
+  if (!tone) {
+    return;
+  }
+
+  const badge = document.createElement('span');
+  badge.className = `nav-btn__update-badge nav-btn__update-badge--${tone}`;
+  badge.setAttribute('aria-label', 'Update available');
+  profile.append(badge);
 }
 
 function renderIdentityCluster(state) {
@@ -167,6 +199,7 @@ export function render(activePage) {
   _unsubscribe = authStore.subscribe(renderIdentityCluster);
 
   setActive(activePage);
+  setUpdateStatus(_updateStatus);
   return topbar;
 }
 
@@ -179,4 +212,4 @@ export function destroy() {
   _identityCluster = null;
 }
 
-export const Navbar = { render, setActive, destroy };
+export const Navbar = { render, setActive, setUpdateStatus, destroy };

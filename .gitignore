@@ -6,6 +6,8 @@ portable-dist/
 alice/
 *.zip
 *.zip.sha256
+!tests/fixtures/update-v1.10.0.zip
+!tests/fixtures/update-v1.10.0.zip.sha256
 coverage/
 data/*
 !data/.gitkeep

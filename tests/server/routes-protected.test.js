@@ -1,8 +1,10 @@
 import { generateKeyPair, SignJWT } from 'jose';
+import process from 'node:process';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequireAuth } from '../../server/auth/middleware.js';
 import { createApp, logBoot } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 let trustedKeyPair;
@@ -52,6 +54,15 @@ function localConfig() {
     isHosted: false,
     port: 3001,
     supabase: null,
+  };
+}
+
+function expectedHealth(runtime) {
+  return {
+    status: 'ok',
+    runtime,
+    version: APP_VERSION,
+    updateSupported: runtime === 'local' && process.platform === 'win32',
   };
 }
 
@@ -147,7 +158,7 @@ describe('protected routers — hosted-mode wiring', () => {
       const health = await request(baseUrl, '/api/health');
 
       expect(health.status).toBe(200);
-      expect(health.body).toEqual({ status: 'ok', runtime: 'hosted' });
+      expect(health.body).toEqual(expectedHealth('hosted'));
     });
   });
 });
@@ -274,7 +285,7 @@ describe('/api/health runtime mode', () => {
       const health = await request(baseUrl, '/api/health');
 
       expect(health.status).toBe(200);
-      expect(health.body).toEqual({ status: 'ok', runtime: 'local' });
+      expect(health.body).toEqual(expectedHealth('local'));
     });
   });
 
@@ -282,7 +293,7 @@ describe('/api/health runtime mode', () => {
     await withApp({ config: localConfig() }, async (baseUrl) => {
       const health = await request(baseUrl, '/api/health');
 
-      expect(health.body).toEqual({ status: 'ok', runtime: 'local' });
+      expect(health.body).toEqual(expectedHealth('local'));
     });
   });
 
@@ -292,7 +303,7 @@ describe('/api/health runtime mode', () => {
       async (baseUrl) => {
         const health = await request(baseUrl, '/api/health');
 
-        expect(health.body).toEqual({ status: 'ok', runtime: 'hosted' });
+        expect(health.body).toEqual(expectedHealth('hosted'));
       },
     );
   });

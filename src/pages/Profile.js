@@ -16,6 +16,7 @@ import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
 import { validateKey } from '../services/aiService.js';
+import { APP_VERSION } from './welcome/shared/appMeta.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
@@ -820,7 +821,7 @@ function resolveAccountMode() {
 // owns the network call + side effects; it re-throws INVALID_PASSWORD so the
 // modal keeps itself open, and re-throws other errors (after toasting) so the
 // modal closes.
-function buildAccountConfirm(mode, navigate, container) {
+function buildAccountConfirm(mode, navigate, container, health) {
   if (mode === 'hosted') {
     return async (password) => {
       try {
@@ -853,7 +854,7 @@ function buildAccountConfirm(mode, navigate, container) {
     if (container) {
       // Re-mount in place so the Tracker/Profile empty states render without a
       // full reload (navigate('profile') is a no-op when already on Profile).
-      await mount(container, { navigate });
+      await mount(container, { navigate, health });
     }
   };
 }
@@ -867,7 +868,7 @@ function createSetGroup(label, body) {
   return group;
 }
 
-function renderAccountGroup({ navigate, container } = {}) {
+function renderAccountGroup({ navigate, container, health } = {}) {
   const mode = resolveAccountMode();
   const body = createElement('div', 'account-section');
 
@@ -884,7 +885,7 @@ function renderAccountGroup({ navigate, container } = {}) {
   const description = createElement('p', 'account-section__desc', ACCOUNT_COPY[mode]);
   const label = mode === 'local' ? 'Clear all data' : 'Delete account';
   const button = createButton(label, 'profile-btn profile-btn--danger account-section__btn', () => {
-    DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container) });
+    DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container, health) });
   });
 
   body.append(description, button);
@@ -897,6 +898,21 @@ const CONNECTION_LABELS = {
   connected: 'Connected',
   testing: 'Testing...',
   error: 'Key invalid',
+};
+
+const UPDATE_MODE_COPY = {
+  notify: {
+    title: 'Notify only',
+    description: 'Show a badge when a new version is ready.',
+  },
+  ask: {
+    title: 'Ask before installing',
+    description: 'Confirm each update before it downloads.',
+  },
+  auto: {
+    title: 'Install automatically',
+    description: 'Keep Alice up to date in the background.',
+  },
 };
 
 const EYE_ICON_PATH = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z';
@@ -946,6 +962,338 @@ function createIconOnlyButton(label, className, iconPath, onClick) {
   button.append(createSvgIcon(iconPath));
 
   return button;
+}
+
+async function updateJson(path, options = {}) {
+  const response = await globalThis.fetch(`/api/update/${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers ?? {}),
+    },
+  });
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body?.error?.message || 'Update request failed.');
+  }
+
+  return body;
+}
+
+function statusPill(label, tone = 'ok') {
+  return createElement('span', `update-settings__pill update-settings__pill--${tone}`, label);
+}
+
+function createUpdateProgress(value) {
+  const progressValue = Math.max(0, Math.min(100, Number(value) || 0));
+  const progress = createElement('div', 'update-settings__progress');
+  const bar = document.createElement('span');
+
+  progress.setAttribute('role', 'progressbar');
+  progress.setAttribute('aria-label', 'Update download progress');
+  progress.setAttribute('aria-valuemin', '0');
+  progress.setAttribute('aria-valuemax', '100');
+  progress.setAttribute('aria-valuenow', String(progressValue));
+  bar.style.width = `${progressValue}%`;
+  progress.append(bar);
+
+  return progress;
+}
+
+function displayVersion(version) {
+  const value = String(version || APP_VERSION);
+  return value.toLowerCase().startsWith('v') ? value : `v${value}`;
+}
+
+function isActiveUpdateStatus(status) {
+  return ['checking', 'downloading', 'installing'].includes(status);
+}
+
+function renderUpdateSettingsGroup({ health } = {}) {
+  if (!health?.updateSupported) {
+    return null;
+  }
+
+  const body = createElement('div', 'update-settings');
+  const state = {
+    settings: { autoCheckUpdates: true, updateMode: 'ask' },
+    expanded: false,
+    status: 'loading',
+    release: null,
+    error: null,
+  };
+  let statusTimer = null;
+
+  _cleanupHandlers.push(() => {
+    if (statusTimer) {
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+  });
+
+  function applyStatus(status) {
+    state.status = status.status === 'failed' ? 'failed' : status.status;
+    state.error = status.error ?? null;
+    state.release = {
+      ...(state.release ?? {}),
+      currentVersion: status.currentVersion,
+      latestVersion: status.latestVersion,
+      releaseNotesUrl: status.releaseNotesUrl,
+      progress: status.progress,
+      updateAvailable: status.status === 'available',
+    };
+  }
+
+  function scheduleStatusPoll() {
+    if (statusTimer || !isActiveUpdateStatus(state.status)) {
+      return;
+    }
+
+    statusTimer = setTimeout(async () => {
+      statusTimer = null;
+      try {
+        applyStatus(await updateJson('status'));
+      } catch (error) {
+        state.status = 'check-failed';
+        state.error = error.message;
+      }
+      render();
+      scheduleStatusPoll();
+    }, 1000);
+  }
+
+  function saveSettings(nextSettings) {
+    const previousSettings = state.settings;
+    state.settings = nextSettings;
+    render();
+    updateJson('settings', {
+      method: 'POST',
+      body: JSON.stringify(nextSettings),
+    }).catch((error) => {
+      state.settings = previousSettings;
+      state.error = error.message;
+      Toast.show('Could not save update settings.', 'error');
+      render();
+    });
+  }
+
+  async function checkNow() {
+    state.status = 'checking';
+    state.error = null;
+    render();
+    try {
+      const release = await updateJson('check');
+      state.release = release;
+      state.status = release.updateAvailable ? 'available' : 'idle';
+      if (!release.updateAvailable) {
+        Toast.show("You're on the latest version.", 'success');
+      }
+    } catch (error) {
+      state.status = 'check-failed';
+      state.error = error.message;
+    }
+    render();
+  }
+
+  async function installNow() {
+    state.status = 'downloading';
+    state.error = null;
+    render();
+    try {
+      await updateJson('download', { method: 'POST' });
+      const status = await updateJson('status');
+      applyStatus(status);
+      scheduleStatusPoll();
+    } catch (error) {
+      state.status = 'failed';
+      state.error = error.message;
+    }
+    render();
+  }
+
+  async function restartNow() {
+    try {
+      await updateJson('restart', { method: 'POST' });
+      state.status = 'installing';
+      render();
+    } catch (error) {
+      state.status = 'failed';
+      state.error = error.message;
+      render();
+    }
+  }
+
+  function renderStatusBlock() {
+    const block = createElement('div', 'update-settings__status');
+    const copy = createElement('div', 'update-settings__status-copy');
+    const actions = createElement('div', 'update-settings__actions');
+
+    if (state.status === 'loading') {
+      copy.append(
+        createElement('div', 'update-settings__title', `Current version ${displayVersion(APP_VERSION)}`),
+        createElement('p', 'update-settings__desc', 'Loading update preferences...'),
+      );
+      block.append(copy);
+      return block;
+    }
+
+    if (state.status === 'check-failed') {
+      copy.append(
+        createElement('div', 'update-settings__title', 'Check failed'),
+        createElement('p', 'update-settings__desc', state.error || 'Could not reach the update service.'),
+      );
+      actions.append(statusPill('Connection Error', 'warn'), createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+    } else if (state.status === 'failed') {
+      copy.append(
+        createElement('div', 'update-settings__title', 'Update failed'),
+        createElement('p', 'update-settings__desc', state.error || 'Verification failed: integrity check mismatch.'),
+      );
+      actions.append(statusPill('Update Failed', 'danger'), createButton('Retry Download', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+    } else if (state.status === 'available') {
+      const version = state.release?.latestVersion ? displayVersion(state.release.latestVersion) : 'a new version';
+      const notes = state.release?.releaseNotesUrl ? document.createElement('a') : null;
+      copy.append(
+        createElement('div', 'update-settings__title', `Update available ${version}`),
+        createElement('p', 'update-settings__desc', `You're on ${displayVersion(state.release?.currentVersion || APP_VERSION)}`),
+      );
+      if (notes) {
+        notes.href = getSafeExternalHref(state.release.releaseNotesUrl);
+        notes.target = '_blank';
+        notes.rel = 'noopener noreferrer';
+        notes.textContent = "What's new";
+        notes.className = 'update-settings__link';
+        copy.append(notes);
+      }
+      actions.append(createButton('Install', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+    } else if (state.status === 'downloading') {
+      copy.append(
+        createElement('div', 'update-settings__title', 'Downloading update'),
+        createElement('p', 'update-settings__desc', state.release?.latestVersion
+          ? `${state.release.progress ?? 0}% · ${displayVersion(state.release.latestVersion)}`
+          : 'Preparing the update package.'),
+      );
+      copy.append(createUpdateProgress(state.release?.progress));
+    } else if (state.status === 'ready-to-restart' || state.status === 'installing') {
+      copy.append(
+        createElement('div', 'update-settings__title', 'Installing update'),
+        createElement('p', 'update-settings__desc', 'Restart to apply the update.'),
+      );
+      actions.append(createButton('Restart to finish', 'profile-btn profile-btn--primary profile-btn--compact', restartNow));
+    } else {
+      copy.append(
+        createElement('div', 'update-settings__title', `Current version ${displayVersion(APP_VERSION)}`),
+        createElement('p', 'update-settings__desc', 'Alice is ready to check for updates.'),
+      );
+      actions.append(statusPill('Up to date'), createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+    }
+
+    block.append(copy, actions);
+    return block;
+  }
+
+  function renderModePicker() {
+    const wrap = createElement('div', `update-mode${state.expanded ? ' is-expanded' : ''}`);
+    const current = UPDATE_MODE_COPY[state.settings.updateMode] ?? UPDATE_MODE_COPY.ask;
+    const modeEntries = Object.entries(UPDATE_MODE_COPY);
+    const focusMode = (currentIndex, direction) => {
+      const nextIndex = (currentIndex + direction + modeEntries.length) % modeEntries.length;
+      const [nextMode] = modeEntries[nextIndex];
+      const nextCard = body.querySelector(`[data-update-mode="${nextMode}"]`);
+
+      nextCard?.focus();
+    };
+    const toggle = createButton('', 'update-mode__summary', () => {
+      state.expanded = !state.expanded;
+      render();
+    });
+    toggle.setAttribute('aria-expanded', String(state.expanded));
+    toggle.setAttribute('aria-controls', 'update-mode-options');
+    toggle.append(
+      createElement('span', 'update-mode__label', 'UPDATE MODE'),
+      createElement('span', 'update-mode__value', current.title),
+      createElement('span', 'update-mode__chevron', state.expanded ? '⌃' : '⌄'),
+    );
+    wrap.append(toggle);
+
+    if (state.expanded) {
+      const cards = createElement('div', 'update-mode__cards');
+      cards.id = 'update-mode-options';
+      cards.setAttribute('role', 'radiogroup');
+      cards.setAttribute('aria-label', 'Update mode');
+      modeEntries.forEach(([mode, copy], index) => {
+        const selected = state.settings.updateMode === mode;
+        const card = createButton('', `update-mode-card${state.settings.updateMode === mode ? ' is-selected' : ''}`, () => {
+          saveSettings({ ...state.settings, updateMode: mode });
+        });
+        card.dataset.updateMode = mode;
+        card.setAttribute('role', 'radio');
+        card.setAttribute('aria-checked', String(selected));
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            focusMode(index, 1);
+          } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            focusMode(index, -1);
+          }
+        });
+        card.append(
+          createElement('span', 'update-mode-card__title', copy.title),
+          createElement('span', 'update-mode-card__desc', copy.description),
+        );
+        cards.append(card);
+      });
+      wrap.append(cards);
+    }
+
+    return wrap;
+  }
+
+  function render() {
+    const autoRow = createElement('div', 'master-row update-settings__auto-row');
+    const copy = createElement('div', 'master-row__copy');
+    const toggle = createSwitch({
+      pressed: state.settings.autoCheckUpdates,
+      label: 'Check for updates automatically',
+      onClick: () => {
+        saveSettings({
+          ...state.settings,
+          autoCheckUpdates: !state.settings.autoCheckUpdates,
+        });
+      },
+    });
+
+    copy.append(
+      createElement('div', 'master-row__title', 'Check for updates automatically'),
+      createElement('p', 'master-row__desc', 'Check on startup and then once every 24 hours while Alice is open.'),
+    );
+    autoRow.append(copy, toggle);
+    body.replaceChildren(renderStatusBlock(), createElement('div', 'update-settings__rule'), autoRow, renderModePicker());
+  }
+
+  Promise.all([
+    updateJson('settings'),
+    updateJson('status').catch(() => null),
+  ])
+    .then(([settings, status]) => {
+      state.settings = settings;
+      if (status?.status && status.status !== 'idle') {
+        applyStatus(status);
+        scheduleStatusPoll();
+      } else {
+        state.status = 'idle';
+      }
+      render();
+    })
+    .catch((error) => {
+      state.status = 'check-failed';
+      state.error = error.message;
+      render();
+    });
+
+  render();
+  return createSetGroup('UPDATES', body);
 }
 
 function renderAiSettingsGroup() {
@@ -1129,13 +1477,17 @@ function renderDemoAiSettingsGroup() {
   return createSetGroup('ARTIFICIAL INTELLIGENCE', body);
 }
 
-function renderSettingsSection(page, { navigate, container } = {}) {
+function renderSettingsSection(page, { navigate, container, health } = {}) {
   const { section } = createSection('SETTINGS');
   const isDemo = authStore.getAuthState().status === authStore.DEMO_STATUS;
 
   section.classList.add('settings-section');
   section.append(isDemo ? renderDemoAiSettingsGroup() : renderAiSettingsGroup());
-  section.append(renderAccountGroup({ navigate, container }));
+  const updatesGroup = renderUpdateSettingsGroup({ health });
+  if (updatesGroup) {
+    section.append(updatesGroup);
+  }
+  section.append(renderAccountGroup({ navigate, container, health }));
   page.append(section);
 
   return section;
@@ -1151,7 +1503,7 @@ function focusSettingsSection(section) {
   section.focus({ preventScroll: true });
 }
 
-export async function mount(container, { navigate, focusSettings = false } = {}) {
+export async function mount(container, { navigate, focusSettings = false, health = null } = {}) {
   cleanupTransientState();
 
   const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
@@ -1181,7 +1533,7 @@ export async function mount(container, { navigate, focusSettings = false } = {})
   }
 
   renderProfileSection(page, profile, safeNavigate);
-  const settingsSection = renderSettingsSection(page, { navigate: safeNavigate, container });
+  const settingsSection = renderSettingsSection(page, { navigate: safeNavigate, container, health });
 
   if (focusSettings) {
     focusSettingsSection(settingsSection);

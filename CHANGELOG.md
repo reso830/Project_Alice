@@ -7,6 +7,69 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-06-28
+
+Self-Update Support — a portable Windows install can now keep itself current
+without manual file replacement. Alice checks GitHub Releases for a newer
+version, announces it through an update toast and a Profile nav badge, and on
+confirmation downloads the release ZIP to a staging folder, verifies its SHA256,
+and applies it on the next restart via the launcher — swapping the program files
+while preserving `data/alice.db` and `config/`. A per-install lockfile guarantees
+exactly one instance across the stop → swap → restart sequence, and pending
+SQLite schema migrations run automatically behind a pre-migration backup that
+restores on failure. The whole in-app updater is gated to local Windows installs
+(`updateSupported`); hosted (Vercel) continues to update through normal deploys.
+(041-self-update-support)
+
+### Added
+
+- **Release detection** — a new `GET /api/update/check` endpoint proxies the
+  GitHub Releases API (avoiding the unauthenticated IP rate limit), compares the
+  running version against the latest tag with `v`-prefix-tolerant SemVer
+  comparison, and caches the result in memory for one hour. An
+  `ALICE_UPDATE_SOURCE_OVERRIDE` env var points the check at a local fixture for
+  testing. (041-self-update-support)
+- **Update notifications** — a single `UpdateToast` component renders the
+  available / downloading / installing / error states (bottom-right on
+  desktop/tablet, full-width above the tab bar on mobile, with `aria-live` and a
+  `role="progressbar"` meter), plus a persistent update badge on the Profile
+  nav button (`Navbar` + `BottomTabBar`) that survives toast dismissal.
+  (041-self-update-support)
+- **Download, staging & integrity** — `POST /api/update/download` streams the
+  release ZIP and its `.sha256` to `data/update-staging/`, verifies the checksum,
+  and extracts into `data/update-staging/alice/`; a failed download or checksum
+  clears staging and reports a failure status. `GET /api/update/status` exposes
+  the live download/staging state. (041-self-update-support)
+- **Robust single-instance lockfile** — `server/portable/lock.js` records the
+  live PID + bound port + app version in `data/alice.lock`, with stale-lock
+  liveness handling, replacing 040's port-only health probe so the same install
+  is detected regardless of port fallback and across the update window.
+  (041-self-update-support)
+- **Swap-on-restart launcher** — `POST /api/update/restart` writes
+  `data/update-pending.json` and triggers a clean shutdown via an `onShutdown`
+  callback; `Start-Alice.cmd` detects staged files on the next loop, mirrors
+  `app/` and `runtime/` (the bundled Node + native SQLite binaries are unlocked
+  because the old process has exited), swaps itself last, and reboots the new
+  version. (041-self-update-support)
+- **Greenfield SQLite migration subsystem** — `server/db/migration.js` adds a
+  `schema_migrations` ledger with run-once sequential migrations, a downgrade
+  gate, and legacy baselining for pre-041 databases; `server/db.js` wraps it in a
+  pre-migration backup that restores `data/alice.db` and halts startup on
+  failure. The base schema moves into `server/db/migrations/001-init.js`.
+  (041-self-update-support)
+- **Capability-aware health** — `GET /api/health` now returns `version` and an
+  `updateSupported` flag (true only for local Windows), which the frontend uses
+  to gate the toast, badge, and Updates settings sub-group. (041-self-update-support)
+- **Updates settings sub-group** — Profile › Settings gains an **Updates**
+  sub-group (middle group) with the current version, a manual **Check now**,
+  status/error states (Connection Error / Update Failed + Retry), an auto-check
+  toggle, and a collapsible update-mode picker (Notify only / Ask before
+  installing / Install automatically), persisted to `config/settings.json` via
+  `GET`/`POST /api/update/settings`. (041-self-update-support)
+- **Mode-aware footer control** — the footer brand row shows a **Download**
+  button (latest GitHub release) in hosted/demo and an **Open hosted version ↗**
+  link in local mode. (041-self-update-support)
+
 ## [1.9.0] — 2026-06-22
 
 Portable Distribution Package — Alice can now be distributed and run as a
@@ -1190,7 +1253,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1

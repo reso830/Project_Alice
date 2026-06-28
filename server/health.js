@@ -1,3 +1,7 @@
+import process from 'node:process';
+
+import { APP_VERSION } from '../src/pages/welcome/shared/appMeta.js';
+
 // PostgREST error codes that mean "migration not applied":
 const UNDEFINED_COLUMN = '42703';
 const UNDEFINED_TABLE = '42P01';
@@ -45,6 +49,15 @@ const PROBES = [
     docPath: 'specs/037-compatibility-insights-panel/data-model.md §2',
   },
 ];
+
+export function createHealthPayload(runtime) {
+  return {
+    status: 'ok',
+    runtime,
+    version: APP_VERSION,
+    updateSupported: runtime === 'local' && process.platform === 'win32',
+  };
+}
 
 function migrationHint(table, column, docPath) {
   const artifact = column ? `${table}.${column}` : table;

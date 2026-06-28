@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.9.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.9.0');
-    expect(APP_VERSION).toBe('v1.9.0');
+  it('keeps the 1.10.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.10.0');
+    expect(APP_VERSION).toBe('v1.10.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.9.0');
-    expect(lock.packages['']?.version).toBe('1.9.0');
+    expect(lock.version).toBe('1.10.0');
+    expect(lock.packages['']?.version).toBe('1.10.0');
 
-    expect(read('README.md')).toContain('Current version: **1.9.0**');
+    expect(read('README.md')).toContain('Current version: **1.10.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.10.0] — 2026-06-28');
     expect(read('CHANGELOG.md')).toContain('## [1.9.0] — 2026-06-22');
     expect(read('CHANGELOG.md')).toContain('## [1.8.0] — 2026-06-21');
     expect(read('CHANGELOG.md')).toContain('## [1.7.1] — 2026-06-19');
@@ -30,7 +31,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.9.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0');
     expect(read('CHANGELOG.md')).toContain('[1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0');
     expect(read('CHANGELOG.md')).toContain('[1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0');
     expect(read('CHANGELOG.md')).toContain('[1.7.1]: https://github.com/reso830/Project_Alice/compare/v1.7.0...v1.7.1');
@@ -334,6 +336,35 @@ describe('release metadata', () => {
       '.github/workflows/release-portable.yml',
       'tests/server/staticServing.test.js',
       'tests/server/portableBootstrap.test.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Self-Update Support release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const repoMap = read('docs/REPO_MAP.md');
+    const changelog = read('CHANGELOG.md');
+
+    expect(readme).toContain('Self-update (portable, Windows)');
+    expect(readme).toContain('specs/041-self-update-support/quickstart.md');
+    expect(changelog).toContain('Self-Update Support');
+    expect(repoMap).toContain('server/routes/update.js');
+    expect(repoMap).toContain('server/portable/lock.js');
+    expect(repoMap).toContain('server/db/migration.js');
+    expect(repoMap).toContain('src/components/UpdateToast.js');
+    expect(repoMap).toContain('updateSupported');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 041-self-update-support  ·  shipped v1.10.0');
+
+    for (const path of [
+      'specs/041-self-update-support',
+      'docs/features/041-self-update-support.md',
+      'server/routes/update.js',
+      'server/portable/lock.js',
+      'server/db/migration.js',
+      'server/db/migrations/001-init.js',
+      'src/components/UpdateToast.js',
+      'tests/unit/update.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

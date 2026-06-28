@@ -72,6 +72,26 @@ describe('Footer', () => {
     expect(stackSection?.textContent).toContain('Speckit');
   });
 
+  it('renders a hosted download button by default', () => {
+    const footer = Footer.render();
+    const link = footer.querySelector('.footer__download');
+
+    expect(link).not.toBeNull();
+    expect(link.href).toBe('https://github.com/reso830/Project_Alice/releases/latest');
+    expect(link.textContent).toContain('Download');
+    expect(link.textContent).toContain(APP_VERSION);
+  });
+
+  it('renders the hosted-version link for local runtime', () => {
+    const footer = Footer.render({ runtime: 'local' });
+    const link = footer.querySelector('.footer__hosted-link');
+
+    expect(footer.querySelector('.footer__download')).toBeNull();
+    expect(link).not.toBeNull();
+    expect(link.textContent).toBe('Open hosted version ↗');
+    expect(link.href).toBe('https://project-alice-gamma.vercel.app/');
+  });
+
   it('uses visual labels without adding footer headings', () => {
     const footer = Footer.render();
 

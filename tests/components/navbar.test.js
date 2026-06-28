@@ -183,4 +183,17 @@ describe('Navbar — page nav', () => {
     const active = topbar.querySelector('.nav-btn--active');
     expect(active?.dataset.page).toBe('profile');
   });
+
+  it('renders and clears the update badge on the profile button', () => {
+    const topbar = Navbar.render('tracker');
+
+    Navbar.setUpdateStatus('available');
+    expect(topbar.querySelector('.nav-btn[data-page="profile"] .nav-btn__update-badge--active')).not.toBeNull();
+
+    Navbar.setUpdateStatus('ready-to-restart');
+    expect(topbar.querySelector('.nav-btn[data-page="profile"] .nav-btn__update-badge--ready')).not.toBeNull();
+
+    Navbar.setUpdateStatus('idle');
+    expect(topbar.querySelector('.nav-btn__update-badge')).toBeNull();
+  });
 });

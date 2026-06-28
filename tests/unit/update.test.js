@@ -1,0 +1,255 @@
+import express from 'express';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+
+import {
+  compareVersions,
+  createUpdateRouter,
+  isNewerVersion,
+  sha256File,
+  verifyChecksum,
+} from '../../server/routes/update.js';
+
+const servers = [];
+const roots = [];
+const originalEnv = { ...process.env };
+
+const fixtureZip = path.resolve('tests/fixtures/update-v1.10.0.zip');
+const fixtureChecksum = path.resolve('tests/fixtures/update-v1.10.0.zip.sha256');
+
+function makeRoot() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-update-'));
+  roots.push(root);
+  return root;
+}
+
+function writeRelease(root, overrides = {}) {
+  const releasePath = path.join(root, 'release.json');
+  fs.writeFileSync(
+    releasePath,
+    JSON.stringify({
+      tag_name: 'v1.10.0',
+      html_url: 'https://github.com/reso830/Project_Alice/releases/tag/v1.10.0',
+      published_at: '2026-06-26T15:08:27Z',
+      assets: [
+        {
+          name: 'update-v1.10.0.zip',
+          browser_download_url: fixtureZip,
+          size: fs.statSync(fixtureZip).size,
+        },
+        {
+          name: 'update-v1.10.0.zip.sha256',
+          browser_download_url: fixtureChecksum,
+        },
+      ],
+      ...overrides,
+    }),
+  );
+  return releasePath;
+}
+
+async function makeServer({
+  dataDir = path.join(makeRoot(), 'data'),
+  configDir = path.join(makeRoot(), 'config'),
+  onShutdown = async () => {},
+  scheduleShutdown = (callback) => callback(),
+} = {}) {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/update', createUpdateRouter({
+    repos: { forRequest: () => ({}) },
+    dataDir,
+    configDir,
+    onShutdown,
+    scheduleShutdown,
+  }));
+
+  const server = app.listen(0);
+  servers.push(server);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const { port } = server.address();
+  return { baseUrl: `http://127.0.0.1:${port}`, dataDir, configDir };
+}
+
+async function requestJson(baseUrl, route, options = {}) {
+  const response = await globalThis.fetch(`${baseUrl}${route}`, options);
+  return { response, body: await response.json() };
+}
+
+async function waitForStatus(baseUrl, status) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const { body } = await requestJson(baseUrl, '/api/update/status');
+    if (body.status === status) {
+      return body;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out waiting for update status ${status}`);
+}
+
+afterEach(async () => {
+  vi.restoreAllMocks();
+  process.env = { ...originalEnv };
+  await Promise.all(
+    servers.splice(0).map(
+      (server) =>
+        new Promise((resolve, reject) => {
+          server.close((error) => (error ? reject(error) : resolve()));
+        }),
+    ),
+  );
+  for (const root of roots.splice(0)) {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+describe('update version and checksum helpers', () => {
+  test('normalizes v prefixes and compares semantic versions numerically', () => {
+    expect(compareVersions('v1.7.0', 'v1.10.0')).toBe(-1);
+    expect(isNewerVersion('v1.10.0', '1.9.0')).toBe(true);
+    expect(isNewerVersion('1.10.0', 'v1.10.1')).toBe(false);
+    expect(isNewerVersion('v1.10.0', '1.10.0')).toBe(false);
+  });
+
+  test('verifies package SHA256 checksums against checksum files', () => {
+    const checksum = fs.readFileSync(fixtureChecksum, 'utf8');
+
+    expect(verifyChecksum(fixtureZip, checksum)).toBe(true);
+    expect(sha256File(fixtureZip)).toMatch(/^[a-f0-9]{64}$/);
+    expect(verifyChecksum(fixtureZip, '0000  update-v1.10.0.zip')).toBe(false);
+  });
+
+});
+
+describe('update route behavior', () => {
+  test('checks mocked release metadata and caches the response', async () => {
+    const root = makeRoot();
+    const releasePath = writeRelease(root);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = releasePath;
+    process.env.ALICE_VERSION_OVERRIDE = '1.9.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const first = await requestJson(baseUrl, '/api/update/check');
+    fs.writeFileSync(releasePath, JSON.stringify({ tag_name: 'v1.9.0', assets: [] }));
+    const second = await requestJson(baseUrl, '/api/update/check');
+
+    expect(first.response.status).toBe(200);
+    expect(first.body).toMatchObject({
+      updateAvailable: true,
+      currentVersion: '1.9.0',
+      latestVersion: '1.10.0',
+      releaseNotesUrl: 'https://github.com/reso830/Project_Alice/releases/tag/v1.10.0',
+    });
+    expect(second.body.latestVersion).toBe('1.10.0');
+  });
+
+  test('downloads, verifies, extracts, and reports staged status', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const { baseUrl, dataDir } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const start = await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(start.response.status).toBe(202);
+    expect(status).toMatchObject({
+      status: 'ready-to-restart',
+      progress: 100,
+      latestVersion: '1.10.0',
+      error: null,
+    });
+    expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'app', 'dist', 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'Start-Alice.cmd'))).toBe(true);
+  });
+
+  test('clears staging and reports failure when checksum verification fails', async () => {
+    const root = makeRoot();
+    const badChecksum = path.join(root, 'bad.sha256');
+    fs.writeFileSync(badChecksum, '0000  update-v1.10.0.zip');
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'update-v1.10.0.zip', browser_download_url: fixtureZip, size: fs.statSync(fixtureZip).size },
+        { name: 'update-v1.10.0.zip.sha256', browser_download_url: badChecksum },
+      ],
+    });
+    const { baseUrl, dataDir } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'failed');
+
+    expect(status.error).toMatch(/Checksum verification failed/);
+    expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
+  });
+
+  test('writes pending metadata and delegates shutdown after restart response', async () => {
+    const root = makeRoot();
+    const onShutdown = vi.fn();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      onShutdown,
+    });
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    await waitForStatus(baseUrl, 'ready-to-restart');
+
+    const restart = await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+
+    expect(restart.response.status).toBe(200);
+    expect(restart.body).toEqual({ status: 'restarting' });
+    expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'update-pending.json'), 'utf8'))).toMatchObject({
+      status: 'pending',
+      latestVersion: '1.10.0',
+    });
+    expect(onShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  test('reads and writes update settings in config/settings.json', async () => {
+    const root = makeRoot();
+    const configDir = path.join(root, 'config');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(path.join(configDir, 'settings.json'), JSON.stringify({
+      port: 4123,
+      openBrowser: false,
+    }));
+    const { baseUrl } = await makeServer({ configDir });
+
+    const initial = await requestJson(baseUrl, '/api/update/settings');
+    const saved = await requestJson(baseUrl, '/api/update/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autoCheckUpdates: false, updateMode: 'notify' }),
+    });
+    const after = await requestJson(baseUrl, '/api/update/settings');
+
+    expect(initial.response.status).toBe(200);
+    expect(initial.body).toEqual({ autoCheckUpdates: true, updateMode: 'ask' });
+    expect(saved.response.status).toBe(200);
+    expect(saved.body).toEqual({ success: true });
+    expect(after.body).toEqual({ autoCheckUpdates: false, updateMode: 'notify' });
+    expect(JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'))).toEqual({
+      port: 4123,
+      openBrowser: false,
+      autoCheckUpdates: false,
+      updateMode: 'notify',
+    });
+  });
+
+  test('rejects invalid update settings without writing config', async () => {
+    const root = makeRoot();
+    const configDir = path.join(root, 'config');
+    const { baseUrl } = await makeServer({ configDir });
+
+    const result = await requestJson(baseUrl, '/api/update/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autoCheckUpdates: true, updateMode: 'beta' }),
+    });
+
+    expect(result.response.status).toBe(400);
+    expect(result.body.error.code).toBe('INVALID_UPDATE_SETTINGS');
+    expect(fs.existsSync(path.join(configDir, 'settings.json'))).toBe(false);
+  });
+});

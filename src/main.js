@@ -16,6 +16,7 @@ import { getHealth } from './services/healthApi.js';
 import { isHostedAuthAvailable } from './services/supabaseClient.js';
 import { toISODate } from './utils/date.js';
 import { Toast } from './components/Toast.js';
+import { UpdateToast } from './components/UpdateToast.js';
 
 const DAY_MS = 86400000;
 
@@ -24,6 +25,7 @@ let _currentUnmount = null;
 let _shellMounted = false;
 let _welcomeMounted = false;
 let _configErrorMounted = false;
+let _runtimeHealth = null;
 
 export const SEED_DATA = [
   {
@@ -105,10 +107,18 @@ function mountAppShell() {
   const main = document.createElement('main');
   main.id = 'app';
   const navbar = Navbar.render('tracker');
-  const footer = Footer.render();
+  const footer = Footer.render({ runtime: _runtimeHealth?.runtime });
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
   document.body.append(navbar, main, footer, bottomTabBar);
+  UpdateToast.mount({
+    health: _runtimeHealth,
+    onStatusChange(status) {
+      const nextStatus = status?.status ?? 'idle';
+      Navbar.setUpdateStatus(nextStatus);
+      BottomTabBar.setUpdateStatus(nextStatus);
+    },
+  });
 
   for (const button of navbar.querySelectorAll('.nav-btn')) {
     button.addEventListener('click', () => navigate(button.dataset.page));
@@ -129,6 +139,7 @@ function unmountAppShell() {
   _currentPage = null;
   Navbar.destroy();
   BottomTabBar.destroy();
+  UpdateToast.destroy();
   clearBody();
   _shellMounted = false;
 }
@@ -210,15 +221,16 @@ export async function runtimeHandshake({
   try {
     const health = await healthFn();
     if (health?.runtime === 'hosted' && !hostedAuthAvailable) {
-      return { configError: true };
+      return { configError: true, health };
     }
+    return { configError: false, health };
   } catch {
     // Network failure during the runtime check is non-fatal: the build-time
     // assertion in Task 01.3 is the primary line of defense, and the user
     // will still see either the welcome page or the app shell. The runtime
     // check only catches the case where the build-time assertion was bypassed.
   }
-  return { configError: false };
+  return { configError: false, health: null };
 }
 
 // Test-only helper — resets module-scoped state so individual `bootstrap()`
@@ -229,6 +241,7 @@ export function _resetForTesting() {
   _shellMounted = false;
   _welcomeMounted = false;
   _configErrorMounted = false;
+  _runtimeHealth = null;
 }
 
 export async function bootstrap(deps = {}) {
@@ -248,6 +261,7 @@ export async function bootstrap(deps = {}) {
   // deployment with missing Vite env vars never flashes the welcome page or
   // app shell before ConfigError takes over (Task 08.3, finding from review).
   const result = await runtimeHandshake(deps);
+  _runtimeHealth = result.health;
   if (result.configError) {
     mountConfigError();
     return;
@@ -283,7 +297,7 @@ function navigate(page, options = {}) {
     Calendar.mount(appRoot);
     _currentUnmount = Calendar.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot, { navigate, ...options });
+    Profile.mount(appRoot, { navigate, health: _runtimeHealth, ...options });
     _currentUnmount = Profile.unmount;
   } else if (page === 'profile-edit') {
     ProfileEdit.mount(appRoot, { navigate, ...options });

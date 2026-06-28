@@ -88,7 +88,7 @@ Alice is evolving through four major phases:
 - [x]  038-ai-provider-abstraction  ·  shipped v1.7.1
 - [x]  039-desktop-workspace-refresh  ·  shipped v1.8.0
 - [x] 040-portable-distribution-package  ·  shipped v1.9.0
-- [ ] 041-self-update-support
+- [x] 041-self-update-support  ·  shipped v1.10.0
 
 ---
 
