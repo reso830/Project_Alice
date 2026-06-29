@@ -24,6 +24,7 @@ if not exist "%NODE%" (
 echo Starting Alice...
 echo Close this window or press Ctrl+C to stop Alice.
 "%NODE%" "%BOOT%"
+if defined ALICE_UPDATED_RELAUNCH set "ALICE_UPDATED_RELAUNCH="
 
 if exist "%STAGING%\" goto run
 
@@ -44,8 +45,9 @@ if exist "%STAGING%\app\" (
   call :rename_with_retry app
   if errorlevel 1 (
     echo Alice update failed: could not release locks on app files.
+    echo Close other Alice windows or file sync tools, then press any key to retry.
     pause
-    exit /b 1
+    goto apply_update
   )
 )
 
@@ -54,8 +56,9 @@ if exist "%STAGING%\runtime\" (
   if errorlevel 1 (
     echo Alice update failed: could not release locks on runtime files.
     call :rollback_update
+    echo Close other Alice windows or file sync tools, then press any key to retry.
     pause
-    exit /b 1
+    goto apply_update
   )
 )
 
@@ -86,6 +89,8 @@ rmdir /s /q "%ROOT%data\update-staging"
 if exist "%ROOT%app.bak\" rmdir /s /q "%ROOT%app.bak"
 if exist "%ROOT%runtime.bak\" rmdir /s /q "%ROOT%runtime.bak"
 
+set "ALICE_UPDATED_RELAUNCH=1"
+
 if exist "%NEXT_LAUNCHER%" (
   copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd" >nul
   "%ROOT%Start-Alice.cmd"
@@ -98,6 +103,7 @@ exit /b 0
 :rename_with_retry
 set "TARGET=%~1"
 set /a RETRY=0
+set /a DELAY_SECONDS=2
 
 :rename_retry
 if not exist "%ROOT%%TARGET%\" exit /b 0
@@ -105,8 +111,11 @@ if exist "%ROOT%%TARGET%.bak\" rmdir /s /q "%ROOT%%TARGET%.bak"
 ren "%ROOT%%TARGET%" "%TARGET%.bak"
 if not errorlevel 1 exit /b 0
 set /a RETRY+=1
-if !RETRY! geq 5 exit /b 1
-ping -n 2 127.0.0.1 >nul
+if !RETRY! geq 20 exit /b 1
+set /a DELAY_SECONDS=2
+if !RETRY! geq 8 set /a DELAY_SECONDS=4
+if !RETRY! geq 15 set /a DELAY_SECONDS=8
+ping -n !DELAY_SECONDS! 127.0.0.1 >nul
 goto rename_retry
 
 :rollback_update

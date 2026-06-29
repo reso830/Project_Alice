@@ -272,19 +272,19 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 **Purpose**: Walk the spec's independent tests in a real browser session against the final state.
 
-- [ ] T032 [US1] Discover and Trigger Updates Browser Smoke Walkthrough
+- [x] T032 [US1] Discover and Trigger Updates Browser Smoke Walkthrough — ✅ verified end-to-end with real build artifacts (v1.10.0 → v1.11.0)
   - **Expected behavior**: Mock old version tag `1.9.0` using environment variable `ALICE_VERSION_OVERRIDE=1.9.0` and point the update source to the local fixture zip using `ALICE_UPDATE_SOURCE_OVERRIDE` pointing to the mock release server/endpoint. Start the server, observe Available toast display, click Install, verify downloading progress bar, and click Restart. App should exit and relaunch successfully using the mock staged package, showing version `v1.10.0` in the footer.
   - **Validation/test**: Walk independent test.
 
-- [ ] T033 [US2] Single Instance Lock Browser Smoke Walkthrough
+- [x] T033 [US2] Single Instance Lock Browser Smoke Walkthrough — ✅ no second node process; opens browser to running instance (duplicate tab is a browser limitation, spec-compliant)
   - **Expected behavior**: Attempt to launch the portable package a second time. Verify the browser opens the active instance's tab and exits without starting a second node process.
   - **Validation/test**: Walk independent test.
 
-- [ ] T034 [US3] Settings updates panel Browser Smoke Walkthrough
+- [x] T034 [US3] Settings updates panel Browser Smoke Walkthrough — ✅ amber/red/green pills, autocheck persistence, mode toggle verified. NOTE: sub-check (6) "Updates hidden on hosted Vercel" deferred to post-deploy verification. (Surfaced + fixed two bugs: check-fail→amber distinction, toast↔settings shared-store sync.)
   - **Expected behavior**: Navigate to Profile > Settings. Verify Updates card layout, including: (1) Connection Error state (amber pill on check failure); (2) Update Failed state (red pill and Retry button on download failure); and (3) Already on Latest state (triggering a manual check displays the green "Up to date" pill and pops up a transient "You're on the latest version" success toast). Disable autocheck, verify settings persistence. Toggle through update modes. Verify that the Updates section is hidden on hosted Vercel deployments.
   - **Validation/test**: Walk independent test.
 
-- [ ] T035 Mobile Viewport layout check
+- [x] T035 Mobile Viewport layout check — ✅ toast controls wrap cleanly at mobile width
   - **Expected behavior**: Open DevTools, switch to Mobile viewport (390px). Confirm that Toast controls wrap cleanly with full-width primary buttons ordered last.
   - **Validation/test**: Human browser check.
 

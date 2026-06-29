@@ -115,9 +115,32 @@ async function downloadToFile(url, filePath, onProgress = () => {}) {
   }
 
   const bytesTotal = Number(response.headers.get('content-length')) || null;
-  const arrayBuffer = await response.arrayBuffer();
-  fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-  onProgress(fs.statSync(filePath).size, bytesTotal);
+  if (!response.body?.getReader) {
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+    onProgress(fs.statSync(filePath).size, bytesTotal);
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const fd = fs.openSync(filePath, 'w');
+  let bytesDownloaded = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const chunk = Buffer.from(value);
+      fs.writeSync(fd, chunk);
+      bytesDownloaded += chunk.length;
+      onProgress(bytesDownloaded, bytesTotal);
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 function findAsset(release, predicate) {
@@ -201,10 +224,10 @@ function publicStatus(state) {
   return { ...state.status };
 }
 
-function setFailure(state, error) {
+function setFailure(state, error, status = 'failed') {
   state.status = {
     ...state.status,
-    status: 'failed',
+    status,
     progress: 0,
     error: error instanceof Error ? error.message : String(error),
   };
@@ -281,12 +304,28 @@ export function createUpdateRouter({
         state.status.progress = Math.round((bytesDownloaded / state.status.bytesTotal) * 100);
       }
     });
+    state.status = {
+      ...state.status,
+      status: 'verifying',
+      progress: 100,
+      bytesDownloaded: fs.statSync(zipPath).size,
+      bytesTotal: state.status.bytesTotal ?? fs.statSync(zipPath).size,
+      error: null,
+    };
     await downloadToFile(release.checksumUrl, checksumPath);
 
     if (!verifyChecksum(zipPath, fs.readFileSync(checksumPath, 'utf8'))) {
       throw new Error('Checksum verification failed.');
     }
 
+    state.status = {
+      ...state.status,
+      status: 'extracting',
+      progress: 100,
+      bytesDownloaded: fs.statSync(zipPath).size,
+      bytesTotal: state.status.bytesTotal ?? fs.statSync(zipPath).size,
+      error: null,
+    };
     fs.rmSync(extractDir, { recursive: true, force: true });
     extractZip(zipPath, extractDir);
     state.status = {
@@ -303,13 +342,13 @@ export function createUpdateRouter({
     try {
       res.status(200).json(await checkForUpdates());
     } catch (error) {
-      setFailure(state, error);
+      setFailure(state, error, 'check-failed');
       res.status(502).json({ error: { code: 'UPDATE_CHECK_FAILED', message: state.status.error } });
     }
   });
 
   router.post('/download', async (_req, res) => {
-    if (state.downloadPromise && state.status.status === 'downloading') {
+    if (state.downloadPromise) {
       res.status(202).json(publicStatus(state));
       return;
     }

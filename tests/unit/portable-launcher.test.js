@@ -49,7 +49,17 @@ describe('portable launcher update swap', () => {
     expect(renameRuntime).toBeLessThan(copyRuntime);
     expect(launcher).toContain(':rename_with_retry');
     expect(launcher).toContain('ren "%ROOT%%TARGET%" "%TARGET%.bak"');
-    expect(launcher).toContain('if !RETRY! geq 5 exit /b 1');
+    expect(launcher).toContain('if !RETRY! geq 20 exit /b 1');
+    expect(launcher).toContain('set /a DELAY_SECONDS=2');
+    expect(launcher).toContain('if !RETRY! geq 8 set /a DELAY_SECONDS=4');
+    expect(launcher).toContain('if !RETRY! geq 15 set /a DELAY_SECONDS=8');
+  });
+
+  test('keeps staged updates retryable when file locks do not release', () => {
+    expect(launcher).toContain(
+      'echo Close other Alice windows or file sync tools, then press any key to retry.',
+    );
+    expect(launcher.match(/goto apply_update/g)).toHaveLength(2);
   });
 
   test('rolls back renamed folders when mirroring fails', () => {
@@ -74,5 +84,18 @@ describe('portable launcher update swap', () => {
     expect(runLabel).toBeLessThan(launcher.indexOf('if exist "%STAGING%\\"'));
     expect(relaunchWhenStaged).toBeGreaterThan(launchNode);
     expect(relaunchWhenStaged).toBeLessThan(errorHandling);
+  });
+
+  test('marks post-update relaunches so the existing browser tab reconnects', () => {
+    const setRelaunchEnv = launcher.indexOf('set "ALICE_UPDATED_RELAUNCH=1"');
+    const clearRelaunchEnv = launcher.indexOf('set "ALICE_UPDATED_RELAUNCH="');
+    const overwriteLauncher = launcher.indexOf(
+      'copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd"',
+    );
+    const restartLauncher = launcher.indexOf('"%ROOT%Start-Alice.cmd"', overwriteLauncher);
+
+    expect(setRelaunchEnv).toBeGreaterThan(-1);
+    expect(setRelaunchEnv).toBeLessThan(restartLauncher);
+    expect(clearRelaunchEnv).toBeGreaterThan(launcher.indexOf('"%NODE%" "%BOOT%"'));
   });
 });

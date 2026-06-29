@@ -12,6 +12,8 @@ coverage/
 data/*
 !data/.gitkeep
 data/*.db
+# Local runtime config (generated from config/settings.default.json)
+config/settings.json
 logs/
 test-results/
 *.log

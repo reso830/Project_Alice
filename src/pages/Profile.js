@@ -15,6 +15,7 @@ import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
+import { getUpdateStatus, setUpdateStatus, subscribeUpdateStatus } from '../data/updateStatusStore.js';
 import { validateKey } from '../services/aiService.js';
 import { APP_VERSION } from './welcome/shared/appMeta.js';
 import { renderInlineError } from '../utils/asyncUI.js';
@@ -982,20 +983,48 @@ async function updateJson(path, options = {}) {
 }
 
 function statusPill(label, tone = 'ok') {
-  return createElement('span', `update-settings__pill update-settings__pill--${tone}`, label);
+  const pill = createElement('span', `update-settings__pill update-settings__pill--${tone}`);
+  pill.append(createElement('span', 'update-settings__pill-dot'), document.createTextNode(label));
+  return pill;
 }
 
-function createUpdateProgress(value) {
+function versionChip(version) {
+  return createElement('span', 'update-settings__version-chip', version);
+}
+
+function updateHeadline({ label, heading, chip, muted, pill } = {}) {
+  const headline = createElement('div', 'update-settings__headline');
+  if (label) {
+    headline.append(createElement('span', 'update-settings__label', label));
+  }
+  if (heading) {
+    headline.append(createElement('span', 'update-settings__heading', heading));
+  }
+  if (chip) {
+    headline.append(versionChip(chip));
+  }
+  if (muted) {
+    headline.append(createElement('span', 'update-settings__inline-muted', muted));
+  }
+  if (pill) {
+    headline.append(pill);
+  }
+  return headline;
+}
+
+function createUpdateProgress(value, { indeterminate = false } = {}) {
   const progressValue = Math.max(0, Math.min(100, Number(value) || 0));
-  const progress = createElement('div', 'update-settings__progress');
+  const progress = createElement('div', `update-settings__progress${indeterminate ? ' update-settings__progress--indeterminate' : ''}`);
   const bar = document.createElement('span');
 
   progress.setAttribute('role', 'progressbar');
-  progress.setAttribute('aria-label', 'Update download progress');
-  progress.setAttribute('aria-valuemin', '0');
-  progress.setAttribute('aria-valuemax', '100');
-  progress.setAttribute('aria-valuenow', String(progressValue));
-  bar.style.width = `${progressValue}%`;
+  progress.setAttribute('aria-label', indeterminate ? 'Installing update' : 'Update download progress');
+  if (!indeterminate) {
+    progress.setAttribute('aria-valuemin', '0');
+    progress.setAttribute('aria-valuemax', '100');
+    progress.setAttribute('aria-valuenow', String(progressValue));
+    bar.style.width = `${progressValue}%`;
+  }
   progress.append(bar);
 
   return progress;
@@ -1007,7 +1036,7 @@ function displayVersion(version) {
 }
 
 function isActiveUpdateStatus(status) {
-  return ['checking', 'downloading', 'installing'].includes(status);
+  return ['checking', 'downloading', 'verifying', 'extracting', 'installing'].includes(status);
 }
 
 function renderUpdateSettingsGroup({ health } = {}) {
@@ -1022,17 +1051,21 @@ function renderUpdateSettingsGroup({ health } = {}) {
     status: 'loading',
     release: null,
     error: null,
+    downloadStartedAt: 0,
   };
   let statusTimer = null;
+  let unsubscribeStatus = null;
 
   _cleanupHandlers.push(() => {
     if (statusTimer) {
       clearTimeout(statusTimer);
       statusTimer = null;
     }
+    unsubscribeStatus?.();
+    unsubscribeStatus = null;
   });
 
-  function applyStatus(status) {
+  function applyStatus(status, { publish = true } = {}) {
     state.status = status.status === 'failed' ? 'failed' : status.status;
     state.error = status.error ?? null;
     state.release = {
@@ -1041,8 +1074,13 @@ function renderUpdateSettingsGroup({ health } = {}) {
       latestVersion: status.latestVersion,
       releaseNotesUrl: status.releaseNotesUrl,
       progress: status.progress,
+      bytesTotal: status.bytesTotal ?? state.release?.bytesTotal,
+      bytesDownloaded: status.bytesDownloaded,
       updateAvailable: status.status === 'available',
     };
+    if (publish) {
+      setUpdateStatus(status);
+    }
   }
 
   function scheduleStatusPoll() {
@@ -1055,8 +1093,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
       try {
         applyStatus(await updateJson('status'));
       } catch (error) {
-        state.status = 'check-failed';
-        state.error = error.message;
+        applyStatus({ status: 'check-failed', error: error.message });
       }
       render();
       scheduleStatusPoll();
@@ -1079,26 +1116,26 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   async function checkNow() {
-    state.status = 'checking';
-    state.error = null;
+    applyStatus({ status: 'checking', error: null });
     render();
     try {
       const release = await updateJson('check');
-      state.release = release;
-      state.status = release.updateAvailable ? 'available' : 'idle';
+      applyStatus({
+        ...release,
+        status: release.updateAvailable ? 'available' : 'idle',
+      });
       if (!release.updateAvailable) {
         Toast.show("You're on the latest version.", 'success');
       }
     } catch (error) {
-      state.status = 'check-failed';
-      state.error = error.message;
+      applyStatus({ status: 'check-failed', error: error.message });
     }
     render();
   }
 
   async function installNow() {
-    state.status = 'downloading';
-    state.error = null;
+    applyStatus({ status: 'downloading', error: null });
+    state.downloadStartedAt = Date.now();
     render();
     try {
       await updateJson('download', { method: 'POST' });
@@ -1106,94 +1143,180 @@ function renderUpdateSettingsGroup({ health } = {}) {
       applyStatus(status);
       scheduleStatusPoll();
     } catch (error) {
-      state.status = 'failed';
-      state.error = error.message;
+      applyStatus({ status: 'failed', error: error.message });
     }
     render();
   }
 
   async function restartNow() {
     try {
+      applyStatus({ status: 'installing', error: null });
+      render();
       await updateJson('restart', { method: 'POST' });
-      state.status = 'installing';
       render();
     } catch (error) {
-      state.status = 'failed';
-      state.error = error.message;
+      applyStatus({ status: 'failed', error: error.message });
       render();
     }
   }
 
+  function whatsNewLink() {
+    if (!state.release?.releaseNotesUrl) {
+      return null;
+    }
+    const link = createElement('a', 'update-settings__link', "What's new ↗");
+    link.href = getSafeExternalHref(state.release.releaseNotesUrl);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    return link;
+  }
+
+  function cancelDownload() {
+    if (statusTimer) {
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+    applyStatus({ status: 'available' });
+    render();
+  }
+
+  function etaSuffix() {
+    const total = state.release?.bytesTotal;
+    const done = state.release?.bytesDownloaded;
+    if (!total || !done || !state.downloadStartedAt) {
+      return '';
+    }
+    const elapsed = (Date.now() - state.downloadStartedAt) / 1000;
+    const rate = elapsed > 0 ? done / elapsed : 0;
+    if (rate <= 0) {
+      return '';
+    }
+    const seconds = Math.ceil(Math.max(0, total - done) / rate);
+    return Number.isFinite(seconds) ? ` · ~${seconds}s` : '';
+  }
+
   function renderStatusBlock() {
-    const block = createElement('div', 'update-settings__status');
+    const block = createElement('div', 'update-settings__status-block');
+    const top = createElement('div', 'update-settings__status');
     const copy = createElement('div', 'update-settings__status-copy');
     const actions = createElement('div', 'update-settings__actions');
+    const version = state.release?.latestVersion ? displayVersion(state.release.latestVersion) : null;
 
     if (state.status === 'loading') {
-      copy.append(
-        createElement('div', 'update-settings__title', `Current version ${displayVersion(APP_VERSION)}`),
-        createElement('p', 'update-settings__desc', 'Loading update preferences...'),
-      );
-      block.append(copy);
+      copy.append(updateHeadline({ label: 'Current version', chip: displayVersion(APP_VERSION) }));
+      copy.append(createElement('p', 'update-settings__subline', 'Loading update preferences…'));
+      top.append(copy);
+      block.append(top);
       return block;
     }
 
     if (state.status === 'check-failed') {
-      copy.append(
-        createElement('div', 'update-settings__title', 'Check failed'),
-        createElement('p', 'update-settings__desc', state.error || 'Could not reach the update service.'),
-      );
-      actions.append(statusPill('Connection Error', 'warn'), createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
-    } else if (state.status === 'failed') {
-      copy.append(
-        createElement('div', 'update-settings__title', 'Update failed'),
-        createElement('p', 'update-settings__desc', state.error || 'Verification failed: integrity check mismatch.'),
-      );
-      actions.append(statusPill('Update Failed', 'danger'), createButton('Retry Download', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
-    } else if (state.status === 'available') {
-      const version = state.release?.latestVersion ? displayVersion(state.release.latestVersion) : 'a new version';
-      const notes = state.release?.releaseNotesUrl ? document.createElement('a') : null;
-      copy.append(
-        createElement('div', 'update-settings__title', `Update available ${version}`),
-        createElement('p', 'update-settings__desc', `You're on ${displayVersion(state.release?.currentVersion || APP_VERSION)}`),
-      );
-      if (notes) {
-        notes.href = getSafeExternalHref(state.release.releaseNotesUrl);
-        notes.target = '_blank';
-        notes.rel = 'noopener noreferrer';
-        notes.textContent = "What's new";
-        notes.className = 'update-settings__link';
-        copy.append(notes);
-      }
-      actions.append(createButton('Install', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
-    } else if (state.status === 'downloading') {
-      copy.append(
-        createElement('div', 'update-settings__title', 'Downloading update'),
-        createElement('p', 'update-settings__desc', state.release?.latestVersion
-          ? `${state.release.progress ?? 0}% · ${displayVersion(state.release.latestVersion)}`
-          : 'Preparing the update package.'),
-      );
-      copy.append(createUpdateProgress(state.release?.progress));
-    } else if (state.status === 'ready-to-restart' || state.status === 'installing') {
-      copy.append(
-        createElement('div', 'update-settings__title', 'Installing update'),
-        createElement('p', 'update-settings__desc', 'Restart to apply the update.'),
-      );
-      actions.append(createButton('Restart to finish', 'profile-btn profile-btn--primary profile-btn--compact', restartNow));
-    } else {
-      copy.append(
-        createElement('div', 'update-settings__title', `Current version ${displayVersion(APP_VERSION)}`),
-        createElement('p', 'update-settings__desc', 'Alice is ready to check for updates.'),
-      );
-      actions.append(statusPill('Up to date'), createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+      copy.append(updateHeadline({ heading: 'Check failed', pill: statusPill('Connection Error', 'warn') }));
+      copy.append(createElement('p', 'update-settings__subline', state.error || 'Could not reach the update service.'));
+      actions.append(createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
     }
 
-    block.append(copy, actions);
+    if (state.status === 'failed') {
+      copy.append(updateHeadline({ heading: 'Update failed', pill: statusPill('Update Failed', 'danger') }));
+      copy.append(createElement('p', 'update-settings__subline', state.error || 'Verification failed: integrity check mismatch.'));
+      actions.append(createButton('Retry Download', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'available') {
+      copy.append(updateHeadline({ heading: 'Update available', chip: version || 'new version' }));
+      const sub = createElement('p', 'update-settings__subline');
+      sub.append(document.createTextNode(`You're on ${displayVersion(state.release?.currentVersion || APP_VERSION)}`));
+      const link = whatsNewLink();
+      if (link) {
+        sub.append(document.createTextNode(' · '));
+        sub.append(link);
+      }
+      copy.append(sub);
+      actions.append(createButton('Install', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'downloading') {
+      const pct = Math.max(0, Math.min(100, Math.round(state.release?.progress ?? 0)));
+      copy.append(updateHeadline({ heading: 'Downloading', chip: version || displayVersion(APP_VERSION) }));
+      actions.append(createElement('span', 'update-settings__meta', `${pct}%${etaSuffix()}`));
+      top.append(copy, actions);
+      block.append(top, createUpdateProgress(pct));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        whatsNewLink() || createElement('span', 'update-settings__footer-note', ''),
+        createButton('Cancel', 'update-settings__ghost', cancelDownload),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'verifying' || state.status === 'extracting') {
+      copy.append(updateHeadline({
+        heading: state.status === 'verifying' ? 'Verifying' : 'Extracting',
+        chip: version || displayVersion(APP_VERSION),
+        muted: state.status === 'verifying' ? 'checking the update package…' : 'preparing files…',
+      }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        whatsNewLink() || createElement('span', 'update-settings__footer-note', ''),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'ready-to-restart') {
+      copy.append(updateHeadline({ heading: 'Installing', chip: version || displayVersion(APP_VERSION), muted: 'applying changes…' }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        createElement('span', 'update-settings__footer-note', 'Restart to apply the update.'),
+        createButton('Restart to finish', 'profile-btn profile-btn--primary profile-btn--compact', restartNow),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'installing') {
+      copy.append(updateHeadline({
+        heading: 'Restarting Alice',
+        chip: version || displayVersion(APP_VERSION),
+        muted: 'waiting for Alice to come back online…',
+      }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(createElement('span', 'update-settings__footer-note', 'Keep this tab open while Alice restarts.'));
+      block.append(footer);
+      return block;
+    }
+
+    copy.append(updateHeadline({ label: 'Current version', chip: displayVersion(APP_VERSION), pill: statusPill('Up to date', 'ok') }));
+    actions.append(createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+    top.append(copy, actions);
+    block.append(top);
     return block;
   }
 
   function renderModePicker() {
-    const wrap = createElement('div', `update-mode${state.expanded ? ' is-expanded' : ''}`);
+    const disabled = !state.settings.autoCheckUpdates;
+    const expanded = state.expanded && !disabled;
+    const wrap = createElement('div', `update-mode${expanded ? ' is-expanded' : ''}${disabled ? ' is-disabled' : ''}`);
     const current = UPDATE_MODE_COPY[state.settings.updateMode] ?? UPDATE_MODE_COPY.ask;
     const modeEntries = Object.entries(UPDATE_MODE_COPY);
     const focusMode = (currentIndex, direction) => {
@@ -1207,16 +1330,20 @@ function renderUpdateSettingsGroup({ health } = {}) {
       state.expanded = !state.expanded;
       render();
     });
-    toggle.setAttribute('aria-expanded', String(state.expanded));
+    toggle.disabled = disabled;
+    toggle.setAttribute('aria-expanded', String(expanded));
     toggle.setAttribute('aria-controls', 'update-mode-options');
+    const chevron = createElement('span', 'update-mode__chevron');
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.append(createSvgIcon('M6 9l6 6 6-6'));
     toggle.append(
       createElement('span', 'update-mode__label', 'UPDATE MODE'),
       createElement('span', 'update-mode__value', current.title),
-      createElement('span', 'update-mode__chevron', state.expanded ? '⌃' : '⌄'),
+      chevron,
     );
     wrap.append(toggle);
 
-    if (state.expanded) {
+    if (expanded) {
       const cards = createElement('div', 'update-mode__cards');
       cards.id = 'update-mode-options';
       cards.setAttribute('role', 'radiogroup');
@@ -1266,7 +1393,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
 
     copy.append(
       createElement('div', 'master-row__title', 'Check for updates automatically'),
-      createElement('p', 'master-row__desc', 'Check on startup and then once every 24 hours while Alice is open.'),
+      createElement('p', 'master-row__desc', 'Alice looks for new versions in the background.'),
     );
     autoRow.append(copy, toggle);
     body.replaceChildren(renderStatusBlock(), createElement('div', 'update-settings__rule'), autoRow, renderModePicker());
@@ -1278,8 +1405,12 @@ function renderUpdateSettingsGroup({ health } = {}) {
   ])
     .then(([settings, status]) => {
       state.settings = settings;
-      if (status?.status && status.status !== 'idle') {
-        applyStatus(status);
+      const sharedStatus = getUpdateStatus();
+      const nextStatus = sharedStatus.status && sharedStatus.status !== 'idle'
+        ? sharedStatus
+        : status;
+      if (nextStatus?.status && nextStatus.status !== 'idle') {
+        applyStatus(nextStatus, { publish: nextStatus === status });
         scheduleStatusPoll();
       } else {
         state.status = 'idle';
@@ -1291,6 +1422,15 @@ function renderUpdateSettingsGroup({ health } = {}) {
       state.error = error.message;
       render();
     });
+
+  unsubscribeStatus = subscribeUpdateStatus((status) => {
+    if (!status?.status) {
+      return;
+    }
+    applyStatus(status, { publish: false });
+    render();
+    scheduleStatusPoll();
+  });
 
   render();
   return createSetGroup('UPDATES', body);

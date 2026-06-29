@@ -5,6 +5,7 @@ import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
 import * as authStore from './data/authStore.js';
 import { store } from './data/store.js';
+import { resetUpdateStatusForTesting, subscribeUpdateStatus } from './data/updateStatusStore.js';
 import { Calendar } from './pages/Calendar.js';
 import { ConfigError } from './pages/ConfigError.js';
 import { Profile } from './pages/Profile.js';
@@ -26,6 +27,7 @@ let _shellMounted = false;
 let _welcomeMounted = false;
 let _configErrorMounted = false;
 let _runtimeHealth = null;
+let _unsubscribeUpdateStatus = null;
 
 export const SEED_DATA = [
   {
@@ -111,12 +113,16 @@ function mountAppShell() {
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
   document.body.append(navbar, main, footer, bottomTabBar);
+  _unsubscribeUpdateStatus = subscribeUpdateStatus((status) => {
+    const nextStatus = status?.status ?? 'idle';
+    Navbar.setUpdateStatus(nextStatus);
+    BottomTabBar.setUpdateStatus(nextStatus);
+  }, { emit: true });
   UpdateToast.mount({
     health: _runtimeHealth,
-    onStatusChange(status) {
-      const nextStatus = status?.status ?? 'idle';
-      Navbar.setUpdateStatus(nextStatus);
-      BottomTabBar.setUpdateStatus(nextStatus);
+    onManageInSettings: () => {
+      navigate('profile');
+      scrollToUpdatesSettings();
     },
   });
 
@@ -137,6 +143,8 @@ function unmountAppShell() {
   }
   _currentUnmount = null;
   _currentPage = null;
+  _unsubscribeUpdateStatus?.();
+  _unsubscribeUpdateStatus = null;
   Navbar.destroy();
   BottomTabBar.destroy();
   UpdateToast.destroy();
@@ -242,6 +250,9 @@ export function _resetForTesting() {
   _welcomeMounted = false;
   _configErrorMounted = false;
   _runtimeHealth = null;
+  _unsubscribeUpdateStatus?.();
+  _unsubscribeUpdateStatus = null;
+  resetUpdateStatusForTesting();
 }
 
 export async function bootstrap(deps = {}) {
@@ -274,6 +285,26 @@ export async function bootstrap(deps = {}) {
 document.addEventListener('DOMContentLoaded', () => {
   bootstrap();
 });
+
+// Scroll the Profile page to the Updates settings sub-group after navigating
+// there from the toast's "Manage in Settings" link. Profile.mount is async
+// (it awaits profile/applications data), so poll briefly for the group to
+// appear before scrolling it into view.
+function scrollToUpdatesSettings() {
+  let tries = 0;
+  const attempt = () => {
+    const group = document.querySelector('.update-settings')?.closest('.set-group');
+    if (group) {
+      group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (tries < 40) {
+      tries += 1;
+      setTimeout(attempt, 50);
+    }
+  };
+  attempt();
+}
 
 function navigate(page, options = {}) {
   const appRoot = document.querySelector('#app');

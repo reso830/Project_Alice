@@ -257,7 +257,7 @@ function zipArtifact(packageJson) {
   run(POWERSHELL, [
     '-NoProfile',
     '-Command',
-    `Compress-Archive -LiteralPath '${STAGE_DIR.replaceAll("'", "''")}' -DestinationPath '${zipPath.replaceAll("'", "''")}' -Force`,
+    `Compress-Archive -Path '${STAGE_DIR.replaceAll("'", "''")}\\*' -DestinationPath '${zipPath.replaceAll("'", "''")}' -Force`,
   ]);
 
   fs.writeFileSync(checksumPath, `${sha256(zipPath)}  ${path.basename(zipPath)}\n`);

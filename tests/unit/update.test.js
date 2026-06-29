@@ -1,5 +1,7 @@
 import express from 'express';
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -80,14 +82,58 @@ async function requestJson(baseUrl, route, options = {}) {
 }
 
 async function waitForStatus(baseUrl, status) {
+  return waitForStatusMatch(baseUrl, (body) => body.status === status, `status ${status}`);
+}
+
+async function waitForStatusMatch(baseUrl, predicate, label) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const { body } = await requestJson(baseUrl, '/api/update/status');
-    if (body.status === status) {
+    if (predicate(body)) {
       return body;
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  throw new Error(`Timed out waiting for update status ${status}`);
+  throw new Error(`Timed out waiting for update ${label}`);
+}
+
+async function makeUpdateAssetServer({
+  zipBuffer = fs.readFileSync(fixtureZip),
+  checksumText = fs.readFileSync(fixtureChecksum, 'utf8'),
+  chunkDelayMs = 80,
+  checksumDelayMs = 80,
+} = {}) {
+  const server = http.createServer((req, res) => {
+    if (req.url === '/update.zip') {
+      const split = Math.max(1, Math.floor(zipBuffer.length / 2));
+      res.writeHead(200, {
+        'content-length': String(zipBuffer.length),
+        'content-type': 'application/zip',
+      });
+      res.write(zipBuffer.subarray(0, split));
+      setTimeout(() => {
+        res.end(zipBuffer.subarray(split));
+      }, chunkDelayMs);
+      return;
+    }
+
+    if (req.url === '/update.zip.sha256') {
+      res.writeHead(200, {
+        'content-length': String(Buffer.byteLength(checksumText)),
+        'content-type': 'text/plain',
+      });
+      setTimeout(() => {
+        res.end(checksumText);
+      }, checksumDelayMs);
+      return;
+    }
+
+    res.writeHead(404);
+    res.end('not found');
+  });
+  servers.push(server);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return `http://127.0.0.1:${port}`;
 }
 
 afterEach(async () => {
@@ -146,6 +192,23 @@ describe('update route behavior', () => {
     expect(second.body.latestVersion).toBe('1.10.0');
   });
 
+  test('reports check failures distinctly from download failures', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = path.join(root, 'missing-release.json');
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(check.response.status).toBe(502);
+    expect(check.body.error.code).toBe('UPDATE_CHECK_FAILED');
+    expect(status.body).toMatchObject({
+      status: 'check-failed',
+      progress: 0,
+    });
+    expect(status.body.error).toContain('missing-release.json');
+  });
+
   test('downloads, verifies, extracts, and reports staged status', async () => {
     const root = makeRoot();
     process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
@@ -163,6 +226,34 @@ describe('update route behavior', () => {
     });
     expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'app', 'dist', 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'Start-Alice.cmd'))).toBe(true);
+  });
+
+  test('streams HTTP download progress and reports verification before extraction', async () => {
+    const root = makeRoot();
+    const zipBuffer = fs.readFileSync(fixtureZip);
+    const assetBaseUrl = await makeUpdateAssetServer({ zipBuffer });
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'update-v1.10.0.zip', browser_download_url: `${assetBaseUrl}/update.zip`, size: zipBuffer.length },
+        { name: 'update-v1.10.0.zip.sha256', browser_download_url: `${assetBaseUrl}/update.zip.sha256` },
+      ],
+    });
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const start = await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const progress = await waitForStatusMatch(
+      baseUrl,
+      (body) => body.status === 'downloading' && body.progress > 0 && body.progress < 100,
+      'partial download progress',
+    );
+    const verifying = await waitForStatus(baseUrl, 'verifying');
+    const ready = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(start.response.status).toBe(202);
+    expect(progress.bytesDownloaded).toBeGreaterThan(0);
+    expect(progress.bytesDownloaded).toBeLessThan(zipBuffer.length);
+    expect(verifying.progress).toBe(100);
+    expect(ready.progress).toBe(100);
   });
 
   test('clears staging and reports failure when checksum verification fails', async () => {

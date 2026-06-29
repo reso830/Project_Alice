@@ -42,16 +42,19 @@ function createBrandIcon() {
 
 function createBrand() {
   const brand = document.createElement('div');
+  const text = document.createElement('div');
   const name = document.createElement('span');
   const tagline = document.createElement('span');
 
   brand.className = 'footer__brand';
+  text.className = 'footer__brand-text';
   name.className = 'footer__brand-name';
   tagline.className = 'footer__tagline';
   name.textContent = 'Project Alice';
   tagline.textContent = 'Your job search, organized.';
 
-  brand.append(createBrandIcon(), name, tagline);
+  text.append(name, tagline);
+  brand.append(createBrandIcon(), text);
 
   return brand;
 }
@@ -140,9 +143,11 @@ export function render({ runtime = 'hosted' } = {}) {
   inner.className = 'footer__inner';
   rule.className = 'footer__rule';
 
+  const brand = createBrand();
+  brand.append(createModeControl(runtime));
+
   inner.append(
-    createBrand(),
-    createModeControl(runtime),
+    brand,
     rule,
     createSection('VERSION', [APP_VERSION, 'Built May 2026']),
     createSection('STACK', [

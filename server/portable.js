@@ -82,6 +82,10 @@ export async function run({
   fs.mkdirSync(path.join(packageRoot, 'logs'), { recursive: true });
 
   const settings = readLaunchSettings(configDir);
+  const updatedRelaunch = process.env.ALICE_UPDATED_RELAUNCH === '1';
+  if (updatedRelaunch) {
+    delete process.env.ALICE_UPDATED_RELAUNCH;
+  }
   const lock = await checkLock({
     dataDir,
     probe: (port) => probe(`http://127.0.0.1:${port}`),
@@ -93,8 +97,10 @@ export async function run({
     const runningUrl = `http://127.0.0.1:${lock.port}`;
     appendLog(packageRoot, `[portable] Existing instance detected at ${runningUrl}; focusing it.`);
     console.log(`Alice is already running at ${runningUrl}; opening your browser.`);
-    if (settings.openBrowser) {
+    if (settings.openBrowser && !updatedRelaunch) {
       await open(runningUrl);
+    } else if (updatedRelaunch) {
+      console.log(`Alice relaunched after update; reconnecting the existing browser tab at ${runningUrl}`);
     } else {
       console.log(`Open Alice in your browser: ${runningUrl}`);
     }
@@ -137,8 +143,10 @@ export async function run({
   console.log(`Alice is running at ${url}`);
   console.log('Close this console window or press Ctrl+C to stop Alice.');
 
-  if (settings.openBrowser) {
+  if (settings.openBrowser && !updatedRelaunch) {
     await open(url);
+  } else if (updatedRelaunch) {
+    console.log(`Alice relaunched after update; reconnecting the existing browser tab at ${url}`);
   } else {
     console.log(`Open Alice in your browser: ${url}`);
   }

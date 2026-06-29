@@ -44,10 +44,15 @@ import * as aiSettings from '../../src/data/aiSettings.js';
 import * as aiService from '../../src/services/aiService.js';
 import { Toast } from '../../src/components/Toast.js';
 import { Profile } from '../../src/pages/Profile.js';
+import {
+  resetUpdateStatusForTesting,
+  setUpdateStatus,
+} from '../../src/data/updateStatusStore.js';
 
 afterEach(() => {
   vi.useRealTimers();
   Profile.unmount();
+  resetUpdateStatusForTesting();
   document.body.replaceChildren();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
@@ -307,16 +312,9 @@ describe('Profile — AI resume parsing settings', () => {
     const section = getSection(container, 'SETTINGS');
 
     expect(section.textContent).toContain('UPDATES');
-    expect(section.textContent).toContain('Current version v1.10.0');
+    expect(section.textContent).toContain('Current version');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.0');
     expect(section.textContent).not.toContain('vv1.10.0');
-    section.querySelector('.update-settings__auto-row .sw').click();
-    await flushPromises();
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ autoCheckUpdates: false, updateMode: 'ask' }),
-    }));
-
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
@@ -335,8 +333,18 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', expect.objectContaining({
       method: 'POST',
+      body: JSON.stringify({ autoCheckUpdates: true, updateMode: 'notify' }),
+    }));
+
+    section.querySelector('.update-settings__auto-row .sw').click();
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', expect.objectContaining({
+      method: 'POST',
       body: JSON.stringify({ autoCheckUpdates: false, updateMode: 'notify' }),
     }));
+    expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+    expect(section.querySelector('.update-mode__summary').disabled).toBe(true);
   });
 
   it('renders connection error state when manual update checks fail', async () => {
@@ -372,6 +380,38 @@ describe('Profile — AI resume parsing settings', () => {
     expect(container.textContent).toContain('Check failed');
     expect(container.textContent).toContain('Connection Error');
     expect(container.textContent).toContain('Network offline');
+  });
+
+  it('hydrates background check failures as connection errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'check-failed',
+            currentVersion: 'v1.9.0',
+            error: 'Network offline',
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Check failed');
+    expect(container.textContent).toContain('Connection Error');
+    expect(container.textContent).toContain('Network offline');
+    expect(getButton(container, 'Retry Download')).toBeUndefined();
   });
 
   it('renders update failed state and retry when download fails', async () => {
@@ -423,6 +463,42 @@ describe('Profile — AI resume parsing settings', () => {
     expect(getButton(container, 'Retry Download')).not.toBeNull();
   });
 
+  it('syncs terminal update status from the shared update store', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'available',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Update available');
+
+    setUpdateStatus({ status: 'failed', error: 'Checksum verification failed.' });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Update failed');
+    expect(container.textContent).toContain('Checksum verification failed.');
+    expect(getButton(container, 'Retry Download')).not.toBeNull();
+  });
+
   it('hydrates staged update status on mount', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       if (url === '/api/update/settings') {
@@ -452,6 +528,76 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(container.textContent).toContain('Restart to finish');
     expect(container.textContent).toContain('Restart to apply the update.');
+  });
+
+  it('does not offer cancel while verifying or extracting an update', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'extracting',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+            progress: 100,
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Extracting');
+    expect(getButton(container, 'Cancel')).toBeUndefined();
+  });
+
+  it('does not offer a second settings restart action after restart is accepted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'ready-to-restart',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+            progress: 100,
+          }),
+        };
+      }
+      if (url === '/api/update/restart' && options.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'restarting' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+    getButton(container, 'Restart to finish').click();
+    await flushPromises();
+
+    expect(getButton(container, 'Restart to finish')).toBeUndefined();
+    expect(container.textContent).toContain('Restarting Alice');
   });
 
   it('polls update status while a download is in progress', async () => {
@@ -512,7 +658,7 @@ describe('Profile — AI resume parsing settings', () => {
     getButton(container, 'Install').click();
     await flushPromises(6);
 
-    expect(container.textContent).toContain('Downloading update');
+    expect(container.textContent).toContain('Downloading');
     expect(container.textContent).toContain('20%');
     const progress = container.querySelector('.update-settings__progress');
 

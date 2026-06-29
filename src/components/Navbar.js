@@ -17,7 +17,7 @@ let _updateStatus = 'idle';
 
 function badgeTone(status) {
   if (status === 'ready-to-restart') return 'ready';
-  if (['available', 'downloading'].includes(status)) return 'active';
+  if (['available', 'downloading', 'verifying', 'extracting'].includes(status)) return 'active';
   return null;
 }
 
