@@ -5,6 +5,8 @@ import process from 'node:process';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 const LOCK_FILE = 'alice.lock';
+const PENDING_WAIT_MS = 5000;
+const PENDING_POLL_MS = 50;
 
 function defaultDataDir() {
   return path.resolve('data');
@@ -79,6 +81,12 @@ function writeLockFile(filePath, lock, options = {}) {
   fs.writeFileSync(filePath, `${JSON.stringify(lock, null, 2)}\n`, options);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function inspectLock(filePath, { probe = defaultProbe } = {}) {
   const lock = readLock(filePath);
   const pidActive = isPidActive(lock?.pid);
@@ -100,6 +108,22 @@ async function inspectLock(filePath, { probe = defaultProbe } = {}) {
   };
 }
 
+async function waitForFinalizedLock(filePath, {
+  probe = defaultProbe,
+  waitMs = PENDING_WAIT_MS,
+  pollMs = PENDING_POLL_MS,
+} = {}) {
+  const deadline = Date.now() + waitMs;
+  let status = await inspectLock(filePath, { probe });
+
+  while (status.pending && status.pidActive && Date.now() < deadline) {
+    await delay(pollMs);
+    status = await inspectLock(filePath, { probe });
+  }
+
+  return status;
+}
+
 export function writeLock(port, { dataDir = defaultDataDir(), now = new Date() } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
   const lock = buildLock(port, { now });
@@ -112,6 +136,8 @@ export async function acquireLock({
   port = 0,
   probe = defaultProbe,
   now = new Date(),
+  pendingWaitMs = PENDING_WAIT_MS,
+  pendingPollMs = PENDING_POLL_MS,
 } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
   const filePath = lockPath(dataDir);
@@ -127,11 +153,22 @@ export async function acquireLock({
   }
 
   const existing = await inspectLock(filePath, { probe });
+  if (existing.pending && existing.active) {
+    return {
+      acquired: false,
+      ...(await waitForFinalizedLock(filePath, {
+        probe,
+        waitMs: pendingWaitMs,
+        pollMs: pendingPollMs,
+      })),
+    };
+  }
+
   if (existing.active) {
     return { acquired: false, ...existing };
   }
 
-  removeLock({ dataDir, force: true });
+  removeLock({ dataDir, pid: existing.lock?.pid });
 
   try {
     writeLockFile(filePath, lock, { flag: 'wx' });

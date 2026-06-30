@@ -108,8 +108,8 @@ describe('portable lockfile manager', () => {
     const probe = vi.fn().mockResolvedValue(true);
 
     const results = await Promise.all([
-      acquireLock({ dataDir, port: 4317, probe }),
-      acquireLock({ dataDir, port: 4317, probe }),
+      acquireLock({ dataDir, port: 4317, probe, pendingWaitMs: 1, pendingPollMs: 1 }),
+      acquireLock({ dataDir, port: 4317, probe, pendingWaitMs: 1, pendingPollMs: 1 }),
     ]);
 
     expect(results.filter((result) => result.acquired)).toHaveLength(1);
@@ -152,6 +152,70 @@ describe('portable lockfile manager', () => {
       pid: process.pid,
       port: 4318,
       pending: true,
+    });
+  });
+
+  test('allows exactly one winner during concurrent stale-lock takeover', async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(
+      path.join(dataDir, 'alice.lock'),
+      JSON.stringify({
+        version: 1,
+        pid: 99999999,
+        port: 4317,
+        appVersion: APP_VERSION,
+        launchTime: new Date().toISOString(),
+      }),
+    );
+
+    const results = await Promise.all([
+      acquireLock({
+        dataDir,
+        port: 4318,
+        probe: vi.fn().mockResolvedValue(false),
+        pendingWaitMs: 1,
+        pendingPollMs: 1,
+      }),
+      acquireLock({
+        dataDir,
+        port: 4318,
+        probe: vi.fn().mockResolvedValue(false),
+        pendingWaitMs: 1,
+        pendingPollMs: 1,
+      }),
+    ]);
+
+    expect(results.filter((result) => result.acquired)).toHaveLength(1);
+    expect(results.filter((result) => !result.acquired)).toHaveLength(1);
+    expect(readLock(dataDir)).toMatchObject({
+      pid: process.pid,
+      port: 4318,
+      pending: true,
+    });
+  });
+
+  test('waits for a pending lock to finalize before reporting the running port', async () => {
+    const dataDir = makeDataDir();
+    await acquireLock({ dataDir, port: 4317 });
+
+    setTimeout(() => {
+      writeLock(4319, { dataDir });
+    }, 20);
+
+    const result = await acquireLock({
+      dataDir,
+      port: 4317,
+      probe: vi.fn().mockResolvedValue(true),
+      pendingWaitMs: 500,
+      pendingPollMs: 5,
+    });
+
+    expect(result).toMatchObject({
+      acquired: false,
+      active: true,
+      pending: false,
+      port: 4319,
+      healthActive: true,
     });
   });
 

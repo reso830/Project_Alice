@@ -95,6 +95,12 @@ export async function run({
   // Single-instance: use the per-install lock so the same portable copy is
   // detected even when it fell back to a different port on its first launch.
   if (!lock.acquired) {
+    if (lock.pending) {
+      appendLog(packageRoot, '[portable] Existing instance is still starting; not opening a placeholder URL.');
+      console.log('Alice is already starting. Try again in a moment if the browser does not open.');
+      return { alreadyRunning: true, pending: true };
+    }
+
     const runningUrl = `http://127.0.0.1:${lock.port}`;
     appendLog(packageRoot, `[portable] Existing instance detected at ${runningUrl}; focusing it.`);
     console.log(`Alice is already running at ${runningUrl}; opening your browser.`);
