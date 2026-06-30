@@ -44,11 +44,18 @@ import * as aiSettings from '../../src/data/aiSettings.js';
 import * as aiService from '../../src/services/aiService.js';
 import { Toast } from '../../src/components/Toast.js';
 import { Profile } from '../../src/pages/Profile.js';
+import {
+  resetUpdateStatusForTesting,
+  setUpdateStatus,
+} from '../../src/data/updateStatusStore.js';
 
 afterEach(() => {
+  vi.useRealTimers();
   Profile.unmount();
+  resetUpdateStatusForTesting();
   document.body.replaceChildren();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function mountProfile(status = 'authenticated', overrides = {}) {
@@ -78,6 +85,12 @@ async function mountProfile(status = 'authenticated', overrides = {}) {
   await Profile.mount(container, { navigate: vi.fn(), ...overrides.mountOptions });
 
   return container;
+}
+
+async function flushPromises(count = 3) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve();
+  }
 }
 
 function getSection(container, label) {
@@ -252,6 +265,425 @@ describe('Profile — AI resume parsing settings', () => {
     expect(section.querySelector('.account-section--demo')).not.toBeNull();
     expect(section.textContent).toContain("Account management isn't available in the demo.");
     expect(section.querySelector('.account-section__btn')).toBeNull();
+  });
+
+  it('hides the Updates subgroup when updates are unsupported', async () => {
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'hosted', updateSupported: false } },
+    });
+    const section = getSection(container, 'SETTINGS');
+
+    expect(section.textContent).toContain('ARTIFICIAL INTELLIGENCE');
+    expect(section.textContent).toContain('ACCOUNT');
+    expect(section.textContent).not.toContain('UPDATES');
+  });
+
+  it('renders update settings and persists toggle/mode changes when supported', async () => {
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings' && !options.method) {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/settings' && options.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            settings: JSON.parse(options.body),
+          }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true, version: '1.9.0' } },
+    });
+    await flushPromises();
+    const section = getSection(container, 'SETTINGS');
+
+    expect(section.textContent).toContain('UPDATES');
+    expect(section.textContent).toContain('Current version');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.0');
+    expect(section.textContent).not.toContain('vv1.10.0');
+    const modeSummary = section.querySelector('.update-mode__summary');
+    modeSummary.click();
+    expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
+    expect(section.querySelector('.update-mode__cards').getAttribute('role')).toBe('radiogroup');
+    expect(section.querySelector('[data-update-mode="ask"]').getAttribute('aria-checked')).toBe('true');
+
+    section.querySelector('[data-update-mode="ask"]').focus();
+    section.querySelector('[data-update-mode="ask"]').dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+    }));
+    expect(document.activeElement).toBe(section.querySelector('[data-update-mode="auto"]'));
+
+    section.querySelector('[data-update-mode="notify"]').click();
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ autoCheckUpdates: true, updateMode: 'notify' }),
+    }));
+
+    section.querySelector('.update-settings__auto-row .sw').click();
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ autoCheckUpdates: false, updateMode: 'notify' }),
+    }));
+    expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+    expect(section.querySelector('.update-mode__summary').disabled).toBe(true);
+  });
+
+  it('renders connection error state when manual update checks fail', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/check') {
+        return {
+          ok: false,
+          json: async () => ({ error: { message: 'Network offline' } }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    getButton(container, 'Check now').click();
+    await flushPromises();
+
+    expect(container.textContent).toContain('Check failed');
+    expect(container.textContent).toContain('Connection Error');
+    expect(container.textContent).toContain('Network offline');
+  });
+
+  it('hydrates background check failures as connection errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'check-failed',
+            currentVersion: 'v1.9.0',
+            error: 'Network offline',
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Check failed');
+    expect(container.textContent).toContain('Connection Error');
+    expect(container.textContent).toContain('Network offline');
+    expect(getButton(container, 'Retry Download')).toBeUndefined();
+  });
+
+  it('renders update failed state and retry when download fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/check') {
+        return {
+          ok: true,
+          json: async () => ({
+            updateAvailable: true,
+            currentVersion: '1.9.0',
+            latestVersion: '1.10.0',
+            releaseNotesUrl: 'https://example.test/release',
+          }),
+        };
+      }
+      if (url === '/api/update/download' && options.method === 'POST') {
+        return {
+          ok: false,
+          json: async () => ({ error: { message: 'Checksum verification failed.' } }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    getButton(container, 'Check now').click();
+    await flushPromises();
+    getButton(container, 'Install').click();
+    await flushPromises();
+
+    expect(container.textContent).toContain('Update failed');
+    expect(container.textContent).toContain('Update Failed');
+    expect(container.textContent).toContain('Checksum verification failed.');
+    expect(getButton(container, 'Retry Download')).not.toBeNull();
+  });
+
+  it('syncs terminal update status from the shared update store', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'available',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Update available');
+
+    setUpdateStatus({ status: 'failed', error: 'Checksum verification failed.' });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Update failed');
+    expect(container.textContent).toContain('Checksum verification failed.');
+    expect(getButton(container, 'Retry Download')).not.toBeNull();
+  });
+
+  it('hydrates staged update status on mount', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'ready-to-restart',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+            progress: 100,
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Restart to finish');
+    expect(container.textContent).toContain('Restart to apply the update.');
+  });
+
+  it('does not offer cancel while verifying or extracting an update', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'extracting',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+            progress: 100,
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Extracting');
+    expect(getButton(container, 'Cancel')).toBeUndefined();
+  });
+
+  it('does not offer a second settings restart action after restart is accepted', async () => {
+    vi.useFakeTimers();
+    let healthReads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({
+            status: 'ready-to-restart',
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+            progress: 100,
+          }),
+        };
+      }
+      if (url === '/api/update/restart' && options.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'restarting' }),
+        };
+      }
+      if (url === '/api/health') {
+        healthReads += 1;
+        return {
+          ok: true,
+          json: async () => ({ version: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+    getButton(container, 'Restart to finish').click();
+    await flushPromises();
+
+    expect(getButton(container, 'Restart to finish')).toBeUndefined();
+    expect(container.textContent).toContain('Restarting Alice');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises();
+
+    expect(healthReads).toBe(1);
+  });
+
+  it('polls update status while a download is in progress', async () => {
+    vi.useFakeTimers();
+    let statusReads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/check') {
+        return {
+          ok: true,
+          json: async () => ({
+            updateAvailable: true,
+            currentVersion: 'v1.9.0',
+            latestVersion: 'v1.10.0',
+          }),
+        };
+      }
+      if (url === '/api/update/download' && options.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'downloading' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        statusReads += 1;
+        return {
+          ok: true,
+          json: async () => (statusReads < 3
+            ? {
+              status: statusReads === 1 ? 'idle' : 'downloading',
+              currentVersion: 'v1.9.0',
+              latestVersion: 'v1.10.0',
+              progress: 20,
+            }
+            : {
+              status: 'ready-to-restart',
+              currentVersion: 'v1.9.0',
+              latestVersion: 'v1.10.0',
+              progress: 100,
+            }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises();
+
+    getButton(container, 'Check now').click();
+    await flushPromises();
+    getButton(container, 'Install').click();
+    await flushPromises(6);
+
+    expect(container.textContent).toContain('Downloading');
+    expect(container.textContent).toContain('20%');
+    const progress = container.querySelector('.update-settings__progress');
+
+    expect(progress.getAttribute('role')).toBe('progressbar');
+    expect(progress.getAttribute('aria-valuenow')).toBe('20');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises();
+
+    expect(container.textContent).toContain('Restart to finish');
+    vi.useRealTimers();
   });
 
   it('scrolls and focuses Settings when requested by navigation options', async () => {

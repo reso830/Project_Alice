@@ -15,7 +15,9 @@ import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
+import { getUpdateStatus, setUpdateStatus, subscribeUpdateStatus } from '../data/updateStatusStore.js';
 import { validateKey } from '../services/aiService.js';
+import { APP_VERSION } from './welcome/shared/appMeta.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
@@ -26,6 +28,8 @@ let _dismissTimer = null;
 let _tooltip = null;
 const _cleanupHandlers = [];
 const _skillRevealTimers = new Set();
+const UPDATE_POLL_MS = 1000;
+const RESTART_DELAYED_MS = 30_000;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -820,7 +824,7 @@ function resolveAccountMode() {
 // owns the network call + side effects; it re-throws INVALID_PASSWORD so the
 // modal keeps itself open, and re-throws other errors (after toasting) so the
 // modal closes.
-function buildAccountConfirm(mode, navigate, container) {
+function buildAccountConfirm(mode, navigate, container, health) {
   if (mode === 'hosted') {
     return async (password) => {
       try {
@@ -853,7 +857,7 @@ function buildAccountConfirm(mode, navigate, container) {
     if (container) {
       // Re-mount in place so the Tracker/Profile empty states render without a
       // full reload (navigate('profile') is a no-op when already on Profile).
-      await mount(container, { navigate });
+      await mount(container, { navigate, health });
     }
   };
 }
@@ -867,7 +871,7 @@ function createSetGroup(label, body) {
   return group;
 }
 
-function renderAccountGroup({ navigate, container } = {}) {
+function renderAccountGroup({ navigate, container, health } = {}) {
   const mode = resolveAccountMode();
   const body = createElement('div', 'account-section');
 
@@ -884,7 +888,7 @@ function renderAccountGroup({ navigate, container } = {}) {
   const description = createElement('p', 'account-section__desc', ACCOUNT_COPY[mode]);
   const label = mode === 'local' ? 'Clear all data' : 'Delete account';
   const button = createButton(label, 'profile-btn profile-btn--danger account-section__btn', () => {
-    DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container) });
+    DeleteAccountModal.open({ mode, onConfirm: buildAccountConfirm(mode, navigate, container, health) });
   });
 
   body.append(description, button);
@@ -897,6 +901,21 @@ const CONNECTION_LABELS = {
   connected: 'Connected',
   testing: 'Testing...',
   error: 'Key invalid',
+};
+
+const UPDATE_MODE_COPY = {
+  notify: {
+    title: 'Notify only',
+    description: 'Show a badge when a new version is ready.',
+  },
+  ask: {
+    title: 'Ask before installing',
+    description: 'Confirm each update before it downloads.',
+  },
+  auto: {
+    title: 'Install automatically',
+    description: 'Keep Alice up to date in the background.',
+  },
 };
 
 const EYE_ICON_PATH = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z';
@@ -946,6 +965,527 @@ function createIconOnlyButton(label, className, iconPath, onClick) {
   button.append(createSvgIcon(iconPath));
 
   return button;
+}
+
+async function updateJson(path, options = {}) {
+  const response = await globalThis.fetch(`/api/update/${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers ?? {}),
+    },
+  });
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body?.error?.message || 'Update request failed.');
+  }
+
+  return body;
+}
+
+function statusPill(label, tone = 'ok') {
+  const pill = createElement('span', `update-settings__pill update-settings__pill--${tone}`);
+  pill.append(createElement('span', 'update-settings__pill-dot'), document.createTextNode(label));
+  return pill;
+}
+
+function versionChip(version) {
+  return createElement('span', 'update-settings__version-chip', version);
+}
+
+function updateHeadline({ label, heading, chip, muted, pill } = {}) {
+  const headline = createElement('div', 'update-settings__headline');
+  if (label) {
+    headline.append(createElement('span', 'update-settings__label', label));
+  }
+  if (heading) {
+    headline.append(createElement('span', 'update-settings__heading', heading));
+  }
+  if (chip) {
+    headline.append(versionChip(chip));
+  }
+  if (muted) {
+    headline.append(createElement('span', 'update-settings__inline-muted', muted));
+  }
+  if (pill) {
+    headline.append(pill);
+  }
+  return headline;
+}
+
+function createUpdateProgress(value, { indeterminate = false } = {}) {
+  const progressValue = Math.max(0, Math.min(100, Number(value) || 0));
+  const progress = createElement('div', `update-settings__progress${indeterminate ? ' update-settings__progress--indeterminate' : ''}`);
+  const bar = document.createElement('span');
+
+  progress.setAttribute('role', 'progressbar');
+  progress.setAttribute('aria-label', indeterminate ? 'Installing update' : 'Update download progress');
+  if (!indeterminate) {
+    progress.setAttribute('aria-valuemin', '0');
+    progress.setAttribute('aria-valuemax', '100');
+    progress.setAttribute('aria-valuenow', String(progressValue));
+    bar.style.width = `${progressValue}%`;
+  }
+  progress.append(bar);
+
+  return progress;
+}
+
+function displayVersion(version) {
+  const value = String(version || APP_VERSION);
+  return value.toLowerCase().startsWith('v') ? value : `v${value}`;
+}
+
+function versionsMatch(left, right) {
+  const normalize = (value) => String(value ?? '').trim().replace(/^v/i, '');
+  return Boolean(left || right) && normalize(left) === normalize(right);
+}
+
+function isActiveUpdateStatus(status) {
+  return ['checking', 'downloading', 'verifying', 'extracting', 'installing'].includes(status);
+}
+
+function renderUpdateSettingsGroup({ health } = {}) {
+  if (!health?.updateSupported) {
+    return null;
+  }
+
+  const body = createElement('div', 'update-settings');
+  const state = {
+    settings: { autoCheckUpdates: true, updateMode: 'ask' },
+    expanded: false,
+    status: 'loading',
+    release: null,
+    error: null,
+    downloadStartedAt: 0,
+  };
+  let statusTimer = null;
+  let restartTimer = null;
+  let restartStartedAt = 0;
+  let unsubscribeStatus = null;
+
+  _cleanupHandlers.push(() => {
+    if (statusTimer) {
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = null;
+    }
+    unsubscribeStatus?.();
+    unsubscribeStatus = null;
+  });
+
+  function applyStatus(status, { publish = true } = {}) {
+    state.status = status.status === 'failed' ? 'failed' : status.status;
+    state.error = status.error ?? null;
+    state.release = {
+      ...(state.release ?? {}),
+      currentVersion: status.currentVersion,
+      latestVersion: status.latestVersion,
+      releaseNotesUrl: status.releaseNotesUrl,
+      progress: status.progress,
+      bytesTotal: status.bytesTotal ?? state.release?.bytesTotal,
+      bytesDownloaded: status.bytesDownloaded,
+      updateAvailable: status.status === 'available',
+    };
+    if (publish) {
+      setUpdateStatus(status);
+    }
+  }
+
+  function scheduleStatusPoll() {
+    if (statusTimer || !isActiveUpdateStatus(state.status)) {
+      return;
+    }
+
+    statusTimer = setTimeout(async () => {
+      statusTimer = null;
+      try {
+        applyStatus(await updateJson('status'));
+      } catch (error) {
+        applyStatus({ status: 'check-failed', error: error.message });
+      }
+      render();
+      scheduleStatusPoll();
+    }, UPDATE_POLL_MS);
+  }
+
+  async function pollRestartHealth() {
+    restartTimer = null;
+    try {
+      const response = await globalThis.fetch('/api/health');
+      const health = await response.json();
+      if (!state.release?.latestVersion || versionsMatch(health.version, state.release.latestVersion)) {
+        globalThis.location?.reload?.();
+        return;
+      }
+    } catch {
+      // Alice is expected to be offline briefly while the launcher swaps files.
+    }
+
+    if (restartStartedAt && Date.now() - restartStartedAt >= RESTART_DELAYED_MS) {
+      state.error = 'Restart is taking longer than expected. Keep this tab open.';
+      render();
+    }
+
+    restartTimer = setTimeout(() => {
+      void pollRestartHealth();
+    }, UPDATE_POLL_MS);
+  }
+
+  function startRestartPolling() {
+    if (restartTimer) {
+      return;
+    }
+    restartTimer = setTimeout(() => {
+      void pollRestartHealth();
+    }, UPDATE_POLL_MS);
+  }
+
+  function saveSettings(nextSettings) {
+    const previousSettings = state.settings;
+    state.settings = nextSettings;
+    render();
+    updateJson('settings', {
+      method: 'POST',
+      body: JSON.stringify(nextSettings),
+    }).catch((error) => {
+      state.settings = previousSettings;
+      state.error = error.message;
+      Toast.show('Could not save update settings.', 'error');
+      render();
+    });
+  }
+
+  async function checkNow() {
+    applyStatus({ status: 'checking', error: null });
+    render();
+    try {
+      const release = await updateJson('check');
+      applyStatus({
+        ...release,
+        status: release.updateAvailable ? 'available' : 'idle',
+      });
+      if (!release.updateAvailable) {
+        Toast.show("You're on the latest version.", 'success');
+      }
+    } catch (error) {
+      applyStatus({ status: 'check-failed', error: error.message });
+    }
+    render();
+  }
+
+  async function installNow() {
+    applyStatus({ status: 'downloading', error: null });
+    state.downloadStartedAt = Date.now();
+    render();
+    try {
+      await updateJson('download', { method: 'POST' });
+      const status = await updateJson('status');
+      applyStatus(status);
+      scheduleStatusPoll();
+    } catch (error) {
+      applyStatus({ status: 'failed', error: error.message });
+    }
+    render();
+  }
+
+  async function restartNow() {
+    try {
+      applyStatus({ status: 'installing', error: null });
+      render();
+      await updateJson('restart', { method: 'POST' });
+      restartStartedAt = Date.now();
+      startRestartPolling();
+      render();
+    } catch (error) {
+      applyStatus({ status: 'failed', error: error.message });
+      render();
+    }
+  }
+
+  function whatsNewLink() {
+    if (!state.release?.releaseNotesUrl) {
+      return null;
+    }
+    const link = createElement('a', 'update-settings__link', "What's new ↗");
+    link.href = getSafeExternalHref(state.release.releaseNotesUrl);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    return link;
+  }
+
+  async function cancelDownload() {
+    if (statusTimer) {
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+    try {
+      applyStatus(await updateJson('cancel', { method: 'POST' }));
+    } catch (error) {
+      applyStatus({ status: 'failed', error: error.message });
+    } finally {
+      render();
+    }
+  }
+
+  function etaSuffix() {
+    const total = state.release?.bytesTotal;
+    const done = state.release?.bytesDownloaded;
+    if (!total || !done || !state.downloadStartedAt) {
+      return '';
+    }
+    const elapsed = (Date.now() - state.downloadStartedAt) / 1000;
+    const rate = elapsed > 0 ? done / elapsed : 0;
+    if (rate <= 0) {
+      return '';
+    }
+    const seconds = Math.ceil(Math.max(0, total - done) / rate);
+    return Number.isFinite(seconds) ? ` · ~${seconds}s` : '';
+  }
+
+  function renderStatusBlock() {
+    const block = createElement('div', 'update-settings__status-block');
+    const top = createElement('div', 'update-settings__status');
+    const copy = createElement('div', 'update-settings__status-copy');
+    const actions = createElement('div', 'update-settings__actions');
+    const version = state.release?.latestVersion ? displayVersion(state.release.latestVersion) : null;
+
+    if (state.status === 'loading') {
+      copy.append(updateHeadline({ label: 'Current version', chip: displayVersion(APP_VERSION) }));
+      copy.append(createElement('p', 'update-settings__subline', 'Loading update preferences…'));
+      top.append(copy);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'check-failed') {
+      copy.append(updateHeadline({ heading: 'Check failed', pill: statusPill('Connection Error', 'warn') }));
+      copy.append(createElement('p', 'update-settings__subline', state.error || 'Could not reach the update service.'));
+      actions.append(createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'failed') {
+      copy.append(updateHeadline({ heading: 'Update failed', pill: statusPill('Update Failed', 'danger') }));
+      copy.append(createElement('p', 'update-settings__subline', state.error || 'Verification failed: integrity check mismatch.'));
+      actions.append(createButton('Retry Download', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'available') {
+      copy.append(updateHeadline({ heading: 'Update available', chip: version || 'new version' }));
+      const sub = createElement('p', 'update-settings__subline');
+      sub.append(document.createTextNode(`You're on ${displayVersion(state.release?.currentVersion || APP_VERSION)}`));
+      const link = whatsNewLink();
+      if (link) {
+        sub.append(document.createTextNode(' · '));
+        sub.append(link);
+      }
+      copy.append(sub);
+      actions.append(createButton('Install', 'profile-btn profile-btn--primary profile-btn--compact', installNow));
+      top.append(copy, actions);
+      block.append(top);
+      return block;
+    }
+
+    if (state.status === 'downloading') {
+      const pct = Math.max(0, Math.min(100, Math.round(state.release?.progress ?? 0)));
+      copy.append(updateHeadline({ heading: 'Downloading', chip: version || displayVersion(APP_VERSION) }));
+      actions.append(createElement('span', 'update-settings__meta', `${pct}%${etaSuffix()}`));
+      top.append(copy, actions);
+      block.append(top, createUpdateProgress(pct));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        whatsNewLink() || createElement('span', 'update-settings__footer-note', ''),
+        createButton('Cancel', 'update-settings__ghost', cancelDownload),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'verifying' || state.status === 'extracting') {
+      copy.append(updateHeadline({
+        heading: state.status === 'verifying' ? 'Verifying' : 'Extracting',
+        chip: version || displayVersion(APP_VERSION),
+        muted: state.status === 'verifying' ? 'checking the update package…' : 'preparing files…',
+      }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        whatsNewLink() || createElement('span', 'update-settings__footer-note', ''),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'ready-to-restart') {
+      copy.append(updateHeadline({ heading: 'Installing', chip: version || displayVersion(APP_VERSION), muted: 'applying changes…' }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(
+        createElement('span', 'update-settings__footer-note', 'Restart to apply the update.'),
+        createButton('Restart to finish', 'profile-btn profile-btn--primary profile-btn--compact', restartNow),
+      );
+      block.append(footer);
+      return block;
+    }
+
+    if (state.status === 'installing') {
+      copy.append(updateHeadline({
+        heading: 'Restarting Alice',
+        chip: version || displayVersion(APP_VERSION),
+        muted: 'waiting for Alice to come back online…',
+      }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(createElement('span', 'update-settings__footer-note', 'Keep this tab open while Alice restarts.'));
+      block.append(footer);
+      return block;
+    }
+
+    copy.append(updateHeadline({ label: 'Current version', chip: displayVersion(APP_VERSION), pill: statusPill('Up to date', 'ok') }));
+    actions.append(createButton('Check now', 'profile-btn profile-btn--outline profile-btn--compact', checkNow));
+    top.append(copy, actions);
+    block.append(top);
+    return block;
+  }
+
+  function renderModePicker() {
+    const disabled = !state.settings.autoCheckUpdates;
+    const expanded = state.expanded && !disabled;
+    const wrap = createElement('div', `update-mode${expanded ? ' is-expanded' : ''}${disabled ? ' is-disabled' : ''}`);
+    const current = UPDATE_MODE_COPY[state.settings.updateMode] ?? UPDATE_MODE_COPY.ask;
+    const modeEntries = Object.entries(UPDATE_MODE_COPY);
+    const focusMode = (currentIndex, direction) => {
+      const nextIndex = (currentIndex + direction + modeEntries.length) % modeEntries.length;
+      const [nextMode] = modeEntries[nextIndex];
+      const nextCard = body.querySelector(`[data-update-mode="${nextMode}"]`);
+
+      nextCard?.focus();
+    };
+    const toggle = createButton('', 'update-mode__summary', () => {
+      state.expanded = !state.expanded;
+      render();
+    });
+    toggle.disabled = disabled;
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-controls', 'update-mode-options');
+    const chevron = createElement('span', 'update-mode__chevron');
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.append(createSvgIcon('M6 9l6 6 6-6'));
+    toggle.append(
+      createElement('span', 'update-mode__label', 'UPDATE MODE'),
+      createElement('span', 'update-mode__value', current.title),
+      chevron,
+    );
+    wrap.append(toggle);
+
+    if (expanded) {
+      const cards = createElement('div', 'update-mode__cards');
+      cards.id = 'update-mode-options';
+      cards.setAttribute('role', 'radiogroup');
+      cards.setAttribute('aria-label', 'Update mode');
+      modeEntries.forEach(([mode, copy], index) => {
+        const selected = state.settings.updateMode === mode;
+        const card = createButton('', `update-mode-card${state.settings.updateMode === mode ? ' is-selected' : ''}`, () => {
+          saveSettings({ ...state.settings, updateMode: mode });
+        });
+        card.dataset.updateMode = mode;
+        card.setAttribute('role', 'radio');
+        card.setAttribute('aria-checked', String(selected));
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            focusMode(index, 1);
+          } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            focusMode(index, -1);
+          }
+        });
+        card.append(
+          createElement('span', 'update-mode-card__title', copy.title),
+          createElement('span', 'update-mode-card__desc', copy.description),
+        );
+        cards.append(card);
+      });
+      wrap.append(cards);
+    }
+
+    return wrap;
+  }
+
+  function render() {
+    const autoRow = createElement('div', 'master-row update-settings__auto-row');
+    const copy = createElement('div', 'master-row__copy');
+    const toggle = createSwitch({
+      pressed: state.settings.autoCheckUpdates,
+      label: 'Check for updates automatically',
+      onClick: () => {
+        saveSettings({
+          ...state.settings,
+          autoCheckUpdates: !state.settings.autoCheckUpdates,
+        });
+      },
+    });
+
+    copy.append(
+      createElement('div', 'master-row__title', 'Check for updates automatically'),
+      createElement('p', 'master-row__desc', 'Alice looks for new versions in the background.'),
+    );
+    autoRow.append(copy, toggle);
+    body.replaceChildren(renderStatusBlock(), createElement('div', 'update-settings__rule'), autoRow, renderModePicker());
+  }
+
+  Promise.all([
+    updateJson('settings'),
+    updateJson('status').catch(() => null),
+  ])
+    .then(([settings, status]) => {
+      state.settings = settings;
+      const sharedStatus = getUpdateStatus();
+      const nextStatus = sharedStatus.status && sharedStatus.status !== 'idle'
+        ? sharedStatus
+        : status;
+      if (nextStatus?.status && nextStatus.status !== 'idle') {
+        applyStatus(nextStatus, { publish: nextStatus === status });
+        scheduleStatusPoll();
+      } else {
+        state.status = 'idle';
+      }
+      render();
+    })
+    .catch((error) => {
+      state.status = 'check-failed';
+      state.error = error.message;
+      render();
+    });
+
+  unsubscribeStatus = subscribeUpdateStatus((status) => {
+    if (!status?.status) {
+      return;
+    }
+    applyStatus(status, { publish: false });
+    render();
+    scheduleStatusPoll();
+  });
+
+  render();
+  return createSetGroup('UPDATES', body);
 }
 
 function renderAiSettingsGroup() {
@@ -1129,13 +1669,17 @@ function renderDemoAiSettingsGroup() {
   return createSetGroup('ARTIFICIAL INTELLIGENCE', body);
 }
 
-function renderSettingsSection(page, { navigate, container } = {}) {
+function renderSettingsSection(page, { navigate, container, health } = {}) {
   const { section } = createSection('SETTINGS');
   const isDemo = authStore.getAuthState().status === authStore.DEMO_STATUS;
 
   section.classList.add('settings-section');
   section.append(isDemo ? renderDemoAiSettingsGroup() : renderAiSettingsGroup());
-  section.append(renderAccountGroup({ navigate, container }));
+  const updatesGroup = renderUpdateSettingsGroup({ health });
+  if (updatesGroup) {
+    section.append(updatesGroup);
+  }
+  section.append(renderAccountGroup({ navigate, container, health }));
   page.append(section);
 
   return section;
@@ -1151,7 +1695,7 @@ function focusSettingsSection(section) {
   section.focus({ preventScroll: true });
 }
 
-export async function mount(container, { navigate, focusSettings = false } = {}) {
+export async function mount(container, { navigate, focusSettings = false, health = null } = {}) {
   cleanupTransientState();
 
   const safeNavigate = typeof navigate === 'function' ? navigate : () => {};
@@ -1181,7 +1725,7 @@ export async function mount(container, { navigate, focusSettings = false } = {})
   }
 
   renderProfileSection(page, profile, safeNavigate);
-  const settingsSection = renderSettingsSection(page, { navigate: safeNavigate, container });
+  const settingsSection = renderSettingsSection(page, { navigate: safeNavigate, container, health });
 
   if (focusSettings) {
     focusSettingsSection(settingsSection);

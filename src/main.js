@@ -5,6 +5,7 @@ import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
 import * as authStore from './data/authStore.js';
 import { store } from './data/store.js';
+import { resetUpdateStatusForTesting, subscribeUpdateStatus } from './data/updateStatusStore.js';
 import { Calendar } from './pages/Calendar.js';
 import { ConfigError } from './pages/ConfigError.js';
 import { Profile } from './pages/Profile.js';
@@ -16,6 +17,7 @@ import { getHealth } from './services/healthApi.js';
 import { isHostedAuthAvailable } from './services/supabaseClient.js';
 import { toISODate } from './utils/date.js';
 import { Toast } from './components/Toast.js';
+import { UpdateToast } from './components/UpdateToast.js';
 
 const DAY_MS = 86400000;
 
@@ -24,6 +26,8 @@ let _currentUnmount = null;
 let _shellMounted = false;
 let _welcomeMounted = false;
 let _configErrorMounted = false;
+let _runtimeHealth = null;
+let _unsubscribeUpdateStatus = null;
 
 export const SEED_DATA = [
   {
@@ -105,10 +109,22 @@ function mountAppShell() {
   const main = document.createElement('main');
   main.id = 'app';
   const navbar = Navbar.render('tracker');
-  const footer = Footer.render();
+  const footer = Footer.render({ runtime: _runtimeHealth?.runtime });
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
   document.body.append(navbar, main, footer, bottomTabBar);
+  _unsubscribeUpdateStatus = subscribeUpdateStatus((status) => {
+    const nextStatus = status?.status ?? 'idle';
+    Navbar.setUpdateStatus(nextStatus);
+    BottomTabBar.setUpdateStatus(nextStatus);
+  }, { emit: true });
+  UpdateToast.mount({
+    health: _runtimeHealth,
+    onManageInSettings: () => {
+      navigate('profile');
+      scrollToUpdatesSettings();
+    },
+  });
 
   for (const button of navbar.querySelectorAll('.nav-btn')) {
     button.addEventListener('click', () => navigate(button.dataset.page));
@@ -127,8 +143,11 @@ function unmountAppShell() {
   }
   _currentUnmount = null;
   _currentPage = null;
+  _unsubscribeUpdateStatus?.();
+  _unsubscribeUpdateStatus = null;
   Navbar.destroy();
   BottomTabBar.destroy();
+  UpdateToast.destroy();
   clearBody();
   _shellMounted = false;
 }
@@ -210,15 +229,16 @@ export async function runtimeHandshake({
   try {
     const health = await healthFn();
     if (health?.runtime === 'hosted' && !hostedAuthAvailable) {
-      return { configError: true };
+      return { configError: true, health };
     }
+    return { configError: false, health };
   } catch {
     // Network failure during the runtime check is non-fatal: the build-time
     // assertion in Task 01.3 is the primary line of defense, and the user
     // will still see either the welcome page or the app shell. The runtime
     // check only catches the case where the build-time assertion was bypassed.
   }
-  return { configError: false };
+  return { configError: false, health: null };
 }
 
 // Test-only helper — resets module-scoped state so individual `bootstrap()`
@@ -229,6 +249,10 @@ export function _resetForTesting() {
   _shellMounted = false;
   _welcomeMounted = false;
   _configErrorMounted = false;
+  _runtimeHealth = null;
+  _unsubscribeUpdateStatus?.();
+  _unsubscribeUpdateStatus = null;
+  resetUpdateStatusForTesting();
 }
 
 export async function bootstrap(deps = {}) {
@@ -248,6 +272,7 @@ export async function bootstrap(deps = {}) {
   // deployment with missing Vite env vars never flashes the welcome page or
   // app shell before ConfigError takes over (Task 08.3, finding from review).
   const result = await runtimeHandshake(deps);
+  _runtimeHealth = result.health;
   if (result.configError) {
     mountConfigError();
     return;
@@ -260,6 +285,26 @@ export async function bootstrap(deps = {}) {
 document.addEventListener('DOMContentLoaded', () => {
   bootstrap();
 });
+
+// Scroll the Profile page to the Updates settings sub-group after navigating
+// there from the toast's "Manage in Settings" link. Profile.mount is async
+// (it awaits profile/applications data), so poll briefly for the group to
+// appear before scrolling it into view.
+function scrollToUpdatesSettings() {
+  let tries = 0;
+  const attempt = () => {
+    const group = document.querySelector('.update-settings')?.closest('.set-group');
+    if (group) {
+      group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (tries < 40) {
+      tries += 1;
+      setTimeout(attempt, 50);
+    }
+  };
+  attempt();
+}
 
 function navigate(page, options = {}) {
   const appRoot = document.querySelector('#app');
@@ -283,7 +328,7 @@ function navigate(page, options = {}) {
     Calendar.mount(appRoot);
     _currentUnmount = Calendar.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot, { navigate, ...options });
+    Profile.mount(appRoot, { navigate, health: _runtimeHealth, ...options });
     _currentUnmount = Profile.unmount;
   } else if (page === 'profile-edit') {
     ProfileEdit.mount(appRoot, { navigate, ...options });

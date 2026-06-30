@@ -1,6 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getHealth } from '../../src/services/healthApi.js';
 
+const localHealth = {
+  status: 'ok',
+  runtime: 'local',
+  version: 'v1.9.0',
+  updateSupported: true,
+};
+
+const hostedHealth = {
+  status: 'ok',
+  runtime: 'hosted',
+  version: 'v1.9.0',
+  updateSupported: false,
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -9,28 +23,28 @@ describe('healthApi.getHealth', () => {
   it('returns the full health envelope (status + runtime) for local mode', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'ok', runtime: 'local' }),
+      json: () => Promise.resolve(localHealth),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(getHealth()).resolves.toEqual({ status: 'ok', runtime: 'local' });
+    await expect(getHealth()).resolves.toEqual(localHealth);
     expect(fetchMock).toHaveBeenCalledWith('/api/health');
   });
 
   it('returns the full health envelope for hosted mode', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'ok', runtime: 'hosted' }),
+      json: () => Promise.resolve(hostedHealth),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(getHealth()).resolves.toEqual({ status: 'ok', runtime: 'hosted' });
+    await expect(getHealth()).resolves.toEqual(hostedHealth);
   });
 
   it('does not attach an Authorization header even when a token would be available', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'ok', runtime: 'local' }),
+      json: () => Promise.resolve(localHealth),
     });
     vi.stubGlobal('fetch', fetchMock);
 

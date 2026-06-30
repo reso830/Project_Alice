@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { isPortableUpdateRuntime } from '../../server/health.js';
 import { createApp } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 
 async function withServer(test) {
@@ -71,7 +73,12 @@ describe('applications API', () => {
       const response = await request(baseUrl, '/api/health');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'ok', runtime: 'local' });
+      expect(response.body).toEqual({
+        status: 'ok',
+        runtime: 'local',
+        version: APP_VERSION,
+        updateSupported: isPortableUpdateRuntime('local'),
+      });
     });
   });
 

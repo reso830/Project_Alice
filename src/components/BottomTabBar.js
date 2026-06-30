@@ -7,6 +7,13 @@ const TABS = [
 ];
 
 let _root = null;
+let _updateStatus = 'idle';
+
+function badgeTone(status) {
+  if (status === 'ready-to-restart') return 'ready';
+  if (['available', 'downloading', 'verifying', 'extracting'].includes(status)) return 'active';
+  return null;
+}
 
 function svgBase() {
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -110,6 +117,7 @@ export function render({ onSelect } = {}) {
   }
 
   _root = nav;
+  setUpdateStatus(_updateStatus);
   return nav;
 }
 
@@ -122,8 +130,33 @@ export function setActive(page) {
   }
 }
 
+export function setUpdateStatus(status) {
+  _updateStatus = status;
+  if (!_root) {
+    return;
+  }
+
+  const profile = _root.querySelector('.bottom-tab[data-page="profile"]');
+  if (!profile) {
+    return;
+  }
+
+  profile.querySelector('.bottom-tab__update-badge')?.remove();
+  const tone = badgeTone(status);
+  profile.classList.toggle('bottom-tab--update', Boolean(tone));
+  profile.classList.toggle('bottom-tab--update-ready', tone === 'ready');
+  if (!tone) {
+    return;
+  }
+
+  const badge = document.createElement('span');
+  badge.className = `bottom-tab__update-badge bottom-tab__update-badge--${tone}`;
+  badge.setAttribute('aria-label', 'Update available');
+  profile.append(badge);
+}
+
 export function destroy() {
   _root = null;
 }
 
-export const BottomTabBar = { render, setActive, destroy };
+export const BottomTabBar = { render, setActive, setUpdateStatus, destroy };

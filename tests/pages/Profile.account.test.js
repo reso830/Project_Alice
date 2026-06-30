@@ -26,6 +26,7 @@ afterEach(() => {
   Profile.unmount();
   document.body.replaceChildren();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function accountButton(container) {
@@ -37,10 +38,11 @@ function getSection(container, label) {
     .find((section) => section.querySelector('.section-label')?.textContent === label);
 }
 
-async function mountProfile(status) {
+async function mountProfile(status, options = {}) {
   authState.status = status;
   const container = document.createElement('main');
-  await Profile.mount(container, { navigate: vi.fn() });
+  document.body.append(container);
+  await Profile.mount(container, { navigate: vi.fn(), ...options });
   return container;
 }
 
@@ -105,5 +107,42 @@ describe('Profile — Account section', () => {
     expect(authStore.setAuthNotice).toHaveBeenCalledWith('Account deleted.', 'success');
     expect(authStore.signOut).toHaveBeenCalledTimes(1);
     expect(document.querySelector('.toast')).toBeNull();
+  });
+
+  it('local: clear all data remount keeps supported update controls visible', async () => {
+    api.deleteAccount.mockResolvedValue({ deleted: true });
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+    const container = await mountProfile('local-mode', {
+      health: { runtime: 'local', updateSupported: true },
+    });
+    await flush();
+
+    expect(getSection(container, 'SETTINGS').textContent).toContain('UPDATES');
+    accountButton(container).click();
+    const input = document.querySelector('.delete-modal__input');
+    input.value = 'DELETE';
+    input.dispatchEvent(new Event('input'));
+    document.querySelector('.delete-modal__btn--danger').click();
+    await flush();
+    await flush();
+
+    expect(api.deleteAccount).toHaveBeenCalledWith({ confirm: 'DELETE' });
+    expect(getSection(container, 'SETTINGS').textContent).toContain('UPDATES');
+    expect(getSection(container, 'SETTINGS').textContent).toContain('Current version');
+    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.0');
   });
 });

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 // Issue #42: in-CI integration test for `api/index.js` (the Vercel entry).
 // Boots the module exactly as Vercel does — top-level await runs
@@ -143,6 +144,8 @@ describe('api/index.js (Vercel entry) — hosted-mode integration', () => {
     await expect(res.json()).resolves.toEqual({
       status: 'ok',
       runtime: 'hosted',
+      version: APP_VERSION,
+      updateSupported: false,
     });
   });
 

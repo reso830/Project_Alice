@@ -52,6 +52,11 @@ const healthMocks = vi.hoisted(() => ({
   getHealth: vi.fn(),
 }));
 
+const updateToastMocks = vi.hoisted(() => ({
+  mount: vi.fn(),
+  destroy: vi.fn(),
+}));
+
 vi.mock('../src/services/healthApi.js', () => ({
   getHealth: healthMocks.getHealth,
 }));
@@ -82,6 +87,9 @@ vi.mock('../src/data/store.js', () => ({
 vi.mock('../src/components/Footer.js', () => ({
   Footer: { render: () => { const f = document.createElement('footer'); f.className = 'site-footer'; return f; } },
 }));
+vi.mock('../src/components/UpdateToast.js', () => ({
+  UpdateToast: updateToastMocks,
+}));
 
 import { _resetForTesting, bootstrap, runtimeHandshake } from '../src/main.js';
 
@@ -94,6 +102,8 @@ beforeEach(() => {
   authMocks.notice = null;
   supabaseClientState.isHostedAuthAvailable = true;
   healthMocks.getHealth.mockReset();
+  updateToastMocks.mount.mockReset();
+  updateToastMocks.destroy.mockReset();
   while (document.body.firstChild) {
     document.body.firstChild.remove();
   }
@@ -109,25 +119,25 @@ describe('runtimeHandshake', () => {
   it('returns { configError: true } when hosted runtime + isHostedAuthAvailable=false', async () => {
     const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'hosted' });
     const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
-    expect(result).toEqual({ configError: true });
+    expect(result).toEqual({ configError: true, health: { status: 'ok', runtime: 'hosted' } });
   });
 
   it('returns { configError: false } when hosted runtime + isHostedAuthAvailable=true', async () => {
     const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'hosted' });
     const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: true });
-    expect(result).toEqual({ configError: false });
+    expect(result).toEqual({ configError: false, health: { status: 'ok', runtime: 'hosted' } });
   });
 
   it('returns { configError: false } when local runtime', async () => {
     const healthFn = vi.fn().mockResolvedValue({ status: 'ok', runtime: 'local' });
     const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
-    expect(result).toEqual({ configError: false });
+    expect(result).toEqual({ configError: false, health: { status: 'ok', runtime: 'local' } });
   });
 
   it('swallows network failures and returns { configError: false }', async () => {
     const healthFn = vi.fn().mockRejectedValue({ code: 'NETWORK_ERROR', message: 'down' });
     const result = await runtimeHandshake({ healthFn, hostedAuthAvailable: false });
-    expect(result).toEqual({ configError: false });
+    expect(result).toEqual({ configError: false, health: null });
   });
 });
 
@@ -153,6 +163,16 @@ describe('bootstrap — ConfigError handshake wiring', () => {
 
     expect(document.querySelector('.config-error')).toBeNull();
     expect(document.querySelector('.topbar')).not.toBeNull();
+  });
+
+  it('passes update capability into the global update toast', async () => {
+    authMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    const health = { status: 'ok', runtime: 'local', updateSupported: true };
+    healthMocks.getHealth.mockResolvedValue(health);
+
+    await bootstrap();
+
+    expect(updateToastMocks.mount).toHaveBeenCalledWith(expect.objectContaining({ health }));
   });
 
   it('runs the runtime handshake BEFORE subscribing to authStore and never initialises auth on the config-error path', async () => {

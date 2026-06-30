@@ -70,8 +70,10 @@ describe('portable bootstrap', () => {
     expect(fs.readFileSync(path.join(root, 'logs', 'alice.log'), 'utf8')).toContain(
       `http://127.0.0.1:${result.port}`,
     );
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(true);
 
     await result.stop();
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);
   });
 
   test('prints the URL instead of opening a browser when openBrowser is false', async () => {
@@ -93,17 +95,55 @@ describe('portable bootstrap', () => {
     expect(fs.readFileSync(path.join(root, 'logs', 'alice.log'), 'utf8')).toContain(
       `http://127.0.0.1:${result.port}`,
     );
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(true);
 
     await result.stop();
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);
   });
 
-  test('reuses an already-running instance instead of starting a second server', async () => {
+  test('does not open a second browser tab on post-update relaunch', async () => {
+    vi.resetModules();
+    const { run } = await import('../../server/portable.js');
+    const root = await makePackageRoot();
+    const opened = [];
+    process.env.ALICE_UPDATED_RELAUNCH = '1';
+
+    const result = await run({
+      root,
+      open: async (url) => {
+        opened.push(url);
+      },
+      probe: async () => false,
+      maxTries: 1,
+    });
+
+    expect(opened).toEqual([]);
+    expect(process.env.ALICE_UPDATED_RELAUNCH).toBeUndefined();
+    expect(fs.readFileSync(path.join(root, 'logs', 'alice.log'), 'utf8')).toContain(
+      'Alice listening',
+    );
+
+    await result.stop();
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);
+  });
+
+  test('reuses a lockfile-backed already-running instance instead of starting a second server', async () => {
     vi.resetModules();
     const { run } = await import('../../server/portable.js');
     const root = await makePackageRoot();
     const configuredPort = JSON.parse(
       fs.readFileSync(path.join(root, 'config', 'settings.json'), 'utf8'),
     ).port;
+    fs.writeFileSync(
+      path.join(root, 'data', 'alice.lock'),
+      JSON.stringify({
+        version: 1,
+        pid: process.pid,
+        port: configuredPort,
+        appVersion: 'v1.9.0',
+        launchTime: new Date().toISOString(),
+      }),
+    );
     const probed = [];
     const opened = [];
 

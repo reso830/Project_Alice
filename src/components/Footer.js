@@ -1,6 +1,9 @@
 import aliceWhite from '../assets/Alice_White.png';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welcome/shared/appMeta.js';
 
+const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
+const HOSTED_URL = 'https://project-alice-gamma.vercel.app';
+
 function createText(className, text) {
   const element = document.createElement('p');
 
@@ -39,18 +42,47 @@ function createBrandIcon() {
 
 function createBrand() {
   const brand = document.createElement('div');
+  const text = document.createElement('div');
   const name = document.createElement('span');
   const tagline = document.createElement('span');
 
   brand.className = 'footer__brand';
+  text.className = 'footer__brand-text';
   name.className = 'footer__brand-name';
   tagline.className = 'footer__tagline';
   name.textContent = 'Project Alice';
   tagline.textContent = 'Your job search, organized.';
 
-  brand.append(createBrandIcon(), name, tagline);
+  text.append(name, tagline);
+  brand.append(createBrandIcon(), text);
 
   return brand;
+}
+
+function createModeControl(runtime) {
+  const link = document.createElement('a');
+
+  if (runtime === 'local') {
+    link.className = 'footer__hosted-link';
+    link.href = HOSTED_URL;
+    link.textContent = 'Open hosted version ↗';
+    link.setAttribute('aria-label', 'Open hosted version');
+  } else {
+    const label = document.createElement('span');
+    const version = document.createElement('span');
+
+    link.className = 'footer__download';
+    link.href = RELEASES_URL;
+    link.setAttribute('aria-label', `Download Project Alice ${APP_VERSION}`);
+    label.textContent = 'Download';
+    version.className = 'footer__download-version';
+    version.textContent = APP_VERSION;
+    link.append(label, version);
+  }
+
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  return link;
 }
 
 function createFeedbackLink(text, label) {
@@ -102,7 +134,7 @@ function createFeedback() {
   return section;
 }
 
-export function render() {
+export function render({ runtime = 'hosted' } = {}) {
   const footer = document.createElement('footer');
   const inner = document.createElement('div');
   const rule = document.createElement('hr');
@@ -111,8 +143,11 @@ export function render() {
   inner.className = 'footer__inner';
   rule.className = 'footer__rule';
 
+  const brand = createBrand();
+  brand.append(createModeControl(runtime));
+
   inner.append(
-    createBrand(),
+    brand,
     rule,
     createSection('VERSION', [APP_VERSION, 'Built May 2026']),
     createSection('STACK', [

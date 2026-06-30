@@ -1,3 +1,7 @@
+import process from 'node:process';
+
+import { APP_VERSION } from '../src/pages/welcome/shared/appMeta.js';
+
 // PostgREST error codes that mean "migration not applied":
 const UNDEFINED_COLUMN = '42703';
 const UNDEFINED_TABLE = '42P01';
@@ -45,6 +49,29 @@ const PROBES = [
     docPath: 'specs/037-compatibility-insights-panel/data-model.md §2',
   },
 ];
+
+// Self-update is only safe when Alice runs under the portable Windows launcher
+// (`Start-Alice.cmd`), which provides the stop → swap → relaunch path. A plain
+// `node` / source checkout on Windows is local + win32 too, but has no swap
+// path — advertising the updater there lets a user stage a download and click
+// "restart" into a server that never comes back. The launcher signals its
+// presence with `ALICE_UPDATE_CHANNEL=portable`, so gate on that as well.
+export function isPortableUpdateRuntime(runtime) {
+  return (
+    runtime === 'local'
+    && process.platform === 'win32'
+    && process.env.ALICE_UPDATE_CHANNEL === 'portable'
+  );
+}
+
+export function createHealthPayload(runtime) {
+  return {
+    status: 'ok',
+    runtime,
+    version: APP_VERSION,
+    updateSupported: isPortableUpdateRuntime(runtime),
+  };
+}
 
 function migrationHint(table, column, docPath) {
   const artifact = column ? `${table}.${column}` : table;

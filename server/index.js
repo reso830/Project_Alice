@@ -4,12 +4,13 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { createRequireAuth } from './auth/middleware.js';
 import { config } from './config.js';
-import { assertHostedSchema } from './health.js';
+import { assertHostedSchema, createHealthPayload, isPortableUpdateRuntime } from './health.js';
 import { createRepositories } from './repositories/index.js';
 import { createAccountRouter } from './routes/account.js';
 import { createApplicationsRouter } from './routes/applications.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createResumeRouter } from './routes/resume.js';
+import { createUpdateRouter } from './routes/update.js';
 
 // NOTE: `./auth/seedHostedUser.js` is intentionally NOT statically imported
 // here. That module statically imports `../repositories/supabase/client.js`,
@@ -23,6 +24,7 @@ export function createApp({
   config: appConfig,
   requireAuth: explicitRequireAuth,
   seedHostedUserIfNeeded,
+  onShutdown = async () => {},
   serveStatic = false,
   distDir = path.resolve('dist'),
 } = {}) {
@@ -55,7 +57,7 @@ export function createApp({
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', runtime });
+    res.status(200).json(createHealthPayload(runtime));
   });
 
   app.use(
@@ -81,6 +83,10 @@ export function createApp({
   // Account deletion. Intentionally NO seedHostedUserIfNeeded — the delete
   // path must never re-seed (research.md R-3 / specs/030).
   app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
+
+  if (isPortableUpdateRuntime(runtime)) {
+    app.use('/api/update', createUpdateRouter({ repos: repositories, onShutdown }));
+  }
 
   if (serveStatic) {
     app.use(express.static(distDir));

@@ -2,7 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { readLaunchSettings } from '../../server/portable/settings.js';
+import {
+  readLaunchSettings,
+  readUpdateSettings,
+  validateUpdateSettings,
+  writeUpdateSettings,
+} from '../../server/portable/settings.js';
 
 const tempDirs = [];
 
@@ -88,6 +93,60 @@ describe('readLaunchSettings', () => {
     expect(readLaunchSettings(configDir)).toEqual({
       port: 3001,
       openBrowser: true,
+    });
+  });
+});
+
+describe('update settings', () => {
+  test('returns update defaults when settings file is absent', () => {
+    expect(readUpdateSettings(makeConfigDir())).toEqual({
+      autoCheckUpdates: true,
+      updateMode: 'ask',
+    });
+  });
+
+  test('reads update settings alongside launch settings', () => {
+    const configDir = makeConfigDir();
+    writeSettings(configDir, JSON.stringify({
+      port: 4123,
+      openBrowser: false,
+      autoCheckUpdates: false,
+      updateMode: 'notify',
+    }));
+
+    expect(readLaunchSettings(configDir)).toEqual({
+      port: 4123,
+      openBrowser: false,
+    });
+    expect(readUpdateSettings(configDir)).toEqual({
+      autoCheckUpdates: false,
+      updateMode: 'notify',
+    });
+  });
+
+  test('validates update settings payloads', () => {
+    expect(validateUpdateSettings({ autoCheckUpdates: true, updateMode: 'auto' })).toMatchObject({
+      valid: true,
+    });
+    expect(validateUpdateSettings({ autoCheckUpdates: 'true', updateMode: 'ask' })).toMatchObject({
+      valid: false,
+    });
+    expect(validateUpdateSettings({ autoCheckUpdates: true, updateMode: 'beta' })).toMatchObject({
+      valid: false,
+    });
+  });
+
+  test('writes update settings without dropping launch settings', () => {
+    const configDir = makeConfigDir();
+    writeSettings(configDir, JSON.stringify({ port: 4123, openBrowser: false }));
+
+    expect(writeUpdateSettings(configDir, { autoCheckUpdates: false, updateMode: 'auto' }))
+      .toMatchObject({ valid: true });
+    expect(JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'))).toEqual({
+      port: 4123,
+      openBrowser: false,
+      autoCheckUpdates: false,
+      updateMode: 'auto',
     });
   });
 });

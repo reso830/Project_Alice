@@ -6,10 +6,14 @@ portable-dist/
 alice/
 *.zip
 *.zip.sha256
+!tests/fixtures/update-v1.10.0.zip
+!tests/fixtures/update-v1.10.0.zip.sha256
 coverage/
 data/*
 !data/.gitkeep
 data/*.db
+# Local runtime config (generated from config/settings.default.json)
+config/settings.json
 logs/
 test-results/
 *.log

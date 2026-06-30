@@ -61,4 +61,17 @@ describe('BottomTabBar', () => {
     // further mutations from setActive happen after destroy().
     expect(nav.querySelector('.bottom-tab--active')?.dataset.page).toBe('tracker');
   });
+
+  it('renders and clears the update badge on the profile tab', () => {
+    const nav = BottomTabBar.render({ onSelect: () => {} });
+
+    BottomTabBar.setUpdateStatus('downloading');
+    expect(nav.querySelector('.bottom-tab[data-page="profile"] .bottom-tab__update-badge--active')).not.toBeNull();
+
+    BottomTabBar.setUpdateStatus('ready-to-restart');
+    expect(nav.querySelector('.bottom-tab[data-page="profile"] .bottom-tab__update-badge--ready')).not.toBeNull();
+
+    BottomTabBar.setUpdateStatus('idle');
+    expect(nav.querySelector('.bottom-tab__update-badge')).toBeNull();
+  });
 });
