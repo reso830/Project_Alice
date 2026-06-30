@@ -562,6 +562,8 @@ describe('Profile — AI resume parsing settings', () => {
   });
 
   it('does not offer a second settings restart action after restart is accepted', async () => {
+    vi.useFakeTimers();
+    let healthReads = 0;
     vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
       if (url === '/api/update/settings') {
         return {
@@ -586,6 +588,13 @@ describe('Profile — AI resume parsing settings', () => {
           json: async () => ({ status: 'restarting' }),
         };
       }
+      if (url === '/api/health') {
+        healthReads += 1;
+        return {
+          ok: true,
+          json: async () => ({ version: 'v1.9.0' }),
+        };
+      }
       throw new Error(`Unexpected fetch ${url}`);
     }));
 
@@ -598,6 +607,11 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(getButton(container, 'Restart to finish')).toBeUndefined();
     expect(container.textContent).toContain('Restarting Alice');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises();
+
+    expect(healthReads).toBe(1);
   });
 
   it('polls update status while a download is in progress', async () => {

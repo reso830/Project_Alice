@@ -20,20 +20,25 @@ describe('portable launcher update swap', () => {
     );
   });
 
-  test('overwrites the running launcher only as the final swap action', () => {
+  test('executes the staged launcher to finalize replacement after the swap', () => {
     const copyToNext = launcher.indexOf(
       'copy /y "%STAGING%\\Start-Alice.cmd" "%NEXT_LAUNCHER%"',
     );
     const removeStaging = launcher.indexOf('rmdir /s /q "%ROOT%data\\update-staging"');
+    const setPortableRoot = launcher.indexOf('set "ALICE_PORTABLE_ROOT=%ROOT:~0,-1%"');
+    const runNextLauncher = launcher.indexOf('"%NEXT_LAUNCHER%" --finalize-launcher');
+    const finalizeLauncher = launcher.indexOf(':finalize_launcher');
     const overwriteLauncher = launcher.indexOf(
       'copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd"',
+      finalizeLauncher,
     );
-    const restartLauncher = launcher.indexOf('"%ROOT%Start-Alice.cmd"', overwriteLauncher);
 
     expect(copyToNext).toBeGreaterThan(-1);
     expect(removeStaging).toBeGreaterThan(copyToNext);
-    expect(overwriteLauncher).toBeGreaterThan(removeStaging);
-    expect(restartLauncher).toBeGreaterThan(overwriteLauncher);
+    expect(setPortableRoot).toBeGreaterThan(removeStaging);
+    expect(runNextLauncher).toBeGreaterThan(setPortableRoot);
+    expect(finalizeLauncher).toBeGreaterThan(runNextLauncher);
+    expect(overwriteLauncher).toBeGreaterThan(finalizeLauncher);
   });
 
   test('renames active directories to backups before mirroring staged files', () => {
@@ -64,6 +69,9 @@ describe('portable launcher update swap', () => {
 
   test('rolls back renamed folders when mirroring fails', () => {
     expect(launcher).toContain('call :rollback_update');
+    expect(launcher).toContain('call :mark_update_failed "Failed while replacing app files."');
+    expect(launcher).toContain('call :mark_update_failed "Failed while replacing runtime files."');
+    expect(launcher.match(/call :clear_pending_update/g)).toHaveLength(2);
     expect(launcher).toContain('if exist "%ROOT%app.bak\\" ren "%ROOT%app.bak" "app"');
     expect(launcher).toContain(
       'if exist "%ROOT%runtime.bak\\" ren "%ROOT%runtime.bak" "runtime"',
@@ -89,10 +97,7 @@ describe('portable launcher update swap', () => {
   test('marks post-update relaunches so the existing browser tab reconnects', () => {
     const setRelaunchEnv = launcher.indexOf('set "ALICE_UPDATED_RELAUNCH=1"');
     const clearRelaunchEnv = launcher.indexOf('set "ALICE_UPDATED_RELAUNCH="');
-    const overwriteLauncher = launcher.indexOf(
-      'copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd"',
-    );
-    const restartLauncher = launcher.indexOf('"%ROOT%Start-Alice.cmd"', overwriteLauncher);
+    const restartLauncher = launcher.indexOf('"%NEXT_LAUNCHER%" --finalize-launcher');
 
     expect(setRelaunchEnv).toBeGreaterThan(-1);
     expect(setRelaunchEnv).toBeLessThan(restartLauncher);

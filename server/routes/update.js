@@ -98,18 +98,26 @@ async function readJsonSource(url) {
   return JSON.parse(await readTextSource(url));
 }
 
-async function downloadToFile(url, filePath, onProgress = () => {}) {
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw new DOMException('Update download cancelled.', 'AbortError');
+  }
+}
+
+async function downloadToFile(url, filePath, onProgress = () => {}, { signal } = {}) {
   const localPath = dataUrlToPath(url);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  throwIfAborted(signal);
 
   if (localPath) {
     fs.copyFileSync(localPath, filePath);
+    throwIfAborted(signal);
     const size = fs.statSync(filePath).size;
     onProgress(size, size);
     return;
   }
 
-  const response = await globalThis.fetch(url);
+  const response = await globalThis.fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`Download failed with HTTP ${response.status}.`);
   }
@@ -128,6 +136,7 @@ async function downloadToFile(url, filePath, onProgress = () => {}) {
 
   try {
     while (true) {
+      throwIfAborted(signal);
       const { done, value } = await reader.read();
       if (done) {
         break;
@@ -151,8 +160,8 @@ function mapRelease(release, currentVersion) {
   const latestVersion = normalizeVersion(release.tag_name ?? release.name);
   const zipAsset = findAsset(release, (name) => /\.zip$/i.test(name));
   const checksumAsset = findAsset(release, (name) => /\.sha256$/i.test(name));
-  const packageUrl = zipAsset?.browser_download_url ?? release.zipball_url ?? release.packageUrl;
-  const checksumUrl = checksumAsset?.browser_download_url ?? release.checksumUrl ?? (packageUrl ? `${packageUrl}.sha256` : null);
+  const packageUrl = zipAsset?.browser_download_url ?? release.packageUrl ?? null;
+  const checksumUrl = checksumAsset?.browser_download_url ?? release.checksumUrl ?? null;
 
   return {
     updateAvailable: isNewerVersion(latestVersion, currentVersion),
@@ -249,6 +258,8 @@ export function createUpdateRouter({
     cache: null,
     status: createInitialStatus(),
     downloadPromise: null,
+    downloadController: null,
+    cancelRequested: false,
   };
   const router = express.Router();
 
@@ -276,7 +287,7 @@ export function createUpdateRouter({
     return payload;
   }
 
-  async function stageUpdate(release) {
+  async function stageUpdate(release, { signal } = {}) {
     if (!release?.packageUrl || !release?.checksumUrl) {
       throw new Error('Release package or checksum URL is missing.');
     }
@@ -288,6 +299,7 @@ export function createUpdateRouter({
 
     fs.rmSync(stagingDir, { recursive: true, force: true });
     fs.mkdirSync(stagingDir, { recursive: true });
+    throwIfAborted(signal);
     state.status = {
       ...state.status,
       status: 'downloading',
@@ -303,7 +315,8 @@ export function createUpdateRouter({
       if (state.status.bytesTotal) {
         state.status.progress = Math.round((bytesDownloaded / state.status.bytesTotal) * 100);
       }
-    });
+    }, { signal });
+    throwIfAborted(signal);
     state.status = {
       ...state.status,
       status: 'verifying',
@@ -312,12 +325,14 @@ export function createUpdateRouter({
       bytesTotal: state.status.bytesTotal ?? fs.statSync(zipPath).size,
       error: null,
     };
-    await downloadToFile(release.checksumUrl, checksumPath);
+    await downloadToFile(release.checksumUrl, checksumPath, () => {}, { signal });
+    throwIfAborted(signal);
 
     if (!verifyChecksum(zipPath, fs.readFileSync(checksumPath, 'utf8'))) {
       throw new Error('Checksum verification failed.');
     }
 
+    throwIfAborted(signal);
     state.status = {
       ...state.status,
       status: 'extracting',
@@ -327,6 +342,7 @@ export function createUpdateRouter({
       error: null,
     };
     fs.rmSync(extractDir, { recursive: true, force: true });
+    throwIfAborted(signal);
     extractZip(zipPath, extractDir);
     state.status = {
       ...state.status,
@@ -356,17 +372,59 @@ export function createUpdateRouter({
     let release = state.cache?.payload;
     try {
       release = release ?? await checkForUpdates();
-      state.downloadPromise = stageUpdate(release).catch((error) => {
+      if (!release?.packageUrl || !release?.checksumUrl) {
+        throw new Error('Release package or checksum URL is missing.');
+      }
+      state.downloadController = new AbortController();
+      state.cancelRequested = false;
+      state.downloadPromise = stageUpdate(release, { signal: state.downloadController.signal }).catch((error) => {
         fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
-        setFailure(state, error);
+        if (state.cancelRequested || error?.name === 'AbortError') {
+          state.status = {
+            ...state.status,
+            status: release.updateAvailable ? 'available' : 'idle',
+            progress: 0,
+            bytesDownloaded: 0,
+            error: null,
+          };
+        } else {
+          setFailure(state, error);
+        }
       }).finally(() => {
         state.downloadPromise = null;
+        state.downloadController = null;
+        state.cancelRequested = false;
       });
       res.status(202).json(publicStatus(state));
     } catch (error) {
       setFailure(state, error);
       res.status(502).json({ error: { code: 'UPDATE_DOWNLOAD_FAILED', message: state.status.error } });
     }
+  });
+
+  router.post('/cancel', (_req, res) => {
+    if (!state.downloadPromise || !state.downloadController) {
+      state.status = {
+        ...state.status,
+        status: state.cache?.payload?.updateAvailable ? 'available' : 'idle',
+        progress: 0,
+        bytesDownloaded: 0,
+        error: null,
+      };
+      res.status(200).json(publicStatus(state));
+      return;
+    }
+
+    state.cancelRequested = true;
+    state.downloadController.abort();
+    state.status = {
+      ...state.status,
+      status: state.cache?.payload?.updateAvailable ? 'available' : 'idle',
+      progress: 0,
+      bytesDownloaded: 0,
+      error: null,
+    };
+    res.status(202).json(publicStatus(state));
   });
 
   router.get('/status', (_req, res) => {

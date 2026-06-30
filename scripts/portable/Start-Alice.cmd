@@ -2,11 +2,17 @@
 setlocal EnableExtensions EnableDelayedExpansion
 title Alice - close this window to stop Alice
 
-set "ROOT=%~dp0"
+if defined ALICE_PORTABLE_ROOT (
+  set "ROOT=%ALICE_PORTABLE_ROOT%\"
+) else (
+  set "ROOT=%~dp0"
+)
 set "NODE=%ROOT%runtime\node.exe"
 set "BOOT=%ROOT%app\server\portable.js"
 set "STAGING=%ROOT%data\update-staging\alice"
 set "NEXT_LAUNCHER=%ROOT%data\Start-Alice.next.cmd"
+
+if "%~1"=="--finalize-launcher" goto finalize_launcher
 
 :run
 if exist "%STAGING%\" (
@@ -67,6 +73,8 @@ if exist "%STAGING%\app\" (
   if errorlevel 8 (
     echo Alice update failed while replacing app files.
     call :rollback_update
+    call :mark_update_failed "Failed while replacing app files."
+    call :clear_pending_update
     pause
     exit /b 1
   )
@@ -77,6 +85,8 @@ if exist "%STAGING%\runtime\" (
   if errorlevel 8 (
     echo Alice update failed while replacing runtime files.
     call :rollback_update
+    call :mark_update_failed "Failed while replacing runtime files."
+    call :clear_pending_update
     pause
     exit /b 1
   )
@@ -92,13 +102,17 @@ if exist "%ROOT%runtime.bak\" rmdir /s /q "%ROOT%runtime.bak"
 set "ALICE_UPDATED_RELAUNCH=1"
 
 if exist "%NEXT_LAUNCHER%" (
-  copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd" >nul
-  "%ROOT%Start-Alice.cmd"
+  set "ALICE_PORTABLE_ROOT=%ROOT:~0,-1%"
+  "%NEXT_LAUNCHER%" --finalize-launcher
   exit /b 0
 )
 
 "%ROOT%Start-Alice.cmd"
 exit /b 0
+
+:finalize_launcher
+if exist "%NEXT_LAUNCHER%" copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd" >nul
+goto run
 
 :rename_with_retry
 set "TARGET=%~1"
@@ -123,4 +137,14 @@ if exist "%ROOT%app\" rmdir /s /q "%ROOT%app"
 if exist "%ROOT%runtime\" rmdir /s /q "%ROOT%runtime"
 if exist "%ROOT%app.bak\" ren "%ROOT%app.bak" "app"
 if exist "%ROOT%runtime.bak\" ren "%ROOT%runtime.bak" "runtime"
+exit /b 0
+
+:mark_update_failed
+if not exist "%ROOT%data\" mkdir "%ROOT%data"
+> "%ROOT%data\update-failed.json" echo {"status":"failed","message":"%~1"}
+exit /b 0
+
+:clear_pending_update
+if exist "%ROOT%data\update-pending.json" del /f /q "%ROOT%data\update-pending.json" >nul
+if exist "%ROOT%data\update-staging\" rmdir /s /q "%ROOT%data\update-staging"
 exit /b 0

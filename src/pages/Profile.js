@@ -28,6 +28,8 @@ let _dismissTimer = null;
 let _tooltip = null;
 const _cleanupHandlers = [];
 const _skillRevealTimers = new Set();
+const UPDATE_POLL_MS = 1000;
+const RESTART_DELAYED_MS = 30_000;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1035,6 +1037,11 @@ function displayVersion(version) {
   return value.toLowerCase().startsWith('v') ? value : `v${value}`;
 }
 
+function versionsMatch(left, right) {
+  const normalize = (value) => String(value ?? '').trim().replace(/^v/i, '');
+  return Boolean(left || right) && normalize(left) === normalize(right);
+}
+
 function isActiveUpdateStatus(status) {
   return ['checking', 'downloading', 'verifying', 'extracting', 'installing'].includes(status);
 }
@@ -1054,12 +1061,18 @@ function renderUpdateSettingsGroup({ health } = {}) {
     downloadStartedAt: 0,
   };
   let statusTimer = null;
+  let restartTimer = null;
+  let restartStartedAt = 0;
   let unsubscribeStatus = null;
 
   _cleanupHandlers.push(() => {
     if (statusTimer) {
       clearTimeout(statusTimer);
       statusTimer = null;
+    }
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = null;
     }
     unsubscribeStatus?.();
     unsubscribeStatus = null;
@@ -1097,7 +1110,39 @@ function renderUpdateSettingsGroup({ health } = {}) {
       }
       render();
       scheduleStatusPoll();
-    }, 1000);
+    }, UPDATE_POLL_MS);
+  }
+
+  async function pollRestartHealth() {
+    restartTimer = null;
+    try {
+      const response = await globalThis.fetch('/api/health');
+      const health = await response.json();
+      if (!state.release?.latestVersion || versionsMatch(health.version, state.release.latestVersion)) {
+        globalThis.location?.reload?.();
+        return;
+      }
+    } catch {
+      // Alice is expected to be offline briefly while the launcher swaps files.
+    }
+
+    if (restartStartedAt && Date.now() - restartStartedAt >= RESTART_DELAYED_MS) {
+      state.error = 'Restart is taking longer than expected. Keep this tab open.';
+      render();
+    }
+
+    restartTimer = setTimeout(() => {
+      void pollRestartHealth();
+    }, UPDATE_POLL_MS);
+  }
+
+  function startRestartPolling() {
+    if (restartTimer) {
+      return;
+    }
+    restartTimer = setTimeout(() => {
+      void pollRestartHealth();
+    }, UPDATE_POLL_MS);
   }
 
   function saveSettings(nextSettings) {
@@ -1153,6 +1198,8 @@ function renderUpdateSettingsGroup({ health } = {}) {
       applyStatus({ status: 'installing', error: null });
       render();
       await updateJson('restart', { method: 'POST' });
+      restartStartedAt = Date.now();
+      startRestartPolling();
       render();
     } catch (error) {
       applyStatus({ status: 'failed', error: error.message });
@@ -1171,13 +1218,18 @@ function renderUpdateSettingsGroup({ health } = {}) {
     return link;
   }
 
-  function cancelDownload() {
+  async function cancelDownload() {
     if (statusTimer) {
       clearTimeout(statusTimer);
       statusTimer = null;
     }
-    applyStatus({ status: 'available' });
-    render();
+    try {
+      applyStatus(await updateJson('cancel', { method: 'POST' }));
+    } catch (error) {
+      applyStatus({ status: 'failed', error: error.message });
+    } finally {
+      render();
+    }
   }
 
   function etaSuffix() {

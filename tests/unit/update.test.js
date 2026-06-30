@@ -85,6 +85,16 @@ async function waitForStatus(baseUrl, status) {
   return waitForStatusMatch(baseUrl, (body) => body.status === status, `status ${status}`);
 }
 
+async function waitForPathMissing(targetPath) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (!fs.existsSync(targetPath)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out waiting for ${targetPath} to be removed`);
+}
+
 async function waitForStatusMatch(baseUrl, predicate, label) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const { body } = await requestJson(baseUrl, '/api/update/status');
@@ -192,6 +202,25 @@ describe('update route behavior', () => {
     expect(second.body.latestVersion).toBe('1.10.0');
   });
 
+  test('does not fall back to GitHub source zipballs when release assets are missing', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [],
+      zipball_url: 'https://github.com/reso830/Project_Alice/archive/refs/tags/v1.10.0.zip',
+    });
+    process.env.ALICE_VERSION_OVERRIDE = '1.9.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const download = await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+
+    expect(check.response.status).toBe(200);
+    expect(check.body.packageUrl).toBeNull();
+    expect(check.body.checksumUrl).toBeNull();
+    expect(download.response.status).toBe(502);
+    expect(download.body.error.message).toMatch(/Release package or checksum URL is missing/);
+  });
+
   test('reports check failures distinctly from download failures', async () => {
     const root = makeRoot();
     process.env.ALICE_UPDATE_SOURCE_OVERRIDE = path.join(root, 'missing-release.json');
@@ -254,6 +283,39 @@ describe('update route behavior', () => {
     expect(progress.bytesDownloaded).toBeLessThan(zipBuffer.length);
     expect(verifying.progress).toBe(100);
     expect(ready.progress).toBe(100);
+  });
+
+  test('cancels an in-flight download and clears staging', async () => {
+    const root = makeRoot();
+    const zipBuffer = fs.readFileSync(fixtureZip);
+    const assetBaseUrl = await makeUpdateAssetServer({ zipBuffer, chunkDelayMs: 400 });
+    process.env.ALICE_VERSION_OVERRIDE = '1.9.0';
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'update-v1.10.0.zip', browser_download_url: `${assetBaseUrl}/update.zip`, size: zipBuffer.length },
+        { name: 'update-v1.10.0.zip.sha256', browser_download_url: `${assetBaseUrl}/update.zip.sha256` },
+      ],
+    });
+    const { baseUrl, dataDir } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    await waitForStatusMatch(
+      baseUrl,
+      (body) => body.status === 'downloading' && body.progress > 0 && body.progress < 100,
+      'partial download progress',
+    );
+
+    const cancel = await requestJson(baseUrl, '/api/update/cancel', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'available');
+
+    expect(cancel.response.status).toBe(202);
+    expect(status).toMatchObject({
+      status: 'available',
+      progress: 0,
+      error: null,
+    });
+    await waitForPathMissing(path.join(dataDir, 'update-staging'));
+    expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
   });
 
   test('clears staging and reports failure when checksum verification fails', async () => {
