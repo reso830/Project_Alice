@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('start-alice git launcher', () => {
   test('exports a git-channel environment for launcher-run clones', async () => {
-    const { createLauncherEnv } = await import('../../scripts/start-alice.mjs');
+    const { createLauncherEnv } = await import('../../scripts/start-alice-core.mjs');
 
     expect(createLauncherEnv({ root: 'C:/alice' })).toMatchObject({
       APP_RUNTIME: 'local',
@@ -58,7 +58,7 @@ describe('start-alice git launcher', () => {
       calls.push([command, args]);
       return { stdout: '' };
     });
-    const { applyPendingGitUpdate } = await import('../../scripts/start-alice.mjs');
+    const { applyPendingGitUpdate } = await import('../../scripts/start-alice-core.mjs');
 
     const result = await applyPendingGitUpdate({ root, runCommand, logger: console });
 
@@ -83,7 +83,7 @@ describe('start-alice git launcher', () => {
       }
       return { stdout: '' };
     });
-    const { applyPendingGitUpdate } = await import('../../scripts/start-alice.mjs');
+    const { applyPendingGitUpdate } = await import('../../scripts/start-alice-core.mjs');
 
     await applyPendingGitUpdate({ root, runCommand, logger: console });
 
@@ -110,7 +110,7 @@ describe('start-alice git launcher', () => {
       }
       return { stdout: '' };
     });
-    const { applyPendingGitUpdate } = await import('../../scripts/start-alice.mjs');
+    const { applyPendingGitUpdate } = await import('../../scripts/start-alice-core.mjs');
 
     const result = await applyPendingGitUpdate({ root, runCommand, logger: console });
 
@@ -147,7 +147,9 @@ describe('start-alice git launcher', () => {
       }
       return { stdout: '' };
     });
-    const runChild = vi.fn(async (_command, _args, options) => {
+    const runChild = vi.fn(async (_command, args, options) => {
+      expect(args[0].replaceAll('\\', '/')).toMatch(/scripts\/start-alice\.mjs$/);
+      expect(args[1]).toBe('--serve');
       if (runChild.mock.calls.length === 1) {
         writePending(root);
         expect(options.env.ALICE_SKIP_BROWSER_OPEN).toBe('');
@@ -156,7 +158,7 @@ describe('start-alice git launcher', () => {
       }
       return 0;
     });
-    const { run } = await import('../../scripts/start-alice.mjs');
+    const { run } = await import('../../scripts/start-alice-core.mjs');
 
     const result = await run({ root, runCommand, runChild, logger: console });
 
@@ -174,7 +176,7 @@ describe('start-alice git launcher', () => {
   });
 
   test('detects whether git self-update can be enabled for the current directory', async () => {
-    const { resolveGitUpdateCapability } = await import('../../scripts/start-alice.mjs');
+    const { resolveGitUpdateCapability } = await import('../../scripts/start-alice-core.mjs');
 
     await expect(resolveGitUpdateCapability({
       root: process.cwd(),
