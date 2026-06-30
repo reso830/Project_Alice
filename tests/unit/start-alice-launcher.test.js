@@ -6,6 +6,7 @@ import process from 'node:process';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 const roots = [];
+const portableBuildArgs = ['run', 'build', '--', '--mode', 'portable'];
 
 function makeRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-start-'));
@@ -67,7 +68,7 @@ describe('start-alice git launcher', () => {
       ['git', ['status', '--porcelain']],
       ['git', ['checkout', 'v1.11.0']],
       ['npm', ['install']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
     ]);
     expect(fs.existsSync(path.join(root, 'data', 'update-pending.json'))).toBe(false);
   });
@@ -92,7 +93,7 @@ describe('start-alice git launcher', () => {
       ['git', ['stash', 'push', '--include-untracked', '-m', 'alice-self-update-v1.11.0']],
       ['git', ['checkout', 'v1.11.0']],
       ['npm', ['install']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
       ['git', ['stash', 'pop']],
     ]);
   });
@@ -104,7 +105,7 @@ describe('start-alice git launcher', () => {
     let failedBuilds = 0;
     const runCommand = vi.fn(async (command, args) => {
       calls.push([command, args]);
-      if (command === 'npm' && args.join(' ') === 'run build' && failedBuilds === 0) {
+      if (command === 'npm' && args.join(' ') === portableBuildArgs.join(' ') && failedBuilds === 0) {
         failedBuilds += 1;
         throw new Error('build failed');
       }
@@ -123,10 +124,10 @@ describe('start-alice git launcher', () => {
       ['git', ['status', '--porcelain']],
       ['git', ['checkout', 'v1.11.0']],
       ['npm', ['install']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
       ['git', ['checkout', 'abc123']],
       ['npm', ['install']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
     ]);
     expect(fs.existsSync(path.join(root, 'data', 'update-pending.json'))).toBe(false);
     expect(JSON.parse(fs.readFileSync(path.join(root, 'data', 'update-failed.json'), 'utf8'))).toMatchObject({
@@ -166,13 +167,35 @@ describe('start-alice git launcher', () => {
     expect(runChild).toHaveBeenCalledTimes(2);
     expect(calls).toEqual([
       ['git', ['rev-parse', '--is-inside-work-tree']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
       ['git', ['status', '--porcelain']],
       ['git', ['checkout', 'v1.11.0']],
       ['npm', ['install']],
-      ['npm', ['run', 'build']],
+      ['npm', portableBuildArgs],
       ['git', ['rev-parse', '--is-inside-work-tree']],
     ]);
+  });
+
+  test('forces process exit when server close hangs on keep-alive connections', async () => {
+    vi.useFakeTimers();
+    const server = {
+      close: vi.fn(),
+      closeIdleConnections: vi.fn(),
+      closeAllConnections: vi.fn(),
+    };
+    const exit = vi.fn();
+    const { shutdownServerAndExit } = await import('../../scripts/start-alice-core.mjs');
+
+    shutdownServerAndExit(server, { exit, forceDelayMs: 750 });
+
+    expect(server.close).toHaveBeenCalledTimes(1);
+    expect(server.closeIdleConnections).toHaveBeenCalledTimes(1);
+    expect(exit).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(750);
+
+    expect(server.closeAllConnections).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(0);
   });
 
   test('detects whether git self-update can be enabled for the current directory', async () => {

@@ -332,6 +332,51 @@ describe('UpdateToast', () => {
     expect(document.body.textContent).toContain('Keep this tab open while Alice updates.');
   });
 
+  it('resumes restart health polling when remounted during a git relaunch', async () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    const fetchMock = vi.fn((route) => {
+      if (route === '/api/health') {
+        const healthReads = fetchMock.mock.calls.filter(([calledRoute]) => calledRoute === '/api/health').length;
+        if (healthReads === 1) {
+          return Promise.reject(new Error('server still restarting'));
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ status: 'ok', version: 'v1.11.0' }),
+        });
+      }
+      throw new Error(`Unexpected fetch ${route}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    setUpdateStatus({
+      status: 'installing',
+      latestVersion: '1.11.0',
+      updateChannel: 'git',
+      restartPolling: true,
+      restartStartedAt: Date.now(),
+    });
+
+    UpdateToast.mount({
+      health: { updateSupported: true, updateChannel: 'git' },
+      reloadPage: reload,
+    });
+    await flush();
+
+    expect(document.body.textContent).toContain('Updating via git');
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/update/settings', undefined);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flush();
+
+    expect(reload).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flush();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it('does not offer a second restart action after restart is accepted', async () => {
     const fetchMock = vi.fn((route, options = {}) => {
       if (route === '/api/update/settings') {

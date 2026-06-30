@@ -395,6 +395,10 @@ function stopRestartPolling() {
   }
 }
 
+function shouldResumeRestartPolling(status = _status) {
+  return status.status === 'installing' && Boolean(status.restartPolling || status.restartStartedAt);
+}
+
 async function pollRestartHealth() {
   _restartTimer = null;
   try {
@@ -418,6 +422,7 @@ function startRestartPolling() {
   if (_restartTimer) {
     return;
   }
+  _restartStartedAt = _status.restartStartedAt || _restartStartedAt || Date.now();
   _restartTimer = globalThis.setTimeout(() => {
     void pollRestartHealth();
   }, POLL_MS);
@@ -461,6 +466,9 @@ async function checkNow() {
 }
 
 async function initializeAutoChecks(mountId) {
+  if (shouldResumeRestartPolling()) {
+    return;
+  }
   try {
     const settings = await readJson('/api/update/settings');
     if (mountId !== _mountId || !_root) {
@@ -494,14 +502,14 @@ async function download() {
 async function restart() {
   // Go straight to the stable installing state (the raw `restarting` response
   // is not a renderable state and would flicker the toast out and back in).
-  applyStatus({ status: 'installing' });
+  const restartStartedAt = Date.now();
+  applyStatus({ status: 'installing', restartPolling: true, restartStartedAt });
   try {
     await readJson('/api/update/restart', { method: 'POST' });
-    _restartStartedAt = Date.now();
     startRestartPolling();
   } catch (error) {
     stopRestartPolling();
-    applyStatus({ status: 'failed', error: error.message });
+    applyStatus({ status: 'failed', restartPolling: false, error: error.message });
   }
 }
 
@@ -534,6 +542,9 @@ export function mount({
   document.body.append(_root);
   _unsubscribeStatus = subscribeUpdateStatus((status) => {
     applyStatus(status, { publish: false });
+    if (shouldResumeRestartPolling(status)) {
+      startRestartPolling();
+    }
   }, { emit: true });
   void initializeAutoChecks(mountId);
   return _root;

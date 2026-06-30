@@ -120,7 +120,7 @@ export async function applyPendingGitUpdate({
 
     await runCommand('git', ['checkout', targetTag], { cwd: root });
     await runCommand('npm', ['install'], { cwd: root });
-    await runCommand('npm', ['run', 'build'], { cwd: root });
+    await runCommand('npm', ['run', 'build', '--', '--mode', 'portable'], { cwd: root });
 
     if (stashed) {
       try {
@@ -142,7 +142,7 @@ export async function applyPendingGitUpdate({
       if (previousRef) {
         await runCommand('git', ['checkout', previousRef], { cwd: root });
         await runCommand('npm', ['install'], { cwd: root });
-        await runCommand('npm', ['run', 'build'], { cwd: root });
+        await runCommand('npm', ['run', 'build', '--', '--mode', 'portable'], { cwd: root });
       }
     } finally {
       fs.rmSync(pendingPath, { force: true });
@@ -158,6 +158,33 @@ export async function applyPendingGitUpdate({
 
 function hasBuiltFrontend(root) {
   return fs.existsSync(path.join(root, 'dist', 'index.html'));
+}
+
+export function shutdownServerAndExit(server, {
+  exit = (code) => process.exit(code),
+  setTimeoutFn = globalThis.setTimeout,
+  forceDelayMs = 750,
+} = {}) {
+  let exited = false;
+  const finish = () => {
+    if (exited) return;
+    exited = true;
+    exit(0);
+  };
+
+  if (!server) {
+    finish();
+    return;
+  }
+
+  server.close(() => {
+    finish();
+  });
+  server.closeIdleConnections?.();
+  setTimeoutFn(() => {
+    server.closeAllConnections?.();
+    finish();
+  }, forceDelayMs);
 }
 
 async function openBrowser(url) {
@@ -197,7 +224,7 @@ export async function runServer({
     serveStatic: true,
     distDir: path.join(resolvedRoot, 'dist'),
     onShutdown: async () => {
-      activeServer?.close(() => process.exit(0));
+      shutdownServerAndExit(activeServer);
     },
   });
   const { server, port } = await listenWithFallback(app, {
@@ -235,7 +262,7 @@ export async function run({
     };
 
     if (!updateResult.applied && !updateResult.rolledBack && !hasBuiltFrontend(resolvedRoot)) {
-      await runCommand('npm', ['run', 'build'], { cwd: resolvedRoot, env });
+      await runCommand('npm', ['run', 'build', '--', '--mode', 'portable'], { cwd: resolvedRoot, env });
     }
 
     const exitCode = await runChild(process.execPath, [launcherPath, '--serve'], {
