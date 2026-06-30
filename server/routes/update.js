@@ -138,27 +138,26 @@ async function readTextSource(url, { timeoutMs = CHECK_TIMEOUT_MS } = {}) {
   }
 
   const timeout = createTimeoutController(timeoutMs, 'Update check timed out.');
-  let response;
   try {
-    response = await globalThis.fetch(url, {
+    const response = await globalThis.fetch(url, {
       signal: timeout.signal,
       headers: {
         Accept: 'application/vnd.github+json, application/json',
         'User-Agent': 'Project-Alice-Updater',
       },
     });
+
+    if (!response.ok) {
+      const message = response.status === 403
+        ? 'Update check rate limited. Try again later.'
+        : `Update check failed with HTTP ${response.status}.`;
+      throw new Error(message);
+    }
+
+    return await response.text();
   } finally {
     timeout.clear();
   }
-
-  if (!response.ok) {
-    const message = response.status === 403
-      ? 'Update check rate limited. Try again later.'
-      : `Update check failed with HTTP ${response.status}.`;
-    throw new Error(message);
-  }
-
-  return response.text();
 }
 
 async function readJsonSource(url, options) {

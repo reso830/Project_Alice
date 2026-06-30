@@ -125,12 +125,25 @@ describe('portable launcher update swap', () => {
     const runLabel = launcher.indexOf(':run');
     const launchNode = launcher.indexOf('"%NODE%" "%BOOT%"');
     const relaunchWhenStaged = launcher.indexOf('if exist "%STAGING%\\" if exist "%PENDING_UPDATE%" goto run');
-    const errorHandling = launcher.indexOf('if errorlevel 1', launchNode);
+    const errorHandling = launcher.indexOf('if not "%NODE_EXIT%"=="0"', launchNode);
 
     expect(runLabel).toBeGreaterThan(-1);
     expect(runLabel).toBeLessThan(launcher.indexOf('if exist "%STAGING%\\"'));
     expect(relaunchWhenStaged).toBeGreaterThan(launchNode);
     expect(relaunchWhenStaged).toBeLessThan(errorHandling);
+  });
+
+  test('preserves the Node exit code while clearing abandoned staging after launch', () => {
+    const launchNode = launcher.indexOf('"%NODE%" "%BOOT%"');
+    const captureNodeExit = launcher.indexOf('set "NODE_EXIT=%ERRORLEVEL%"', launchNode);
+    const clearAfterLaunch = launcher.indexOf('if exist "%STAGING%\\" call :clear_abandoned_stage', launchNode);
+    const errorHandling = launcher.indexOf('if not "%NODE_EXIT%"=="0"', launchNode);
+    const exitWithNodeCode = launcher.indexOf('exit /b %NODE_EXIT%', errorHandling);
+
+    expect(captureNodeExit).toBeGreaterThan(launchNode);
+    expect(captureNodeExit).toBeLessThan(clearAfterLaunch);
+    expect(clearAfterLaunch).toBeLessThan(errorHandling);
+    expect(exitWithNodeCode).toBeGreaterThan(errorHandling);
   });
 
   test('marks post-update relaunches so the existing browser tab reconnects', () => {

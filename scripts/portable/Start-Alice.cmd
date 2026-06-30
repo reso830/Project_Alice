@@ -40,16 +40,17 @@ if not exist "%NODE%" (
 echo Starting Alice...
 echo Close this window or press Ctrl+C to stop Alice.
 "%NODE%" "%BOOT%"
+set "NODE_EXIT=%ERRORLEVEL%"
 if defined ALICE_UPDATED_RELAUNCH set "ALICE_UPDATED_RELAUNCH="
 
 if exist "%STAGING%\" if exist "%PENDING_UPDATE%" goto run
 if exist "%STAGING%\" call :clear_abandoned_stage
 
-if errorlevel 1 (
+if not "%NODE_EXIT%"=="0" (
   echo.
   echo Alice stopped with an error. Check logs\alice.log if it exists.
   pause
-  exit /b 1
+  exit /b %NODE_EXIT%
 )
 
 exit /b 0

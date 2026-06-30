@@ -165,6 +165,17 @@ async function makeSlowJsonServer({ delayMs = 100, body = '{}' } = {}) {
   return `http://127.0.0.1:${port}/release.json`;
 }
 
+async function makeStalledBodyJsonServer() {
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.write('{');
+  });
+  servers.push(server);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return `http://127.0.0.1:${port}/release.json`;
+}
+
 afterEach(async () => {
   vi.restoreAllMocks();
   process.env = { ...originalEnv };
@@ -259,6 +270,27 @@ describe('update route behavior', () => {
 
   test('times out slow update checks and reports a check failure', async () => {
     process.env.ALICE_UPDATE_SOURCE_OVERRIDE = await makeSlowJsonServer({ delayMs: 80 });
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(makeRoot(), 'data'),
+      checkTimeoutMs: 10,
+    });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(check.response.status).toBe(502);
+    expect(check.body.error).toMatchObject({
+      code: 'UPDATE_CHECK_FAILED',
+      message: 'Update check timed out.',
+    });
+    expect(status.body).toMatchObject({
+      status: 'check-failed',
+      error: 'Update check timed out.',
+    });
+  });
+
+  test('keeps the update check timeout active while reading the response body', async () => {
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = await makeStalledBodyJsonServer();
     const { baseUrl } = await makeServer({
       dataDir: path.join(makeRoot(), 'data'),
       checkTimeoutMs: 10,
