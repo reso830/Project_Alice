@@ -1036,7 +1036,7 @@ function displayVersion(version) {
 }
 
 function isActiveUpdateStatus(status) {
-  return ['checking', 'downloading', 'verifying', 'extracting', 'installing'].includes(status);
+  return ['checking', 'downloading', 'fetching', 'verifying', 'extracting', 'installing'].includes(status);
 }
 
 function renderUpdateSettingsGroup({ health } = {}) {
@@ -1052,6 +1052,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
     release: null,
     error: null,
     downloadStartedAt: 0,
+    updateChannel: health.updateChannel ?? null,
   };
   let statusTimer = null;
   let unsubscribeStatus = null;
@@ -1076,6 +1077,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
       progress: status.progress,
       bytesTotal: status.bytesTotal ?? state.release?.bytesTotal,
       bytesDownloaded: status.bytesDownloaded,
+      updateChannel: status.updateChannel ?? state.updateChannel,
       updateAvailable: status.status === 'available',
     };
     if (publish) {
@@ -1134,7 +1136,11 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   async function installNow() {
-    applyStatus({ status: 'downloading', error: null });
+    applyStatus({
+      status: state.updateChannel === 'git' ? 'fetching' : 'downloading',
+      error: null,
+      updateChannel: state.updateChannel,
+    });
     state.downloadStartedAt = Date.now();
     render();
     try {
@@ -1260,6 +1266,21 @@ function renderUpdateSettingsGroup({ health } = {}) {
       return block;
     }
 
+    if (state.status === 'fetching') {
+      copy.append(updateHeadline({
+        heading: 'Fetching',
+        chip: version || displayVersion(APP_VERSION),
+        muted: 'syncing release tags…',
+      }));
+      top.append(copy);
+      block.append(top, createUpdateProgress(100, { indeterminate: true }));
+
+      const footer = createElement('div', 'update-settings__footer');
+      footer.append(whatsNewLink() || createElement('span', 'update-settings__footer-note', 'Updating from the git release channel.'));
+      block.append(footer);
+      return block;
+    }
+
     if (state.status === 'verifying' || state.status === 'extracting') {
       copy.append(updateHeadline({
         heading: state.status === 'verifying' ? 'Verifying' : 'Extracting',
@@ -1292,16 +1313,21 @@ function renderUpdateSettingsGroup({ health } = {}) {
     }
 
     if (state.status === 'installing') {
+      const isGit = state.release?.updateChannel === 'git' || state.updateChannel === 'git';
       copy.append(updateHeadline({
-        heading: 'Restarting Alice',
+        heading: isGit ? 'Updating via git' : 'Restarting Alice',
         chip: version || displayVersion(APP_VERSION),
-        muted: 'waiting for Alice to come back online…',
+        muted: isGit ? 'applying the release tag…' : 'waiting for Alice to come back online…',
       }));
       top.append(copy);
       block.append(top, createUpdateProgress(100, { indeterminate: true }));
 
       const footer = createElement('div', 'update-settings__footer');
-      footer.append(createElement('span', 'update-settings__footer-note', 'Keep this tab open while Alice restarts.'));
+      footer.append(createElement(
+        'span',
+        'update-settings__footer-note',
+        isGit ? 'Keep this tab open while Alice updates.' : 'Keep this tab open while Alice restarts.',
+      ));
       block.append(footer);
       return block;
     }

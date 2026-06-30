@@ -11,6 +11,8 @@ This feature implements a self-update mechanism for portable Project Alice insta
 
 Additionally, this feature replaces the simple port-only health probe from 040 with a robust PID-and-port-based lockfile (`data/alice.lock`) to prevent concurrent instances and database corruption. It also introduces a greenfield database migration subsystem for SQLite using a `schema_migrations` ledger table and version compatibility verification.
 
+**Increment 2 (Git Channel for Clone Installs)** extends the feature beyond the Windows portable package: `git clone` installs get an in-app self-update, cross-platform, via a distinct **git channel**. A new `npm start` launcher (`scripts/start-alice.mjs`) builds and serves `dist/` and, on the update signal, runs `git fetch --tags` → `git checkout <release-tag>` → `npm install` → `npm run build` → relaunch — the cross-platform analogue of `Start-Alice.cmd`. The capability gate (`/api/health`) is revised to resolve an update **channel** (`portable` | `git`) from a launcher-set flag, so the updater renders only for the portable package on Windows or a launcher-run clone, and is hidden for raw `npm run dev` / `server:start`, Hosted, and Demo (this also corrects the prior false-positive on a raw Windows clone). The portable ZIP-swap path is unchanged. See spec "Git-Channel Self-Update (Clone Installs)" and `tasks.md` Phases 09–11.
+
 ---
 
 ## Technical Context
@@ -22,7 +24,7 @@ Additionally, this feature replaces the simple port-only health probe from 040 w
   - **Hosted (Supabase)**: Out of scope. Deployed via regular Vercel pipeline; updater and settings are hidden on hosted deployments. Supabase schema migrations are managed independently and are out of scope.
   - **Demo Mode**: Settings subgroup is hidden. No updates checks are performed.
 - **Testing**: Vitest (unit tests) and manual browser walkthroughs (smoke tests).
-- **Target Platform**: Windows x64 (portable distribution environment).
+- **Target Platform**: Windows x64 (portable distribution environment). *Increment 2 adds the git channel for clone installs on macOS, Linux, and Windows (requires Git + Node.js, inherent to running from a clone).*
 - **Project Type**: Desktop-local web service / portable bundle.
 - **Performance Goals**: Update checks must complete in <1.5s (excluding GitHub network latency). Startup instance checks must verify PID in <50ms.
 - **Version Source of Truth**: The version source of truth is `package.json` for the backend (read at runtime relative to the server script) and `src/pages/welcome/shared/appMeta.js` for the frontend. For testing and mocking purposes, the backend supports overriding the version using the `ALICE_VERSION_OVERRIDE` environment variable. The launcher script (`Start-Alice.cmd`) performs the update by swapping the `app/` and `runtime/` directories, which replaces these files.

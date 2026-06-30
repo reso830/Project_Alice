@@ -101,3 +101,53 @@ stateDiagram-v2
     RestoreBackup --> HaltStartup : Log failure, delete backup, halt process
     HaltStartup --> [*]
 ```
+
+---
+
+## 4. Update Pending Handoff Schema (`data/update-pending.json`)
+
+Written by `POST /api/update/restart`, read by the launcher to perform the channel-appropriate apply. Shared by the portable (ZIP swap) and git channels; channel-specific fields below.
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdatePending",
+  "type": "object",
+  "properties": {
+    "status": {
+      "const": "pending",
+      "description": "Marker that an update apply is awaiting the launcher."
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["portable", "git"],
+      "description": "Which apply path the launcher must run."
+    },
+    "latestVersion": {
+      "type": "string",
+      "description": "Target version, normalized (e.g. '1.11.0')."
+    },
+    "targetTag": {
+      "type": "string",
+      "description": "Git channel only: the release tag to check out (e.g. 'v1.11.0')."
+    },
+    "stagedPath": {
+      "type": "string",
+      "description": "Portable channel only: absolute path to the extracted staging directory (data/update-staging/alice)."
+    },
+    "previousRef": {
+      "type": "string",
+      "description": "Git channel only: the ref/commit to restore on rollback if checkout/install/build fails."
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the restart request."
+    }
+  },
+  "required": ["status", "channel", "requestedAt"]
+}
+```
+
+- **Portable channel** requires `stagedPath` (the launcher robocopies it over `app/` + `runtime/`).
+- **Git channel** requires `targetTag` and `previousRef` (the launcher stashes if dirty, `git checkout <targetTag>`, `npm install`, `npm run build`, relaunch; on failure restores `previousRef`).

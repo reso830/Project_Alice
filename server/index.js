@@ -84,8 +84,13 @@ export function createApp({
   // path must never re-seed (research.md R-3 / specs/030).
   app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
 
-  if (runtime === 'local' && process.platform === 'win32') {
-    app.use('/api/update', createUpdateRouter({ repos: repositories, onShutdown }));
+  const healthPayload = createHealthPayload(runtime);
+  if (healthPayload.updateSupported) {
+    app.use('/api/update', createUpdateRouter({
+      repos: repositories,
+      onShutdown,
+      updateChannel: healthPayload.updateChannel,
+    }));
   }
 
   if (serveStatic) {

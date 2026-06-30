@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
@@ -78,7 +76,8 @@ describe('applications API', () => {
         status: 'ok',
         runtime: 'local',
         version: APP_VERSION,
-        updateSupported: process.platform === 'win32',
+        updateSupported: false,
+        updateChannel: null,
       });
     });
   });

@@ -169,6 +169,14 @@ function stateConfig(state) {
         metaText: formatBytes(_status.bytesTotal || _status.size),
         showChip: true,
       };
+    case 'fetching':
+      return {
+        iconMod: 'downloading',
+        glyph: GLYPHS.download,
+        title: 'Fetching update',
+        metaText: 'syncing release tags…',
+        showChip: true,
+      };
     case 'verifying':
       return {
         iconMod: 'installing',
@@ -189,10 +197,12 @@ function stateConfig(state) {
       return {
         iconMod: 'installing',
         glyph: GLYPHS.refresh,
-        title: 'Restarting Alice',
-        metaText: _status.restartDelayed
-          ? 'Alice is taking longer than expected to come back online.'
-          : 'waiting for Alice to come back online…',
+        title: _status.updateChannel === 'git' ? 'Updating via git' : 'Restarting Alice',
+        metaText: _status.updateChannel === 'git'
+          ? 'applying the release tag…'
+          : _status.restartDelayed
+            ? 'Alice is taking longer than expected to come back online.'
+            : 'waiting for Alice to come back online…',
         showChip: true,
       };
     case 'ready-to-restart':
@@ -256,7 +266,13 @@ function renderProgressBlock(state) {
     if (state === 'installing') {
       left.textContent = _status.restartDelayed
         ? 'Keep this tab open or restart Alice manually'
-        : 'Waiting for Alice to come back online';
+        : _status.updateChannel === 'git'
+          ? 'Keep this tab open while Alice updates.'
+          : 'Waiting for Alice to come back online';
+      right.textContent = '';
+    } else if (state === 'fetching') {
+      progress.setAttribute('aria-label', 'Fetching update');
+      left.textContent = 'Syncing release tags';
       right.textContent = '';
     } else if (state === 'verifying') {
       left.textContent = 'Verifying package';
@@ -295,7 +311,7 @@ function renderActions(state) {
     );
   } else if (state === 'downloading') {
     actions.append(manageLink(), actionButton('Cancel', 'ghost', dismiss));
-  } else if (['verifying', 'extracting'].includes(state)) {
+  } else if (['fetching', 'verifying', 'extracting'].includes(state)) {
     actions.append(manageLink());
   } else if (state === 'ready-to-restart') {
     actions.append(
@@ -314,6 +330,7 @@ function shouldRender() {
     && [
       'available',
       'downloading',
+      'fetching',
       'verifying',
       'extracting',
       'ready-to-restart',
@@ -336,7 +353,7 @@ function renderStatus() {
   const config = stateConfig(state);
 
   _root.append(renderHeader(config));
-  if (['downloading', 'verifying', 'extracting', 'installing', 'ready-to-restart'].includes(state)) {
+  if (['downloading', 'fetching', 'verifying', 'extracting', 'installing', 'ready-to-restart'].includes(state)) {
     _root.append(renderProgressBlock(state));
   }
   const actions = renderActions(state);
@@ -410,7 +427,7 @@ async function pollStatus() {
   try {
     const status = await readJson('/api/update/status');
     applyStatus(status);
-    if (['checking', 'downloading', 'verifying', 'extracting'].includes(status.status)) {
+    if (['checking', 'downloading', 'fetching', 'verifying', 'extracting'].includes(status.status)) {
       startPolling();
     } else {
       stopPolling();
@@ -507,6 +524,8 @@ export function mount({
     _onStatusChange(_status);
     return null;
   }
+
+  _status = { ..._status, updateChannel: health?.updateChannel ?? null };
 
   _root = document.createElement('section');
   _root.className = 'update-toast';

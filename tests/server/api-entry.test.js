@@ -146,6 +146,7 @@ describe('api/index.js (Vercel entry) — hosted-mode integration', () => {
       runtime: 'hosted',
       version: APP_VERSION,
       updateSupported: false,
+      updateChannel: null,
     });
   });
 

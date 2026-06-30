@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import express from 'express';
 
@@ -11,6 +13,7 @@ import { readUpdateSettings, writeUpdateSettings } from '../portable/settings.js
 const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/reso830/Project_Alice/releases/latest';
 const CACHE_MS = 60 * 60 * 1000;
 const READY_STATUS = 'ready-to-restart';
+const execFileAsync = promisify(execFile);
 
 function defaultDataDir() {
   if (process.env.ALICE_DATA_DIR) {
@@ -27,6 +30,10 @@ function defaultConfigDir() {
     return path.resolve(process.env.ALICE_CONFIG_DIR);
   }
   return path.resolve('config');
+}
+
+async function defaultRunGit(args, { cwd = process.cwd() } = {}) {
+  return execFileAsync('git', args, { cwd });
 }
 
 export function normalizeVersion(version) {
@@ -158,6 +165,7 @@ function mapRelease(release, currentVersion) {
     updateAvailable: isNewerVersion(latestVersion, currentVersion),
     currentVersion: normalizeVersion(currentVersion),
     latestVersion,
+    targetTag: release.tag_name ?? `v${latestVersion}`,
     releaseNotesUrl: release.html_url ?? release.releaseNotesUrl ?? null,
     publishedAt: release.published_at ?? release.publishedAt ?? null,
     packageUrl,
@@ -224,6 +232,43 @@ function publicStatus(state) {
   return { ...state.status };
 }
 
+function consumeLauncherFailure(dataDir) {
+  const failurePath = path.join(dataDir, 'update-failed.json');
+  if (!fs.existsSync(failurePath)) {
+    return null;
+  }
+
+  try {
+    const failure = JSON.parse(fs.readFileSync(failurePath, 'utf8'));
+    const error = failure.error
+      ? `Update failed and Alice rolled back. ${failure.error}`
+      : 'Update failed and Alice rolled back to the previous version.';
+    return {
+      ...createInitialStatus(),
+      status: 'failed',
+      progress: 0,
+      error,
+      latestVersion: failure.latestVersion ?? null,
+      targetTag: failure.targetTag ?? null,
+      previousRef: failure.previousRef ?? null,
+      updateChannel: failure.channel ?? null,
+      rolledBack: true,
+    };
+  } catch (error) {
+    return {
+      ...createInitialStatus(),
+      status: 'failed',
+      progress: 0,
+      error: `Update failed and Alice rolled back. Could not read failure details: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      rolledBack: true,
+    };
+  } finally {
+    fs.rmSync(failurePath, { force: true });
+  }
+}
+
 function setFailure(state, error, status = 'failed') {
   state.status = {
     ...state.status,
@@ -238,6 +283,9 @@ export function createUpdateRouter({
   onShutdown = async () => {},
   dataDir = defaultDataDir(),
   configDir = defaultConfigDir(),
+  updateChannel = process.env.ALICE_UPDATE_CHANNEL === 'git' ? 'git' : 'portable',
+  gitCwd = process.cwd(),
+  runGit = defaultRunGit,
   now = () => new Date(),
   scheduleShutdown = (callback) => setTimeout(callback, 500),
 } = {}) {
@@ -247,7 +295,7 @@ export function createUpdateRouter({
 
   const state = {
     cache: null,
-    status: createInitialStatus(),
+    status: consumeLauncherFailure(dataDir) ?? createInitialStatus(),
     downloadPromise: null,
   };
   const router = express.Router();
@@ -338,6 +386,32 @@ export function createUpdateRouter({
     };
   }
 
+  async function fetchGitUpdate(release) {
+    const targetTag = release.targetTag ?? `v${release.latestVersion}`;
+    state.status = {
+      ...state.status,
+      status: 'fetching',
+      progress: 100,
+      bytesTotal: null,
+      bytesDownloaded: 0,
+      error: null,
+      targetTag,
+    };
+
+    await runGit(['fetch', '--tags'], { cwd: gitCwd });
+    const previous = await runGit(['rev-parse', 'HEAD'], { cwd: gitCwd });
+    const previousRef = String(previous.stdout ?? '').trim();
+
+    state.status = {
+      ...state.status,
+      status: READY_STATUS,
+      progress: 100,
+      targetTag,
+      previousRef,
+      error: null,
+    };
+  }
+
   router.get('/check', async (_req, res) => {
     try {
       res.status(200).json(await checkForUpdates());
@@ -356,9 +430,16 @@ export function createUpdateRouter({
     let release = state.cache?.payload;
     try {
       release = release ?? await checkForUpdates();
-      state.downloadPromise = stageUpdate(release).catch((error) => {
-        fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
-        setFailure(state, error);
+      const stagePromise = updateChannel === 'git'
+        ? fetchGitUpdate(release)
+        : stageUpdate(release);
+      state.downloadPromise = stagePromise.catch((error) => {
+        if (updateChannel === 'git') {
+          setFailure(state, error, 'check-failed');
+        } else {
+          fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
+          setFailure(state, error);
+        }
       }).finally(() => {
         state.downloadPromise = null;
       });
@@ -386,10 +467,16 @@ export function createUpdateRouter({
 
     const pending = {
       status: 'pending',
+      channel: updateChannel,
       latestVersion: state.status.latestVersion,
-      stagedPath: state.status.stagedPath,
       requestedAt: now().toISOString(),
     };
+    if (updateChannel === 'git') {
+      pending.targetTag = state.status.targetTag;
+      pending.previousRef = state.status.previousRef;
+    } else {
+      pending.stagedPath = state.status.stagedPath;
+    }
     fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'update-pending.json'), `${JSON.stringify(pending, null, 2)}\n`);
     state.status = { ...state.status, status: 'installing' };

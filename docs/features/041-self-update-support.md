@@ -339,7 +339,7 @@ The architecture should allow future replacement of the release source if requir
 
 ### Deployment Compatibility
 
-The feature applies only to portable deployments.
+The feature applies to portable deployments. *(Increment 2: it also applies to `git clone` installs run via the `npm start` launcher — cross-platform — through the git channel. See spec "Git-Channel Self-Update (Clone Installs)".)*
 
 Hosted deployments are expected to be updated through normal deployment workflows.
 
@@ -412,7 +412,7 @@ Failed updates do not permanently prevent Alice from launching.
 
 ### AC-011
 
-The update experience functions without requiring Git, Node.js, or command-line interaction.
+The update experience functions without requiring Git, Node.js, or command-line interaction. *(Portable channel only. Increment 2's git channel for clone installs inherently requires Git and Node.js, since the install is itself a Node/Git checkout.)*
 
 ### AC-012
 

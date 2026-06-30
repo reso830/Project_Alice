@@ -9,7 +9,7 @@ vi.mock('@supabase/supabase-js', () => ({
 
 // Import after the mock is registered so the SUT picks up the mocked
 // `createClient`.
-const { assertHostedSchema } = await import('../../server/health.js');
+const { assertHostedSchema, createHealthPayload } = await import('../../server/health.js');
 
 function hostedConfig(overrides = {}) {
   return {
@@ -390,6 +390,58 @@ describe('assertHostedSchema', () => {
 
       // Only the first probe ran — the throw aborted the loop.
       expect(fromCalls).toEqual(['applications']);
+    });
+  });
+});
+
+describe('createHealthPayload', () => {
+  it('enables updates for launcher-run git clones on any platform', () => {
+    expect(createHealthPayload('local', {
+      env: { ALICE_UPDATE_CHANNEL: 'git' },
+      platform: 'linux',
+    })).toMatchObject({
+      runtime: 'local',
+      updateSupported: true,
+      updateChannel: 'git',
+    });
+  });
+
+  it('enables portable updates only on Windows', () => {
+    expect(createHealthPayload('local', {
+      env: { ALICE_UPDATE_CHANNEL: 'portable' },
+      platform: 'win32',
+    })).toMatchObject({
+      updateSupported: true,
+      updateChannel: 'portable',
+    });
+
+    expect(createHealthPayload('local', {
+      env: { ALICE_UPDATE_CHANNEL: 'portable' },
+      platform: 'darwin',
+    })).toMatchObject({
+      updateSupported: false,
+      updateChannel: 'portable',
+    });
+  });
+
+  it('hides updates for raw local, hosted, and demo runs', () => {
+    expect(createHealthPayload('local', { env: {}, platform: 'win32' })).toMatchObject({
+      updateSupported: false,
+      updateChannel: null,
+    });
+    expect(createHealthPayload('hosted', {
+      env: { ALICE_UPDATE_CHANNEL: 'git' },
+      platform: 'linux',
+    })).toMatchObject({
+      updateSupported: false,
+      updateChannel: null,
+    });
+    expect(createHealthPayload('demo', {
+      env: { ALICE_UPDATE_CHANNEL: 'git' },
+      platform: 'linux',
+    })).toMatchObject({
+      updateSupported: false,
+      updateChannel: null,
     });
   });
 });

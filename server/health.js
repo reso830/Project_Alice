@@ -50,12 +50,23 @@ const PROBES = [
   },
 ];
 
-export function createHealthPayload(runtime) {
+export function createHealthPayload(runtime, {
+  env = process.env,
+  platform = process.platform,
+} = {}) {
+  const requestedChannel = env.ALICE_UPDATE_CHANNEL;
+  const updateChannel = runtime === 'local' && ['portable', 'git'].includes(requestedChannel)
+    ? requestedChannel
+    : null;
+  const updateSupported = updateChannel === 'git'
+    || (updateChannel === 'portable' && platform === 'win32');
+
   return {
     status: 'ok',
     runtime,
     version: APP_VERSION,
-    updateSupported: runtime === 'local' && process.platform === 'win32',
+    updateSupported,
+    updateChannel,
   };
 }
 

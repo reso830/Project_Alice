@@ -313,8 +313,8 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(section.textContent).toContain('UPDATES');
     expect(section.textContent).toContain('Current version');
-    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.0');
-    expect(section.textContent).not.toContain('vv1.10.0');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.11.0');
+    expect(section.textContent).not.toContain('vv1.11.0');
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
@@ -559,6 +559,41 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(container.textContent).toContain('Extracting');
     expect(getButton(container, 'Cancel')).toBeUndefined();
+  });
+
+  it('renders git fetching and installing copy from shared update status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.10.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    }));
+
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true, updateChannel: 'git' } },
+    });
+    await flushPromises();
+
+    setUpdateStatus({ status: 'fetching', latestVersion: 'v1.11.0', updateChannel: 'git' });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Fetching');
+    expect(container.textContent).toContain('syncing release tags…');
+
+    setUpdateStatus({ status: 'installing', latestVersion: 'v1.11.0', updateChannel: 'git' });
+    await flushPromises();
+
+    expect(container.textContent).toContain('Updating via git');
+    expect(container.textContent).toContain('Keep this tab open while Alice updates.');
   });
 
   it('does not offer a second settings restart action after restart is accepted', async () => {

@@ -7,6 +7,45 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-06-29
+
+Clone Self-Update (git channel) — extends self-update (041) to `git clone`
+installs, cross-platform. A new `npm start` launcher (`scripts/start-alice.mjs`)
+builds and serves the app in a single process and supervises it: on an in-app
+update it runs `git fetch` → checkout the release tag → `npm install` →
+`npm run build` and relaunches, rolling back to the previous ref (and surfacing a
+failure state) if any step fails. `data/` and `config/` are never touched, and
+pending SQLite migrations run on boot. The capability gate is now channel-aware
+(`updateChannel`: `portable` | `git`): the in-app updater renders only for the
+portable package on Windows or a launcher-run clone, and is hidden for raw
+`npm run dev` / `server:start`, hosted, and demo — fixing a prior false positive
+where a raw clone on Windows offered a self-update it could not complete.
+(041-self-update-support, Increment 2)
+
+### Added
+
+- **Git update channel** — `npm start` (`scripts/start-alice.mjs`) supervises the
+  server and applies in-app updates on a clone via `git fetch --tags` →
+  `git checkout <release-tag>` → `npm install` → `npm run build` → relaunch, with
+  a non-disruptive "Fetching…" pre-restart phase (no ZIP download or SHA256 — git
+  object integrity is relied upon). (041-self-update-support)
+- **Channel-aware capability** — `GET /api/health` now returns `updateChannel`
+  (`portable` | `git`); `updateSupported` is `true` only for the portable package
+  on Windows or a launcher-run clone, and the `/api/update/*` router mounts
+  accordingly. (041-self-update-support)
+- **Cross-surface update sync** — a shared update-status store keeps the update
+  toast, the Profile › Settings › Updates card, and the Profile nav badge
+  consistent. (041-self-update-support)
+
+### Fixed
+
+- The in-app updater no longer appears on a raw `npm run dev` / `npm run
+  server:start` clone (where it could not apply), nor when no self-update-capable
+  launcher is in effect. (041-self-update-support)
+- A failed update check is now distinguished from a failed download — a check
+  failure shows the amber "Connection Error" state instead of the red
+  "Update Failed" / "Retry Download" state. (041-self-update-support)
+
 ## [1.10.0] — 2026-06-28
 
 Self-Update Support — a portable Windows install can now keep itself current
@@ -1253,7 +1292,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0

@@ -18,7 +18,18 @@
 - Q: What is the frequency of the automatic update checks when "Check for updates automatically" is enabled? → A: **On application startup, and then once every 24 hours of continuous execution**.
 - Q: Should the application create a temporary backup copy of the database before applying schema migrations? → A: **Yes, always copy the database to a backup file before starting migrations, delete it on success, and restore it if migrations fail**.
 - Q: How can the end-to-end update process be tested before a release is published on GitHub? → A: **Using the `ALICE_UPDATE_SOURCE_OVERRIDE` env var**. Setting this environment variable instructs the backend to query a local or mock URL for release metadata. A static test release ZIP and its SHA256 checksum are placed under `tests/fixtures/update-v1.10.0.zip` and `tests/fixtures/update-v1.10.0.zip.sha256` to allow local staging, extraction, and launcher-swapping walkthroughs in smoke tests without making external network calls.
-- Q: Is the self-update mechanism supported on macOS/Linux local installs? → A: **No, Windows-portable-only**. The backend updates API endpoints and the frontend updates UI settings/notifications are only active on Windows (`process.platform === 'win32'`) local/portable mode. The backend `/api/health` endpoint exposes an `updateSupported` capability boolean flag (true only in local mode on Windows). The frontend inspects this flag to hide or disable all updates features (toasts, badges, settings card sub-group) on unsupported configurations.
+- Q: Is the self-update mechanism supported on macOS/Linux local installs? → A: **No, Windows-portable-only** *(for the v1.10.0 portable channel; revisited in Increment 2 below)*. The backend updates API endpoints and the frontend updates UI settings/notifications are only active on Windows (`process.platform === 'win32'`) local/portable mode. The backend `/api/health` endpoint exposes an `updateSupported` capability boolean flag (true only in local mode on Windows). The frontend inspects this flag to hide or disable all updates features (toasts, badges, settings card sub-group) on unsupported configurations.
+
+### Session 2026-06-29 — Increment 2 (Git Channel for Clone Installs)
+
+> Extends/supersedes the "Windows-portable-only" decision above: self-update is now **also** available to `git clone` installs, **cross-platform**, via a distinct **git update channel**. The portable (ZIP-swap) channel remains Windows-only. See the "Git-Channel Self-Update (Clone Installs)" section and Phases 09–11 in `tasks.md`.
+
+- Q: Should `git clone` installs self-update in-app, or only the portable package? → A: **Both — local-first parity.** Each install kind self-updates using the right mechanism: portable via the existing ZIP swap, a clone via the git channel (fetch + checkout release tag + reinstall + rebuild).
+- Q: How does a clone apply + restart, given `npm run server:start` is not self-relaunching? → A: **A new cross-platform launcher** (`npm start` → `scripts/start-alice.mjs`) that builds + serves `dist/` in one process (the analogue of `Start-Alice.cmd`) and performs the git apply + relaunch. Distinct from `npm run dev`.
+- Q: How is a self-update-capable run distinguished from a raw dev run? → A: **A launcher-set channel flag** (`git` or `portable`). `/api/health` reports `updateSupported: true` only for (portable + win32) or (launcher-run clone); raw `npm run dev`/`server:start`, Hosted, and Demo report `false`. This also corrects an existing gap where a raw clone on Windows wrongly reported `updateSupported: true`.
+- Q: What does the git update land on? → A: **The latest release tag** (consistent with the release-based check). Detached HEAD is acceptable; the user can `git checkout main && git pull` manually for bleeding-edge.
+- Q: How are the network and disruptive steps separated? → A: **`git fetch --tags` runs before restart** (non-disruptive, fail-fast offline); **`git checkout` + `npm install` + `npm run build` run at restart** in the launcher.
+- Q: How are user data and local changes protected? → A: **`data/` and `config/` are gitignored**, so git operations never touch them; tracked changes are stashed before checkout and popped after; a failed apply rolls back to the previous ref.
 
 ---
 
@@ -73,7 +84,10 @@ The "Install now" and "Restart to finish" actions have distinct, concrete semant
 - **Silent Foreground Restarts**: Updates will never force-restart the application mid-use without confirmation.
 - **Multi-channel / Beta Release Tracks**: Updates will target only the standard release channel.
 - **Automatic updates in Hosted/Demo modes**: Deployed Vercel versions are updated via regular hosting pipelines.
-- **Non-Windows Portable Support**: The self-update mechanism is designed exclusively for Windows portable distributions (matching `040` packaging scope). Updating manual checkouts or other installations on macOS/Linux is out of scope.
+- **Non-Windows Portable Support**: The *portable package* self-update (ZIP swap) remains Windows-only (matching `040` packaging scope). *(Increment 2 adds cross-platform self-update for **git-clone** installs via the git channel — see "Git-Channel Self-Update (Clone Installs)" — but does not add non-Windows portable packaging.)*
+- **Bleeding-edge / main-tip updates (git channel)**: the git channel lands on the latest *release tag* only; users wanting unreleased commits use `git pull` manually.
+- **Signed-tag / GPG verification (git channel)**: deferred to a future extension (git object integrity is relied upon for v1).
+- **In-app update in raw dev mode**: `npm run dev` / `npm run server:start` never show the updater; developers update via git directly.
 
 ---
 
@@ -167,9 +181,47 @@ As a user, I want to control how and when updates are checked and applied, so th
 - **FR-015**: The system MUST render mode-aware update control links in the global footer brand row: it MUST render as a platform-agnostic "Download vX.Y.Z" button pointing to the latest GitHub Releases page in Hosted and Demo modes, and as an "Open hosted version ↗" link leading to the hosted application URL in Local mode.
 - **FR-016**: The system MUST render a subtle notification badge (colored dot) on the "Profile" navigation button (in both desktop `Navbar` and mobile `BottomTabBar`) when an update is available, downloading, or ready-to-restart, providing a persistent update reminder even if the user has dismissed the toast notification.
 - **FR-017**: The version comparison engine MUST normalize and compare version strings robustly. It MUST handle both prefixed versions (e.g., `v1.10.0`) and raw SemVer strings (e.g., `1.10.0`) by stripping any leading `v` character prior to parsing. The comparison logic MUST strictly compare major, minor, and patch numeric values (following Semantic Versioning rules) to verify if the fetched release version is strictly newer than the currently running version.
-- **FR-018**: The self-update API endpoints (`/api/update/*`) and updates configuration settings/toasts MUST be restricted to the Windows platform. The system `/api/health` endpoint MUST return an `updateSupported` boolean flag indicating whether self-updates are supported (which MUST evaluate to `true` only if `runtime === 'local'` and `process.platform === 'win32'`). The frontend MUST inspect this `updateSupported` capability flag from the health response to dynamically hide/disable all update notifications, badges, and settings UI on unsupported local and non-local environments.
+- **FR-018**: The self-update API endpoints (`/api/update/*`), updates settings, and toasts MUST be gated by the resolved update **channel** (see FR-021–FR-024): the **portable** channel requires Windows (`process.platform === 'win32'`); the **git** channel requires a launcher-run clone (any OS); raw `npm run dev` / `server:start`, Hosted, and Demo are unsupported. The `/api/health` endpoint MUST return `updateSupported` and `updateChannel` accordingly — `updateSupported` evaluates to `true` only for the portable channel on Windows OR the git channel. The frontend MUST inspect `updateSupported`/`updateChannel` from the health response to dynamically hide/disable all update notifications, badges, and settings UI on unsupported configurations. *(Increment 2 revised this from the original Windows-portable-only rule.)*
 - **FR-019**: The server shutdown sequence MUST follow a loose coupling model via a registered `onShutdown` callback contract in the application factory (`createApp`). The update router MUST invoke this callback after responding to `/api/update/restart` to close the active HTTP listener and SQLite database before exiting the process.
 - **FR-020**: The system MUST support a testable local update source override for development and testing. If the `ALICE_UPDATE_SOURCE_OVERRIDE` environment variable is set, the update check engine MUST query the specified custom URL instead of the live GitHub Releases API. Additionally, a static test fixture (`tests/fixtures/update-v1.10.0.zip` and its `.sha256` checksum) MUST be defined in the repository, enabling end-to-end local updates, staging, and file-swap verification without requiring active GitHub API connections or actual published releases.
+
+---
+
+## Git-Channel Self-Update (Clone Installs) — Increment 2
+
+Self-update parity for `git clone` installs, cross-platform, via a **git channel** that reuses the existing update check, `updateStatusStore`, restart signal (`data/update-pending.json`), toast/Settings UI, and SQLite migration subsystem. Implemented in Phases 09–11 (`tasks.md`).
+
+### Install-Kind Surface Matrix
+
+| Install kind (how Alice was launched) | `updateSupported` | Channel | Updater UI (toast, badge, Settings card) | Mechanism |
+|---|---|---|---|---|
+| Portable package (`Start-Alice.cmd`, Windows) | `true` | `portable` | Renders | ZIP swap |
+| Git clone via launcher (`npm start`, any OS) | `true` | `git` | Renders (git-channel copy) | git fetch + checkout tag + reinstall + rebuild |
+| Dev / raw run (`npm run dev`, `npm run server:start`) | `false` | — | Hidden | none (use git directly) |
+| Hosted (Vercel) | `false` | — | Hidden (footer Download link only) | hosting pipeline |
+| Demo | `false` | — | Hidden | n/a |
+
+### User Story 4 - Update a clone install in-app (Priority: P1)
+
+As someone running Alice from a `git clone` (e.g. macOS/Linux), I want Alice to notify me of a new release and update itself on click, so I stay current without git commands.
+
+**Independent Test**: Launch a clone at an older release via `npm start` with `ALICE_UPDATE_SOURCE_OVERRIDE` advertising a newer release → "update available" → click **Update** ("Fetching…" while `git fetch` runs) → **Restart to finish** → launcher checks out the tag, reinstalls, rebuilds, relaunches; footer shows the new version; job-application data intact. Separately, a raw `npm run dev` / `server:start` run hides the updater (`updateSupported: false`).
+
+### Functional Requirements (Increment 2)
+
+- **FR-021**: The system MUST provide a cross-platform launcher (`npm start` → `scripts/start-alice.mjs`) that builds the frontend, serves `dist/` via Express in one process, and is the only clone run mode in which self-update is enabled.
+- **FR-022**: The launcher MUST mark the run's update channel as `git`; the portable launcher (`Start-Alice.cmd`) MUST mark its channel as `portable`.
+- **FR-023**: `/api/health` MUST expose the resolved `updateChannel` and MUST compute `updateSupported` as `true` only for (channel `portable` and `process.platform === 'win32'`) or (channel `git`); all other runs (raw `npm run dev`/`server:start`, Hosted, Demo) MUST report `false`.
+- **FR-024**: The frontend MUST use `updateSupported` and `updateChannel` from `/api/health` to render/hide all updater surfaces (toast, Profile badge, Settings Updates card) and select channel-appropriate copy.
+- **FR-025**: The git-channel update check MUST reuse the existing GitHub Releases comparison (latest release tag vs. `APP_VERSION`).
+- **FR-026**: On the git channel, the update action MUST run a non-disruptive `git fetch --tags` before any restart, MUST fail fast into the `check-failed` ("Connection Error") state if the remote is unreachable, then transition to `ready-to-restart`. The UI MUST show a "Fetching…" state and an indeterminate "Updating via git…" state (no download/verify/extract; no SHA256/`data/update-staging/` ZIP staging).
+- **FR-027**: On the restart signal (channel `git`), the launcher MUST apply by: stash tracked changes if dirty → `git checkout <release-tag>` → `npm install` → `npm run build` → relaunch.
+- **FR-028**: The git channel MUST land the working copy on the latest **release tag** (detached HEAD is acceptable).
+- **FR-029**: The git channel MUST NOT modify `data/` or `config/` (gitignored); the relaunched version MUST run pending SQLite migrations on boot, preserving user data.
+- **FR-030**: If `git checkout`, `npm install`, or `npm run build` fails, the launcher MUST roll back (restore previous ref → reinstall → relaunch the previous version) and surface the existing red "Update failed — rolled back to vX" state.
+- **FR-031**: Uncommitted tracked changes MUST be stashed before checkout and restored after a successful relaunch; a stash-pop conflict MUST surface a non-fatal warning and preserve the stash.
+- **FR-032**: If `git` is unavailable or the directory is not a git repository, the run MUST resolve to `updateSupported: false` (no updater surfaces) with a clear console message, rather than offering a non-functional update.
+- **FR-033**: The git channel MUST reuse the `data/update-pending.json` restart signal and the shared `updateStatusStore` so the toast, Settings card, and Profile badge stay synchronized (the signal carries the target release tag rather than a staged package path).
 
 ---
 

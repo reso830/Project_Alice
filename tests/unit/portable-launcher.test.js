@@ -5,6 +5,10 @@ import { describe, expect, test } from 'vitest';
 const launcher = fs.readFileSync('scripts/portable/Start-Alice.cmd', 'utf8');
 
 describe('portable launcher update swap', () => {
+  test('marks portable launches with the portable update channel', () => {
+    expect(launcher).toContain('set "ALICE_UPDATE_CHANNEL=portable"');
+  });
+
   test('swaps staged program files before starting Node', () => {
     expect(launcher).toContain('set "STAGING=%ROOT%data\\update-staging\\alice"');
     expect(launcher).toContain('call :apply_update');

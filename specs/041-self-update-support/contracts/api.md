@@ -14,7 +14,8 @@ Updated to expose the version for single-instance checks, updates capability gat
     "status": "ok",
     "runtime": "local",
     "version": "v1.9.0",
-    "updateSupported": true
+    "updateSupported": true,
+    "updateChannel": "git"
   }
   ```
 
@@ -22,7 +23,8 @@ Updated to expose the version for single-instance checks, updates capability gat
   - `status` (String): Overall status indicator (`"ok"`).
   - `runtime` (String): Runtimes environment mode (`"local"` | `"hosted"`).
   - `version` (String): Current display version of the running application (prefixed with `v`, e.g., `"v1.9.0"`).
-  - `updateSupported` (Boolean): Dynamically computed flag indicating capability support. Evaluates to `true` only if `runtime === 'local'` and `process.platform === 'win32'`. Evaluates to `false` on all other platform/mode configurations.
+  - `updateSupported` (Boolean): Dynamically computed capability flag. Evaluates to `true` only for (a) the portable channel on Windows (`updateChannel === 'portable'` and `process.platform === 'win32'`) **or** (b) a launcher-run git clone (`updateChannel === 'git'`). Evaluates to `false` for raw `npm run dev` / `server:start`, Hosted, and Demo. *(Increment 2 — supersedes the v1 "local Windows only" rule.)*
+  - `updateChannel` (String | null): The resolved self-update channel — `"portable"` (ZIP swap) or `"git"` (git fetch/checkout) — derived from a launcher-set environment flag; `null`/omitted when no self-update-capable launcher is in effect.
 
 ---
 
@@ -71,7 +73,10 @@ Exposes the current state of the download and staging state machine.
     "error": null
   }
   ```
-  *Note: `status` values include `idle`, `checking`, `available`, `downloading`, `installing`, `ready-to-restart`, `failed`.*
+  *Note: `status` values by channel:*
+  - *Shared: `idle`, `checking`, `available`, `ready-to-restart`, `installing` (restart-wait — copy adapts by channel: "waiting for Alice to come back online…" / "Updating via git…"), `failed`, `check-failed` (amber "Connection Error").*
+  - *Portable channel only: `downloading`, `verifying`, `extracting`.*
+  - *Git channel only: `fetching` (during `git fetch --tags` — the git analogue of the portable download/verify/extract phase).*
 
 ---
 
@@ -80,7 +85,7 @@ Exposes the current state of the download and staging state machine.
 Signals the active server to initiate graceful shutdown and write the pending update flag, triggering the launcher file-swap sequence.
 
 * **Behavior**:
-  1. Writes the update metadata file `data/update-pending.json`.
+  1. Writes the update metadata file `data/update-pending.json` (see the **UpdatePending** schema in [data-model.md §4](../data-model.md) — carries `channel`, and either `stagedPath` for the portable channel or `targetTag` + `previousRef` for the git channel).
   2. Responds with `200 OK` (payload below).
   3. Schedules a 500ms delay.
   4. Invokes the registered `onShutdown` callback. The callback gracefully closes the HTTP listener (`server.close()`), closes the active SQLite database connection (`db.close()`), and exits the process (`process.exit(0)`).

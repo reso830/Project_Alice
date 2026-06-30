@@ -58,6 +58,8 @@ async function makeServer({
   configDir = path.join(makeRoot(), 'config'),
   onShutdown = async () => {},
   scheduleShutdown = (callback) => callback(),
+  updateChannel = 'portable',
+  runGit = async () => ({ stdout: '' }),
 } = {}) {
   const app = express();
   app.use(express.json());
@@ -67,6 +69,8 @@ async function makeServer({
     configDir,
     onShutdown,
     scheduleShutdown,
+    updateChannel,
+    runGit,
   }));
 
   const server = app.listen(0);
@@ -295,6 +299,129 @@ describe('update route behavior', () => {
       latestVersion: '1.10.0',
     });
     expect(onShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  test('git channel fetches tags and becomes ready without zip staging', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const runGit = vi.fn(async (args) => {
+      if (args.join(' ') === 'fetch --tags') {
+        return { stdout: '' };
+      }
+      if (args.join(' ') === 'rev-parse HEAD') {
+        return { stdout: 'abc123\n' };
+      }
+      throw new Error(`Unexpected git ${args.join(' ')}`);
+    });
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      updateChannel: 'git',
+      runGit,
+    });
+
+    const start = await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const ready = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(start.response.status).toBe(202);
+    expect(start.body.status).toBe('fetching');
+    expect(runGit).toHaveBeenCalledWith(['fetch', '--tags'], expect.any(Object));
+    expect(runGit).toHaveBeenCalledWith(['rev-parse', 'HEAD'], expect.any(Object));
+    expect(ready).toMatchObject({
+      status: 'ready-to-restart',
+      progress: 100,
+      latestVersion: '1.10.0',
+      targetTag: 'v1.10.0',
+      previousRef: 'abc123',
+    });
+    expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
+  });
+
+  test('git channel reports fetch failures as check failures without restarting', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const runGit = vi.fn(async () => {
+      throw new Error('fatal: unable to access remote');
+    });
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      updateChannel: 'git',
+      runGit,
+    });
+
+    const start = await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'check-failed');
+
+    expect(start.response.status).toBe(202);
+    expect(status).toMatchObject({
+      status: 'check-failed',
+      progress: 0,
+    });
+    expect(status.error).toContain('fatal: unable to access remote');
+  });
+
+  test('git channel writes target tag and previous ref in pending metadata', async () => {
+    const root = makeRoot();
+    const onShutdown = vi.fn();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const runGit = vi.fn(async (args) => {
+      if (args.join(' ') === 'fetch --tags') {
+        return { stdout: '' };
+      }
+      if (args.join(' ') === 'rev-parse HEAD') {
+        return { stdout: 'abc123\n' };
+      }
+      throw new Error(`Unexpected git ${args.join(' ')}`);
+    });
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      onShutdown,
+      updateChannel: 'git',
+      runGit,
+    });
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    await waitForStatus(baseUrl, 'ready-to-restart');
+
+    const restart = await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+
+    expect(restart.response.status).toBe(200);
+    expect(JSON.parse(fs.readFileSync(path.join(dataDir, 'update-pending.json'), 'utf8'))).toMatchObject({
+      status: 'pending',
+      channel: 'git',
+      latestVersion: '1.10.0',
+      targetTag: 'v1.10.0',
+      previousRef: 'abc123',
+    });
+    expect(onShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  test('surfaces and clears launcher rollback failures on startup', async () => {
+    const root = makeRoot();
+    const dataDir = path.join(root, 'data');
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(path.join(dataDir, 'update-failed.json'), `${JSON.stringify({
+      status: 'failed',
+      channel: 'git',
+      targetTag: 'v1.11.0',
+      previousRef: 'abc123',
+      latestVersion: '1.11.0',
+      error: 'build failed',
+      failedAt: '2026-06-29T00:00:00.000Z',
+    }, null, 2)}\n`);
+    const { baseUrl } = await makeServer({ dataDir, updateChannel: 'git' });
+
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(status.body).toMatchObject({
+      status: 'failed',
+      progress: 0,
+      error: 'Update failed and Alice rolled back. build failed',
+      latestVersion: '1.11.0',
+      targetTag: 'v1.11.0',
+      previousRef: 'abc123',
+      updateChannel: 'git',
+      rolledBack: true,
+    });
+    expect(fs.existsSync(path.join(dataDir, 'update-failed.json'))).toBe(false);
   });
 
   test('reads and writes update settings in config/settings.json', async () => {

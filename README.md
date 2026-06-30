@@ -25,6 +25,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **AI job-description parsing (BYOK)** — from the Add-application gate's Smart entry, paste a job posting and have an LLM (via OpenRouter) pre-fill a new application for review before saving. Gated by the master AI toggle plus the live Job-description parsing switch and a browser-local key; with AI off the Smart card is locked ("Enable AI in Settings →") and Manual entry remains. Recoverable failures offer a basic rule-based parser, an empty result ends in a clear dead-end, and pasted text is preserved across retries. Status is never parsed (stays Wishlisted) and no job text is persisted. See [`specs/035-llm-jd-parser/quickstart.md`](specs/035-llm-jd-parser/quickstart.md). (035-llm-jd-parser)
 - **Portable Windows package** — run Alice with no Node.js install, no repository clone, and no terminal: download the release ZIP, extract it anywhere, and double-click `Start-Alice.cmd`. A bundled Node runtime serves the app on `127.0.0.1` (localhost-only) and opens your browser automatically; close the console window to stop. Your data lives in `data/alice.db` and your settings in `config/` — both preserved across launches and outside the replaceable program files. The same codebase still deploys to hosted (Vercel) unchanged. See [`specs/040-portable-distribution-package/quickstart.md`](specs/040-portable-distribution-package/quickstart.md). (040-portable-distribution-package)
 - **Self-update (portable, Windows)** — a portable install keeps itself current: Alice checks GitHub Releases for a newer version, surfaces an update toast and a Profile nav badge, and (on confirm) downloads the release ZIP to a staging folder, verifies its SHA256, and applies it on restart via the launcher — replacing the program files while preserving `data/alice.db` and `config/`. A per-install lockfile guarantees a single instance across the stop → swap → restart sequence, and pending SQLite schema migrations run automatically (with a pre-migration backup that restores on failure). The Profile › Settings › **Updates** sub-group adds a manual check, an auto-check toggle, and an update-mode picker (Notify only / Ask before installing / Install automatically). Hosted (Vercel) updates via normal deploys, so the in-app updater is gated to local Windows installs. See [`specs/041-self-update-support/quickstart.md`](specs/041-self-update-support/quickstart.md). (041-self-update-support)
+- **Self-update (git clone, cross-platform)** — running Alice from a checkout, `npm start` launches a supervising launcher that serves a built `dist/` and applies in-app updates via git: `git fetch` → check out the latest release tag → `npm install` → `npm run build` → relaunch, rolling back to the previous version (and surfacing a failure state) if any step fails, while never touching `data/alice.db` or `config/`. The in-app updater is shown only for a launcher-run clone or the portable package — never for a raw `npm run dev` / `npm run server:start`, hosted, or demo. (041-self-update-support, Increment 2)
 - **Persistent footer** — brand identity, version info, tech stack credits, and feedback links on every page
 - **SQLite persistence** — all data stored in a local SQLite database via a lightweight Express API; no external services
 - **Hosted authenticated access** — optional Supabase-backed multi-user mode behind an operator-managed email allowlist (`specs/018-auth-user-access/`); local mode is unaffected and remains the default
@@ -146,6 +147,7 @@ Two independent checks guard against a hosted deployment with missing config:
 | `npm run server:dev` | Start backend API in watch mode (nodemon, port 3001) |
 | `npm run server:start` | Start backend API without watch mode |
 | `npm run dev` | Start frontend development server (port 5173) |
+| `npm start` | Run Alice from a clone in self-updating mode — builds + serves `dist/` and supervises restarts/updates (the git update channel) |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm test` | Run tests in watch mode |
@@ -251,7 +253,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.10.0** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.11.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

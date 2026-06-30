@@ -7,6 +7,7 @@ set "NODE=%ROOT%runtime\node.exe"
 set "BOOT=%ROOT%app\server\portable.js"
 set "STAGING=%ROOT%data\update-staging\alice"
 set "NEXT_LAUNCHER=%ROOT%data\Start-Alice.next.cmd"
+set "ALICE_UPDATE_CHANNEL=portable"
 
 :run
 if exist "%STAGING%\" (

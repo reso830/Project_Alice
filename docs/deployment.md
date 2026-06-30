@@ -208,6 +208,20 @@ artifacts to a GitHub Release, triggered **only** on a `v*` tag or manual
 is a browser-local BYOK (`localStorage`), the server is never in the AI path,
 and no key ships on disk.
 
+**Self-update channels (local).** The in-app self-updater is gated by an
+`ALICE_UPDATE_CHANNEL` flag that the **launchers set automatically** — operators
+do not configure it:
+
+- `Start-Alice.cmd` (portable package) sets `ALICE_UPDATE_CHANNEL=portable`.
+- `npm start` (`scripts/start-alice.mjs`, the cross-platform git-clone launcher,
+  feature 041 Increment 2) sets `ALICE_UPDATE_CHANNEL=git`.
+
+`GET /api/health` exposes `updateChannel` and computes `updateSupported = true`
+only for the portable channel on Windows **or** the git channel (a launcher-run
+clone). A raw `npm run dev` / `npm run server:start`, hosted, and demo leave the
+flag unset, so `updateSupported` is `false` and the `/api/update/*` router is not
+mounted. Hosted (Vercel) is unchanged — it updates via normal deploys.
+
 ---
 
 ## Supabase Project Setup

@@ -270,6 +270,68 @@ describe('UpdateToast', () => {
     expect(document.body.textContent).toContain('Restart to finish');
   });
 
+  it('renders and polls the git fetching state', async () => {
+    vi.useFakeTimers();
+    let statusReads = 0;
+    vi.stubGlobal('fetch', vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: true, updateMode: 'ask' }),
+        });
+      }
+      if (route === '/api/update/check') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ updateAvailable: true, latestVersion: '1.11.0' }),
+        });
+      }
+      if (route === '/api/update/status') {
+        statusReads += 1;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(
+            statusReads === 1
+              ? { status: 'fetching', latestVersion: '1.11.0', updateChannel: 'git' }
+              : { status: 'ready-to-restart', latestVersion: '1.11.0', updateChannel: 'git' },
+          ),
+        });
+      }
+      throw new Error(`Unexpected route ${route}`);
+    }));
+
+    UpdateToast.mount({ health: { updateSupported: true, updateChannel: 'git' } });
+    await flush();
+
+    expect(document.body.textContent).toContain('Fetching update');
+    expect(document.body.textContent).toContain('syncing release tags…');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flush();
+
+    expect(document.body.textContent).toContain('Restart to finish');
+  });
+
+  it('uses git-channel copy while waiting for relaunch', async () => {
+    vi.stubGlobal('fetch', vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: false, updateMode: 'ask' }),
+        });
+      }
+      throw new Error(`Unexpected fetch ${route}`);
+    }));
+
+    UpdateToast.mount({ health: { updateSupported: true, updateChannel: 'git' } });
+    await flush();
+    setUpdateStatus({ status: 'installing', latestVersion: '1.11.0', updateChannel: 'git' });
+    await flush();
+
+    expect(document.body.textContent).toContain('Updating via git');
+    expect(document.body.textContent).toContain('Keep this tab open while Alice updates.');
+  });
+
   it('does not offer a second restart action after restart is accepted', async () => {
     const fetchMock = vi.fn((route, options = {}) => {
       if (route === '/api/update/settings') {

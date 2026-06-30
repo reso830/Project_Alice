@@ -1,10 +1,11 @@
 {
   "name": "project-alice",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "node scripts/start-alice.mjs",
     "build": "vite build",
     "build:portable": "node scripts/build-portable.mjs",
     "preview": "vite preview",

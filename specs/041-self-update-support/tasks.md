@@ -5,7 +5,9 @@
 Conventions: tasks are small, ordered, and specific. `[P]` marks parallelizable tasks. Status legend: `[x]` done · `[ ]` pending · `[~]` skipped.
 Commands: `npm run test:run`, `npm run lint`.
 
-Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
+Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11
+
+Phases 01–08 shipped the portable self-update (v1.10.0). Phases 09–11 add the git-channel self-update for clone installs (User Story 4), a follow-on increment.
 
 ## Phase summary
 
@@ -19,6 +21,9 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 | 06 | Polish & Cross-Cutting Concerns | T023–T024 | Accessibility & style gates |
 | 07 | Release Prep | T025–T031 | SemVer metadata & operator docs |
 | 08 | Browser Smoke Test | T032–T035 | Walkthroughs in real browser |
+| 09 | Git-Channel Self-Update (Clone Installs) | T036–T045 | US4 (Clone in-app update + gating fix) |
+| 10 | Release Prep (Clone Self-Update) | T046–T051 | SemVer bump & docs for the git channel |
+| 11 | Browser Smoke Test (Clone Self-Update) | T052–T054 | Cross-platform clone update walkthroughs |
 
 ---
 
@@ -290,6 +295,95 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 ---
 
+## Phase 09: Git-Channel Self-Update for Clone Installs (User Story 4)
+
+**Purpose**: Extend self-update to `git clone` installs (cross-platform) via a new **git update channel**, and correct the capability gate so the updater only appears where it can actually complete. See spec section "Git-Channel Self-Update (Clone Installs)".
+
+> Added 2026-06-29 as a follow-on increment to the shipped portable self-update (Phases 01–08). Reuses the 041 update check, `updateStatusStore`, restart signal (`data/update-pending.json`), toast/Settings UI, and SQLite migration subsystem.
+
+- [x] T036 Add cross-platform launcher `scripts/start-alice.mjs` + `npm start` script
+  - **Target**: `scripts/start-alice.mjs` (new), [package.json](../../package.json)
+  - **Expected behavior**: `npm start` builds the frontend and serves `dist/` via Express in a single process (the cross-platform analogue of `Start-Alice.cmd`), with a run loop that applies a pending git update and relaunches.
+  - **Validation/test**: `tests/unit/start-alice-launcher.test.js` (new)
+
+- [x] T037 Mark the update channel via a launcher env flag
+  - **Target**: `scripts/start-alice.mjs`, [scripts/portable/Start-Alice.cmd](../../scripts/portable/Start-Alice.cmd)
+  - **Expected behavior**: the git launcher sets the update channel to `git`; the portable launcher sets it to `portable`. The flag is read server-side to resolve the channel.
+  - **Validation/test**: `tests/unit/start-alice-launcher.test.js`, `tests/unit/portable-launcher.test.js`
+
+- [x] T038 Revise `/api/health` `updateSupported` and expose `updateChannel`
+  - **Target**: [server/health.js](../../server/health.js)
+  - **Expected behavior**: `updateSupported` is `true` only for (channel `portable` + win32) OR (channel `git`); expose `updateChannel`. Raw `npm run dev`/`server:start`, Hosted, and Demo report `false`. (FR-021, FR-022, FR-023.)
+  - **Validation/test**: `tests/services/healthApi.test.js`, `tests/server/*health*`
+
+- [x] T039 Frontend gating + channel-aware copy
+  - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js), [src/components/UpdateToast.js](../../src/components/UpdateToast.js), [src/main.js](../../src/main.js)
+  - **Expected behavior**: read `updateChannel` from health; render/hide updater surfaces accordingly; adapt copy per channel. Fixes the raw-clone-on-Windows false positive. (FR-024.)
+  - **Validation/test**: `tests/components/UpdateToast.test.js`, `tests/pages/profile.aiSettings.test.js`
+
+- [x] T040 Git-channel fetch phase
+  - **Target**: [server/routes/update.js](../../server/routes/update.js)
+  - **Expected behavior**: on the git channel, the update action runs `git fetch --tags` (non-disruptive) instead of zip download/verify/extract; fails fast offline into the `check-failed` state; transitions to `ready-to-restart` on success. No SHA256/`data/update-staging/` ZIP staging. (FR-025, FR-026.)
+  - **Validation/test**: `tests/unit/update.test.js`
+
+- [x] T041 Launcher git apply sequence
+  - **Target**: `scripts/start-alice.mjs`, [server/routes/update.js](../../server/routes/update.js)
+  - **Expected behavior**: on `update-pending.json` (channel `git`): stash tracked changes if dirty → `git checkout <release-tag>` → `npm install` → `npm run build` → relaunch. `data/` and `config/` untouched; migrations run on boot. (FR-027, FR-028, FR-029.)
+  - **Validation/test**: `tests/unit/start-alice-launcher.test.js`
+
+- [x] T042 Rollback on apply failure
+  - **Target**: `scripts/start-alice.mjs`
+  - **Expected behavior**: if `git checkout`/`npm install`/`npm run build` fails, restore the previous ref + reinstall + relaunch the old version; surface the existing red "Update failed — rolled back to vX" state. (FR-030.)
+  - **Validation/test**: `tests/unit/start-alice-launcher.test.js`
+
+- [x] T043 Git-channel UI states + copy
+  - **Target**: [src/components/UpdateToast.js](../../src/components/UpdateToast.js), [src/pages/Profile.js](../../src/pages/Profile.js), [src/styles/main.css](../../src/styles/main.css)
+  - **Expected behavior**: shorter git state flow — a "Fetching…" state and an indeterminate "Updating via git…" state; non-fatal stash-pop conflict warning. (FR-026, FR-031.)
+  - **Validation/test**: `tests/components/UpdateToast.test.js`
+
+- [x] T044 Guard: git unavailable / not a repository
+  - **Target**: `scripts/start-alice.mjs`, [server/health.js](../../server/health.js)
+  - **Expected behavior**: if `git` is missing or the directory is not a git repo, resolve `updateSupported: false` (no updater surfaces) with a clear console message. (FR-032.)
+  - **Validation/test**: `tests/unit/start-alice-launcher.test.js`
+
+- [x] T045 [P] Tests for git-channel check/apply/gating
+  - **Target**: `tests/unit/update.test.js`, `tests/unit/start-alice-launcher.test.js`, `tests/services/healthApi.test.js`
+  - **Expected behavior**: cover channel resolution, fetch fail-fast, apply sequence, rollback, and gating across install kinds.
+  - **Validation/test**: `npm run test:run`
+
+---
+
+## Phase 10: Release Prep (Clone Self-Update) — REQUIRED
+
+**Purpose**: Ship the git channel as the next SemVer increment with synced metadata and docs.
+
+- [x] T046 Version bump across surfaces (next minor) — 1.10.0 → 1.11.0 in package.json, package-lock.json (root + `packages['']`), appMeta `APP_VERSION`
+  - **Target**: [package.json](../../package.json), `package-lock.json` (root + packages entry), [src/pages/welcome/shared/appMeta.js](../../src/pages/welcome/shared/appMeta.js)
+- [x] T047 CHANGELOG entry for the git channel + gating fix — added `## [1.11.0] — 2026-06-29` + compare links
+  - **Target**: [CHANGELOG.md](../../CHANGELOG.md)
+- [x] T048 README: document `npm start` launcher + clone self-update — new Features bullet, `npm start` script row, version line
+  - **Target**: [README.md](../../README.md)
+- [x] T049 REPO_MAP + deployment docs for new file/flag — added `scripts/start-alice.mjs` + `src/data/updateStatusStore.js` rows; `ALICE_UPDATE_CHANNEL` documented in deployment.md
+  - **Target**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md) (`scripts/start-alice.mjs`), [docs/deployment.md](../../docs/deployment.md) (update-channel env flag)
+- [x] T050 Tick `docs/feature_roadmap.md` (041 increment note) — `v1.10.0 (portable) · v1.11.0 (git clone)`
+  - **Target**: [docs/feature_roadmap.md](../../docs/feature_roadmap.md)
+- [x] T051 Docs sanity check (no broken/`npm run format` references) — release-metadata test + suite green (1718), lint clean
+
+---
+
+## Phase 11: Browser Smoke Test (Clone Self-Update) — REQUIRED (final)
+
+**Purpose**: Walk User Story 4's independent tests against the merged state.
+
+- [ ] T052 [US4] Clone update walkthrough (launcher-run clone)
+  - **Expected behavior**: launch via `npm start` with `ALICE_UPDATE_SOURCE_OVERRIDE`; observe available → Fetching → Restart to finish → relaunch on new version; data intact.
+- [ ] T053 [US4] Gating check across install kinds
+  - **Expected behavior**: raw `npm run dev`/`server:start` hides the updater (`updateSupported: false`); `npm start` shows it (channel `git`); portable still reports channel `portable`.
+- [ ] T054 [US4] Data-preservation + rollback walkthrough
+  - **Expected behavior**: populated `data/alice.db` preserved; forced apply failure rolls back to the previous version with the red failure state.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -300,6 +394,9 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 - **Polish (Phase 6)**: Depends on Phase 3, 4, 5.
 - **Release Prep (Phase 7)**: Depends on Polish.
 - **Browser Smoke Test (Phase 8)**: Depends on Release Prep.
+- **Git-Channel Self-Update (Phase 9)**: Depends on the shipped Phases 1–8 (reuses the update check, `updateStatusStore`, restart signal, toast/Settings UI, and migration subsystem).
+- **Release Prep (Phase 10)**: Depends on Phase 9.
+- **Browser Smoke Test (Phase 11)**: Depends on Phase 10. Final phase for the increment.
 
 ### Parallel Opportunities
 
@@ -336,3 +433,4 @@ Task: "Create toast component src/components/UpdateToast.js"
 2. Add US1 -> Check and download ZIP functionality works.
 3. Add US2 -> Staging file swap launcher logic and pre-migration backups work.
 4. Add US3 -> UI settings options integrated.
+5. Add US4 (Phase 9) -> Git-channel self-update for clone installs + capability-gate fix (updater hidden for raw dev/hosted/demo); then Release Prep (Phase 10) and Browser Smoke Test (Phase 11).
