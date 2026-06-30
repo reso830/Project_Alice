@@ -59,8 +59,7 @@ function readLock(filePath) {
   }
 }
 
-export function writeLock(port, { dataDir = defaultDataDir(), now = new Date() } = {}) {
-  fs.mkdirSync(dataDir, { recursive: true });
+function buildLock(port, { now = new Date(), pending = false } = {}) {
   const lock = {
     version: 1,
     pid: process.pid,
@@ -68,8 +67,83 @@ export function writeLock(port, { dataDir = defaultDataDir(), now = new Date() }
     appVersion: APP_VERSION,
     launchTime: now.toISOString(),
   };
-  fs.writeFileSync(lockPath(dataDir), `${JSON.stringify(lock, null, 2)}\n`);
+
+  if (pending) {
+    lock.pending = true;
+  }
+
   return lock;
+}
+
+function writeLockFile(filePath, lock, options = {}) {
+  fs.writeFileSync(filePath, `${JSON.stringify(lock, null, 2)}\n`, options);
+}
+
+async function inspectLock(filePath, { probe = defaultProbe } = {}) {
+  const lock = readLock(filePath);
+  const pidActive = isPidActive(lock?.pid);
+  const pending = lock?.pending === true;
+  const healthActive = pidActive && !pending ? await probe(lock?.port, lock) : false;
+  const active = pidActive && (pending || healthActive);
+  const stale = !active;
+
+  return {
+    exists: true,
+    active,
+    stale,
+    path: filePath,
+    lock,
+    port: lock?.port,
+    pidActive,
+    healthActive,
+    pending,
+  };
+}
+
+export function writeLock(port, { dataDir = defaultDataDir(), now = new Date() } = {}) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  const lock = buildLock(port, { now });
+  writeLockFile(lockPath(dataDir), lock);
+  return lock;
+}
+
+export async function acquireLock({
+  dataDir = defaultDataDir(),
+  port = 0,
+  probe = defaultProbe,
+  now = new Date(),
+} = {}) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  const filePath = lockPath(dataDir);
+  const lock = buildLock(port, { now, pending: true });
+
+  try {
+    writeLockFile(filePath, lock, { flag: 'wx' });
+    return { acquired: true, active: false, stale: false, path: filePath, lock, port };
+  } catch (error) {
+    if (error?.code !== 'EEXIST') {
+      throw error;
+    }
+  }
+
+  const existing = await inspectLock(filePath, { probe });
+  if (existing.active) {
+    return { acquired: false, ...existing };
+  }
+
+  removeLock({ dataDir, force: true });
+
+  try {
+    writeLockFile(filePath, lock, { flag: 'wx' });
+    return { acquired: true, active: false, stale: true, path: filePath, lock, port };
+  } catch (error) {
+    if (error?.code !== 'EEXIST') {
+      throw error;
+    }
+  }
+
+  const winner = await inspectLock(filePath, { probe });
+  return { acquired: false, ...winner };
 }
 
 export async function checkLock({
@@ -82,28 +156,24 @@ export async function checkLock({
     return { exists: false, active: false, stale: false, path: filePath };
   }
 
-  const lock = readLock(filePath);
-  const pidActive = isPidActive(lock?.pid);
-  const healthActive = pidActive ? await probe(lock?.port, lock) : false;
-  const active = pidActive && healthActive;
-  const stale = !active;
+  const status = await inspectLock(filePath, { probe });
 
-  if (stale && removeStale) {
-    removeLock({ dataDir });
+  if (status.stale && removeStale) {
+    removeLock({ dataDir, force: true });
   }
 
-  return {
-    exists: true,
-    active,
-    stale,
-    path: filePath,
-    lock,
-    port: lock?.port,
-    pidActive,
-    healthActive,
-  };
+  return status;
 }
 
-export function removeLock({ dataDir = defaultDataDir() } = {}) {
-  fs.rmSync(lockPath(dataDir), { force: true });
+export function removeLock({ dataDir = defaultDataDir(), pid, force = false } = {}) {
+  const filePath = lockPath(dataDir);
+  if (!force && pid !== undefined) {
+    const lock = readLock(filePath);
+    if (lock?.pid !== pid) {
+      return false;
+    }
+  }
+
+  fs.rmSync(filePath, { force: true });
+  return true;
 }

@@ -169,6 +169,28 @@ describe('portable bootstrap', () => {
     );
   });
 
+  test('concurrent launches on one data directory start exactly one server', async () => {
+    vi.resetModules();
+    const { run } = await import('../../server/portable.js');
+    const root = await makePackageRoot();
+
+    const results = await Promise.all([
+      run({ root, open: async () => {}, probe: async () => false, maxTries: 1 }),
+      run({ root, open: async () => {}, probe: async () => false, maxTries: 1 }),
+    ]);
+
+    const started = results.filter((result) => result.server);
+    const alreadyRunning = results.filter((result) => result.alreadyRunning);
+
+    expect(started).toHaveLength(1);
+    expect(alreadyRunning).toHaveLength(1);
+    expect(alreadyRunning[0]).toMatchObject({ port: started[0].port });
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(true);
+
+    await started[0].stop();
+    expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);
+  });
+
   test('fails clearly when dist/index.html is missing', async () => {
     vi.resetModules();
     const { run } = await import('../../server/portable.js');
