@@ -270,6 +270,37 @@ describe('UpdateToast', () => {
     expect(document.body.textContent).toContain('Restart to finish');
   });
 
+  it('cancels a server-side download when Cancel is clicked', async () => {
+    const fetchMock = vi.fn((route, options = {}) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: false, updateMode: 'ask' }),
+        });
+      }
+      if (route === '/api/update/cancel' && options.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ status: 'available', progress: 0, latestVersion: '1.10.0' }),
+        });
+      }
+      throw new Error(`Unexpected fetch ${route}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    UpdateToast.mount({ health: { updateSupported: true } });
+    await flush();
+    setUpdateStatus({ status: 'downloading', progress: 42, latestVersion: '1.10.0' });
+    await flush();
+
+    expect(document.body.textContent).toContain('Downloading update');
+    document.querySelector('.update-toast__button--ghost').click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/update/cancel', { method: 'POST' });
+    expect(document.querySelector('.update-toast').hidden).toBe(true);
+  });
+
   it('does not offer a second restart action after restart is accepted', async () => {
     const fetchMock = vi.fn((route, options = {}) => {
       if (route === '/api/update/settings') {

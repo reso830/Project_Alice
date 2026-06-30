@@ -7,15 +7,32 @@ const launcher = fs.readFileSync('scripts/portable/Start-Alice.cmd', 'utf8');
 describe('portable launcher update swap', () => {
   test('swaps staged program files before starting Node', () => {
     expect(launcher).toContain('set "STAGING=%ROOT%data\\update-staging\\alice"');
+    expect(launcher).toContain('set "PENDING_UPDATE=%ROOT%data\\update-pending.json"');
     expect(launcher).toContain('call :apply_update');
     expect(launcher).toContain('robocopy "%STAGING%\\app" "%ROOT%app" /MIR');
     expect(launcher).toContain('robocopy "%STAGING%\\runtime" "%ROOT%runtime" /MIR');
-    expect(launcher).toContain('del /f /q "%ROOT%data\\update-pending.json"');
+    expect(launcher).toContain('del /f /q "%PENDING_UPDATE%"');
     expect(launcher.match(/^:run$/gm)).toHaveLength(1);
     expect(launcher.match(/^if exist "%STAGING%\\" \($/gm)).toHaveLength(1);
-    expect(launcher.match(/^if exist "%STAGING%\\" goto run$/gm)).toHaveLength(1);
+    expect(launcher).toContain('if exist "%PENDING_UPDATE%" (');
+    expect(launcher).toContain('call :clear_abandoned_stage');
+    expect(launcher.match(/^if exist "%STAGING%\\" if exist "%PENDING_UPDATE%" goto run$/gm)).toHaveLength(1);
 
     expect(launcher.indexOf('if exist "%STAGING%\\"')).toBeLessThan(
+      launcher.indexOf('if not exist "%NODE%"'),
+    );
+    expect(launcher.indexOf('if exist "%PENDING_UPDATE%" (')).toBeLessThan(
+      launcher.indexOf('call :apply_update'),
+    );
+  });
+
+  test('clears abandoned staging instead of swapping without a pending install request', () => {
+    expect(launcher).toContain(':clear_abandoned_stage');
+    expect(launcher).toContain(
+      'echo Found staged update files without a pending install request; clearing them.',
+    );
+    expect(launcher).toContain('if exist "%ROOT%data\\update-staging\\" rmdir /s /q "%ROOT%data\\update-staging"');
+    expect(launcher.indexOf('call :clear_abandoned_stage')).toBeLessThan(
       launcher.indexOf('if not exist "%NODE%"'),
     );
   });
@@ -107,7 +124,7 @@ describe('portable launcher update swap', () => {
   test('re-checks staging after Node exits during restart-to-finish', () => {
     const runLabel = launcher.indexOf(':run');
     const launchNode = launcher.indexOf('"%NODE%" "%BOOT%"');
-    const relaunchWhenStaged = launcher.indexOf('if exist "%STAGING%\\" goto run');
+    const relaunchWhenStaged = launcher.indexOf('if exist "%STAGING%\\" if exist "%PENDING_UPDATE%" goto run');
     const errorHandling = launcher.indexOf('if errorlevel 1', launchNode);
 
     expect(runLabel).toBeGreaterThan(-1);
