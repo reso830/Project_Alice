@@ -1,5 +1,5 @@
 import process from 'node:process';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createClient = vi.fn();
 
@@ -9,7 +9,7 @@ vi.mock('@supabase/supabase-js', () => ({
 
 // Import after the mock is registered so the SUT picks up the mocked
 // `createClient`.
-const { assertHostedSchema } = await import('../../server/health.js');
+const { assertHostedSchema, createHealthPayload } = await import('../../server/health.js');
 
 function hostedConfig(overrides = {}) {
   return {
@@ -375,6 +375,48 @@ describe('assertHostedSchema', () => {
 
       // All probes ran despite the first one's soft failure.
       expect(fromCalls).toEqual(ALL_PROBE_TABLES);
+    });
+  });
+
+  describe('createHealthPayload updateSupported gating', () => {
+    const ORIGINAL_PLATFORM = process.platform;
+    const ORIGINAL_CHANNEL = process.env.ALICE_UPDATE_CHANNEL;
+
+    function setPlatform(value) {
+      Object.defineProperty(process, 'platform', { value, configurable: true });
+    }
+
+    afterEach(() => {
+      setPlatform(ORIGINAL_PLATFORM);
+      if (ORIGINAL_CHANNEL === undefined) {
+        delete process.env.ALICE_UPDATE_CHANNEL;
+      } else {
+        process.env.ALICE_UPDATE_CHANNEL = ORIGINAL_CHANNEL;
+      }
+    });
+
+    it('hosted runtime is never update-supported, even with the portable marker', () => {
+      setPlatform('win32');
+      process.env.ALICE_UPDATE_CHANNEL = 'portable';
+      expect(createHealthPayload('hosted').updateSupported).toBe(false);
+    });
+
+    it('local Windows WITHOUT the portable channel marker is not supported', () => {
+      setPlatform('win32');
+      delete process.env.ALICE_UPDATE_CHANNEL;
+      expect(createHealthPayload('local').updateSupported).toBe(false);
+    });
+
+    it('local Windows WITH the portable channel marker is supported', () => {
+      setPlatform('win32');
+      process.env.ALICE_UPDATE_CHANNEL = 'portable';
+      expect(createHealthPayload('local').updateSupported).toBe(true);
+    });
+
+    it('non-Windows is not supported even with the portable marker', () => {
+      setPlatform('linux');
+      process.env.ALICE_UPDATE_CHANNEL = 'portable';
+      expect(createHealthPayload('local').updateSupported).toBe(false);
     });
   });
 

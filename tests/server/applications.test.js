@@ -1,6 +1,5 @@
-import process from 'node:process';
-
 import { describe, expect, it } from 'vitest';
+import { isPortableUpdateRuntime } from '../../server/health.js';
 import { createApp } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
@@ -78,7 +77,7 @@ describe('applications API', () => {
         status: 'ok',
         runtime: 'local',
         version: APP_VERSION,
-        updateSupported: process.platform === 'win32',
+        updateSupported: isPortableUpdateRuntime('local'),
       });
     });
   });

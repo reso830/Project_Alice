@@ -4,7 +4,7 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { createRequireAuth } from './auth/middleware.js';
 import { config } from './config.js';
-import { assertHostedSchema, createHealthPayload } from './health.js';
+import { assertHostedSchema, createHealthPayload, isPortableUpdateRuntime } from './health.js';
 import { createRepositories } from './repositories/index.js';
 import { createAccountRouter } from './routes/account.js';
 import { createApplicationsRouter } from './routes/applications.js';
@@ -84,7 +84,7 @@ export function createApp({
   // path must never re-seed (research.md R-3 / specs/030).
   app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
 
-  if (runtime === 'local' && process.platform === 'win32') {
+  if (isPortableUpdateRuntime(runtime)) {
     app.use('/api/update', createUpdateRouter({ repos: repositories, onShutdown }));
   }
 

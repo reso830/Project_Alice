@@ -50,12 +50,26 @@ const PROBES = [
   },
 ];
 
+// Self-update is only safe when Alice runs under the portable Windows launcher
+// (`Start-Alice.cmd`), which provides the stop → swap → relaunch path. A plain
+// `node` / source checkout on Windows is local + win32 too, but has no swap
+// path — advertising the updater there lets a user stage a download and click
+// "restart" into a server that never comes back. The launcher signals its
+// presence with `ALICE_UPDATE_CHANNEL=portable`, so gate on that as well.
+export function isPortableUpdateRuntime(runtime) {
+  return (
+    runtime === 'local'
+    && process.platform === 'win32'
+    && process.env.ALICE_UPDATE_CHANNEL === 'portable'
+  );
+}
+
 export function createHealthPayload(runtime) {
   return {
     status: 'ok',
     runtime,
     version: APP_VERSION,
-    updateSupported: runtime === 'local' && process.platform === 'win32',
+    updateSupported: isPortableUpdateRuntime(runtime),
   };
 }
 

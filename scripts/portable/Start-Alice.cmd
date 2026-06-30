@@ -12,6 +12,11 @@ set "BOOT=%ROOT%app\server\portable.js"
 set "STAGING=%ROOT%data\update-staging\alice"
 set "NEXT_LAUNCHER=%ROOT%data\Start-Alice.next.cmd"
 
+rem Mark this as the portable runtime so the server only advertises self-update
+rem (updateSupported / the /api/update routes) when launched by this swap-capable
+rem launcher — never from a plain `node` / source checkout that has no swap path.
+set "ALICE_UPDATE_CHANNEL=portable"
+
 if "%~1"=="--finalize-launcher" goto finalize_launcher
 
 :run
@@ -133,9 +138,12 @@ ping -n !DELAY_SECONDS! 127.0.0.1 >nul
 goto rename_retry
 
 :rollback_update
-if exist "%ROOT%app\" rmdir /s /q "%ROOT%app"
-if exist "%ROOT%runtime\" rmdir /s /q "%ROOT%runtime"
+rem Only delete a live folder when its backup exists to restore — otherwise an
+rem app-only staged package (or a runtime rename that never happened) would
+rem remove the sole runtime\node.exe and leave the install unable to start.
+if exist "%ROOT%app.bak\" if exist "%ROOT%app\" rmdir /s /q "%ROOT%app"
 if exist "%ROOT%app.bak\" ren "%ROOT%app.bak" "app"
+if exist "%ROOT%runtime.bak\" if exist "%ROOT%runtime\" rmdir /s /q "%ROOT%runtime"
 if exist "%ROOT%runtime.bak\" ren "%ROOT%runtime.bak" "runtime"
 exit /b 0
 

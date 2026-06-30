@@ -82,6 +82,28 @@ describe('portable launcher update swap', () => {
     );
   });
 
+  test('rollback only deletes a live folder when its backup exists to restore', () => {
+    // Guards against wiping the sole runtime\node.exe when no runtime.bak was
+    // ever created (e.g. an app-only staged package that fails mid-mirror).
+    expect(launcher).toContain(
+      'if exist "%ROOT%app.bak\\" if exist "%ROOT%app\\" rmdir /s /q "%ROOT%app"',
+    );
+    expect(launcher).toContain(
+      'if exist "%ROOT%runtime.bak\\" if exist "%ROOT%runtime\\" rmdir /s /q "%ROOT%runtime"',
+    );
+    // The unconditional deletes must be gone.
+    expect(launcher).not.toMatch(/^if exist "%ROOT%runtime\\" rmdir \/s \/q "%ROOT%runtime"$/m);
+    expect(launcher).not.toMatch(/^if exist "%ROOT%app\\" rmdir \/s \/q "%ROOT%app"$/m);
+  });
+
+  test('marks the portable runtime so self-update is gated to the launcher', () => {
+    expect(launcher).toContain('set "ALICE_UPDATE_CHANNEL=portable"');
+    // Set before Node boots so the server reads it from the environment.
+    expect(launcher.indexOf('set "ALICE_UPDATE_CHANNEL=portable"')).toBeLessThan(
+      launcher.indexOf('"%NODE%" "%BOOT%"'),
+    );
+  });
+
   test('re-checks staging after Node exits during restart-to-finish', () => {
     const runLabel = launcher.indexOf(':run');
     const launchNode = launcher.indexOf('"%NODE%" "%BOOT%"');

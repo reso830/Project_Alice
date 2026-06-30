@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import process from 'node:process';
 import { afterEach, describe, expect, test } from 'vitest';
+import { isPortableUpdateRuntime } from '../../server/health.js';
 import { createApp } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
@@ -69,7 +69,7 @@ describe('createApp static serving', () => {
       status: 'ok',
       runtime: 'local',
       version: APP_VERSION,
-      updateSupported: process.platform === 'win32',
+      updateSupported: isPortableUpdateRuntime('local'),
     });
 
     const postResponse = await globalThis.fetch(`${baseUrl}/not-api`, {

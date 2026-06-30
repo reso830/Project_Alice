@@ -1,7 +1,7 @@
 import { generateKeyPair, SignJWT } from 'jose';
-import process from 'node:process';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequireAuth } from '../../server/auth/middleware.js';
+import { isPortableUpdateRuntime } from '../../server/health.js';
 import { createApp, logBoot } from '../../server/index.js';
 import { createSqliteRepositories } from '../../server/repositories/index.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
@@ -62,7 +62,7 @@ function expectedHealth(runtime) {
     status: 'ok',
     runtime,
     version: APP_VERSION,
-    updateSupported: runtime === 'local' && process.platform === 'win32',
+    updateSupported: isPortableUpdateRuntime(runtime),
   };
 }
 
