@@ -229,6 +229,40 @@ function createInitialStatus() {
   };
 }
 
+function readPendingFailure(dataDir) {
+  const failurePath = path.join(dataDir, 'update-failed.json');
+  if (!fs.existsSync(failurePath)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(fs.readFileSync(failurePath, 'utf8'));
+    return {
+      status: 'failed',
+      progress: 0,
+      bytesTotal: null,
+      bytesDownloaded: 0,
+      error: payload.message || payload.error || 'Alice could not finish applying the update.',
+      currentVersion: normalizeVersion(APP_VERSION),
+      latestVersion: payload.latestVersion ? normalizeVersion(payload.latestVersion) : null,
+      releaseNotesUrl: payload.releaseNotesUrl ?? null,
+    };
+  } catch {
+    return {
+      status: 'failed',
+      progress: 0,
+      bytesTotal: null,
+      bytesDownloaded: 0,
+      error: 'Alice could not finish applying the update.',
+      currentVersion: normalizeVersion(APP_VERSION),
+      latestVersion: null,
+      releaseNotesUrl: null,
+    };
+  } finally {
+    fs.rmSync(failurePath, { force: true });
+  }
+}
+
 function publicStatus(state) {
   return { ...state.status };
 }
@@ -256,7 +290,7 @@ export function createUpdateRouter({
 
   const state = {
     cache: null,
-    status: createInitialStatus(),
+    status: readPendingFailure(dataDir) ?? createInitialStatus(),
     downloadPromise: null,
     downloadController: null,
     cancelRequested: false,

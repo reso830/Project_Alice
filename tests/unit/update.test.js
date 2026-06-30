@@ -238,6 +238,28 @@ describe('update route behavior', () => {
     expect(status.body.error).toContain('missing-release.json');
   });
 
+  test('surfaces and clears a pending launcher update failure', async () => {
+    const root = makeRoot();
+    const dataDir = path.join(root, 'data');
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(path.join(dataDir, 'update-failed.json'), JSON.stringify({
+      status: 'failed',
+      message: 'Failed while replacing runtime files.',
+      latestVersion: 'v1.10.0',
+    }));
+
+    const { baseUrl } = await makeServer({ dataDir });
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(status.body).toMatchObject({
+      status: 'failed',
+      progress: 0,
+      error: 'Failed while replacing runtime files.',
+      latestVersion: '1.10.0',
+    });
+    expect(fs.existsSync(path.join(dataDir, 'update-failed.json'))).toBe(false);
+  });
+
   test('downloads, verifies, extracts, and reports staged status', async () => {
     const root = makeRoot();
     process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
