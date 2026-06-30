@@ -294,7 +294,7 @@ function renderActions(state) {
       actionButton('Install now', 'primary', download),
     );
   } else if (state === 'downloading') {
-    actions.append(manageLink(), actionButton('Cancel', 'ghost', dismiss));
+    actions.append(manageLink(), actionButton('Cancel', 'ghost', cancelDownload));
   } else if (['verifying', 'extracting'].includes(state)) {
     actions.append(manageLink());
   } else if (state === 'ready-to-restart') {
@@ -470,6 +470,18 @@ async function download() {
     applyStatus(await readJson('/api/update/download', { method: 'POST' }));
     startPolling();
   } catch (error) {
+    applyStatus({ status: 'failed', error: error.message });
+  }
+}
+
+async function cancelDownload() {
+  try {
+    const status = await readJson('/api/update/cancel', { method: 'POST' });
+    stopPolling();
+    applyStatus(status);
+    dismiss();
+  } catch (error) {
+    stopPolling();
     applyStatus({ status: 'failed', error: error.message });
   }
 }

@@ -7,6 +7,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.1] — 2026-06-30
+
+Portable self-update hardening — correctness and resilience fixes for the 041
+updater surfaced by a post-release audit. No behavior change to hosted or demo
+modes. (#91)
+
+### Fixed
+
+- **Staged updates require an explicit install request** — the launcher applies
+  a staged update only when `data/update-pending.json` is present; a partial or
+  abandoned extraction is now cleared instead of being mirrored onto a working
+  install on the next launch. (#87)
+- **Download is cancellable from the toast** — the update toast's "Cancel"
+  button calls `POST /api/update/cancel` instead of only hiding itself, so an
+  in-flight download is actually aborted and its staging cleared. (#87)
+- **Update check and download time out** — the GitHub check (~1.5s) and the
+  release download (idle timeout) abort on a stalled connection instead of
+  leaving the UI stuck in a `checking`/`downloading` state. (#87)
+- **Background checks no longer clobber a staged update** — the periodic check
+  preserves an in-progress or `ready-to-restart` state rather than resetting it,
+  so a pending restart is not lost. (#87)
+- **Launcher preserves the application exit code** — a non-zero Node exit is no
+  longer masked while clearing an abandoned stage, restoring the visible
+  error/pause path on a crash. (#87)
+
 ## [1.10.0] — 2026-06-28
 
 Self-Update Support — a portable Windows install can now keep itself current
@@ -1253,7 +1278,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/reso830/Project_Alice/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/reso830/Project_Alice/compare/v1.7.1...v1.8.0

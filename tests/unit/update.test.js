@@ -58,6 +58,9 @@ async function makeServer({
   configDir = path.join(makeRoot(), 'config'),
   onShutdown = async () => {},
   scheduleShutdown = (callback) => callback(),
+  now,
+  checkTimeoutMs,
+  downloadTimeoutMs,
 } = {}) {
   const app = express();
   app.use(express.json());
@@ -67,6 +70,9 @@ async function makeServer({
     configDir,
     onShutdown,
     scheduleShutdown,
+    now,
+    checkTimeoutMs,
+    downloadTimeoutMs,
   }));
 
   const server = app.listen(0);
@@ -144,6 +150,30 @@ async function makeUpdateAssetServer({
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   return `http://127.0.0.1:${port}`;
+}
+
+async function makeSlowJsonServer({ delayMs = 100, body = '{}' } = {}) {
+  const server = http.createServer((_req, res) => {
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(body);
+    }, delayMs);
+  });
+  servers.push(server);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return `http://127.0.0.1:${port}/release.json`;
+}
+
+async function makeStalledBodyJsonServer() {
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.write('{');
+  });
+  servers.push(server);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return `http://127.0.0.1:${port}/release.json`;
 }
 
 afterEach(async () => {
@@ -236,6 +266,48 @@ describe('update route behavior', () => {
       progress: 0,
     });
     expect(status.body.error).toContain('missing-release.json');
+  });
+
+  test('times out slow update checks and reports a check failure', async () => {
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = await makeSlowJsonServer({ delayMs: 80 });
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(makeRoot(), 'data'),
+      checkTimeoutMs: 10,
+    });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(check.response.status).toBe(502);
+    expect(check.body.error).toMatchObject({
+      code: 'UPDATE_CHECK_FAILED',
+      message: 'Update check timed out.',
+    });
+    expect(status.body).toMatchObject({
+      status: 'check-failed',
+      error: 'Update check timed out.',
+    });
+  });
+
+  test('keeps the update check timeout active while reading the response body', async () => {
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = await makeStalledBodyJsonServer();
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(makeRoot(), 'data'),
+      checkTimeoutMs: 10,
+    });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(check.response.status).toBe(502);
+    expect(check.body.error).toMatchObject({
+      code: 'UPDATE_CHECK_FAILED',
+      message: 'Update check timed out.',
+    });
+    expect(status.body).toMatchObject({
+      status: 'check-failed',
+      error: 'Update check timed out.',
+    });
   });
 
   test('surfaces and clears a pending launcher update failure', async () => {
@@ -340,6 +412,28 @@ describe('update route behavior', () => {
     expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
   });
 
+  test('times out stalled downloads and clears staging', async () => {
+    const root = makeRoot();
+    const zipBuffer = fs.readFileSync(fixtureZip);
+    const assetBaseUrl = await makeUpdateAssetServer({ zipBuffer, chunkDelayMs: 80 });
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'update-v1.10.0.zip', browser_download_url: `${assetBaseUrl}/update.zip`, size: zipBuffer.length },
+        { name: 'update-v1.10.0.zip.sha256', browser_download_url: `${assetBaseUrl}/update.zip.sha256` },
+      ],
+    });
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      downloadTimeoutMs: 10,
+    });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'failed');
+
+    expect(status.error).toBe('Update download timed out.');
+    expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
+  });
+
   test('clears staging and reports failure when checksum verification fails', async () => {
     const root = makeRoot();
     const badChecksum = path.join(root, 'bad.sha256');
@@ -379,6 +473,74 @@ describe('update route behavior', () => {
       latestVersion: '1.10.0',
     });
     expect(onShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  test('background checks do not clobber a staged update that is ready to restart', async () => {
+    const root = makeRoot();
+    let nowMs = 0;
+    const releasePath = writeRelease(root);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = releasePath;
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      now: () => new Date(nowMs),
+    });
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    await waitForStatus(baseUrl, 'ready-to-restart');
+
+    fs.writeFileSync(releasePath, JSON.stringify({ tag_name: 'v1.11.0', assets: [] }));
+    nowMs = 2 * 60 * 60 * 1000;
+    const check = await requestJson(baseUrl, '/api/update/check');
+    const status = await requestJson(baseUrl, '/api/update/status');
+    const restart = await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+
+    expect(check.response.status).toBe(200);
+    expect(check.body.latestVersion).toBe('1.11.0');
+    expect(status.body).toMatchObject({
+      status: 'ready-to-restart',
+      latestVersion: '1.10.0',
+    });
+    expect(restart.response.status).toBe(200);
+    expect(fs.existsSync(path.join(dataDir, 'update-pending.json'))).toBe(true);
+  });
+
+  test('download refreshes stale cached release metadata before staging', async () => {
+    const root = makeRoot();
+    let nowMs = 0;
+    const releasePath = writeRelease(root);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = releasePath;
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      now: () => new Date(nowMs),
+    });
+
+    const cached = await requestJson(baseUrl, '/api/update/check');
+    expect(cached.body.latestVersion).toBe('1.10.0');
+
+    fs.writeFileSync(
+      releasePath,
+      JSON.stringify({
+        tag_name: 'v1.11.0',
+        html_url: 'https://github.com/reso830/Project_Alice/releases/tag/v1.11.0',
+        published_at: '2026-06-30T15:08:27Z',
+        assets: [
+          {
+            name: 'update-v1.11.0.zip',
+            browser_download_url: fixtureZip,
+            size: fs.statSync(fixtureZip).size,
+          },
+          {
+            name: 'update-v1.11.0.zip.sha256',
+            browser_download_url: fixtureChecksum,
+          },
+        ],
+      }),
+    );
+    nowMs = 2 * 60 * 60 * 1000;
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(status.latestVersion).toBe('1.11.0');
   });
 
   test('reads and writes update settings in config/settings.json', async () => {

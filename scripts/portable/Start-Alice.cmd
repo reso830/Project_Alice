@@ -10,6 +10,7 @@ if defined ALICE_PORTABLE_ROOT (
 set "NODE=%ROOT%runtime\node.exe"
 set "BOOT=%ROOT%app\server\portable.js"
 set "STAGING=%ROOT%data\update-staging\alice"
+set "PENDING_UPDATE=%ROOT%data\update-pending.json"
 set "NEXT_LAUNCHER=%ROOT%data\Start-Alice.next.cmd"
 
 rem Mark this as the portable runtime so the server only advertises self-update
@@ -21,8 +22,12 @@ if "%~1"=="--finalize-launcher" goto finalize_launcher
 
 :run
 if exist "%STAGING%\" (
-  call :apply_update
-  if errorlevel 1 exit /b 1
+  if exist "%PENDING_UPDATE%" (
+    call :apply_update
+    if errorlevel 1 exit /b 1
+  ) else (
+    call :clear_abandoned_stage
+  )
 )
 
 if not exist "%NODE%" (
@@ -35,15 +40,17 @@ if not exist "%NODE%" (
 echo Starting Alice...
 echo Close this window or press Ctrl+C to stop Alice.
 "%NODE%" "%BOOT%"
+set "NODE_EXIT=%ERRORLEVEL%"
 if defined ALICE_UPDATED_RELAUNCH set "ALICE_UPDATED_RELAUNCH="
 
-if exist "%STAGING%\" goto run
+if exist "%STAGING%\" if exist "%PENDING_UPDATE%" goto run
+if exist "%STAGING%\" call :clear_abandoned_stage
 
-if errorlevel 1 (
+if not "%NODE_EXIT%"=="0" (
   echo.
   echo Alice stopped with an error. Check logs\alice.log if it exists.
   pause
-  exit /b 1
+  exit /b %NODE_EXIT%
 )
 
 exit /b 0
@@ -98,7 +105,7 @@ if exist "%STAGING%\runtime\" (
 )
 
 if exist "%STAGING%\Start-Alice.cmd" copy /y "%STAGING%\Start-Alice.cmd" "%NEXT_LAUNCHER%" >nul
-if exist "%ROOT%data\update-pending.json" del /f /q "%ROOT%data\update-pending.json" >nul
+if exist "%PENDING_UPDATE%" del /f /q "%PENDING_UPDATE%" >nul
 rmdir /s /q "%ROOT%data\update-staging"
 
 if exist "%ROOT%app.bak\" rmdir /s /q "%ROOT%app.bak"
@@ -153,6 +160,11 @@ if not exist "%ROOT%data\" mkdir "%ROOT%data"
 exit /b 0
 
 :clear_pending_update
-if exist "%ROOT%data\update-pending.json" del /f /q "%ROOT%data\update-pending.json" >nul
+if exist "%PENDING_UPDATE%" del /f /q "%PENDING_UPDATE%" >nul
+if exist "%ROOT%data\update-staging\" rmdir /s /q "%ROOT%data\update-staging"
+exit /b 0
+
+:clear_abandoned_stage
+echo Found staged update files without a pending install request; clearing them.
 if exist "%ROOT%data\update-staging\" rmdir /s /q "%ROOT%data\update-staging"
 exit /b 0

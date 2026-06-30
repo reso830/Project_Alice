@@ -10,7 +10,16 @@ import { readUpdateSettings, writeUpdateSettings } from '../portable/settings.js
 
 const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/reso830/Project_Alice/releases/latest';
 const CACHE_MS = 60 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 1500;
+const DOWNLOAD_TIMEOUT_MS = 30 * 1000;
 const READY_STATUS = 'ready-to-restart';
+const ACTIVE_UPDATE_STATUSES = new Set([
+  'downloading',
+  'verifying',
+  'extracting',
+  READY_STATUS,
+  'installing',
+]);
 
 function defaultDataDir() {
   if (process.env.ALICE_DATA_DIR) {
@@ -71,31 +80,88 @@ function dataUrlToPath(url) {
   return null;
 }
 
-async function readTextSource(url) {
+function createTimeoutController(timeoutMs, message) {
+  const controller = new AbortController();
+  let timer = null;
+
+  const refresh = () => {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return;
+    }
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      controller.abort(new Error(message));
+    }, timeoutMs);
+  };
+  const clear = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  refresh();
+  return { signal: controller.signal, refresh, clear };
+}
+
+function composeAbortSignals(...signals) {
+  const controller = new AbortController();
+  const cleanup = [];
+
+  for (const signal of signals.filter(Boolean)) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+
+    const abort = () => {
+      if (!controller.signal.aborted) {
+        controller.abort(signal.reason);
+      }
+    };
+    signal.addEventListener('abort', abort, { once: true });
+    cleanup.push(() => signal.removeEventListener('abort', abort));
+  }
+
+  return {
+    signal: controller.signal,
+    clear: () => cleanup.splice(0).forEach((entry) => entry()),
+  };
+}
+
+async function readTextSource(url, { timeoutMs = CHECK_TIMEOUT_MS } = {}) {
   const localPath = dataUrlToPath(url);
   if (localPath) {
     return fs.readFileSync(localPath, 'utf8');
   }
 
-  const response = await globalThis.fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json, application/json',
-      'User-Agent': 'Project-Alice-Updater',
-    },
-  });
+  const timeout = createTimeoutController(timeoutMs, 'Update check timed out.');
+  try {
+    const response = await globalThis.fetch(url, {
+      signal: timeout.signal,
+      headers: {
+        Accept: 'application/vnd.github+json, application/json',
+        'User-Agent': 'Project-Alice-Updater',
+      },
+    });
 
-  if (!response.ok) {
-    const message = response.status === 403
-      ? 'Update check rate limited. Try again later.'
-      : `Update check failed with HTTP ${response.status}.`;
-    throw new Error(message);
+    if (!response.ok) {
+      const message = response.status === 403
+        ? 'Update check rate limited. Try again later.'
+        : `Update check failed with HTTP ${response.status}.`;
+      throw new Error(message);
+    }
+
+    return await response.text();
+  } finally {
+    timeout.clear();
   }
-
-  return response.text();
 }
 
-async function readJsonSource(url) {
-  return JSON.parse(await readTextSource(url));
+async function readJsonSource(url, options) {
+  return JSON.parse(await readTextSource(url, options));
 }
 
 function throwIfAborted(signal) {
@@ -104,7 +170,7 @@ function throwIfAborted(signal) {
   }
 }
 
-async function downloadToFile(url, filePath, onProgress = () => {}, { signal } = {}) {
+async function downloadToFile(url, filePath, onProgress = () => {}, { signal, timeoutMs = DOWNLOAD_TIMEOUT_MS } = {}) {
   const localPath = dataUrlToPath(url);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   throwIfAborted(signal);
@@ -117,38 +183,48 @@ async function downloadToFile(url, filePath, onProgress = () => {}, { signal } =
     return;
   }
 
-  const response = await globalThis.fetch(url, { signal });
-  if (!response.ok) {
-    throw new Error(`Download failed with HTTP ${response.status}.`);
-  }
-
-  const bytesTotal = Number(response.headers.get('content-length')) || null;
-  if (!response.body?.getReader) {
-    const arrayBuffer = await response.arrayBuffer();
-    fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-    onProgress(fs.statSync(filePath).size, bytesTotal);
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const fd = fs.openSync(filePath, 'w');
-  let bytesDownloaded = 0;
+  const timeout = createTimeoutController(timeoutMs, 'Update download timed out.');
+  const composed = composeAbortSignals(signal, timeout.signal);
 
   try {
-    while (true) {
-      throwIfAborted(signal);
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
+    const response = await globalThis.fetch(url, { signal: composed.signal });
+    timeout.refresh();
+    if (!response.ok) {
+      throw new Error(`Download failed with HTTP ${response.status}.`);
+    }
 
-      const chunk = Buffer.from(value);
-      fs.writeSync(fd, chunk);
-      bytesDownloaded += chunk.length;
-      onProgress(bytesDownloaded, bytesTotal);
+    const bytesTotal = Number(response.headers.get('content-length')) || null;
+    if (!response.body?.getReader) {
+      const arrayBuffer = await response.arrayBuffer();
+      fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+      onProgress(fs.statSync(filePath).size, bytesTotal);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const fd = fs.openSync(filePath, 'w');
+    let bytesDownloaded = 0;
+
+    try {
+      while (true) {
+        throwIfAborted(composed.signal);
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        const chunk = Buffer.from(value);
+        fs.writeSync(fd, chunk);
+        bytesDownloaded += chunk.length;
+        onProgress(bytesDownloaded, bytesTotal);
+        timeout.refresh();
+      }
+    } finally {
+      fs.closeSync(fd);
     }
   } finally {
-    fs.closeSync(fd);
+    timeout.clear();
+    composed.clear();
   }
 }
 
@@ -276,6 +352,10 @@ function setFailure(state, error, status = 'failed') {
   };
 }
 
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function createUpdateRouter({
   repos,
   onShutdown = async () => {},
@@ -283,6 +363,8 @@ export function createUpdateRouter({
   configDir = defaultConfigDir(),
   now = () => new Date(),
   scheduleShutdown = (callback) => setTimeout(callback, 500),
+  checkTimeoutMs = CHECK_TIMEOUT_MS,
+  downloadTimeoutMs = DOWNLOAD_TIMEOUT_MS,
 } = {}) {
   if (!repos) {
     throw new Error('createUpdateRouter: `repos` is required');
@@ -297,16 +379,26 @@ export function createUpdateRouter({
   };
   const router = express.Router();
 
+  function isCacheFresh() {
+    return Boolean(state.cache && now().getTime() - state.cache.checkedAt < CACHE_MS);
+  }
+
   async function checkForUpdates({ force = false } = {}) {
     const source = process.env.ALICE_UPDATE_SOURCE_OVERRIDE || GITHUB_LATEST_RELEASE_URL;
-    if (!force && state.cache && now().getTime() - state.cache.checkedAt < CACHE_MS) {
+    if (!force && isCacheFresh()) {
       return state.cache.payload;
     }
 
-    state.status = { ...state.status, status: 'checking', error: null };
-    const release = await readJsonSource(source);
+    const preserveActiveStatus = ACTIVE_UPDATE_STATUSES.has(state.status.status);
+    if (!preserveActiveStatus) {
+      state.status = { ...state.status, status: 'checking', error: null };
+    }
+    const release = await readJsonSource(source, { timeoutMs: checkTimeoutMs });
     const payload = mapRelease(release, process.env.ALICE_VERSION_OVERRIDE || APP_VERSION);
     state.cache = { checkedAt: now().getTime(), payload };
+    if (preserveActiveStatus) {
+      return payload;
+    }
     state.status = {
       ...state.status,
       status: payload.updateAvailable ? 'available' : 'idle',
@@ -349,7 +441,7 @@ export function createUpdateRouter({
       if (state.status.bytesTotal) {
         state.status.progress = Math.round((bytesDownloaded / state.status.bytesTotal) * 100);
       }
-    }, { signal });
+    }, { signal, timeoutMs: downloadTimeoutMs });
     throwIfAborted(signal);
     state.status = {
       ...state.status,
@@ -359,7 +451,7 @@ export function createUpdateRouter({
       bytesTotal: state.status.bytesTotal ?? fs.statSync(zipPath).size,
       error: null,
     };
-    await downloadToFile(release.checksumUrl, checksumPath, () => {}, { signal });
+    await downloadToFile(release.checksumUrl, checksumPath, () => {}, { signal, timeoutMs: downloadTimeoutMs });
     throwIfAborted(signal);
 
     if (!verifyChecksum(zipPath, fs.readFileSync(checksumPath, 'utf8'))) {
@@ -392,8 +484,11 @@ export function createUpdateRouter({
     try {
       res.status(200).json(await checkForUpdates());
     } catch (error) {
-      setFailure(state, error, 'check-failed');
-      res.status(502).json({ error: { code: 'UPDATE_CHECK_FAILED', message: state.status.error } });
+      const message = errorMessage(error);
+      if (!ACTIVE_UPDATE_STATUSES.has(state.status.status)) {
+        setFailure(state, error, 'check-failed');
+      }
+      res.status(502).json({ error: { code: 'UPDATE_CHECK_FAILED', message } });
     }
   });
 
@@ -403,9 +498,9 @@ export function createUpdateRouter({
       return;
     }
 
-    let release = state.cache?.payload;
+    let release = isCacheFresh() ? state.cache?.payload : null;
     try {
-      release = release ?? await checkForUpdates();
+      release = release ?? await checkForUpdates({ force: Boolean(state.cache) });
       if (!release?.packageUrl || !release?.checksumUrl) {
         throw new Error('Release package or checksum URL is missing.');
       }
