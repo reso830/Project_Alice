@@ -66,10 +66,10 @@ Ratified 2026-04-25. Full text in `.specify/memory/constitution.md`. Summary of 
 Remote: `https://github.com/reso830/Project_Alice.git` (main branch: `main`)  
 Codex-specific runtime files (e.g. worktrees) may live under `.codex/` if needed. PowerShell setup scripts are in `.specify/scripts/powershell/`.
 
-**Commit attribution.** This repo is built collaboratively by three AI agents. End every commit message with all three co-author trailers (after a blank line), so the work is credited to all of them on GitHub:
+**Commit attribution.** This repo is built collaboratively by three AI agents — Claude, Codex, and Antigravity (Gemini-based). End every commit message with all three co-author trailers (after a blank line). Antigravity is credited via Google's `gemini-code-assist[bot]` account so it links on GitHub:
 
 ```
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 Co-Authored-By: Codex <noreply@openai.com>
-Co-Authored-By: Antigravity <noreply@google.com>
+Co-Authored-By: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>
 ```
