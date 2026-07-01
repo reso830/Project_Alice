@@ -19,6 +19,7 @@ rem launcher — never from a plain `node` / source checkout that has no swap pa
 set "ALICE_UPDATE_CHANNEL=portable"
 
 if "%~1"=="--finalize-launcher" goto finalize_launcher
+if "%~1"=="--cleanup-next-launcher" goto cleanup_next_launcher
 
 :run
 if exist "%STAGING%\" (
@@ -124,6 +125,11 @@ exit /b 0
 
 :finalize_launcher
 if exist "%NEXT_LAUNCHER%" copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd" >nul
+"%ROOT%Start-Alice.cmd" --cleanup-next-launcher
+exit /b %ERRORLEVEL%
+
+:cleanup_next_launcher
+if exist "%NEXT_LAUNCHER%" del /f /q "%NEXT_LAUNCHER%" >nul
 goto run
 
 :rename_with_retry

@@ -1,4 +1,8 @@
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
+import { spawn } from 'node:child_process';
 
 import { describe, expect, test } from 'vitest';
 
@@ -49,6 +53,10 @@ describe('portable launcher update swap', () => {
       'copy /y "%NEXT_LAUNCHER%" "%ROOT%Start-Alice.cmd"',
       finalizeLauncher,
     );
+    const deleteNextLauncher = launcher.indexOf(
+      'del /f /q "%NEXT_LAUNCHER%"',
+      finalizeLauncher,
+    );
 
     expect(copyToNext).toBeGreaterThan(-1);
     expect(removeStaging).toBeGreaterThan(copyToNext);
@@ -56,6 +64,7 @@ describe('portable launcher update swap', () => {
     expect(runNextLauncher).toBeGreaterThan(setPortableRoot);
     expect(finalizeLauncher).toBeGreaterThan(runNextLauncher);
     expect(overwriteLauncher).toBeGreaterThan(finalizeLauncher);
+    expect(deleteNextLauncher).toBeGreaterThan(overwriteLauncher);
   });
 
   test('renames active directories to backups before mirroring staged files', () => {
@@ -155,4 +164,70 @@ describe('portable launcher update swap', () => {
     expect(setRelaunchEnv).toBeLessThan(restartLauncher);
     expect(clearRelaunchEnv).toBeGreaterThan(launcher.indexOf('"%NODE%" "%BOOT%"'));
   });
+
+  test.runIf(process.platform === 'win32')(
+    'executes the staged swap and leaves a clean update filesystem',
+    async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-launcher-'));
+      try {
+        const write = (relativePath, content = '') => {
+          const target = path.join(root, relativePath);
+          fs.mkdirSync(path.dirname(target), { recursive: true });
+          fs.writeFileSync(target, content);
+        };
+
+        write('Start-Alice.cmd', launcher);
+        write('app/dist/old.txt', 'old app');
+        write('app/server/portable.js', "import fs from 'node:fs';\nfs.writeFileSync('data/boot-marker.txt', 'booted');\n");
+        fs.mkdirSync(path.join(root, 'runtime'), { recursive: true });
+        fs.copyFileSync(process.execPath, path.join(root, 'runtime', 'node.exe'));
+        write('data/update-pending.json', '{"version":"test"}\n');
+        write('data/update-staging/alice/app/dist/new.txt', 'new app');
+        write(
+          'data/update-staging/alice/app/server/portable.js',
+          "import fs from 'node:fs';\nfs.writeFileSync('data/boot-marker.txt', 'booted');\n",
+        );
+        fs.mkdirSync(path.join(root, 'data', 'update-staging', 'alice', 'runtime'), {
+          recursive: true,
+        });
+        fs.copyFileSync(
+          process.execPath,
+          path.join(root, 'data', 'update-staging', 'alice', 'runtime', 'node.exe'),
+        );
+        write('data/update-staging/alice/Start-Alice.cmd', launcher);
+
+        const result = await new Promise((resolve) => {
+          const child = spawn('cmd.exe', ['/c', path.join(root, 'Start-Alice.cmd')], {
+            cwd: root,
+            env: { ...process.env, ALICE_PORTABLE_ROOT: root },
+            windowsHide: true,
+          });
+          let stdout = '';
+          let stderr = '';
+          child.stdout.on('data', (chunk) => {
+            stdout += chunk;
+          });
+          child.stderr.on('data', (chunk) => {
+            stderr += chunk;
+          });
+          child.on('close', (code) => resolve({ code, stdout, stderr }));
+        });
+
+        expect(result).toMatchObject({ code: 0 });
+        expect(result.stderr).toBe('');
+        expect(fs.existsSync(path.join(root, 'app', 'dist', 'new.txt'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'app', 'dist', 'old.txt'))).toBe(false);
+        expect(fs.existsSync(path.join(root, 'runtime', 'node.exe'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'data', 'boot-marker.txt'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'data', 'update-staging'))).toBe(false);
+        expect(fs.existsSync(path.join(root, 'data', 'update-pending.json'))).toBe(false);
+        expect(fs.existsSync(path.join(root, 'data', 'Start-Alice.next.cmd'))).toBe(false);
+        expect(fs.existsSync(path.join(root, 'app.bak'))).toBe(false);
+        expect(fs.existsSync(path.join(root, 'runtime.bak'))).toBe(false);
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+    15000,
+  );
 });

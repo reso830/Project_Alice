@@ -4,7 +4,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { listenWithFallback } from './portable/listen.js';
-import { checkLock, removeLock, writeLock } from './portable/lock.js';
+import { acquireLock, removeLock, writeLock } from './portable/lock.js';
 import { readLaunchSettings } from './portable/settings.js';
 
 function defaultRoot() {
@@ -86,14 +86,21 @@ export async function run({
   if (updatedRelaunch) {
     delete process.env.ALICE_UPDATED_RELAUNCH;
   }
-  const lock = await checkLock({
+  const lock = await acquireLock({
     dataDir,
+    port: settings.port,
     probe: (port) => probe(`http://127.0.0.1:${port}`),
   });
 
   // Single-instance: use the per-install lock so the same portable copy is
   // detected even when it fell back to a different port on its first launch.
-  if (lock.active) {
+  if (!lock.acquired) {
+    if (lock.pending) {
+      appendLog(packageRoot, '[portable] Existing instance is still starting; not opening a placeholder URL.');
+      console.log('Alice is already starting. Try again in a moment if the browser does not open.');
+      return { alreadyRunning: true, pending: true };
+    }
+
     const runningUrl = `http://127.0.0.1:${lock.port}`;
     appendLog(packageRoot, `[portable] Existing instance detected at ${runningUrl}; focusing it.`);
     console.log(`Alice is already running at ${runningUrl}; opening your browser.`);
@@ -107,72 +114,86 @@ export async function run({
     return { alreadyRunning: true, port: lock.port };
   }
 
-  process.env.APP_RUNTIME = 'local';
-  process.env.ALICE_CONFIG_DIR = configDir;
-  process.env.ALICE_DB_PATH = dataPath;
-  process.env.PORT = String(settings.port);
+  let server;
+  let port;
 
-  const [{ config }, { createRepositories }, { createApp }] = await Promise.all([
-    import('./config.js'),
-    import('./repositories/index.js'),
-    import('./index.js'),
-  ]);
+  try {
+    process.env.APP_RUNTIME = 'local';
+    process.env.ALICE_CONFIG_DIR = configDir;
+    process.env.ALICE_DB_PATH = dataPath;
+    process.env.PORT = String(settings.port);
 
-  const repositories = await createRepositories(config);
-  let stopServer = async () => {};
-  const onShutdown = async () => {
-    await stopServer();
-    process.exit(0);
-  };
-  const app = createApp({
-    repositories,
-    config,
-    onShutdown,
-    serveStatic: true,
-    distDir,
-  });
-  const { server, port } = await listenWithFallback(app, {
-    host: '127.0.0.1',
-    port: settings.port,
-    maxTries,
-  });
-  const url = `http://127.0.0.1:${port}`;
-  writeLock(port, { dataDir });
+    const [{ config }, { createRepositories }, { createApp }] = await Promise.all([
+      import('./config.js'),
+      import('./repositories/index.js'),
+      import('./index.js'),
+    ]);
 
-  appendLog(packageRoot, `[portable] Alice listening at ${url}`);
-  console.log(`Alice is running at ${url}`);
-  console.log('Close this console window or press Ctrl+C to stop Alice.');
-
-  if (settings.openBrowser && !updatedRelaunch) {
-    await open(url);
-  } else if (updatedRelaunch) {
-    console.log(`Alice relaunched after update; reconnecting the existing browser tab at ${url}`);
-  } else {
-    console.log(`Open Alice in your browser: ${url}`);
-  }
-
-  function stop() {
-    return new Promise((resolve, reject) => {
-      server.close((error) => (error ? reject(error) : resolve()));
-    }).then(async () => {
-      const { db } = await import('./db.js');
-      if (db.open) {
-        db.close();
-      }
-      removeLock({ dataDir });
+    const repositories = await createRepositories(config);
+    let stopServer = async () => {};
+    const onShutdown = async () => {
+      await stopServer();
+      process.exit(0);
+    };
+    const app = createApp({
+      repositories,
+      config,
+      onShutdown,
+      serveStatic: true,
+      distDir,
     });
+    ({ server, port } = await listenWithFallback(app, {
+      host: '127.0.0.1',
+      port: settings.port,
+      maxTries,
+    }));
+    writeLock(port, { dataDir });
+
+    function stop() {
+      return new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      }).then(async () => {
+        const { db } = await import('./db.js');
+        if (db.open) {
+          db.close();
+        }
+        removeLock({ dataDir, pid: process.pid });
+      });
+    }
+    stopServer = stop;
+
+    async function shutdown() {
+      await stop();
+      process.exit(0);
+    }
+
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
+
+    const url = `http://127.0.0.1:${port}`;
+
+    appendLog(packageRoot, `[portable] Alice listening at ${url}`);
+    console.log(`Alice is running at ${url}`);
+    console.log('Close this console window or press Ctrl+C to stop Alice.');
+
+    if (settings.openBrowser && !updatedRelaunch) {
+      await open(url);
+    } else if (updatedRelaunch) {
+      console.log(`Alice relaunched after update; reconnecting the existing browser tab at ${url}`);
+    } else {
+      console.log(`Open Alice in your browser: ${url}`);
+    }
+
+    return { server, port, stop };
+  } catch (error) {
+    if (server?.listening) {
+      await new Promise((resolve, reject) => {
+        server.close((closeError) => (closeError ? reject(closeError) : resolve()));
+      });
+    }
+    removeLock({ dataDir, pid: process.pid });
+    throw error;
   }
-  stopServer = stop;
-
-  async function shutdown() {
-    await stop();
-    process.exit(0);
-  }
-
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
-
-  return { server, port, stop };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

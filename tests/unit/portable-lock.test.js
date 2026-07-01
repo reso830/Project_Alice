@@ -5,7 +5,12 @@ import process from 'node:process';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
-import { checkLock, removeLock, writeLock } from '../../server/portable/lock.js';
+import {
+  acquireLock,
+  checkLock,
+  removeLock,
+  writeLock,
+} from '../../server/portable/lock.js';
 
 const roots = [];
 
@@ -95,6 +100,135 @@ describe('portable lockfile manager', () => {
 
     removeLock({ dataDir });
 
+    expect(fs.existsSync(path.join(dataDir, 'alice.lock'))).toBe(false);
+  });
+
+  test('atomically allows exactly one acquisition winner', async () => {
+    const dataDir = makeDataDir();
+    const probe = vi.fn().mockResolvedValue(true);
+
+    const results = await Promise.all([
+      acquireLock({ dataDir, port: 4317, probe, pendingWaitMs: 1, pendingPollMs: 1 }),
+      acquireLock({ dataDir, port: 4317, probe, pendingWaitMs: 1, pendingPollMs: 1 }),
+    ]);
+
+    expect(results.filter((result) => result.acquired)).toHaveLength(1);
+    expect(results.filter((result) => !result.acquired)).toHaveLength(1);
+    expect(readLock(dataDir)).toMatchObject({
+      version: 1,
+      pid: process.pid,
+      port: 4317,
+      pending: true,
+      appVersion: APP_VERSION,
+    });
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  test('takes over a genuinely stale lock with an exclusive retry', async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(
+      path.join(dataDir, 'alice.lock'),
+      JSON.stringify({
+        version: 1,
+        pid: 99999999,
+        port: 4317,
+        appVersion: APP_VERSION,
+        launchTime: new Date().toISOString(),
+      }),
+    );
+
+    const result = await acquireLock({
+      dataDir,
+      port: 4318,
+      probe: vi.fn().mockResolvedValue(false),
+    });
+
+    expect(result).toMatchObject({
+      acquired: true,
+      stale: true,
+      port: 4318,
+    });
+    expect(readLock(dataDir)).toMatchObject({
+      pid: process.pid,
+      port: 4318,
+      pending: true,
+    });
+  });
+
+  test('allows exactly one winner during concurrent stale-lock takeover', async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(
+      path.join(dataDir, 'alice.lock'),
+      JSON.stringify({
+        version: 1,
+        pid: 99999999,
+        port: 4317,
+        appVersion: APP_VERSION,
+        launchTime: new Date().toISOString(),
+      }),
+    );
+
+    const results = await Promise.all([
+      acquireLock({
+        dataDir,
+        port: 4318,
+        probe: vi.fn().mockResolvedValue(false),
+        pendingWaitMs: 1,
+        pendingPollMs: 1,
+      }),
+      acquireLock({
+        dataDir,
+        port: 4318,
+        probe: vi.fn().mockResolvedValue(false),
+        pendingWaitMs: 1,
+        pendingPollMs: 1,
+      }),
+    ]);
+
+    expect(results.filter((result) => result.acquired)).toHaveLength(1);
+    expect(results.filter((result) => !result.acquired)).toHaveLength(1);
+    expect(readLock(dataDir)).toMatchObject({
+      pid: process.pid,
+      port: 4318,
+      pending: true,
+    });
+  });
+
+  test('waits for a pending lock to finalize before reporting the running port', async () => {
+    const dataDir = makeDataDir();
+    await acquireLock({ dataDir, port: 4317 });
+
+    setTimeout(() => {
+      writeLock(4319, { dataDir });
+    }, 20);
+
+    const result = await acquireLock({
+      dataDir,
+      port: 4317,
+      probe: vi.fn().mockResolvedValue(true),
+      pendingWaitMs: 500,
+      pendingPollMs: 5,
+    });
+
+    expect(result).toMatchObject({
+      acquired: false,
+      active: true,
+      pending: false,
+      port: 4319,
+      healthActive: true,
+    });
+  });
+
+  test('owner-safe cleanup does not remove another process lock', () => {
+    const dataDir = makeDataDir();
+    writeLock(4317, { dataDir });
+
+    const removed = removeLock({ dataDir, pid: process.pid + 1 });
+
+    expect(removed).toBe(false);
+    expect(fs.existsSync(path.join(dataDir, 'alice.lock'))).toBe(true);
+
+    expect(removeLock({ dataDir, pid: process.pid })).toBe(true);
     expect(fs.existsSync(path.join(dataDir, 'alice.lock'))).toBe(false);
   });
 });

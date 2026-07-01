@@ -7,6 +7,32 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.2] — 2026-06-30
+
+Portable launcher and single-instance hardening — correctness and resilience
+fixes for the 041 boot/swap path surfaced by the post-release audit. No behavior
+change to hosted or demo modes. (#88)
+
+### Fixed
+
+- **Single-instance lock is now atomic** — launch acquires the per-install lock
+  with an exclusive-create (`O_EXCL`) write before starting the server, so two
+  launches racing on the same `data/alice.db` can no longer both pass the check
+  and start two servers. A genuinely stale lock (dead PID / failed health probe)
+  is still taken over by a fresh launch. (#88)
+- **Lock cleanup is owner-safe** — shutdown removes the lockfile only when the
+  current process owns it (PID guard), and a failed boot closes the half-open
+  server and releases its own lock instead of stranding it. (#88)
+- **Launcher cleans up the staged next-launcher** — after an update finalizes,
+  `data/Start-Alice.next.cmd` is deleted instead of lingering in user state
+  until the next update overwrites it. (#88)
+
+### Tests
+
+- Added concurrent-acquisition coverage for the lock manager and extended the
+  launcher and bootstrap suites for the finalize-cleanup and atomic-lock paths.
+  (#88)
+
 ## [1.10.1] — 2026-06-30
 
 Portable self-update hardening — correctness and resilience fixes for the 041
@@ -1278,7 +1304,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.2...HEAD
+[1.10.2]: https://github.com/reso830/Project_Alice/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/reso830/Project_Alice/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/reso830/Project_Alice/compare/v1.8.0...v1.9.0
