@@ -7,6 +7,40 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.4] — 2026-07-01
+
+Update-mode picker fix — the Profile › Settings › Updates mode picker now
+changes behavior and no longer offers an option the 041 spec forbids. Portable
+Windows self-update only; no behavior change to hosted or demo modes. (#85)
+
+### Changed
+
+- **"Notify only" is now functional** — selecting it shows only the Profile nav
+  badge when an update is available and suppresses the passive update-available
+  toast. "Ask before installing" (the default) still surfaces the toast with the
+  Install prompt. Active states triggered by an explicit install from the Profile
+  page (downloading, verifying, ready-to-restart, failed) continue to surface in
+  either mode. (#85)
+- **Mode changes take effect immediately** — saving a new update mode dispatches
+  an `alice-update-settings-changed` event that the update toast honors live, so
+  switching to "Notify only" hides an already-visible toast without a reload.
+  (#85)
+
+### Removed
+
+- **"Install automatically" update mode** — the option is removed from the picker
+  and rejected by settings validation; fully automatic/consent-free updates are
+  an explicit Non-Goal of feature 041. An existing `updateMode: "auto"` in
+  `config/settings.json` normalizes to the default "Ask before installing" on
+  read, so no user action is required. (#85)
+
+### Tests
+
+- Added coverage that "Notify only" keeps the toast hidden on an available
+  update while "Ask before installing" renders it, that the settings-changed
+  event flips a visible toast, and that `updateMode: "auto"` is rejected on write
+  and normalized to "ask" on read. (#85)
+
 ## [1.10.3] — 2026-07-01
 
 Local SQLite migration/backup hardening — closes a data-safety gap in the 041
@@ -1334,7 +1368,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.3...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.4...HEAD
+[1.10.4]: https://github.com/reso830/Project_Alice/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/reso830/Project_Alice/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/reso830/Project_Alice/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/reso830/Project_Alice/compare/v1.10.0...v1.10.1

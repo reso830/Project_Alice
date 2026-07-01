@@ -912,10 +912,6 @@ const UPDATE_MODE_COPY = {
     title: 'Ask before installing',
     description: 'Confirm each update before it downloads.',
   },
-  auto: {
-    title: 'Install automatically',
-    description: 'Keep Alice up to date in the background.',
-  },
 };
 
 const EYE_ICON_PATH = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z';
@@ -1064,6 +1060,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
   let restartTimer = null;
   let restartStartedAt = 0;
   let unsubscribeStatus = null;
+  let settingsSaveId = 0;
 
   _cleanupHandlers.push(() => {
     if (statusTimer) {
@@ -1147,12 +1144,26 @@ function renderUpdateSettingsGroup({ health } = {}) {
 
   function saveSettings(nextSettings) {
     const previousSettings = state.settings;
+    const saveId = settingsSaveId + 1;
+    settingsSaveId = saveId;
     state.settings = nextSettings;
     render();
     updateJson('settings', {
       method: 'POST',
       body: JSON.stringify(nextSettings),
+    }).then(() => {
+      if (saveId !== settingsSaveId) {
+        return;
+      }
+      state.settings = nextSettings;
+      globalThis.dispatchEvent?.(new globalThis.CustomEvent('alice-update-settings-changed', {
+        detail: nextSettings,
+      }));
+      render();
     }).catch((error) => {
+      if (saveId !== settingsSaveId) {
+        return;
+      }
       state.settings = previousSettings;
       state.error = error.message;
       Toast.show('Could not save update settings.', 'error');

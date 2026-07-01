@@ -66,9 +66,9 @@ Update behavior configuration is stored locally under `config/settings.json` alo
     },
     "updateMode": {
       "type": "string",
-      "enum": ["notify", "ask", "auto"],
+      "enum": ["notify", "ask"],
       "default": "ask",
-      "description": "Update modes: 'notify' (only badge available releases), 'ask' (notify and prompt download), 'auto' (download in background and prompt restart)."
+      "description": "Update modes: 'notify' (only badge available releases; suppress passive available toast) and 'ask' (notify and prompt download). Amended by #85: 'auto' was removed because automatic updates without consent are outside the feature non-goals."
     }
   }
 }

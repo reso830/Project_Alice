@@ -579,14 +579,16 @@ describe('update route behavior', () => {
     const configDir = path.join(root, 'config');
     const { baseUrl } = await makeServer({ configDir });
 
-    const result = await requestJson(baseUrl, '/api/update/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ autoCheckUpdates: true, updateMode: 'beta' }),
-    });
+    for (const updateMode of ['beta', 'auto']) {
+      const result = await requestJson(baseUrl, '/api/update/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autoCheckUpdates: true, updateMode }),
+      });
 
-    expect(result.response.status).toBe(400);
-    expect(result.body.error.code).toBe('INVALID_UPDATE_SETTINGS');
+      expect(result.response.status).toBe(400);
+      expect(result.body.error.code).toBe('INVALID_UPDATE_SETTINGS');
+    }
     expect(fs.existsSync(path.join(configDir, 'settings.json'))).toBe(false);
   });
 });

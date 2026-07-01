@@ -76,6 +76,69 @@ describe('UpdateToast', () => {
     expect(toast.querySelector('.update-toast__link').href).toBe('https://example.test/release');
   });
 
+  it('hides the passive available toast in notify mode', async () => {
+    vi.stubGlobal('fetch', vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: true, updateMode: 'notify' }),
+        });
+      }
+      if (route === '/api/update/check') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ updateAvailable: true, latestVersion: '1.10.0' }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: 'available', latestVersion: '1.10.0' }),
+      });
+    }));
+
+    UpdateToast.mount({ health: { updateSupported: true } });
+    await flush();
+
+    const toast = document.querySelector('.update-toast');
+    expect(toast.hidden).toBe(true);
+    expect(toast.textContent).toBe('');
+  });
+
+  it('applies update mode changes immediately from the settings event', async () => {
+    vi.stubGlobal('fetch', vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: true, updateMode: 'ask' }),
+        });
+      }
+      if (route === '/api/update/check') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ updateAvailable: true, latestVersion: '1.10.0' }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: 'available', latestVersion: '1.10.0' }),
+      });
+    }));
+
+    UpdateToast.mount({ health: { updateSupported: true } });
+    await flush();
+
+    const toast = document.querySelector('.update-toast');
+    expect(toast.hidden).toBe(false);
+
+    globalThis.dispatchEvent(new globalThis.CustomEvent('alice-update-settings-changed', {
+      detail: { autoCheckUpdates: true, updateMode: 'notify' },
+    }));
+    await flush();
+
+    expect(toast.hidden).toBe(true);
+    expect(toast.textContent).toBe('');
+  });
+
   it('does not check for updates on mount when auto-check is disabled', async () => {
     const fetchMock = vi.fn((route) => {
       if (route === '/api/update/settings') {

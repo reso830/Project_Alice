@@ -369,7 +369,7 @@ Key rules (see the full spec for detail):
 - **Status above, controls below**, split by a `1px solid #F2EFE9` rule. Contextual info (available banner, download/install progress) sits **above** the rule with the version — never beneath it.
 - **No redundant status pill** — the green **● Up to date** pill shows only in the calm idle state; active states convey status through the block title itself.
 - **Current version** binds to `APP_VERSION` (`v1.9.0`); **Check now** is always reachable.
-- **Update mode** is **collapsed by default** to one row (label + current choice + chevron) and expands to three radio cards (Notify only / Ask before installing / Install automatically) only while choosing.
+- **Update mode** is **collapsed by default** to one row (label + current choice + chevron) and expands to two radio cards (Notify only / Ask before installing) only while choosing. Notify only keeps the nav badge but suppresses the passive update-available toast; Ask before installing keeps the install prompt toast.
 
 ---
 

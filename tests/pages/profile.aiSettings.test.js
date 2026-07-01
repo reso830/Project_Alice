@@ -313,8 +313,8 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(section.textContent).toContain('UPDATES');
     expect(section.textContent).toContain('Current version');
-    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.3');
-    expect(section.textContent).not.toContain('vv1.10.3');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.4');
+    expect(section.textContent).not.toContain('vv1.10.4');
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
@@ -326,7 +326,7 @@ describe('Profile — AI resume parsing settings', () => {
       key: 'ArrowDown',
       bubbles: true,
     }));
-    expect(document.activeElement).toBe(section.querySelector('[data-update-mode="auto"]'));
+    expect(document.activeElement).toBe(section.querySelector('[data-update-mode="notify"]'));
 
     section.querySelector('[data-update-mode="notify"]').click();
     await flushPromises();
@@ -345,6 +345,71 @@ describe('Profile — AI resume parsing settings', () => {
     }));
     expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
     expect(section.querySelector('.update-mode__summary').disabled).toBe(true);
+  });
+
+  it('ignores stale update settings save responses', async () => {
+    const saves = [];
+    const events = [];
+    const onSettingsChanged = (event) => events.push(event.detail);
+    globalThis.addEventListener('alice-update-settings-changed', onSettingsChanged);
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings' && !options.method) {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/settings' && options.method === 'POST') {
+        return new Promise((resolve) => {
+          saves.push({
+            settings: JSON.parse(options.body),
+            resolve: () => resolve({
+              ok: true,
+              json: async () => ({ success: true }),
+            }),
+          });
+        });
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const container = await mountProfile('authenticated', {
+        mountOptions: { health: { runtime: 'local', updateSupported: true, version: '1.9.0' } },
+      });
+      await flushPromises();
+      const section = getSection(container, 'SETTINGS');
+
+      section.querySelector('.update-mode__summary').click();
+      section.querySelector('[data-update-mode="notify"]').click();
+      section.querySelector('.update-settings__auto-row .sw').click();
+
+      expect(saves.map((save) => save.settings)).toEqual([
+        { autoCheckUpdates: true, updateMode: 'notify' },
+        { autoCheckUpdates: false, updateMode: 'notify' },
+      ]);
+
+      saves[1].resolve();
+      await flushPromises(6);
+
+      expect(events).toEqual([{ autoCheckUpdates: false, updateMode: 'notify' }]);
+      expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+
+      saves[0].resolve();
+      await flushPromises(6);
+
+      expect(events).toEqual([{ autoCheckUpdates: false, updateMode: 'notify' }]);
+      expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+    } finally {
+      globalThis.removeEventListener('alice-update-settings-changed', onSettingsChanged);
+    }
   });
 
   it('renders connection error state when manual update checks fail', async () => {

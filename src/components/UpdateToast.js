@@ -26,8 +26,10 @@ let _onStatusChange = () => {};
 let _onManage = () => {};
 let _reloadPage = () => globalThis.location?.reload?.();
 let _unsubscribeStatus = null;
+let _settingsChangedHandler = null;
 let _downloadStartedAt = 0;
 let _restartStartedAt = 0;
+let _updateMode = 'ask';
 
 function el(tag, className) {
   const node = document.createElement(tag);
@@ -310,16 +312,22 @@ function renderActions(state) {
 }
 
 function shouldRender() {
-  return !_dismissed
-    && [
-      'available',
-      'downloading',
-      'verifying',
-      'extracting',
-      'ready-to-restart',
-      'installing',
-      'failed',
-    ].includes(_status.status);
+  if (_dismissed) {
+    return false;
+  }
+  const isPassive = _status.status === 'available';
+  if (isPassive && _updateMode === 'notify') {
+    return false;
+  }
+  return [
+    'available',
+    'downloading',
+    'verifying',
+    'extracting',
+    'ready-to-restart',
+    'installing',
+    'failed',
+  ].includes(_status.status);
 }
 
 function renderStatus() {
@@ -449,6 +457,8 @@ async function initializeAutoChecks(mountId) {
     if (mountId !== _mountId || !_root) {
       return;
     }
+    _updateMode = settings.updateMode === 'notify' ? 'notify' : 'ask';
+    renderStatus();
     if (!settings.autoCheckUpdates) {
       return;
     }
@@ -514,6 +524,7 @@ export function mount({
   _reloadPage = reloadPage;
   _dismissed = false;
   _status = { status: 'idle' };
+  _updateMode = 'ask';
 
   if (!health?.updateSupported) {
     _onStatusChange(_status);
@@ -528,6 +539,12 @@ export function mount({
   _unsubscribeStatus = subscribeUpdateStatus((status) => {
     applyStatus(status, { publish: false });
   }, { emit: true });
+  _settingsChangedHandler = (event) => {
+    const nextMode = event.detail?.updateMode;
+    _updateMode = nextMode === 'notify' ? 'notify' : 'ask';
+    renderStatus();
+  };
+  globalThis.addEventListener?.('alice-update-settings-changed', _settingsChangedHandler);
   void initializeAutoChecks(mountId);
   return _root;
 }
@@ -542,11 +559,16 @@ export function destroy() {
   }
   stopRestartPolling();
   _unsubscribeStatus?.();
+  if (_settingsChangedHandler) {
+    globalThis.removeEventListener?.('alice-update-settings-changed', _settingsChangedHandler);
+  }
   _unsubscribeStatus = null;
+  _settingsChangedHandler = null;
   _pollTimer = null;
   _autoCheckTimer = null;
   _downloadStartedAt = 0;
   _restartStartedAt = 0;
+  _updateMode = 'ask';
   _root?.remove();
   _root = null;
   _onStatusChange = () => {};

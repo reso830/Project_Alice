@@ -197,7 +197,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - [x] T021 [US3] Add Updates subgroup to `src/pages/Profile.js`
   - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
-  - **Expected behavior**: Renders `UPDATES` section containing current version, manual "Check now" button, auto-check toggle, collapsible update mode cards (Notify only, Ask, Auto), and explicit error layouts: Checking Failure (Connection Error amber status pill) and Download Failure (Update Failed red status pill with Retry button).
+  - **Expected behavior**: Renders `UPDATES` section containing current version, manual "Check now" button, auto-check toggle, collapsible update mode cards (Notify only, Ask), and explicit error layouts: Checking Failure (Connection Error amber status pill) and Download Failure (Update Failed red status pill with Retry button). Amended by #85: Auto was removed because automatic updates without consent are outside the feature non-goals.
   - **Constraints**: Gated by checking the `updateSupported` capability flag returned from `/api/health`.
   - **Validation/test**: Verification of layout and error states in Local mode.
 
