@@ -26,6 +26,15 @@ function migrationId(entry) {
   return entry.id;
 }
 
+function orderedMigrations(migrations) {
+  return migrations
+    .map((migration) => ({
+      ...migration,
+      id: migrationId(migration),
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export function discoverMigrationScripts(migrationsDir) {
   if (!fs.existsSync(migrationsDir)) {
     return [];
@@ -38,13 +47,32 @@ export function discoverMigrationScripts(migrationsDir) {
     .map((file) => path.join(migrationsDir, file));
 }
 
+export function pendingMigrationIds(db, { migrations = [] } = {}) {
+  const ordered = orderedMigrations(migrations);
+  const knownIds = new Set(ordered.map((migration) => migration.id));
+  const hadLedger = hasTable(db, LEDGER_TABLE);
+
+  if (!hadLedger) {
+    return ordered.map((migration) => migration.id);
+  }
+
+  const applied = db
+    .prepare(`SELECT id FROM ${LEDGER_TABLE} ORDER BY id ASC`)
+    .all()
+    .map((row) => row.id);
+  const unknownApplied = applied.filter((id) => !knownIds.has(id));
+  if (unknownApplied.length > 0) {
+    throw new Error(
+      `Database schema is newer than this Alice build. Unknown migration(s): ${unknownApplied.join(', ')}`,
+    );
+  }
+
+  const appliedIds = new Set(applied);
+  return ordered.filter((migration) => !appliedIds.has(migration.id)).map((migration) => migration.id);
+}
+
 export function runMigrations(db, { migrations = [], now = () => new Date() } = {}) {
-  const ordered = migrations
-    .map((migration) => ({
-      ...migration,
-      id: migrationId(migration),
-    }))
-    .sort((left, right) => left.id.localeCompare(right.id));
+  const ordered = orderedMigrations(migrations);
   const knownIds = new Set(ordered.map((migration) => migration.id));
   const hadLedger = hasTable(db, LEDGER_TABLE);
   const hasLegacySchema = hasTable(db, 'applications') || hasTable(db, 'profile');

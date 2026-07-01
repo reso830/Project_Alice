@@ -7,6 +7,36 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.3] — 2026-07-01
+
+Local SQLite migration/backup hardening — closes a data-safety gap in the 041
+boot-time restore guard surfaced by the post-release audit. Local runtime only;
+no behavior change to hosted or demo modes. (#90)
+
+### Fixed
+
+- **Restore guard now covers the full schema boot, not just ledger migrations**
+  — the backup/restore wrapper brackets the additive `ensureColumn` ALTERs and
+  the one-time compatibility backfill as well, so a failure in any schema step
+  restores `data/alice.db` from the pre-migration backup instead of leaving a
+  half-migrated file. Rollback is terminal: no further DB access occurs after a
+  restore. (#90)
+- **Backup is taken only when schema work is pending** — the per-boot
+  `alice.db` → `.migration-backup` copy is skipped when there are no unapplied
+  migrations and no missing columns, removing wasted I/O on an already-current
+  database while keeping the guard in force whenever a migration or ALTER
+  actually runs. (#90)
+- **Migration-ledger schema doc aligned** — the 041 spec now matches the shipped
+  `schema_migrations` primary-key column (`id`), retiring the spec-drift finding
+  without a risky primary-key rename on existing local databases. (#90)
+
+### Tests
+
+- Extended the migration suite with failure-injection coverage that asserts
+  `alice.db` is restored byte-for-byte when an additive step throws, plus
+  no-op-boot coverage asserting no backup is created when the schema is current.
+  (#90)
+
 ## [1.10.2] — 2026-06-30
 
 Portable launcher and single-instance hardening — correctness and resilience
@@ -1304,7 +1334,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.2...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.3...HEAD
+[1.10.3]: https://github.com/reso830/Project_Alice/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/reso830/Project_Alice/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/reso830/Project_Alice/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/reso830/Project_Alice/compare/v1.9.0...v1.10.0

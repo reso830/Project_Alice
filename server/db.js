@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { computeCompatibility } from '../src/models/compatibility.js';
 import { toRecord } from './db/columns.js';
-import { runMigrations } from './db/migration.js';
+import { pendingMigrationIds, runMigrations } from './db/migration.js';
 import initMigration from './db/migrations/001-init.js';
 
 const DATA_DIR = path.resolve('data');
@@ -14,6 +14,20 @@ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 export const db = new Database(DB_PATH);
 const MIGRATIONS = [initMigration];
+const ADDITIVE_COLUMNS = [
+  { table: 'applications', name: 'archived', def: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'applications', name: 'archived_date', def: 'TEXT' },
+  { table: 'applications', name: 'location', def: 'TEXT' },
+  { table: 'applications', name: 'shift', def: 'TEXT' },
+  { table: 'applications', name: 'work_setup', def: 'TEXT' },
+  { table: 'applications', name: 'compat_notes', def: 'TEXT' },
+  { table: 'applications', name: 'compat_analysis', def: 'TEXT' },
+  { table: 'applications', name: 'compat_scored_at', def: 'TEXT', flag: 'compatScoredAt' },
+  { table: 'applications', name: 'general_notes', def: 'TEXT' },
+  { table: 'applications', name: 'preferred_skills', def: 'TEXT' },
+  { table: 'applications', name: 'timeline', def: "TEXT NOT NULL DEFAULT '[]'" },
+  { table: 'applications', name: 'min_years_experience', def: 'INTEGER', flag: 'minYearsExperience' },
+];
 
 function ensureColumn(targetDb, table, column, definition) {
   const columns = targetDb.prepare(`PRAGMA table_info(${table})`).all();
@@ -22,6 +36,10 @@ function ensureColumn(targetDb, table, column, definition) {
     return true;
   }
   return false;
+}
+
+function hasColumn(targetDb, table, column) {
+  return targetDb.prepare(`PRAGMA table_info(${table})`).all().some((entry) => entry.name === column);
 }
 
 function currentDate() {
@@ -98,44 +116,44 @@ export function backfillCompatibility(targetDb, asOf) {
 
 export function initSchema(
   targetDb = db,
-  { compatBackfillAsOf = currentDate(), migrations = MIGRATIONS } = {},
+  {
+    compatBackfillAsOf = currentDate(),
+    migrations = MIGRATIONS,
+    backfillCompatibilityFn = backfillCompatibility,
+  } = {},
 ) {
-  initializeMigrations(targetDb, { migrations });
+  runWithBackup(targetDb, () => {
+    runMigrations(targetDb, { migrations });
 
-  ensureColumn(targetDb, 'applications', 'archived', 'INTEGER NOT NULL DEFAULT 0');
-  ensureColumn(targetDb, 'applications', 'archived_date', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'location', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'shift', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'work_setup', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'compat_notes', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'compat_analysis', 'TEXT');
-  const addedCompatScoredAtColumn = ensureColumn(targetDb, 'applications', 'compat_scored_at', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'general_notes', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'preferred_skills', 'TEXT');
-  ensureColumn(targetDb, 'applications', 'timeline', "TEXT NOT NULL DEFAULT '[]'");
-  const addedMinYearsColumn = ensureColumn(targetDb, 'applications', 'min_years_experience', 'INTEGER');
+    const addedColumns = new Set();
+    for (const column of ADDITIVE_COLUMNS) {
+      if (ensureColumn(targetDb, column.table, column.name, column.def) && column.flag) {
+        addedColumns.add(column.flag);
+      }
+    }
 
-  targetDb.prepare(`
-    UPDATE applications
-    SET compat_scored_at = created_at
-    WHERE compat_scored_at IS NULL
-  `).run();
-  if (addedCompatScoredAtColumn) {
     targetDb.prepare(`
       UPDATE applications
-      SET compat_notes = NULL
-      WHERE compat_notes IS NOT NULL
+      SET compat_scored_at = created_at
+      WHERE compat_scored_at IS NULL
     `).run();
-  }
+    if (addedColumns.has('compatScoredAt')) {
+      targetDb.prepare(`
+        UPDATE applications
+        SET compat_notes = NULL
+        WHERE compat_notes IS NOT NULL
+      `).run();
+    }
 
-  // One-time legacy backfill: run ONLY on the boot that first adds the
-  // min_years_experience column (the 036 migration). Re-running it on every
-  // startup would rewrite **archived** scores that must stay frozen (FR-009)
-  // and let currentWork tenure drift recompute them. Once the column exists,
-  // active rows are kept fresh by the route recompute paths instead.
-  if (addedMinYearsColumn) {
-    backfillCompatibility(targetDb, compatBackfillAsOf);
-  }
+    // One-time legacy backfill: run ONLY on the boot that first adds the
+    // min_years_experience column (the 036 migration). Re-running it on every
+    // startup would rewrite **archived** scores that must stay frozen (FR-009)
+    // and let currentWork tenure drift recompute them. Once the column exists,
+    // active rows are kept fresh by the route recompute paths instead.
+    if (addedColumns.has('minYearsExperience')) {
+      backfillCompatibilityFn(targetDb, compatBackfillAsOf);
+    }
+  }, { migrations });
 }
 
 function dbFilePath(targetDb) {
@@ -145,25 +163,51 @@ function dbFilePath(targetDb) {
   return targetDb.name;
 }
 
-function initializeMigrations(targetDb, { migrations = MIGRATIONS } = {}) {
+function hasSchemaWorkPending(targetDb, { migrations = MIGRATIONS } = {}) {
+  try {
+    if (pendingMigrationIds(targetDb, { migrations }).length > 0) {
+      return true;
+    }
+
+    return ADDITIVE_COLUMNS.some((column) => !hasColumn(targetDb, column.table, column.name));
+  } catch {
+    return true;
+  }
+}
+
+function runWithBackup(targetDb, callback, { migrations = MIGRATIONS } = {}) {
   const runtime = process.env.APP_RUNTIME ?? 'local';
   const targetPath = dbFilePath(targetDb);
   const backupPath = targetPath ? `${targetPath}.migration-backup` : null;
-  const shouldBackup = runtime === 'local' && targetPath && fs.existsSync(targetPath);
+  const shouldBackup = runtime === 'local'
+    && targetPath
+    && fs.existsSync(targetPath)
+    && hasSchemaWorkPending(targetDb, { migrations });
 
-  if (shouldBackup) {
-    fs.copyFileSync(targetPath, backupPath);
+  if (!shouldBackup) {
+    return callback();
   }
 
+  fs.copyFileSync(targetPath, backupPath);
+
   try {
-    runMigrations(targetDb, { migrations });
-    if (shouldBackup) {
-      fs.rmSync(backupPath, { force: true });
-    }
+    const result = callback();
+    fs.rmSync(backupPath, { force: true });
+    return result;
   } catch (error) {
-    if (shouldBackup && fs.existsSync(backupPath)) {
-      fs.copyFileSync(backupPath, targetPath);
-      fs.rmSync(backupPath, { force: true });
+    if (fs.existsSync(backupPath)) {
+      try {
+        fs.copyFileSync(backupPath, targetPath);
+        fs.rmSync(backupPath, { force: true });
+      } catch (restoreError) {
+        if (error && typeof error === 'object') {
+          Object.defineProperty(error, 'migrationRestoreError', {
+            value: restoreError,
+            enumerable: false,
+          });
+        }
+        throw error;
+      }
     }
     throw error;
   }
