@@ -1,8 +1,14 @@
+/* global __BUILD_MONTH__ */
 import aliceWhite from '../assets/Alice_White.png';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welcome/shared/appMeta.js';
 
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 const HOSTED_URL = 'https://project-alice-gamma.vercel.app';
+const BUILD_MONTH = typeof __BUILD_MONTH__ !== 'undefined' ? __BUILD_MONTH__ : '';
+
+function displayVersion(version) {
+  return String(version).startsWith('v') ? String(version) : `v${version}`;
+}
 
 function createText(className, text) {
   const element = document.createElement('p');
@@ -73,10 +79,10 @@ function createModeControl(runtime) {
 
     link.className = 'footer__download';
     link.href = RELEASES_URL;
-    link.setAttribute('aria-label', `Download Project Alice ${APP_VERSION}`);
+    link.setAttribute('aria-label', `Download Project Alice ${displayVersion(APP_VERSION)}`);
     label.textContent = 'Download';
     version.className = 'footer__download-version';
-    version.textContent = APP_VERSION;
+    version.textContent = displayVersion(APP_VERSION);
     link.append(label, version);
   }
 
@@ -138,6 +144,11 @@ export function render({ runtime = 'hosted' } = {}) {
   const footer = document.createElement('footer');
   const inner = document.createElement('div');
   const rule = document.createElement('hr');
+  const versionDetails = [displayVersion(APP_VERSION)];
+
+  if (BUILD_MONTH) {
+    versionDetails.push(`Built ${BUILD_MONTH}`);
+  }
 
   footer.className = 'site-footer';
   inner.className = 'footer__inner';
@@ -149,7 +160,7 @@ export function render({ runtime = 'hosted' } = {}) {
   inner.append(
     brand,
     rule,
-    createSection('VERSION', [APP_VERSION, 'Built May 2026']),
+    createSection('VERSION', versionDetails),
     createSection('STACK', [
       'Vanilla JS \u00b7 Vite',
       'Vercel \u00b7 Supabase',

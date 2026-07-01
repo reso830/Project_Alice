@@ -1,5 +1,6 @@
 import express from 'express';
 import { Buffer } from 'node:buffer';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -10,7 +11,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   compareVersions,
   createUpdateRouter,
+  getChecksumName,
   isNewerVersion,
+  PORTABLE_ZIP_RE,
   sha256File,
   verifyChecksum,
 } from '../../server/routes/update.js';
@@ -21,6 +24,70 @@ const originalEnv = { ...process.env };
 
 const fixtureZip = path.resolve('tests/fixtures/update-v1.10.0.zip');
 const fixtureChecksum = path.resolve('tests/fixtures/update-v1.10.0.zip.sha256');
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makeStoredZipEntry(fileName, content, { flags = 0, compressedSize, extra = Buffer.alloc(0) } = {}) {
+  const name = Buffer.from(fileName);
+  const body = Buffer.from(content);
+  const size = compressedSize ?? body.length;
+  const header = Buffer.alloc(30);
+  header.writeUInt32LE(0x04034b50, 0);
+  header.writeUInt16LE(20, 4);
+  header.writeUInt16LE(flags, 6);
+  header.writeUInt16LE(0, 8);
+  header.writeUInt32LE(0, 10);
+  header.writeUInt32LE(crc32(body), 14);
+  header.writeUInt32LE(size, 18);
+  header.writeUInt32LE(body.length, 22);
+  header.writeUInt16LE(name.length, 26);
+  header.writeUInt16LE(extra.length, 28);
+  return Buffer.concat([header, name, extra, body]);
+}
+
+function makeStoredZip(entries) {
+  return Buffer.concat(entries.map((entry) => makeStoredZipEntry(entry.name, entry.content, entry.options)));
+}
+
+function writeZipWithChecksum(root, name, buffer) {
+  const zipPath = path.join(root, name);
+  const checksumPath = path.join(root, `${name}.sha256`);
+  fs.writeFileSync(zipPath, buffer);
+  fs.writeFileSync(checksumPath, `${sha256Buffer(buffer)}  ${name}\n`);
+  return { zipPath, checksumPath, size: buffer.length };
+}
+
+function sha256Buffer(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+function writeCustomRelease(root, zipName, zipBuffer, overrides = {}) {
+  const { zipPath, checksumPath, size } = writeZipWithChecksum(root, zipName, zipBuffer);
+  return writeRelease(root, {
+    tag_name: 'v1.11.0',
+    assets: [
+      {
+        name: zipName,
+        browser_download_url: zipPath,
+        size,
+      },
+      {
+        name: `${zipName}.sha256`,
+        browser_download_url: checksumPath,
+      },
+    ],
+    ...overrides,
+  });
+}
 
 function makeRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-update-'));
@@ -208,6 +275,14 @@ describe('update version and checksum helpers', () => {
     expect(verifyChecksum(fixtureZip, '0000  update-v1.10.0.zip')).toBe(false);
   });
 
+  test('defines the portable release asset naming contract in one place', () => {
+    const zipName = 'alice-v1.11.0-win-x64.zip';
+
+    expect(PORTABLE_ZIP_RE.test(zipName)).toBe(true);
+    expect(PORTABLE_ZIP_RE.test('update-v1.11.0.zip')).toBe(false);
+    expect(getChecksumName(zipName)).toBe('alice-v1.11.0-win-x64.zip.sha256');
+  });
+
 });
 
 describe('update route behavior', () => {
@@ -249,6 +324,58 @@ describe('update route behavior', () => {
     expect(check.body.checksumUrl).toBeNull();
     expect(download.response.status).toBe(502);
     expect(download.body.error.message).toMatch(/Release package or checksum URL is missing/);
+  });
+
+  test('selects the canonical portable package and paired checksum by release asset name', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      tag_name: 'v1.11.0',
+      assets: [
+        { name: 'debug-symbols.zip', browser_download_url: 'file:///debug-symbols.zip', size: 999 },
+        { name: 'debug-symbols.zip.sha256', browser_download_url: 'file:///debug-symbols.zip.sha256' },
+        { name: 'alice-v1.11.0-win-x64.zip.sha256', browser_download_url: fixtureChecksum },
+        { name: 'alice-v1.11.0-win-x64.zip', browser_download_url: fixtureZip, size: fs.statSync(fixtureZip).size },
+      ],
+    });
+    process.env.ALICE_VERSION_OVERRIDE = '1.10.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+
+    expect(check.response.status).toBe(200);
+    expect(check.body.packageUrl).toBe(fixtureZip);
+    expect(check.body.checksumUrl).toBe(fixtureChecksum);
+    expect(check.body.size).toBe(fs.statSync(fixtureZip).size);
+  });
+
+  test('keeps the single legacy zip fallback for local mocked releases', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    process.env.ALICE_VERSION_OVERRIDE = '1.9.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+
+    expect(check.response.status).toBe(200);
+    expect(check.body.packageUrl).toBe(fixtureZip);
+    expect(check.body.checksumUrl).toBe(fixtureChecksum);
+  });
+
+  test('rejects ambiguous multi-zip releases when no canonical portable package exists', async () => {
+    const root = makeRoot();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'debug-symbols.zip', browser_download_url: 'file:///debug-symbols.zip' },
+        { name: 'source-build.zip', browser_download_url: 'file:///source-build.zip' },
+        { name: 'source-build.zip.sha256', browser_download_url: 'file:///source-build.zip.sha256' },
+      ],
+    });
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    const check = await requestJson(baseUrl, '/api/update/check');
+
+    expect(check.response.status).toBe(502);
+    expect(check.body.error.message).toMatch(/could not identify the update package/i);
   });
 
   test('reports check failures distinctly from download failures', async () => {
@@ -349,6 +476,71 @@ describe('update route behavior', () => {
     });
     expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'app', 'dist', 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice', 'Start-Alice.cmd'))).toBe(true);
+  });
+
+  test('extracts legitimate archive names that contain dot-dot inside a filename segment', async () => {
+    const root = makeRoot();
+    const zipBuffer = makeStoredZip([
+      { name: 'app/foo..bar.txt', content: 'safe dots' },
+    ]);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeCustomRelease(root, 'alice-v1.11.0-win-x64.zip', zipBuffer);
+    process.env.ALICE_VERSION_OVERRIDE = '1.10.0';
+    const { baseUrl, dataDir } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(status.error).toBeNull();
+    expect(fs.readFileSync(path.join(dataDir, 'update-staging', 'alice', 'app', 'foo..bar.txt'), 'utf8')).toBe('safe dots');
+  });
+
+  test.each([
+    ['parent traversal', '../evil.txt'],
+    ['nested parent traversal', 'app/../../evil.txt'],
+    ['rooted absolute path', '/etc/x'],
+    ['Windows absolute path', 'C:\\evil.txt'],
+    ['Windows drive-relative path', 'C:evil.bat'],
+  ])('rejects unsafe archive path: %s', async (_label, fileName) => {
+    const root = makeRoot();
+    const zipBuffer = makeStoredZip([{ name: fileName, content: 'bad' }]);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeCustomRelease(root, 'alice-v1.11.0-win-x64.zip', zipBuffer);
+    process.env.ALICE_VERSION_OVERRIDE = '1.10.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'failed');
+
+    expect(status.error).toMatch(/Unsafe archive path/);
+  });
+
+  test('rejects streamed ZIP entries that use data descriptors', async () => {
+    const root = makeRoot();
+    const zipBuffer = makeStoredZip([
+      { name: 'app/index.html', content: '<h1>Alice</h1>', options: { flags: 0x08, compressedSize: 0 } },
+    ]);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeCustomRelease(root, 'alice-v1.11.0-win-x64.zip', zipBuffer);
+    process.env.ALICE_VERSION_OVERRIDE = '1.10.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'failed');
+
+    expect(status.error).toMatch(/streamed\/data-descriptor entries/i);
+  });
+
+  test('rejects ZIP entries whose data segment runs past the archive buffer', async () => {
+    const root = makeRoot();
+    const zipBuffer = makeStoredZip([
+      { name: 'app/index.html', content: '<h1>Alice</h1>', options: { compressedSize: 10_000 } },
+    ]);
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeCustomRelease(root, 'alice-v1.11.0-win-x64.zip', zipBuffer);
+    process.env.ALICE_VERSION_OVERRIDE = '1.10.0';
+    const { baseUrl } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const status = await waitForStatus(baseUrl, 'failed');
+
+    expect(status.error).toMatch(/data segment out of bounds/i);
   });
 
   test('streams HTTP download progress and reports verification before extraction', async () => {

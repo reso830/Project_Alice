@@ -26,6 +26,11 @@ export function assertHostedFrontendEnv() {
 
 export default defineConfig({
   plugins: [assertHostedFrontendEnv()],
+  define: {
+    __BUILD_MONTH__: JSON.stringify(
+      new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    ),
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:3001',
