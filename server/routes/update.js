@@ -312,7 +312,7 @@ function extractZip(zipPath, destination) {
     const relative = path.relative(root, target);
     const isDriveRelative = /^[a-zA-Z]:(?![\\/])/.test(fileName);
 
-    if (isDriveRelative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    if (isDriveRelative || path.win32.isAbsolute(fileName) || relative.startsWith('..') || path.isAbsolute(relative)) {
       throw new Error(`Unsafe archive path: ${fileName}`);
     }
 

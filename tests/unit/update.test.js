@@ -499,6 +499,7 @@ describe('update route behavior', () => {
     ['nested parent traversal', 'app/../../evil.txt'],
     ['rooted absolute path', '/etc/x'],
     ['Windows absolute path', 'C:\\evil.txt'],
+    ['Windows UNC absolute path', '\\\\server\\share\\evil.txt'],
     ['Windows drive-relative path', 'C:evil.bat'],
   ])('rejects unsafe archive path: %s', async (_label, fileName) => {
     const root = makeRoot();
