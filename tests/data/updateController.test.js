@@ -141,6 +141,35 @@ describe('updateController', () => {
     unsubscribe();
   });
 
+  it('does not auto-check when update settings fail to load', async () => {
+    const fetchMock = vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return failJson('Settings unavailable');
+      }
+      if (route === '/api/update/status') {
+        return okJson({ status: 'idle' });
+      }
+      if (route === '/api/update/check') {
+        return okJson({ updateAvailable: true, latestVersion: '1.10.0' });
+      }
+      throw new Error(`Unexpected route ${route}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const unsubscribe = subscribeUpdateController();
+    await flush();
+
+    expect(fetchMock.mock.calls.filter(([route]) => route === '/api/update/settings')).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([route]) => route === '/api/update/status')).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([route]) => route === '/api/update/check')).toHaveLength(0);
+    expect(getUpdateStatus()).toEqual(expect.objectContaining({
+      status: 'idle',
+      autoCheckUpdates: false,
+      updateMode: 'ask',
+    }));
+    unsubscribe();
+  });
+
   it('reloads after restart when health reports the target version', async () => {
     vi.useFakeTimers();
     const reloadPage = vi.fn();

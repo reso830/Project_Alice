@@ -4,7 +4,7 @@ const POLL_MS = 1000;
 const AUTO_CHECK_MS = 24 * 60 * 60 * 1000;
 const RESTART_DELAYED_MS = 30 * 1000;
 const ACTIVE_STATUSES = new Set(['checking', 'downloading', 'verifying', 'extracting']);
-const DEFAULT_SETTINGS = Object.freeze({ autoCheckUpdates: true, updateMode: 'ask' });
+const DEFAULT_SETTINGS = Object.freeze({ autoCheckUpdates: false, updateMode: 'ask' });
 
 let _subscriberCount = 0;
 let _pollTimer = null;
