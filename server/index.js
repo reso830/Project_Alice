@@ -27,6 +27,7 @@ export function createApp({
   onShutdown = async () => {},
   serveStatic = false,
   distDir = path.resolve('dist'),
+  portableRuntime = false,
 } = {}) {
   if (!repositories) {
     throw new Error('createApp: repositories is required');
@@ -56,8 +57,10 @@ export function createApp({
 
   app.use(express.json());
 
+  const updateSupported = isPortableUpdateRuntime(runtime, { portableRuntime });
+
   app.get('/api/health', (_req, res) => {
-    res.status(200).json(createHealthPayload(runtime));
+    res.status(200).json(createHealthPayload(runtime, { portableRuntime }));
   });
 
   app.use(
@@ -84,7 +87,7 @@ export function createApp({
   // path must never re-seed (research.md R-3 / specs/030).
   app.use('/api/account', createAccountRouter({ repos: repositories, requireAuth }));
 
-  if (isPortableUpdateRuntime(runtime)) {
+  if (updateSupported) {
     app.use('/api/update', createUpdateRouter({ repos: repositories, onShutdown }));
   }
 

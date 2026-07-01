@@ -13,11 +13,6 @@ set "STAGING=%ROOT%data\update-staging\alice"
 set "PENDING_UPDATE=%ROOT%data\update-pending.json"
 set "NEXT_LAUNCHER=%ROOT%data\Start-Alice.next.cmd"
 
-rem Mark this as the portable runtime so the server only advertises self-update
-rem (updateSupported / the /api/update routes) when launched by this swap-capable
-rem launcher — never from a plain `node` / source checkout that has no swap path.
-set "ALICE_UPDATE_CHANNEL=portable"
-
 if "%~1"=="--finalize-launcher" goto finalize_launcher
 if "%~1"=="--cleanup-next-launcher" goto cleanup_next_launcher
 

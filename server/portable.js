@@ -141,6 +141,7 @@ export async function run({
       onShutdown,
       serveStatic: true,
       distDir,
+      portableRuntime: true,
     });
     ({ server, port } = await listenWithFallback(app, {
       host: '127.0.0.1',

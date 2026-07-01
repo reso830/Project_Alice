@@ -122,12 +122,8 @@ describe('portable launcher update swap', () => {
     expect(launcher).not.toMatch(/^if exist "%ROOT%app\\" rmdir \/s \/q "%ROOT%app"$/m);
   });
 
-  test('marks the portable runtime so self-update is gated to the launcher', () => {
-    expect(launcher).toContain('set "ALICE_UPDATE_CHANNEL=portable"');
-    // Set before Node boots so the server reads it from the environment.
-    expect(launcher.indexOf('set "ALICE_UPDATE_CHANNEL=portable"')).toBeLessThan(
-      launcher.indexOf('"%NODE%" "%BOOT%"'),
-    );
+  test('does not set the obsolete portable update-channel environment variable', () => {
+    expect(launcher).not.toContain('ALICE_UPDATE_CHANNEL');
   });
 
   test('re-checks staging after Node exits during restart-to-finish', () => {

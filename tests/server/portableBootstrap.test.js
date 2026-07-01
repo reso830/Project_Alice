@@ -71,6 +71,9 @@ describe('portable bootstrap', () => {
       `http://127.0.0.1:${result.port}`,
     );
     expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(true);
+    const response = await globalThis.fetch(`http://127.0.0.1:${result.port}/api/health`);
+    const health = await response.json();
+    expect(health.updateSupported).toBe(process.platform === 'win32');
 
     await result.stop();
     expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);

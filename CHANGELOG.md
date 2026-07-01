@@ -7,6 +7,33 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.6] — 2026-07-01
+
+Portable update-channel signal hardening — the server now derives "this is the
+swap-capable portable runtime" from the actual portable entrypoint
+(`server/portable.js`) rather than the ambient `ALICE_UPDATE_CHANNEL=portable`
+environment variable, so self-update can no longer be advertised by a process
+that merely inherits that variable. Portable Windows self-update only; no
+behavior change to hosted or demo modes. (#86)
+
+### Changed
+
+- **`updateSupported` / `/api/update` gate on an injected `portableRuntime` flag,
+  not an environment variable** — `server/portable.js` passes `portableRuntime: true`
+  into `createApp`, and `isPortableUpdateRuntime` now requires it (still `AND`-gated
+  by `runtime === 'local'` and Windows). `Start-Alice.cmd` no longer sets
+  `ALICE_UPDATE_CHANNEL`, and a stray or inherited `ALICE_UPDATE_CHANNEL=portable`
+  in the environment no longer enables self-update on a boot path that has no swap
+  capability. (#86)
+
+### Tests
+
+- Health-payload gating tests rewritten around the `portableRuntime` option,
+  including a case proving an inherited `ALICE_UPDATE_CHANNEL=portable` no longer
+  advertises self-update; a live `/api/health` assertion in the portable-bootstrap
+  test verifies `updateSupported === (process.platform === 'win32')`; the launcher
+  test asserts `Start-Alice.cmd` no longer sets the env var. (#86)
+
 ## [1.10.5] — 2026-07-01
 
 Release-package robustness — hardens the download/extract side of the 041
@@ -1404,7 +1431,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.5...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.6...HEAD
+[1.10.6]: https://github.com/reso830/Project_Alice/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/reso830/Project_Alice/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/reso830/Project_Alice/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/reso830/Project_Alice/compare/v1.10.2...v1.10.3
