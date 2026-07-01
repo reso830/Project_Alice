@@ -196,8 +196,18 @@ function runWithBackup(targetDb, callback, { migrations = MIGRATIONS } = {}) {
     return result;
   } catch (error) {
     if (fs.existsSync(backupPath)) {
-      fs.copyFileSync(backupPath, targetPath);
-      fs.rmSync(backupPath, { force: true });
+      try {
+        fs.copyFileSync(backupPath, targetPath);
+        fs.rmSync(backupPath, { force: true });
+      } catch (restoreError) {
+        if (error && typeof error === 'object') {
+          Object.defineProperty(error, 'migrationRestoreError', {
+            value: restoreError,
+            enumerable: false,
+          });
+        }
+        throw error;
+      }
     }
     throw error;
   }

@@ -180,6 +180,54 @@ describe('SQLite migration runner', () => {
     expect(fs.existsSync(`${dbPath}.migration-backup`)).toBe(false);
   });
 
+  test('initSchema preserves the backup and rethrows the original error when restore fails', () => {
+    const { db, dbPath } = makeFileDb();
+    const backupPath = `${dbPath}.migration-backup`;
+    db.exec(`
+      CREATE TABLE profile (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
+      INSERT INTO profile (id, name) VALUES (1, 'Alice');
+    `);
+
+    const originalCopyFileSync = fs.copyFileSync;
+    vi.spyOn(fs, 'copyFileSync').mockImplementation((source, destination) => {
+      if (source === backupPath && destination === dbPath) {
+        const error = new Error('restore denied');
+        error.code = 'EPERM';
+        throw error;
+      }
+      return originalCopyFileSync(source, destination);
+    });
+
+    let caught;
+    try {
+      initSchema(db, {
+        migrations: [
+          {
+            id: '001-init',
+            up() {
+              throw new Error('legacy database should baseline the init migration');
+            },
+          },
+          {
+            id: '002-original-failure',
+            up(targetDb) {
+              targetDb.exec('CREATE TABLE transient_migration_table (id INTEGER PRIMARY KEY)');
+              throw new Error('original migration failure');
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      caught = error;
+    }
+    db.close();
+
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught.message).toBe('original migration failure');
+    expect(caught.migrationRestoreError).toMatchObject({ code: 'EPERM' });
+    expect(fs.existsSync(backupPath)).toBe(true);
+  });
+
   test('initSchema restores the exact database file when the additive backfill step fails', () => {
     const { db, dbPath } = makeFileDb();
     db.exec(`
