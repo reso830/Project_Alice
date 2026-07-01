@@ -126,7 +126,7 @@ describe('update settings', () => {
 
   test('validates update settings payloads', () => {
     expect(validateUpdateSettings({ autoCheckUpdates: true, updateMode: 'auto' })).toMatchObject({
-      valid: true,
+      valid: false,
     });
     expect(validateUpdateSettings({ autoCheckUpdates: 'true', updateMode: 'ask' })).toMatchObject({
       valid: false,
@@ -136,17 +136,30 @@ describe('update settings', () => {
     });
   });
 
+  test('normalizes a removed auto update mode to the ask default', () => {
+    const configDir = makeConfigDir();
+    writeSettings(configDir, JSON.stringify({
+      autoCheckUpdates: true,
+      updateMode: 'auto',
+    }));
+
+    expect(readUpdateSettings(configDir)).toEqual({
+      autoCheckUpdates: true,
+      updateMode: 'ask',
+    });
+  });
+
   test('writes update settings without dropping launch settings', () => {
     const configDir = makeConfigDir();
     writeSettings(configDir, JSON.stringify({ port: 4123, openBrowser: false }));
 
-    expect(writeUpdateSettings(configDir, { autoCheckUpdates: false, updateMode: 'auto' }))
+    expect(writeUpdateSettings(configDir, { autoCheckUpdates: false, updateMode: 'notify' }))
       .toMatchObject({ valid: true });
     expect(JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'))).toEqual({
       port: 4123,
       openBrowser: false,
       autoCheckUpdates: false,
-      updateMode: 'auto',
+      updateMode: 'notify',
     });
   });
 });

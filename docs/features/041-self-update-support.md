@@ -265,9 +265,10 @@ The system shall persist update preferences across application restarts.
 
 Supported update behaviors may include:
 
-- Notify only.
+- Notify only (badge-only; suppress the passive update-available toast).
 - Download and install after user confirmation.
-- Automatic updates.
+
+Amended by #85: automatic updates were removed from the settings picker because automatic updates without user consent are outside this feature's non-goals.
 
 The exact implementation and available options may vary.
 

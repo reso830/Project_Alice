@@ -912,10 +912,6 @@ const UPDATE_MODE_COPY = {
     title: 'Ask before installing',
     description: 'Confirm each update before it downloads.',
   },
-  auto: {
-    title: 'Install automatically',
-    description: 'Keep Alice up to date in the background.',
-  },
 };
 
 const EYE_ICON_PATH = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z';
@@ -1152,6 +1148,12 @@ function renderUpdateSettingsGroup({ health } = {}) {
     updateJson('settings', {
       method: 'POST',
       body: JSON.stringify(nextSettings),
+    }).then(() => {
+      state.settings = nextSettings;
+      globalThis.dispatchEvent?.(new globalThis.CustomEvent('alice-update-settings-changed', {
+        detail: nextSettings,
+      }));
+      render();
     }).catch((error) => {
       state.settings = previousSettings;
       state.error = error.message;

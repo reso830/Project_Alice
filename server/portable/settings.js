@@ -11,7 +11,7 @@ const DEFAULT_UPDATE_SETTINGS = Object.freeze({
   updateMode: 'ask',
 });
 
-const UPDATE_MODES = new Set(['notify', 'ask', 'auto']);
+const UPDATE_MODES = new Set(['notify', 'ask']);
 
 function validPort(port) {
   return Number.isInteger(port) && port >= 1024 && port <= 65535;
@@ -56,7 +56,7 @@ export function validateUpdateSettings(candidate) {
   }
 
   if (!UPDATE_MODES.has(candidate.updateMode)) {
-    return { valid: false, message: 'updateMode must be notify, ask, or auto.' };
+    return { valid: false, message: 'updateMode must be notify or ask.' };
   }
 
   return {

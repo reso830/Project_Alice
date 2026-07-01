@@ -15,6 +15,7 @@
 - Q: Should an available update surface a badge on the Profile nav item / topbar, independent of the toast being dismissed? → A: **Yes**. When an update is available (status is `available`, `downloading`, or `ready-to-restart`), a subtle notification badge (colored dot) is rendered on the Profile button in both the desktop Topbar Navbar and the mobile Bottom Tab Bar. This badge remains visible as a persistent reminder until the update is applied and the application restarts.
 - Q: Should the Updates settings sub-group be visible in Hosted/Demo modes? → A: **Hide entirely**. The Updates sub-group in Profile > Settings is hidden entirely in Hosted and Demo modes, leaving only the "Download" footer button to acquire the portable package.
 - Q: What is the behavior of 'Install automatically' mode? → A: **Background stage only**. The updater downloads and extracts update packages in the background silently, then displays a non-disruptive "Restart to finish" prompt. The application never restarts automatically.
+- Q: What changed in #85 after implementation review? → A: **'Install automatically' was removed**. The persisted `updateMode` enum is now `notify | ask`; legacy `auto` settings normalize to `ask` on read and are rejected on write because automatic updates without user consent are outside the feature non-goals.
 - Q: What is the frequency of the automatic update checks when "Check for updates automatically" is enabled? → A: **On application startup, and then once every 24 hours of continuous execution**.
 - Q: Should the application create a temporary backup copy of the database before applying schema migrations? → A: **Yes, always copy the database to a backup file before starting migrations, delete it on success, and restore it if migrations fail**.
 - Q: How can the end-to-end update process be tested before a release is published on GitHub? → A: **Using the `ALICE_UPDATE_SOURCE_OVERRIDE` env var**. Setting this environment variable instructs the backend to query a local or mock URL for release metadata. A static test release ZIP and its SHA256 checksum are placed under `tests/fixtures/update-v1.10.0.zip` and `tests/fixtures/update-v1.10.0.zip.sha256` to allow local staging, extraction, and launcher-swapping walkthroughs in smoke tests without making external network calls.
@@ -41,7 +42,7 @@ To improve usability and maintain security, Alice needs a self-update mechanism.
 - **Swap-on-Restart Launcher Sequence**: Safe replacement of program directories (`app/`, `runtime/`) and root launcher scripts, triggered when the main process exits.
 - **Robust Single-Instance Lockfile**: A pid-and-port-aware lockfile (`data/alice.lock`) to prevent concurrent executions and ensure the old server releases database and file locks before update swapping occurs.
 - **Auto-Migration of Database**: Automatic execution of pending SQLite migrations upon new version startup.
-- **Update Preferences**: User settings specifying whether to "Notify only", "Ask before installing" (default), or "Install automatically" (background download with user-triggered restart).
+- **Update Preferences**: User settings specifying whether to "Notify only" or "Ask before installing" (default). Amended by #85: "Install automatically" was removed because automatic updates without consent are outside the feature non-goals.
 
 ### Runtime Mode Matrix
 
@@ -127,8 +128,8 @@ As a user, I want to control how and when updates are checked and applied, so th
 **Independent Test**:
 1. Navigate to Profile > Settings > Updates.
 2. Turn off "Check for updates automatically". Verify that no background update checks occur.
-3. Select "Notify only" update mode. Verify that when a new version is detected, the app displays a notification card but does not download the archive until explicitly requested.
-4. Select "Install automatically" update mode. Mock a new release and verify that the package downloads in the background, showing the progress bar silently in settings without popping up disruptive install prompts, and finally surfaces the "Restart to finish" banner.
+3. Select "Notify only" update mode. Verify that when a new version is detected, the app displays the persistent Profile nav badge but suppresses the passive update-available toast; no archive downloads until explicitly requested.
+4. Select "Ask before installing" update mode. Mock a new release and verify that the app displays the update-available toast with an explicit install prompt.
 
 **Acceptance Scenarios**:
 - **Given** update preferences are changed in Settings, **When** the application is restarted, **Then** the update preferences persist and are respected.
@@ -152,7 +153,7 @@ As a user, I want to control how and when updates are checked and applied, so th
 
 - **FR-001**: The system MUST check the GitHub Releases API for newer releases comparing against the local version. When automatic checks are enabled, this MUST occur on application startup and then once every 24 hours of continuous execution.
 - **FR-002**: The system MUST show an update toast notification when a newer release is detected, displaying current and target versions.
-- **FR-003**: The system MUST support three update behaviors: "Notify only", "Ask before installing" (default), and "Install automatically".
+- **FR-003**: The system MUST support two update behaviors: "Notify only" and "Ask before installing" (default). Amended by #85: "Install automatically" was removed because automatic updates without user consent are outside the feature non-goals.
 - **FR-004**: The system MUST persist update configuration preferences inside the server-side configuration file (`config/settings.json`). This ensures preferences are retained across port modifications and origin changes, surviving program-file replacements since the `config/` directory is logically separated from `app/` and `runtime/` directories.
 - **FR-005**: The system MUST support manual update checks via a "Check now" button in the Settings interface.
 - **FR-006**: The system MUST download update packages to a temporary staging folder (`data/update-staging/`) and verify their SHA256 integrity.
@@ -177,7 +178,7 @@ As a user, I want to control how and when updates are checked and applied, so th
 
 - **Update Preference**: A persisted configuration object stored in the server-side `config/settings.json` file to survive port and origin changes, containing:
   - `autoCheckUpdates` (Boolean)
-  - `updateMode` (String: `notify` | `ask` | `auto`)
+  - `updateMode` (String: `notify` | `ask`; amended by #85: legacy `auto` normalizes to `ask`)
 - **Instance Lock**: A temporary file (`data/alice.lock`) containing:
   - `version` (Integer schema version)
   - `appVersion` (String application version)

@@ -105,6 +105,7 @@ Reads configuration preferences from `config/settings.json`.
     "updateMode": "ask"
   }
   ```
+  Amended by #85: `updateMode` is limited to `"notify"` or `"ask"`; legacy on-disk `"auto"` values normalize to `"ask"` when read.
 
 ---
 
@@ -119,6 +120,7 @@ Saves configuration preferences back to `config/settings.json`.
     "updateMode": "notify"
   }
   ```
+  Amended by #85: `updateMode: "auto"` is rejected as invalid.
 * **Response (200 OK)**:
   ```json
   {

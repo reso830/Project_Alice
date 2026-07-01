@@ -186,15 +186,14 @@ One block, state-driven — **no redundant status pill** repeating the title:
    controls. Default **on**.
 2. **Update mode** — a **collapsible** control. Collapsed, it's a single row:
    an uppercase "UPDATE MODE" label, the current choice (e.g. "Ask before
-   installing"), and a chevron. Expanding reveals three selectable radio cards:
+   installing"), and a chevron. Expanding reveals two selectable radio cards:
 
    | Mode | Description |
    |------|-------------|
-   | **Notify only** | Show a badge when a new version is ready. |
+   | **Notify only** | Show a badge when a new version is ready; suppress the passive update-available toast. |
    | **Ask before installing** | Confirm each update before it downloads. *(default)* |
-   | **Install automatically** | Keep Alice up to date in the background. |
 
-   Collapsing the mode keeps the card calm by default and only expands the three
+   Collapsing the mode keeps the card calm by default and only expands the two
    options when the user is actively choosing.
 
 ---
@@ -234,7 +233,7 @@ version chips and progress meta.
 | # | Question | Status |
 |---|----------|--------|
 | 1 | For a web app, does "Restart to finish" / "Install" map to a real action, or should the copy be reframed (e.g. "Reload to update")? Service-worker-style reload vs. literal install is unresolved. | **Open** |
-| 2 | Does "Install automatically" make sense for a hosted web app (which updates on deploy), or is it only meaningful for local builds? Possibly hide the mode on hosted. | **Open** |
+| 2 | Does "Install automatically" make sense for a hosted web app (which updates on deploy), or is it only meaningful for local builds? Possibly hide the mode on hosted. | **Resolved** (#85 removed this option; automatic updates without consent are outside the 041 spec.) |
 | 3 | Should the footer **Download** also appear in demo mode, or only authenticated hosted? Currently treated as hosted. | **Resolved** (Yes. Demo mode behaves like Hosted mode: the global footer brand row renders the platform-agnostic "Download vX.Y.Z" button pointing to GitHub Releases). |
 | 4 | Where do release notes ("What's new") live — a modal, the GitHub release page, or an in-app changelog? | **Resolved** (Link opens official GitHub Releases page in a new browser tab with target="_blank" rel="noopener noreferrer") |
 | 5 | Should an available update surface a badge on the Profile nav item / topbar, independent of the toast being dismissed? | **Resolved** (Yes, a subtle colored dot badge is rendered on the Profile button in Navbar and BottomTabBar) |
