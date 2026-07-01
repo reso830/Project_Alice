@@ -7,6 +7,8 @@ import { listenWithFallback } from './portable/listen.js';
 import { acquireLock, removeLock, writeLock } from './portable/lock.js';
 import { readLaunchSettings } from './portable/settings.js';
 
+const LAUNCHER_FLAG = '--alice-launcher';
+
 function defaultRoot() {
   const serverDir = path.dirname(fileURLToPath(import.meta.url));
   const parentDir = path.dirname(serverDir);
@@ -69,6 +71,7 @@ export async function run({
   open = defaultOpen,
   probe = defaultProbe,
   maxTries,
+  launchedByLauncher = false,
 } = {}) {
   const packageRoot = path.resolve(root);
   ensureRequiredFiles(packageRoot);
@@ -141,6 +144,7 @@ export async function run({
       onShutdown,
       serveStatic: true,
       distDir,
+      portableRuntime: launchedByLauncher,
     });
     ({ server, port } = await listenWithFallback(app, {
       host: '127.0.0.1',
@@ -198,7 +202,7 @@ export async function run({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    await run();
+    await run({ launchedByLauncher: process.argv.includes(LAUNCHER_FLAG) });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[portable] ${message}`);

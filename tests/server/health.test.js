@@ -395,26 +395,29 @@ describe('assertHostedSchema', () => {
       }
     });
 
-    it('hosted runtime is never update-supported, even with the portable marker', () => {
+    it('hosted runtime is never update-supported, even with the portable runtime flag', () => {
       setPlatform('win32');
-      process.env.ALICE_UPDATE_CHANNEL = 'portable';
-      expect(createHealthPayload('hosted').updateSupported).toBe(false);
+      expect(createHealthPayload('hosted', { portableRuntime: true }).updateSupported).toBe(false);
     });
 
-    it('local Windows WITHOUT the portable channel marker is not supported', () => {
+    it('local Windows without the portable runtime flag is not supported', () => {
       setPlatform('win32');
-      delete process.env.ALICE_UPDATE_CHANNEL;
       expect(createHealthPayload('local').updateSupported).toBe(false);
+      expect(createHealthPayload('local', { portableRuntime: false }).updateSupported).toBe(false);
     });
 
-    it('local Windows WITH the portable channel marker is supported', () => {
+    it('local Windows with the portable runtime flag is supported', () => {
       setPlatform('win32');
-      process.env.ALICE_UPDATE_CHANNEL = 'portable';
-      expect(createHealthPayload('local').updateSupported).toBe(true);
+      expect(createHealthPayload('local', { portableRuntime: true }).updateSupported).toBe(true);
     });
 
-    it('non-Windows is not supported even with the portable marker', () => {
+    it('non-Windows is not supported even with the portable runtime flag', () => {
       setPlatform('linux');
+      expect(createHealthPayload('local', { portableRuntime: true }).updateSupported).toBe(false);
+    });
+
+    it('ignores an inherited ALICE_UPDATE_CHANNEL environment variable', () => {
+      setPlatform('win32');
       process.env.ALICE_UPDATE_CHANNEL = 'portable';
       expect(createHealthPayload('local').updateSupported).toBe(false);
     });
