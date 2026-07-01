@@ -1060,6 +1060,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
   let restartTimer = null;
   let restartStartedAt = 0;
   let unsubscribeStatus = null;
+  let settingsSaveId = 0;
 
   _cleanupHandlers.push(() => {
     if (statusTimer) {
@@ -1143,18 +1144,26 @@ function renderUpdateSettingsGroup({ health } = {}) {
 
   function saveSettings(nextSettings) {
     const previousSettings = state.settings;
+    const saveId = settingsSaveId + 1;
+    settingsSaveId = saveId;
     state.settings = nextSettings;
     render();
     updateJson('settings', {
       method: 'POST',
       body: JSON.stringify(nextSettings),
     }).then(() => {
+      if (saveId !== settingsSaveId) {
+        return;
+      }
       state.settings = nextSettings;
       globalThis.dispatchEvent?.(new globalThis.CustomEvent('alice-update-settings-changed', {
         detail: nextSettings,
       }));
       render();
     }).catch((error) => {
+      if (saveId !== settingsSaveId) {
+        return;
+      }
       state.settings = previousSettings;
       state.error = error.message;
       Toast.show('Could not save update settings.', 'error');

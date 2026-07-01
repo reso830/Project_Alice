@@ -347,6 +347,71 @@ describe('Profile — AI resume parsing settings', () => {
     expect(section.querySelector('.update-mode__summary').disabled).toBe(true);
   });
 
+  it('ignores stale update settings save responses', async () => {
+    const saves = [];
+    const events = [];
+    const onSettingsChanged = (event) => events.push(event.detail);
+    globalThis.addEventListener('alice-update-settings-changed', onSettingsChanged);
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (url === '/api/update/settings' && !options.method) {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/settings' && options.method === 'POST') {
+        return new Promise((resolve) => {
+          saves.push({
+            settings: JSON.parse(options.body),
+            resolve: () => resolve({
+              ok: true,
+              json: async () => ({ success: true }),
+            }),
+          });
+        });
+      }
+      if (url === '/api/update/status') {
+        return {
+          ok: true,
+          json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const container = await mountProfile('authenticated', {
+        mountOptions: { health: { runtime: 'local', updateSupported: true, version: '1.9.0' } },
+      });
+      await flushPromises();
+      const section = getSection(container, 'SETTINGS');
+
+      section.querySelector('.update-mode__summary').click();
+      section.querySelector('[data-update-mode="notify"]').click();
+      section.querySelector('.update-settings__auto-row .sw').click();
+
+      expect(saves.map((save) => save.settings)).toEqual([
+        { autoCheckUpdates: true, updateMode: 'notify' },
+        { autoCheckUpdates: false, updateMode: 'notify' },
+      ]);
+
+      saves[1].resolve();
+      await flushPromises(6);
+
+      expect(events).toEqual([{ autoCheckUpdates: false, updateMode: 'notify' }]);
+      expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+
+      saves[0].resolve();
+      await flushPromises(6);
+
+      expect(events).toEqual([{ autoCheckUpdates: false, updateMode: 'notify' }]);
+      expect(section.querySelector('.update-mode').classList.contains('is-disabled')).toBe(true);
+    } finally {
+      globalThis.removeEventListener('alice-update-settings-changed', onSettingsChanged);
+    }
+  });
+
   it('renders connection error state when manual update checks fail', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       if (url === '/api/update/settings') {
