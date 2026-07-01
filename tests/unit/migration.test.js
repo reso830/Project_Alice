@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { initSchema } from '../../server/db.js';
 import { runMigrations } from '../../server/db/migration.js';
@@ -17,6 +17,7 @@ function makeFileDb() {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -176,6 +177,100 @@ describe('SQLite migration runner', () => {
         .get(),
     ).toBeUndefined();
     reopened.close();
+    expect(fs.existsSync(`${dbPath}.migration-backup`)).toBe(false);
+  });
+
+  test('initSchema restores the exact database file when the additive backfill step fails', () => {
+    const { db, dbPath } = makeFileDb();
+    db.exec(`
+      CREATE TABLE applications (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_name        TEXT    NOT NULL,
+        job_title           TEXT    NOT NULL,
+        status              TEXT    NOT NULL DEFAULT 'wishlisted',
+        compat              INTEGER NOT NULL DEFAULT 0,
+        fav                 INTEGER NOT NULL DEFAULT 0,
+        source_platform     TEXT,
+        application_date    TEXT,
+        job_posting_url     TEXT,
+        recruiter           TEXT,
+        notes               TEXT,
+        salary              TEXT,
+        responsibilities    TEXT,
+        skills              TEXT,
+        follow_up_action    TEXT,
+        follow_up_date      TEXT,
+        last_status_update  TEXT    NOT NULL,
+        created_at          TEXT    NOT NULL,
+        updated_at          TEXT    NOT NULL,
+        archived            INTEGER NOT NULL DEFAULT 0,
+        metadata            TEXT,
+        archived_date       TEXT,
+        location            TEXT,
+        shift               TEXT,
+        work_setup          TEXT,
+        compat_notes        TEXT,
+        compat_analysis     TEXT,
+        compat_scored_at    TEXT,
+        general_notes       TEXT,
+        preferred_skills    TEXT,
+        timeline            TEXT NOT NULL DEFAULT '[]'
+      );
+      INSERT INTO applications (
+        company_name,
+        job_title,
+        status,
+        responsibilities,
+        last_status_update,
+        created_at,
+        updated_at
+      ) VALUES (
+        'Legacy Co',
+        'Frontend Engineer',
+        'applied',
+        'Build UI',
+        '2026-06-10',
+        '2026-06-10',
+        '2026-06-10'
+      );
+      CREATE TABLE profile (
+        id          INTEGER PRIMARY KEY CHECK (id = 1),
+        data        TEXT    NOT NULL,
+        updated_at  TEXT    NOT NULL
+      );
+    `);
+    const originalBytes = fs.readFileSync(dbPath);
+
+    expect(() =>
+      initSchema(db, {
+        backfillCompatibilityFn() {
+          throw new Error('forced additive backfill failure');
+        },
+      }),
+    ).toThrow(/forced additive backfill failure/);
+    db.close();
+
+    expect(fs.readFileSync(dbPath)).toEqual(originalBytes);
+    const reopened = new Database(dbPath);
+    expect(
+      reopened.prepare('PRAGMA table_info(applications)').all().map((column) => column.name),
+    ).not.toContain('min_years_experience');
+    expect(reopened.prepare('SELECT company_name FROM applications').all()).toEqual([
+      { company_name: 'Legacy Co' },
+    ]);
+    reopened.close();
+    expect(fs.existsSync(`${dbPath}.migration-backup`)).toBe(false);
+  });
+
+  test('initSchema skips the backup copy on an already-current database', () => {
+    const { db, dbPath } = makeFileDb();
+    initSchema(db);
+
+    const copySpy = vi.spyOn(fs, 'copyFileSync');
+    initSchema(db);
+    db.close();
+
+    expect(copySpy).not.toHaveBeenCalledWith(dbPath, `${dbPath}.migration-backup`);
     expect(fs.existsSync(`${dbPath}.migration-backup`)).toBe(false);
   });
 });

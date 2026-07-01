@@ -236,7 +236,7 @@ This feature introduces a greenfield database migration subsystem for the local/
 - The system MUST track schema versioning using a dedicated ledger table inside SQLite:
   ```sql
   CREATE TABLE IF NOT EXISTS schema_migrations (
-    version TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL
   );
   ```
