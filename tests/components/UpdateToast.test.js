@@ -2,24 +2,26 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { UpdateToast } from '../../src/components/UpdateToast.js';
+import { resetUpdateControllerForTesting } from '../../src/data/updateController.js';
 import {
   resetUpdateStatusForTesting,
   setUpdateStatus,
 } from '../../src/data/updateStatusStore.js';
 
 async function flush() {
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 20; index += 1) {
     await Promise.resolve();
   }
 }
 
 afterEach(() => {
   vi.useRealTimers();
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
   UpdateToast.destroy();
+  resetUpdateControllerForTesting();
   resetUpdateStatusForTesting();
   document.body.replaceChildren();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('UpdateToast', () => {
@@ -147,6 +149,12 @@ describe('UpdateToast', () => {
           json: () => Promise.resolve({ autoCheckUpdates: false, updateMode: 'ask' }),
         });
       }
+      if (route === '/api/update/status') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ status: 'idle' }),
+        });
+      }
       throw new Error(`Unexpected fetch ${route}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -154,8 +162,9 @@ describe('UpdateToast', () => {
     UpdateToast.mount({ health: { updateSupported: true } });
     await flush();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/update/settings', undefined);
+    expect(fetchMock).toHaveBeenCalledWith('/api/update/status', undefined);
+    expect(fetchMock.mock.calls.filter(([route]) => route === '/api/update/check')).toHaveLength(0);
     expect(document.querySelector('.update-toast').hidden).toBe(true);
   });
 
@@ -211,6 +220,12 @@ describe('UpdateToast', () => {
           json: () => Promise.resolve({ error: { message: 'Network offline' } }),
         });
       }
+      if (route === '/api/update/status') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ status: 'idle' }),
+        });
+      }
       throw new Error(`Unexpected route ${route}`);
     }));
 
@@ -229,6 +244,7 @@ describe('UpdateToast', () => {
   });
 
   it('starts the download when Install now is clicked', async () => {
+    let statusReads = 0;
     const fetchMock = vi.fn((route) => {
       if (route === '/api/update/download') {
         return Promise.resolve({
@@ -246,6 +262,15 @@ describe('UpdateToast', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ updateAvailable: true, latestVersion: '1.10.0' }),
+        });
+      }
+      if (route === '/api/update/status') {
+        statusReads += 1;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(statusReads === 1
+            ? { status: 'available', latestVersion: '1.10.0' }
+            : { status: 'downloading', latestVersion: '1.10.0', progress: 0 }),
         });
       }
       return Promise.resolve({

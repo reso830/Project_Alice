@@ -124,6 +124,12 @@ describe('Profile — Account section', () => {
           json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
         };
       }
+      if (url === '/api/update/check') {
+        return {
+          ok: true,
+          json: async () => ({ updateAvailable: false }),
+        };
+      }
       throw new Error(`Unexpected fetch ${url}`);
     }));
     const container = await mountProfile('local-mode', {

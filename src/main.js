@@ -5,6 +5,7 @@ import { Footer } from './components/Footer.js';
 import { Navbar } from './components/Navbar.js';
 import * as authStore from './data/authStore.js';
 import { store } from './data/store.js';
+import { resetUpdateControllerForTesting, subscribeUpdateController } from './data/updateController.js';
 import { resetUpdateStatusForTesting, subscribeUpdateStatus } from './data/updateStatusStore.js';
 import { Calendar } from './pages/Calendar.js';
 import { ConfigError } from './pages/ConfigError.js';
@@ -28,6 +29,7 @@ let _welcomeMounted = false;
 let _configErrorMounted = false;
 let _runtimeHealth = null;
 let _unsubscribeUpdateStatus = null;
+let _unsubscribeUpdateController = null;
 
 export const SEED_DATA = [
   {
@@ -118,6 +120,9 @@ function mountAppShell() {
     Navbar.setUpdateStatus(nextStatus);
     BottomTabBar.setUpdateStatus(nextStatus);
   }, { emit: true });
+  _unsubscribeUpdateController = _runtimeHealth?.updateSupported
+    ? subscribeUpdateController()
+    : null;
   UpdateToast.mount({
     health: _runtimeHealth,
     onManageInSettings: () => {
@@ -145,6 +150,8 @@ function unmountAppShell() {
   _currentPage = null;
   _unsubscribeUpdateStatus?.();
   _unsubscribeUpdateStatus = null;
+  _unsubscribeUpdateController?.();
+  _unsubscribeUpdateController = null;
   Navbar.destroy();
   BottomTabBar.destroy();
   UpdateToast.destroy();
@@ -252,7 +259,10 @@ export function _resetForTesting() {
   _runtimeHealth = null;
   _unsubscribeUpdateStatus?.();
   _unsubscribeUpdateStatus = null;
+  _unsubscribeUpdateController?.();
+  _unsubscribeUpdateController = null;
   resetUpdateStatusForTesting();
+  resetUpdateControllerForTesting();
 }
 
 export async function bootstrap(deps = {}) {

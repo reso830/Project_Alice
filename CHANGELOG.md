@@ -7,6 +7,50 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.7] — 2026-07-01
+
+Update-orchestration consolidation — the portable self-update UI previously ran
+two independent orchestration loops (`UpdateToast.js` and Profile's Updates
+panel each polled status, watched restart health, matched versions, and
+published to the shared store), so `GET /api/update/status` was polled twice
+whenever Profile was open. A new `src/data/updateController.js` is now the single
+owner of that orchestration; both surfaces are view-only subscribers. Tech-debt
+refactor deferred from #87; portable Windows self-update only, no behavior change
+to hosted or demo modes. (#92)
+
+### Changed
+
+- **New `src/data/updateController.js` owns all update orchestration** — settings
+  cache, ref-counted status polling, restart-health polling, version matching,
+  24h auto-check scheduling, `/api/update/*` command actions, and store
+  publishing. `UpdateToast.js` and Profile's Updates panel keep only rendering
+  (Profile still writes settings) and subscribe to `updateStatusStore.js`. A
+  ref-counted subscription lifecycle guarantees exactly one status-poll loop and
+  one restart-watch loop regardless of how many surfaces are mounted. (#92)
+- **`GET /api/update/status` is polled once, not twice, when Profile is open** —
+  the duplicate loop is gone. The duplicate startup settings fetch is also
+  removed; both views read cached settings from the controller. (#92)
+
+### Fixed
+
+- **Status polling no longer clobbers the "Restarting Alice…" state** — `installing`
+  is excluded from the status-poll active set, so a status fetch that fails while
+  the server is mid-restart can no longer overwrite the restart state with a
+  connection/`check-failed` error. (#92)
+- **Profile's "restart is taking longer than expected" warning now renders** — it
+  was previously written to a local `state.error` that was never shown during the
+  `installing` state; the delay is now published as `restartDelayed` and rendered
+  by both the toast and the Profile panel. (#92)
+
+### Tests
+
+- New `tests/data/updateController.test.js` covers active-set polling start/stop,
+  `installing` exclusion, restart-watch reload, the `restartDelayed` transition,
+  the ref-counted single-loop guard, and teardown via
+  `resetUpdateControllerForTesting()`. `UpdateToast` and `profile.aiSettings`
+  tests updated to drive the controller; a double-mount test asserts a single
+  `/api/update/status` poller. (#92)
+
 ## [1.10.6] — 2026-07-01
 
 Portable update-channel signal hardening — the server now derives "this is the

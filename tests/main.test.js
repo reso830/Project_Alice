@@ -56,10 +56,16 @@ const updateToastMocks = vi.hoisted(() => ({
   mount: vi.fn(),
   destroy: vi.fn(),
 }));
+const updateControllerMocks = vi.hoisted(() => ({
+  unsubscribe: vi.fn(),
+  resetUpdateControllerForTesting: vi.fn(),
+  subscribeUpdateController: vi.fn(() => updateControllerMocks.unsubscribe),
+}));
 
 vi.mock('../src/services/healthApi.js', () => ({
   getHealth: healthMocks.getHealth,
 }));
+vi.mock('../src/data/updateController.js', () => updateControllerMocks);
 
 // Heavy page modules — replace with no-op mount/unmount so we can observe
 // what main.js mounts at the top level without the pages themselves trying
@@ -104,6 +110,10 @@ beforeEach(() => {
   healthMocks.getHealth.mockReset();
   updateToastMocks.mount.mockReset();
   updateToastMocks.destroy.mockReset();
+  updateControllerMocks.unsubscribe.mockReset();
+  updateControllerMocks.resetUpdateControllerForTesting.mockReset();
+  updateControllerMocks.subscribeUpdateController.mockClear();
+  updateControllerMocks.subscribeUpdateController.mockReturnValue(updateControllerMocks.unsubscribe);
   while (document.body.firstChild) {
     document.body.firstChild.remove();
   }
@@ -173,6 +183,7 @@ describe('bootstrap — ConfigError handshake wiring', () => {
     await bootstrap();
 
     expect(updateToastMocks.mount).toHaveBeenCalledWith(expect.objectContaining({ health }));
+    expect(updateControllerMocks.subscribeUpdateController).toHaveBeenCalledTimes(1);
   });
 
   it('runs the runtime handshake BEFORE subscribing to authStore and never initialises auth on the config-error path', async () => {
