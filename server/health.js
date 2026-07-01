@@ -50,13 +50,13 @@ const PROBES = [
   },
 ];
 
-// Self-update is only safe when Alice runs through the portable entrypoint
-// (`server/portable.js`) on Windows, because that boot path owns the stop →
-// swap → relaunch flow. A plain `node` / source checkout on Windows is local +
-// win32 too, but has no swap path — advertising the updater there lets a user
+// Self-update is only safe when Alice runs through the portable launcher loop
+// (`Start-Alice.cmd`) on Windows, because that script owns the stop → swap →
+// relaunch flow. A plain `node app/server/portable.js` boot on Windows is local
+// + win32 too, but has no swap path — advertising the updater there lets a user
 // stage a download and click "restart" into a server that never comes back.
-// `server/portable.js` injects `portableRuntime:true` into `createApp`; all
-// other boot paths omit it and remain update-unsupported.
+// The launcher passes a CLI marker to `server/portable.js`, which injects
+// `portableRuntime:true` into `createApp`; all other boot paths omit it.
 export function isPortableUpdateRuntime(runtime, { portableRuntime = false } = {}) {
   return (
     portableRuntime

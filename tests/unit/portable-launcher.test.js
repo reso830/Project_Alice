@@ -126,6 +126,10 @@ describe('portable launcher update swap', () => {
     expect(launcher).not.toContain('ALICE_UPDATE_CHANNEL');
   });
 
+  test('passes the launcher marker to portable.js before enabling self-update', () => {
+    expect(launcher).toContain('"%NODE%" "%BOOT%" --alice-launcher');
+  });
+
   test('re-checks staging after Node exits during restart-to-finish', () => {
     const runLabel = launcher.indexOf(':run');
     const launchNode = launcher.indexOf('"%NODE%" "%BOOT%"');

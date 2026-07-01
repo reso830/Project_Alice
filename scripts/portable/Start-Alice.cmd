@@ -35,7 +35,7 @@ if not exist "%NODE%" (
 
 echo Starting Alice...
 echo Close this window or press Ctrl+C to stop Alice.
-"%NODE%" "%BOOT%"
+"%NODE%" "%BOOT%" --alice-launcher
 set "NODE_EXIT=%ERRORLEVEL%"
 if defined ALICE_UPDATED_RELAUNCH set "ALICE_UPDATED_RELAUNCH="
 

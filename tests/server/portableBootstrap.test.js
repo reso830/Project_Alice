@@ -59,6 +59,7 @@ describe('portable bootstrap', () => {
       },
       probe: async () => false,
       maxTries: 1,
+      launchedByLauncher: true,
     });
 
     expect(process.env.APP_RUNTIME).toBe('local');
@@ -77,6 +78,28 @@ describe('portable bootstrap', () => {
 
     await result.stop();
     expect(fs.existsSync(path.join(root, 'data', 'alice.lock'))).toBe(false);
+  });
+
+  test('keeps direct portable.js launches update-unsupported without the launcher marker', async () => {
+    vi.resetModules();
+    const { run } = await import('../../server/portable.js');
+    const root = await makePackageRoot();
+
+    const result = await run({
+      root,
+      open: async () => {},
+      probe: async () => false,
+      maxTries: 1,
+    });
+
+    const healthResponse = await globalThis.fetch(`http://127.0.0.1:${result.port}/api/health`);
+    const health = await healthResponse.json();
+    expect(health.updateSupported).toBe(false);
+
+    const updateResponse = await globalThis.fetch(`http://127.0.0.1:${result.port}/api/update/status`);
+    expect(updateResponse.status).toBe(404);
+
+    await result.stop();
   });
 
   test('prints the URL instead of opening a browser when openBrowser is false', async () => {
