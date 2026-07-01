@@ -124,6 +124,12 @@ describe('Profile — Account section', () => {
           json: async () => ({ status: 'idle', currentVersion: 'v1.9.0' }),
         };
       }
+      if (url === '/api/update/check') {
+        return {
+          ok: true,
+          json: async () => ({ updateAvailable: false }),
+        };
+      }
       throw new Error(`Unexpected fetch ${url}`);
     }));
     const container = await mountProfile('local-mode', {
@@ -143,6 +149,6 @@ describe('Profile — Account section', () => {
     expect(api.deleteAccount).toHaveBeenCalledWith({ confirm: 'DELETE' });
     expect(getSection(container, 'SETTINGS').textContent).toContain('UPDATES');
     expect(getSection(container, 'SETTINGS').textContent).toContain('Current version');
-    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.6');
+    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.7');
   });
 });

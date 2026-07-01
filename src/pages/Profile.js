@@ -15,7 +15,14 @@ import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
 import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
-import { getUpdateStatus, setUpdateStatus, subscribeUpdateStatus } from '../data/updateStatusStore.js';
+import {
+  cancel as cancelUpdate,
+  check as checkUpdate,
+  download as downloadUpdate,
+  restart as restartUpdate,
+  subscribeUpdateController,
+} from '../data/updateController.js';
+import { getUpdateStatus, subscribeUpdateStatus } from '../data/updateStatusStore.js';
 import { validateKey } from '../services/aiService.js';
 import { APP_VERSION } from './welcome/shared/appMeta.js';
 import { renderInlineError } from '../utils/asyncUI.js';
@@ -28,8 +35,6 @@ let _dismissTimer = null;
 let _tooltip = null;
 const _cleanupHandlers = [];
 const _skillRevealTimers = new Set();
-const UPDATE_POLL_MS = 1000;
-const RESTART_DELAYED_MS = 30_000;
 
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -1033,15 +1038,6 @@ function displayVersion(version) {
   return value.toLowerCase().startsWith('v') ? value : `v${value}`;
 }
 
-function versionsMatch(left, right) {
-  const normalize = (value) => String(value ?? '').trim().replace(/^v/i, '');
-  return Boolean(left || right) && normalize(left) === normalize(right);
-}
-
-function isActiveUpdateStatus(status) {
-  return ['checking', 'downloading', 'verifying', 'extracting', 'installing'].includes(status);
-}
-
 function renderUpdateSettingsGroup({ health } = {}) {
   if (!health?.updateSupported) {
     return null;
@@ -1056,90 +1052,42 @@ function renderUpdateSettingsGroup({ health } = {}) {
     error: null,
     downloadStartedAt: 0,
   };
-  let statusTimer = null;
-  let restartTimer = null;
-  let restartStartedAt = 0;
   let unsubscribeStatus = null;
+  let unsubscribeController = null;
   let settingsSaveId = 0;
 
   _cleanupHandlers.push(() => {
-    if (statusTimer) {
-      clearTimeout(statusTimer);
-      statusTimer = null;
-    }
-    if (restartTimer) {
-      clearTimeout(restartTimer);
-      restartTimer = null;
-    }
     unsubscribeStatus?.();
+    unsubscribeController?.();
     unsubscribeStatus = null;
+    unsubscribeController = null;
   });
 
-  function applyStatus(status, { publish = true } = {}) {
+  function applyStatus(status) {
+    if (Object.hasOwn(status, 'autoCheckUpdates') || Object.hasOwn(status, 'updateMode')) {
+      state.settings = {
+        autoCheckUpdates: status.autoCheckUpdates ?? state.settings.autoCheckUpdates,
+        updateMode: status.updateMode ?? state.settings.updateMode,
+      };
+    }
     state.status = status.status === 'failed' ? 'failed' : status.status;
     state.error = status.error ?? null;
     state.release = {
       ...(state.release ?? {}),
-      currentVersion: status.currentVersion,
-      latestVersion: status.latestVersion,
-      releaseNotesUrl: status.releaseNotesUrl,
-      progress: status.progress,
+      currentVersion: status.currentVersion ?? state.release?.currentVersion,
+      latestVersion: status.latestVersion ?? state.release?.latestVersion,
+      releaseNotesUrl: status.releaseNotesUrl ?? state.release?.releaseNotesUrl,
+      progress: status.progress ?? state.release?.progress,
       bytesTotal: status.bytesTotal ?? state.release?.bytesTotal,
-      bytesDownloaded: status.bytesDownloaded,
+      bytesDownloaded: status.bytesDownloaded ?? state.release?.bytesDownloaded,
+      restartDelayed: status.restartDelayed ?? state.release?.restartDelayed,
       updateAvailable: status.status === 'available',
     };
-    if (publish) {
-      setUpdateStatus(status);
+    if (state.status === 'downloading' && !state.downloadStartedAt) {
+      state.downloadStartedAt = Date.now();
+    } else if (state.status !== 'downloading') {
+      state.downloadStartedAt = 0;
     }
-  }
-
-  function scheduleStatusPoll() {
-    if (statusTimer || !isActiveUpdateStatus(state.status)) {
-      return;
-    }
-
-    statusTimer = setTimeout(async () => {
-      statusTimer = null;
-      try {
-        applyStatus(await updateJson('status'));
-      } catch (error) {
-        applyStatus({ status: 'check-failed', error: error.message });
-      }
-      render();
-      scheduleStatusPoll();
-    }, UPDATE_POLL_MS);
-  }
-
-  async function pollRestartHealth() {
-    restartTimer = null;
-    try {
-      const response = await globalThis.fetch('/api/health');
-      const health = await response.json();
-      if (!state.release?.latestVersion || versionsMatch(health.version, state.release.latestVersion)) {
-        globalThis.location?.reload?.();
-        return;
-      }
-    } catch {
-      // Alice is expected to be offline briefly while the launcher swaps files.
-    }
-
-    if (restartStartedAt && Date.now() - restartStartedAt >= RESTART_DELAYED_MS) {
-      state.error = 'Restart is taking longer than expected. Keep this tab open.';
-      render();
-    }
-
-    restartTimer = setTimeout(() => {
-      void pollRestartHealth();
-    }, UPDATE_POLL_MS);
-  }
-
-  function startRestartPolling() {
-    if (restartTimer) {
-      return;
-    }
-    restartTimer = setTimeout(() => {
-      void pollRestartHealth();
-    }, UPDATE_POLL_MS);
   }
 
   function saveSettings(nextSettings) {
@@ -1172,50 +1120,22 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   async function checkNow() {
-    applyStatus({ status: 'checking', error: null });
-    render();
-    try {
-      const release = await updateJson('check');
-      applyStatus({
-        ...release,
-        status: release.updateAvailable ? 'available' : 'idle',
-      });
-      if (!release.updateAvailable) {
-        Toast.show("You're on the latest version.", 'success');
-      }
-    } catch (error) {
-      applyStatus({ status: 'check-failed', error: error.message });
+    await checkUpdate({ refreshStatus: false });
+    if (getUpdateStatus().status === 'idle') {
+      Toast.show("You're on the latest version.", 'success');
     }
     render();
   }
 
   async function installNow() {
-    applyStatus({ status: 'downloading', error: null });
     state.downloadStartedAt = Date.now();
-    render();
-    try {
-      await updateJson('download', { method: 'POST' });
-      const status = await updateJson('status');
-      applyStatus(status);
-      scheduleStatusPoll();
-    } catch (error) {
-      applyStatus({ status: 'failed', error: error.message });
-    }
+    await downloadUpdate();
     render();
   }
 
   async function restartNow() {
-    try {
-      applyStatus({ status: 'installing', error: null });
-      render();
-      await updateJson('restart', { method: 'POST' });
-      restartStartedAt = Date.now();
-      startRestartPolling();
-      render();
-    } catch (error) {
-      applyStatus({ status: 'failed', error: error.message });
-      render();
-    }
+    await restartUpdate();
+    render();
   }
 
   function whatsNewLink() {
@@ -1230,17 +1150,8 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   async function cancelDownload() {
-    if (statusTimer) {
-      clearTimeout(statusTimer);
-      statusTimer = null;
-    }
-    try {
-      applyStatus(await updateJson('cancel', { method: 'POST' }));
-    } catch (error) {
-      applyStatus({ status: 'failed', error: error.message });
-    } finally {
-      render();
-    }
+    await cancelUpdate();
+    render();
   }
 
   function etaSuffix() {
@@ -1358,7 +1269,9 @@ function renderUpdateSettingsGroup({ health } = {}) {
       copy.append(updateHeadline({
         heading: 'Restarting Alice',
         chip: version || displayVersion(APP_VERSION),
-        muted: 'waiting for Alice to come back online…',
+        muted: state.release?.restartDelayed
+          ? 'Alice is taking longer than expected to come back online.'
+          : 'waiting for Alice to come back online…',
       }));
       top.append(copy);
       block.append(top, createUpdateProgress(100, { indeterminate: true }));
@@ -1462,38 +1375,14 @@ function renderUpdateSettingsGroup({ health } = {}) {
     body.replaceChildren(renderStatusBlock(), createElement('div', 'update-settings__rule'), autoRow, renderModePicker());
   }
 
-  Promise.all([
-    updateJson('settings'),
-    updateJson('status').catch(() => null),
-  ])
-    .then(([settings, status]) => {
-      state.settings = settings;
-      const sharedStatus = getUpdateStatus();
-      const nextStatus = sharedStatus.status && sharedStatus.status !== 'idle'
-        ? sharedStatus
-        : status;
-      if (nextStatus?.status && nextStatus.status !== 'idle') {
-        applyStatus(nextStatus, { publish: nextStatus === status });
-        scheduleStatusPoll();
-      } else {
-        state.status = 'idle';
-      }
-      render();
-    })
-    .catch((error) => {
-      state.status = 'check-failed';
-      state.error = error.message;
-      render();
-    });
-
   unsubscribeStatus = subscribeUpdateStatus((status) => {
     if (!status?.status) {
       return;
     }
-    applyStatus(status, { publish: false });
+    applyStatus(status);
     render();
-    scheduleStatusPoll();
-  });
+  }, { emit: true });
+  unsubscribeController = subscribeUpdateController();
 
   render();
   return createSetGroup('UPDATES', body);

@@ -43,7 +43,9 @@ vi.mock('../../src/components/Toast.js', () => ({
 import * as aiSettings from '../../src/data/aiSettings.js';
 import * as aiService from '../../src/services/aiService.js';
 import { Toast } from '../../src/components/Toast.js';
+import { UpdateToast } from '../../src/components/UpdateToast.js';
 import { Profile } from '../../src/pages/Profile.js';
+import { resetUpdateControllerForTesting } from '../../src/data/updateController.js';
 import {
   resetUpdateStatusForTesting,
   setUpdateStatus,
@@ -51,7 +53,9 @@ import {
 
 afterEach(() => {
   vi.useRealTimers();
+  UpdateToast.destroy();
   Profile.unmount();
+  resetUpdateControllerForTesting();
   resetUpdateStatusForTesting();
   document.body.replaceChildren();
   vi.clearAllMocks();
@@ -87,7 +91,7 @@ async function mountProfile(status = 'authenticated', overrides = {}) {
   return container;
 }
 
-async function flushPromises(count = 3) {
+async function flushPromises(count = 20) {
   for (let index = 0; index < count; index += 1) {
     await Promise.resolve();
   }
@@ -295,6 +299,12 @@ describe('Profile — AI resume parsing settings', () => {
           }),
         };
       }
+      if (url === '/api/update/check') {
+        return {
+          ok: true,
+          json: async () => ({ updateAvailable: false }),
+        };
+      }
       if (url === '/api/update/status') {
         return {
           ok: true,
@@ -313,8 +323,8 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(section.textContent).toContain('UPDATES');
     expect(section.textContent).toContain('Current version');
-    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.6');
-    expect(section.textContent).not.toContain('vv1.10.6');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.10.7');
+    expect(section.textContent).not.toContain('vv1.10.7');
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
@@ -417,7 +427,7 @@ describe('Profile — AI resume parsing settings', () => {
       if (url === '/api/update/settings') {
         return {
           ok: true,
-          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+          json: async () => ({ autoCheckUpdates: false, updateMode: 'ask' }),
         };
       }
       if (url === '/api/update/check') {
@@ -686,7 +696,7 @@ describe('Profile — AI resume parsing settings', () => {
       if (url === '/api/update/settings') {
         return {
           ok: true,
-          json: async () => ({ autoCheckUpdates: true, updateMode: 'ask' }),
+          json: async () => ({ autoCheckUpdates: false, updateMode: 'ask' }),
         };
       }
       if (url === '/api/update/check') {
@@ -748,6 +758,56 @@ describe('Profile — AI resume parsing settings', () => {
     await flushPromises();
 
     expect(container.textContent).toContain('Restart to finish');
+    vi.useRealTimers();
+  });
+
+  it('uses one status poller when the toast and Profile Updates panel are both mounted', async () => {
+    vi.useFakeTimers();
+    let statusReads = 0;
+    const fetchMock = vi.fn(async (url) => {
+      if (url === '/api/update/settings') {
+        return {
+          ok: true,
+          json: async () => ({ autoCheckUpdates: false, updateMode: 'ask' }),
+        };
+      }
+      if (url === '/api/update/status') {
+        statusReads += 1;
+        return {
+          ok: true,
+          json: async () => (statusReads < 3
+            ? {
+              status: 'downloading',
+              currentVersion: 'v1.9.0',
+              latestVersion: 'v1.10.0',
+              progress: statusReads * 25,
+            }
+            : {
+              status: 'ready-to-restart',
+              currentVersion: 'v1.9.0',
+              latestVersion: 'v1.10.0',
+              progress: 100,
+            }),
+        };
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    UpdateToast.mount({ health: { updateSupported: true } });
+    const container = await mountProfile('authenticated', {
+      mountOptions: { health: { runtime: 'local', updateSupported: true } },
+    });
+    await flushPromises(8);
+
+    expect(document.querySelector('.update-toast')?.textContent).toContain('Downloading update');
+    expect(container.textContent).toContain('Downloading');
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/update/status')).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises(8);
+
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/update/status')).toHaveLength(2);
     vi.useRealTimers();
   });
 

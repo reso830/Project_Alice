@@ -1,10 +1,13 @@
 import { createSvgIcon } from '../utils/icons.js';
-import { setUpdateStatus, subscribeUpdateStatus } from '../data/updateStatusStore.js';
+import {
+  cancel as cancelUpdate,
+  download as downloadUpdate,
+  restart as restartUpdate,
+  subscribeUpdateController,
+} from '../data/updateController.js';
+import { subscribeUpdateStatus } from '../data/updateStatusStore.js';
 
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
-const POLL_MS = 1000;
-const AUTO_CHECK_MS = 24 * 60 * 60 * 1000;
-const RESTART_DELAYED_MS = 30 * 1000;
 
 // 24×24 stroke glyphs (match the icon treatment in the reference drawings).
 const GLYPHS = {
@@ -16,9 +19,6 @@ const GLYPHS = {
 };
 
 let _root = null;
-let _pollTimer = null;
-let _autoCheckTimer = null;
-let _restartTimer = null;
 let _mountId = 0;
 let _dismissed = false;
 let _status = { status: 'idle' };
@@ -26,9 +26,8 @@ let _onStatusChange = () => {};
 let _onManage = () => {};
 let _reloadPage = () => globalThis.location?.reload?.();
 let _unsubscribeStatus = null;
-let _settingsChangedHandler = null;
+let _unsubscribeController = null;
 let _downloadStartedAt = 0;
-let _restartStartedAt = 0;
 let _updateMode = 'ask';
 
 function el(tag, className) {
@@ -50,14 +49,6 @@ function clampPercent(value) {
 function displayVersion(version) {
   const value = String(version || '').trim();
   return value.toLowerCase().startsWith('v') ? value : `v${value}`;
-}
-
-function normalizeVersion(version) {
-  return String(version || '').trim().replace(/^v/i, '');
-}
-
-function versionsMatch(left, right) {
-  return normalizeVersion(left) === normalizeVersion(right);
 }
 
 function formatBytes(bytes) {
@@ -354,160 +345,33 @@ function renderStatus() {
   }
 }
 
-function applyStatus(nextStatus, { publish = true } = {}) {
+function applyStatus(nextStatus) {
+  const wasDownloading = _status.status === 'downloading';
   _status = { ..._status, ...nextStatus };
-  if (publish) {
-    setUpdateStatus(_status);
+  if (_status.status === 'downloading' && !wasDownloading) {
+    _downloadStartedAt = Date.now();
+  } else if (_status.status !== 'downloading') {
+    _downloadStartedAt = 0;
+  }
+  if (Object.hasOwn(_status, 'updateMode')) {
+    _updateMode = _status.updateMode === 'notify' ? 'notify' : 'ask';
   }
   _onStatusChange(_status);
   renderStatus();
 }
 
-async function readJson(route, options) {
-  const response = await globalThis.fetch(route, options);
-  const body = await response.json();
-  if (!response.ok) {
-    throw new Error(body?.error?.message || 'Update request failed.');
-  }
-  return body;
-}
-
-function stopPolling() {
-  if (_pollTimer) {
-    globalThis.clearInterval(_pollTimer);
-    _pollTimer = null;
-  }
-}
-
-function stopRestartPolling() {
-  if (_restartTimer) {
-    globalThis.clearTimeout(_restartTimer);
-    _restartTimer = null;
-  }
-}
-
-async function pollRestartHealth() {
-  _restartTimer = null;
-  try {
-    const health = await readJson('/api/health');
-    if (!_status.latestVersion || versionsMatch(health.version, _status.latestVersion)) {
-      _reloadPage();
-      return;
-    }
-  } catch {
-    // The server is expected to be down briefly while the launcher swaps files.
-  }
-  if (!_status.restartDelayed && _restartStartedAt && Date.now() - _restartStartedAt >= RESTART_DELAYED_MS) {
-    applyStatus({ restartDelayed: true });
-  }
-  _restartTimer = globalThis.setTimeout(() => {
-    void pollRestartHealth();
-  }, POLL_MS);
-}
-
-function startRestartPolling() {
-  if (_restartTimer) {
-    return;
-  }
-  _restartTimer = globalThis.setTimeout(() => {
-    void pollRestartHealth();
-  }, POLL_MS);
-}
-
-async function pollStatus() {
-  try {
-    const status = await readJson('/api/update/status');
-    applyStatus(status);
-    if (['checking', 'downloading', 'verifying', 'extracting'].includes(status.status)) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-  } catch (error) {
-    stopPolling();
-    applyStatus({ status: 'failed', error: error.message });
-  }
-}
-
-function startPolling() {
-  if (_pollTimer) {
-    return;
-  }
-  _pollTimer = globalThis.setInterval(() => {
-    void pollStatus();
-  }, POLL_MS);
-}
-
-async function checkNow() {
-  try {
-    const result = await readJson('/api/update/check');
-    applyStatus({
-      ...result,
-      status: result.updateAvailable ? 'available' : 'idle',
-    });
-    await pollStatus();
-  } catch (error) {
-    applyStatus({ status: 'check-failed', error: error.message });
-  }
-}
-
-async function initializeAutoChecks(mountId) {
-  try {
-    const settings = await readJson('/api/update/settings');
-    if (mountId !== _mountId || !_root) {
-      return;
-    }
-    _updateMode = settings.updateMode === 'notify' ? 'notify' : 'ask';
-    renderStatus();
-    if (!settings.autoCheckUpdates) {
-      return;
-    }
-    await checkNow();
-    if (mountId !== _mountId || !_root) {
-      return;
-    }
-    _autoCheckTimer = globalThis.setInterval(() => {
-      void checkNow();
-    }, AUTO_CHECK_MS);
-  } catch {
-    // Settings load failures should not bypass the user's auto-check preference.
-  }
-}
-
 async function download() {
   _downloadStartedAt = Date.now();
-  try {
-    applyStatus(await readJson('/api/update/download', { method: 'POST' }));
-    startPolling();
-  } catch (error) {
-    applyStatus({ status: 'failed', error: error.message });
-  }
+  await downloadUpdate();
 }
 
 async function cancelDownload() {
-  try {
-    const status = await readJson('/api/update/cancel', { method: 'POST' });
-    stopPolling();
-    applyStatus(status);
-    dismiss();
-  } catch (error) {
-    stopPolling();
-    applyStatus({ status: 'failed', error: error.message });
-  }
+  await cancelUpdate();
+  dismiss();
 }
 
 async function restart() {
-  // Go straight to the stable installing state (the raw `restarting` response
-  // is not a renderable state and would flicker the toast out and back in).
-  applyStatus({ status: 'installing' });
-  try {
-    await readJson('/api/update/restart', { method: 'POST' });
-    _restartStartedAt = Date.now();
-    startRestartPolling();
-  } catch (error) {
-    stopRestartPolling();
-    applyStatus({ status: 'failed', error: error.message });
-  }
+  await restartUpdate();
 }
 
 export function mount({
@@ -537,37 +401,22 @@ export function mount({
   _root.setAttribute('aria-live', 'polite');
   document.body.append(_root);
   _unsubscribeStatus = subscribeUpdateStatus((status) => {
-    applyStatus(status, { publish: false });
+    applyStatus(status);
   }, { emit: true });
-  _settingsChangedHandler = (event) => {
-    const nextMode = event.detail?.updateMode;
-    _updateMode = nextMode === 'notify' ? 'notify' : 'ask';
-    renderStatus();
-  };
-  globalThis.addEventListener?.('alice-update-settings-changed', _settingsChangedHandler);
-  void initializeAutoChecks(mountId);
+  _unsubscribeController = subscribeUpdateController({ reloadPage: _reloadPage });
+  if (mountId !== _mountId) {
+    destroy();
+  }
   return _root;
 }
 
 export function destroy() {
   _mountId += 1;
-  if (_pollTimer) {
-    globalThis.clearInterval(_pollTimer);
-  }
-  if (_autoCheckTimer) {
-    globalThis.clearInterval(_autoCheckTimer);
-  }
-  stopRestartPolling();
   _unsubscribeStatus?.();
-  if (_settingsChangedHandler) {
-    globalThis.removeEventListener?.('alice-update-settings-changed', _settingsChangedHandler);
-  }
+  _unsubscribeController?.();
   _unsubscribeStatus = null;
-  _settingsChangedHandler = null;
-  _pollTimer = null;
-  _autoCheckTimer = null;
+  _unsubscribeController = null;
   _downloadStartedAt = 0;
-  _restartStartedAt = 0;
   _updateMode = 'ask';
   _root?.remove();
   _root = null;
