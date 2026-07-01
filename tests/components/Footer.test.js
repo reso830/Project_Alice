@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Footer } from '../../src/components/Footer.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
+const BUILD_MONTH = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
 describe('Footer', () => {
   it('renders a footer element', () => {
     const footer = Footer.render();
@@ -57,7 +59,7 @@ describe('Footer', () => {
     const footer = Footer.render();
 
     expect(footer.textContent).toContain(APP_VERSION);
-    expect(footer.textContent).toContain('Built May 2026');
+    expect(footer.textContent).toContain(`Built ${BUILD_MONTH}`);
   });
 
   it('renders hosted deployment and workflow tools in the stack section', () => {
@@ -80,6 +82,7 @@ describe('Footer', () => {
     expect(link.href).toBe('https://github.com/reso830/Project_Alice/releases/latest');
     expect(link.textContent).toContain('Download');
     expect(link.textContent).toContain(APP_VERSION);
+    expect(link.textContent).not.toContain(`v${APP_VERSION}`);
   });
 
   it('renders the hosted-version link for local runtime', () => {

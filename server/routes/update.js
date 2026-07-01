@@ -13,6 +13,7 @@ const CACHE_MS = 60 * 60 * 1000;
 const CHECK_TIMEOUT_MS = 1500;
 const DOWNLOAD_TIMEOUT_MS = 30 * 1000;
 const READY_STATUS = 'ready-to-restart';
+export const PORTABLE_ZIP_RE = /^alice-v.*-win-x64\.zip$/i;
 const ACTIVE_UPDATE_STATUSES = new Set([
   'downloading',
   'verifying',
@@ -232,10 +233,38 @@ function findAsset(release, predicate) {
   return release?.assets?.find((asset) => predicate(asset.name ?? '', asset.browser_download_url ?? ''));
 }
 
+function findPortableZipAsset(release) {
+  const assets = release?.assets ?? [];
+  const strictMatches = assets.filter((asset) => PORTABLE_ZIP_RE.test(asset.name ?? ''));
+
+  if (strictMatches.length === 1) {
+    return strictMatches[0];
+  }
+  if (strictMatches.length > 1) {
+    throw new Error('Could not identify the update package: multiple portable ZIP assets matched the release naming contract.');
+  }
+
+  const zipAssets = assets.filter((asset) => /\.zip$/i.test(asset.name ?? ''));
+  if (zipAssets.length === 1) {
+    return zipAssets[0];
+  }
+  if (zipAssets.length > 1) {
+    throw new Error('Could not identify the update package: multiple ZIP assets are present and none match the portable naming contract.');
+  }
+
+  return null;
+}
+
+export function getChecksumName(zipName) {
+  return `${zipName}.sha256`;
+}
+
 function mapRelease(release, currentVersion) {
   const latestVersion = normalizeVersion(release.tag_name ?? release.name);
-  const zipAsset = findAsset(release, (name) => /\.zip$/i.test(name));
-  const checksumAsset = findAsset(release, (name) => /\.sha256$/i.test(name));
+  const zipAsset = findPortableZipAsset(release);
+  const checksumAsset = zipAsset
+    ? findAsset(release, (name) => name === getChecksumName(zipAsset.name ?? ''))
+    : null;
   const packageUrl = zipAsset?.browser_download_url ?? release.packageUrl ?? null;
   const checksumUrl = checksumAsset?.browser_download_url ?? release.checksumUrl ?? null;
 
@@ -251,13 +280,19 @@ function mapRelease(release, currentVersion) {
   };
 }
 
+// Alice's portable release workflow uses PowerShell Compress-Archive, whose
+// entries include sizes in Local File Headers. Streamed/data-descriptor ZIPs are
+// rejected explicitly so a packaging-tool change fails loud instead of corrupting
+// the staged update.
 function extractZip(zipPath, destination) {
   const buffer = fs.readFileSync(zipPath);
+  const root = path.resolve(destination);
   let offset = 0;
 
-  fs.mkdirSync(destination, { recursive: true });
+  fs.mkdirSync(root, { recursive: true });
 
   while (offset + 30 <= buffer.length && buffer.readUInt32LE(offset) === 0x04034b50) {
+    const flags = buffer.readUInt16LE(offset + 6);
     const method = buffer.readUInt16LE(offset + 8);
     const compressedSize = buffer.readUInt32LE(offset + 18);
     const fileNameLength = buffer.readUInt16LE(offset + 26);
@@ -265,15 +300,24 @@ function extractZip(zipPath, destination) {
     const fileName = buffer.toString('utf8', offset + 30, offset + 30 + fileNameLength);
     const dataStart = offset + 30 + fileNameLength + extraLength;
     const dataEnd = dataStart + compressedSize;
-    const raw = buffer.subarray(dataStart, dataEnd);
-    const safeName = fileName.replace(/\\/g, '/');
 
-    if (safeName.includes('..') || path.isAbsolute(safeName)) {
+    if ((flags & 0x08) !== 0) {
+      throw new Error("Update archive uses streamed/data-descriptor entries, which Alice's extractor does not support.");
+    }
+    if (dataEnd > buffer.length) {
+      throw new Error('Corrupted or truncated ZIP archive (data segment out of bounds).');
+    }
+
+    const target = path.resolve(root, fileName);
+    const relative = path.relative(root, target);
+    const isDriveRelative = /^[a-zA-Z]:(?![\\/])/.test(fileName);
+
+    if (isDriveRelative || path.win32.isAbsolute(fileName) || relative.startsWith('..') || path.isAbsolute(relative)) {
       throw new Error(`Unsafe archive path: ${fileName}`);
     }
 
-    const target = path.join(destination, safeName);
-    if (safeName.endsWith('/')) {
+    const raw = buffer.subarray(dataStart, dataEnd);
+    if (/[\\/]$/.test(fileName)) {
       fs.mkdirSync(target, { recursive: true });
     } else {
       fs.mkdirSync(path.dirname(target), { recursive: true });

@@ -203,6 +203,10 @@ Node runtime (verified against the official `SHASUMS256`, with an ABI-matched
 The `release-portable.yml` GitHub Actions workflow builds and attaches those
 artifacts to a GitHub Release, triggered **only** on a `v*` tag or manual
 `workflow_dispatch` (never on per-feature merges, to conserve free-tier minutes).
+The self-update extractor expects the release ZIP shape produced by PowerShell
+`Compress-Archive`, including concrete entry sizes in Local File Headers. Do not
+switch the release workflow to a streamed/data-descriptor ZIP writer without also
+updating the extractor; Alice rejects those archives during update staging.
 
 **AI in the portable package.** Unchanged from local mode — the OpenRouter key
 is a browser-local BYOK (`localStorage`), the server is never in the AI path,

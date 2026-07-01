@@ -7,6 +7,42 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.5] — 2026-07-01
+
+Release-package robustness — hardens the download/extract side of the 041
+portable self-update against fragile asset selection and malformed archives,
+surfaced by the post-release audit. Portable Windows self-update only; no
+behavior change to hosted or demo modes. (#89)
+
+### Fixed
+
+- **Portable release asset is matched by name, not position** — the updater now
+  selects the package via the `alice-v*-win-x64.zip` naming contract and pairs
+  the checksum to that exact zip (`<zip>.sha256`) rather than grabbing the first
+  `.zip`/`.sha256` in the release. A single non-matching zip still resolves via a
+  conservative fallback, but multiple ambiguous zips now fail loud instead of
+  silently mis-selecting a cross-platform or decoy asset. (#89)
+- **ZIP extractor rejects unsafe and malformed archives** — path traversal is now
+  checked with `path.relative`, closing the Windows drive-relative bypass
+  (`C:evil.bat`) that a `..`/`isAbsolute` check missed, while still allowing
+  legitimate names that merely contain `..` (`foo..bar.txt`). Streamed
+  data-descriptor entries (general-purpose bit 3) are rejected explicitly, and a
+  data segment that runs past the buffer end throws instead of silently writing a
+  truncated file. Extraction remains gated behind checksum verification; these are
+  defense-in-depth guards. (#89)
+- **Footer build month no longer drifts** — the previously hard-coded
+  "Built May 2026" is replaced by a build-time `__BUILD_MONTH__` constant injected
+  via Vite `define` (month-granularity to keep the portable build reproducible).
+  The footer also guards the version `v` prefix so the label stays correct
+  regardless of whether `APP_VERSION` carries it. (#89)
+
+### Tests
+
+- Added coverage for strict asset matching (canonical match, decoy-asset noise,
+  ambiguous multi-zip rejection), extractor path-traversal rejection including the
+  drive-relative vector, bit-3 and out-of-bounds archive rejection, and the footer
+  version-prefix/build-month rendering. (#89)
+
 ## [1.10.4] — 2026-07-01
 
 Update-mode picker fix — the Profile › Settings › Updates mode picker now
@@ -1368,7 +1404,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.4...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.5...HEAD
+[1.10.5]: https://github.com/reso830/Project_Alice/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/reso830/Project_Alice/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/reso830/Project_Alice/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/reso830/Project_Alice/compare/v1.10.1...v1.10.2
