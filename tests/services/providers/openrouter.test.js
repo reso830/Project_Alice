@@ -174,11 +174,17 @@ describe('openrouterProvider', () => {
     })).rejects.toMatchObject({ code: 'LLM_INVALID_RESPONSE' });
   });
 
-  it('validates an accepted key', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeValidationResponse()));
+  it('validates an accepted key against the auth-enforcing endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(makeValidationResponse());
+    vi.stubGlobal('fetch', fetchMock);
     const { openrouterProvider } = await loadProvider();
 
     await expect(openrouterProvider.validateKey('sk-or-test')).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://openrouter.ai/api/v1/key');
+    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+      Authorization: 'Bearer sk-or-test',
+    });
   });
 
   it('maps rejected key validation to invalid_key', async () => {
