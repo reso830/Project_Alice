@@ -52,6 +52,7 @@ describe('aiService', () => {
       network: expect.any(Object),
       invalid_key: expect.any(Object),
       quota: expect.any(Object),
+      bad_request: expect.any(Object),
       NO_TEXT: expect.any(Object),
     }));
   });

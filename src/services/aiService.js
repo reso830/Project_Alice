@@ -34,6 +34,11 @@ export const REASON_CODES = Object.freeze({
     message: 'Out of credits — your AI provider account has no remaining balance.',
     fix: 'settings',
   }),
+  bad_request: Object.freeze({
+    code: 'HTTP 400',
+    message: 'Invalid request — check your selected model and settings.',
+    fix: 'settings',
+  }),
   NO_TEXT: Object.freeze({
     code: 'NO_TEXT',
     message: 'No machine-readable text found — the file looks scanned or image-only.',

@@ -7,6 +7,30 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.8] — 2026-07-02
+
+AI service correctness patch — OpenRouter key testing and recoverable provider
+error copy now point users at the real fix. Browser-local BYOK remains
+unchanged; Alice still never sends AI keys to its own server. (#76, #77)
+
+### Fixed
+
+- **OpenRouter key validation now checks an auth-enforcing endpoint** — the
+  Settings "Test" action now calls `GET /api/v1/key` instead of the public
+  models endpoint, so invalid keys return `invalid_key` instead of showing a
+  false "Connected" result. (#77)
+- **Unrecognized 4xx provider errors use invalid-request copy** — HTTP 400, 404,
+  and 422 now map to a dedicated `bad_request` reason with Settings-oriented
+  guidance, rather than falling through to the generic HTTP 503/provider-outage
+  message. (#76)
+
+### Tests
+
+- Added `tests/services/aiErrors.test.js` coverage for status-to-reason mapping,
+  extended `aiService` reason-code coverage for `bad_request`, and asserted
+  OpenRouter validation uses `/api/v1/key` with the Authorization header. (#76,
+  #77)
+
 ## [1.10.7] — 2026-07-01
 
 Update-orchestration consolidation — the portable self-update UI previously ran
@@ -1475,7 +1499,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.7...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.8...HEAD
+[1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8
 [1.10.7]: https://github.com/reso830/Project_Alice/compare/v1.10.6...v1.10.7
 [1.10.6]: https://github.com/reso830/Project_Alice/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/reso830/Project_Alice/compare/v1.10.4...v1.10.5

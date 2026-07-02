@@ -1,7 +1,7 @@
 import { createLlmError, mapErrorToReason } from '../aiErrors.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
 const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
 const LLM_TIMEOUT_MS = 30_000;
 const MAX_INPUT_CHARS = 24_000;
@@ -96,7 +96,7 @@ async function validateKey(key) {
   const timeout = createTimeoutController();
 
   try {
-    const response = await globalThis.fetch(OPENROUTER_MODELS_URL, {
+    const response = await globalThis.fetch(OPENROUTER_KEY_URL, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${key}`,

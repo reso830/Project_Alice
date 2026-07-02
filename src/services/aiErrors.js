@@ -40,6 +40,10 @@ export function mapErrorToReason(errorOrStatus) {
     return 'rate_limit';
   }
 
+  if (status >= 400 && status <= 499) {
+    return 'bad_request';
+  }
+
   if (status >= 500 && status <= 599) {
     return 'server';
   }
