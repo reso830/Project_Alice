@@ -6,7 +6,7 @@ Modernize Project Alice's unauthenticated welcome/login page and brand assets us
 ---
 
 ## Goals
-- Redesign the welcome page layout to support desktop (2-column diagonal/split/stack grid), tablet portrait, and mobile portrait modes.
+- Redesign the welcome page layout to support desktop, tablet portrait, and mobile portrait modes.
 - Integrate the new brand logo assets (`Alice_Colored.png` and `Alice_White.png`) across all pages, footers, navbars, and welcome scenes.
 - Update all system SVG icons (`src/assets/icons/` and `src/utils/icons.js`) with the new unified icon paths.
 - Recreate the animated showcase carousel (with 5 storytelling scenes: Constellation, Parse, Pipeline, Momentum, Deck) and progress/dot navigation.
