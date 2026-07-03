@@ -78,15 +78,15 @@ Alice is evolving through four major phases:
 - Expand compatibility intelligence
 
 ## Features
-- [x]  031-skill-proficiency-system  ·  shipped v1.1.0
-- [x]  032-profile-schema-refactor  ·  shipped v1.2.0
-- [x]  033-llm-resume-cv-parser  ·  shipped v1.3.0
+- [x] 031-skill-proficiency-system  ·  shipped v1.1.0
+- [x] 032-profile-schema-refactor  ·  shipped v1.2.0
+- [x] 033-llm-resume-cv-parser  ·  shipped v1.3.0
 - [x] 034-profile-page-refresh  ·  shipped v1.4.0
-- [x]  035-llm-jd-parser  ·  shipped v1.5.0
-- [x]  036-compatibility-engine  ·  shipped v1.6.0
-- [x]  037-compatibility-insights-panel  ·  shipped v1.7.0
-- [x]  038-ai-provider-abstraction  ·  shipped v1.7.1
-- [x]  039-desktop-workspace-refresh  ·  shipped v1.8.0
+- [x] 035-llm-jd-parser  ·  shipped v1.5.0
+- [x] 036-compatibility-engine  ·  shipped v1.6.0
+- [x] 037-compatibility-insights-panel  ·  shipped v1.7.0
+- [x] 038-ai-provider-abstraction  ·  shipped v1.7.1
+- [x] 039-desktop-workspace-refresh  ·  shipped v1.8.0
 - [x] 040-portable-distribution-package  ·  shipped v1.9.0
 - [x] 041-self-update-support  ·  shipped v1.10.0
 - [ ] 042-welcome-brand-refresh
