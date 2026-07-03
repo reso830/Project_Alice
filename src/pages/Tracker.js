@@ -896,6 +896,7 @@ async function openModalApplication(id) {
 
 async function selectApplication(id, { skipGuard = false } = {}) {
   const numericId = coerceId(id);
+  const previousSelectedId = _selectedId;
 
   if (!_isDesktop) {
     await openModalApplication(numericId);
@@ -913,7 +914,17 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     }
   }
 
-  const application = await api.getById(numericId);
+  _selectedId = numericId;
+  renderPage();
+
+  let application;
+  try {
+    application = await api.getById(numericId);
+  } catch (error) {
+    _selectedId = previousSelectedId;
+    renderPage();
+    throw error;
+  }
 
   openApplicationPane(application);
   renderPage();

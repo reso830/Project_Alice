@@ -359,6 +359,29 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
   });
 
+  it('marks a desktop card selected immediately while detail loading is still pending', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    let resolveDetails;
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => new Promise((resolve) => {
+      resolveDetails = resolve;
+    }));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(true);
+    expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+
+    resolveDetails(first);
+    await Promise.resolve();
+  });
+
   it('moves focus into the pane after a desktop card selection', async () => {
     const container = document.createElement('main');
     const first = createApplication(1);
