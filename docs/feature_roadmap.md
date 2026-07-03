@@ -89,6 +89,8 @@ Alice is evolving through four major phases:
 - [x]  039-desktop-workspace-refresh  ·  shipped v1.8.0
 - [x] 040-portable-distribution-package  ·  shipped v1.9.0
 - [x] 041-self-update-support  ·  shipped v1.10.0
+- [ ] 042-welcome-brand-refresh
+- [ ] 043-legal-and-footer
 
 ---
 
@@ -103,20 +105,20 @@ Alice is evolving through four major phases:
 - Expand analytics capabilities
 
 ## Features
-- [ ] 042-preference-engine-foundation
-- [ ] 043-ats-resume-quality-checks
-- [ ] 044-role-based-salary-preferences
-- [ ] 045-shift-setup-employment-preferences
-- [ ] 046-salary-match-indicators
-- [ ] 047-preference-based-compatibility
-- [ ] 048-analytics-dashboard-foundation
-- [ ] 049-funnel-response-analytics
-- [ ] 050-source-platform-insights
-- [ ] 051-compatibility-analytics
-- [ ] 052-role-skill-insights
-- [ ] 053-activity-analytics
-- [ ] 054-suggested-actions-engine
-- [ ] 055-ghosting-detection-suggestions
+- [ ] 044-preference-engine-foundation
+- [ ] 045-ats-resume-quality-checks
+- [ ] 046-role-based-salary-preferences
+- [ ] 047-shift-setup-employment-preferences
+- [ ] 048-salary-match-indicators
+- [ ] 049-preference-based-compatibility
+- [ ] 050-analytics-dashboard-foundation
+- [ ] 051-funnel-response-analytics
+- [ ] 052-source-platform-insights
+- [ ] 053-compatibility-analytics
+- [ ] 054-role-skill-insights (incl. #60 standardized skill names — data foundation)
+- [ ] 055-activity-analytics
+- [ ] 056-suggested-actions-engine
+- [ ] 057-ghosting-detection-suggestions
 
 ---
 
@@ -131,11 +133,11 @@ Alice is evolving through four major phases:
 - Improve long-term usability
 
 ## Features
-- [ ] 056-new-user-onboarding
-- [ ] 057-contextual-first-time-hints
-- [ ] 058-about-page-philosophy
-- [ ] 059-local-privacy-processing-mode
-- [ ] 060-job-hunt-os-polish
+- [ ] 058-new-user-onboarding
+- [ ] 059-contextual-first-time-hints
+- [ ] 060-about-page-philosophy
+- [ ] 061-local-privacy-processing-mode
+- [ ] 062-job-hunt-os-polish
 
 ---
 
