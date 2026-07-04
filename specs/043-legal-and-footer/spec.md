@@ -12,7 +12,7 @@
 ### Session 2026-07-04
 
 - **Q: Should we remove the STACK column entirely as specified in Claude design's handoff (which reduces height), or keep it?** $\rightarrow$ A: **Remove the STACK column entirely** as shown in the design handoff mockup to reduce the vertical footprint.
-- **Q: What placeholder text should we use for Terms of Use and Privacy Policy?** $\rightarrow$ A: **Writing actual, realistic Terms & Conditions and Privacy Policy documents is in-scope** for this feature. We will research and draft realistic copies that respect Project Alice's local-first, privacy-respecting, and non-commercial nature.
+- **Q: What placeholder text should we use for Terms of Use and Privacy Policy?** $\rightarrow$ A: **Writing realistic developer-drafted placeholder copy with prominent legal disclaimers is in-scope** for this feature. We will research and draft realistic copies that respect Project Alice's local-first, privacy-respecting, and non-commercial nature.
 - **Q: Should the welcome page mini-footer be updated?** $\rightarrow$ A: **Yes**, update the welcome page mini-footer in `WelcomePage.js` to also include active links to the Terms & Conditions and Privacy Policy.
 - **Q: How should the legal pages be routed?** $\rightarrow$ A: **In-app modal dialogs**. Clicking "Terms & Conditions" or "Privacy Policy" in the footer (or signup overlay / welcome mini-footer) opens a responsive centered modal dialog (or bottom sheet on mobile) mounted directly on the DOM rather than navigating to static HTML pages in new tabs.
 
@@ -29,7 +29,7 @@ Additionally, the existing global footer has a large vertical footprint and disp
 ## Scope
 
 ### In Scope
-- **Legal Content Drafting**: Research and write realistic, static (pre-written, non-dynamically generated) legal copy (structured as high-contrast dark text `#4B5563` on a white surface `#FFFFFF` with a navy `#1A1A2E` header) for both the Terms & Conditions (`v0.3.0 · Effective Apr 1, 2026`) and the Privacy Policy (`v0.2.1 · Effective Mar 15, 2026`) reflecting Project Alice's local-first data storage (SQLite/localStorage), private data ownership, and non-commercial scope. These documents are completely static resources and must not be dynamically built by code.
+- **Legal Content Drafting**: Research and write realistic, static (pre-written, non-dynamically generated) developer-drafted placeholder copy with prominent legal-review disclaimers (structured as high-contrast dark text `#4B5563` on a white surface `#FFFFFF` with a navy `#1A1A2E` header) for both the Terms & Conditions (`v0.3.0 · Effective Apr 1, 2026`) and the Privacy Policy (`v0.2.1 · Effective Mar 15, 2026`) reflecting Project Alice's local-first data storage (SQLite/localStorage), private data ownership, and non-commercial scope. These documents are completely static resources and must not be dynamically built by code.
 - **Global Legal Modal Component**: Implement `src/components/LegalModal.js` to render the legal content:
   - **Desktop/Tablet View (>=640px)**: Centered overlay modal (`max-width: 660px` on desktop, `max-width: 480px` on tablet), rounded corners (`14px`), backdrop blur overlay (`rgba(8,8,24,.52)`, `backdrop-filter: blur(3px)`), custom header with close button (✕), scrollable body content, and footer bar containing a close action button and metadata hint.
   - **Mobile View (<640px)**: Bottom sheet pinned to the bottom edge (`max-height: 82vh`, `max-width: 100%`), rounded top corners (`14px 14px 0 0`), drag handle pill (`36x4px`, `#ffffff` at 35% opacity) centered in the header.
@@ -38,7 +38,7 @@ Additionally, the existing global footer has a large vertical footprint and disp
 - **Auth Overlay Legal Notice**: Refactor the notice in `src/pages/welcome/AuthOverlay.js` to render "terms of use" and "privacy policy" as active, styled triggers that open the corresponding modal dialogs.
 - **Welcome Mini-Footer Links**: Refactor the mini-footer in `src/pages/welcome/WelcomePage.js` to render clickable "Terms & Conditions" and "Privacy Policy" triggers that open the modal dialogs.
 - **Global Footer Redesign**: Re-create `src/components/Footer.js` and update `src/styles/main.css` to implement the Claude Design handoff:
-  - Swap the raster logo for the color vector sigil (`Alice-Sigil-color.svg` at `64x64px`).
+  - Swap the raster logo for the color vector sigil (`alice-sigil-full.svg` at `64x64px`).
   - Vertically center the brand details and place the version inline below the tagline.
   - Remove the `STACK` section and the horizontal separator rule.
   - Add a new `GitHub` link to the Feedback section (pointing to the repository root).
@@ -49,7 +49,7 @@ Additionally, the existing global footer has a large vertical footprint and disp
 - **Footer Unit Tests**: Update `tests/components/Footer.test.js` to assert the updated DOM layout, Feedback section links, License section links, version placement, and copyright lines.
 
 ### Non-Goals
-- Finalized legally binding drafts (while realistic text is in-scope, formal legal review is not required).
+- Finalized, legally binding contracts in this phase (realistic developer-drafted placeholder copy with prominent legal disclaimers is used; formal attorney review is out-of-scope).
 - Integrating user terms-acceptance logging in the SQLite or Supabase databases (consent is expressed via signup UI notice).
 - Client-side URL routing (e.g. `/terms` path routing) for the modals (state is managed dynamically within the SPA via DOM injection).
 

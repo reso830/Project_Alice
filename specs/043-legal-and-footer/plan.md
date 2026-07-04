@@ -36,40 +36,50 @@ Implement a global `LegalModal` component to render static Terms & Conditions an
 
 ## Architecture & Data Flow
 
-### 1. Global `LegalModal` Component
-A new component `src/components/LegalModal.js` will act as a stateless overlay controller. It exports two main public functions:
-- `open(type)`: Where type is `'terms'` or `'privacy'`. It builds the overlay markup, populates the content from a static local constant structure, locks body scroll, binds keyboard listener (`Escape` key), binds focus trap handlers, and appends the modal to the document body.
-- `close()`: Dismisses the active modal, unbinds event listeners, restores body scroll, and returns focus to the button/link that originally triggered it.
+### 1. Global Shell-Level State & `LegalModal` Component
+To achieve global availability and coordinate modal stacking safely, dialog visibility is managed via shell-level state rather than direct, ad-hoc DOM mutation:
+- **Central State Manager**: The app-shell controllers (specifically `src/main.js` for authenticated views, and `src/pages/welcome/WelcomePage.js` for landing/auth views) will maintain a state variable: `let _activeLegalDialog = null; // 'terms' | 'privacy' | null`.
+- **Global Actions**: Expose a standard dispatch mechanism or shared function (`setLegalDialog(type)`) to update this state.
+- **Stateless Renderer (`LegalModal.js`)**: A new component `src/components/LegalModal.js` will act as a stateless renderer. When the shell state changes:
+  - If a dialog is selected, `LegalModal.render(type, onClose)` builds the modal markup (injecting static legal text), locks body scroll, configures ARIA attributes, binds focus traps, and appends the elements.
+  - If state becomes `null`, the active dialog is unmounted, body scroll is restored, and focus is returned to the element that triggered it.
 
 ```text
 [User Action: Click Link]
     │
     ▼
-[Trigger Event Listener] ──► calls LegalModal.open('terms' | 'privacy')
+[State Change Dispatcher] ──► setLegalDialog('terms' | 'privacy') updates shell state
     │
     ▼
-[LegalModal Component]
-    ├── 1. Locks body scroll (overflow: hidden)
-    ├── 2. Builds modal markup (dialog or mobile bottom sheet)
-    ├── 3. Injects static, pre-written legal text
-    ├── 4. Sets focus trap on (Close Buttons ✕ / Close)
-    └── 5. Appends to document.body
+[App-Shell Controller] (src/main.js or WelcomePage.js)
+    ├── 1. Tracks active dialog state
+    ├── 2. Mounts/updates LegalModal with onClose callback
+    └── 3. Unmounts LegalModal when state is set to null
+            │
+            ▼
+      [LegalModal Render]
+          ├── 1. Locks body scroll (overflow: hidden)
+          ├── 2. Builds modal markup (dialog or mobile bottom sheet)
+          ├── 3. Injects static pre-written disclaimer & legal text
+          └── 4. Traps keyboard focus / binds Escape close listener
 ```
 
 ### 2. Static Content Definitions
-The text content for both documents will be written as a static JS object constant inside `src/components/LegalModal.js` or `src/data/legalContent.js`:
+The text content for both documents will be written as a static JS object constant inside `src/data/legalContent.js`:
 - **Terms & Conditions**: Composed of 4 main sections (Acceptance of terms, Your account, Acceptable use, Changes to the service).
 - **Privacy Policy**: Composed of 4 main sections (What we collect, How we use it, Storage & retention, Your choices).
+- **Attorney Review Disclaimer**: A standard notice will be prepended to the top of both files explicitly stating that the document is developer-drafted placeholder copy and requires professional legal review before production use.
 
 ### 3. Welcome Page Mini-Footer & Auth Overlay Integration
-- **`WelcomePage.js`**: Refactor `renderFooterMeta()` to render "Terms & Conditions" and "Privacy Policy" links. Clicking them will call `LegalModal.open('terms')` / `LegalModal.open('privacy')`.
-- **`AuthOverlay.js`**: Replace the static legal text line with a layout appending interactive links for "terms of use" and "privacy policy". Clicking them triggers `LegalModal.open`.
+- **`WelcomePage.js`**: Refactor `renderFooterMeta()` to render "Terms & Conditions" and "Privacy Policy" links. Clicking them calls `setLegalDialog('terms' | 'privacy')` on the Welcome Page's shell state.
+- **`AuthOverlay.js`**: Replace the static legal text line with clickable anchors. Clicking them updates the parent page's shell state, rendering the modal on top of the auth overlay.
+- **Page Context Isolation**: Closing the legal modal returns focus to the trigger link without unmounting `AuthOverlay` or clearing form inputs.
 
 ### 4. Global Footer Redesign
 - Replace standard columns inside `src/components/Footer.js`.
 - Remove STACK section and horizontal rule.
 - Render version inline within the logo/brand block.
-- Wire license section links to trigger `LegalModal.open`.
+- Wire license section links to update the shell state by calling `setLegalDialog('terms' | 'privacy')`.
 - Add spotlight styling, radial gradients, and faint grid overlays to `.site-footer` in `src/styles/main.css`.
 
 ---
@@ -91,6 +101,8 @@ src/
 ├── components/
 │   ├── Footer.js                  # Updated footer layout, brand, and columns
 │   └── LegalModal.js              # NEW global modal component for Terms & Privacy
+├── data/
+│   └── legalContent.js            # NEW static legal text definitions for Terms & Privacy
 ├── pages/
 │   └── welcome/
 │       ├── AuthOverlay.js         # Updated legal consent triggers

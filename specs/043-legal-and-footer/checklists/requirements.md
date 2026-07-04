@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- The requirement `FR-043-010` contains a `[NEEDS CLARIFICATION]` marker regarding whether the footer stack list should adjust dynamically or remain static. This will be checked off once user feedback is obtained.
+- All clarifications (including STACK column removal and in-app modal routing) have been successfully resolved and integrated into the specification.

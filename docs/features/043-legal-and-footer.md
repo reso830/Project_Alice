@@ -9,7 +9,7 @@ Add native legal documents (Terms of Use and Privacy Policy) to Project Alice, l
 - Add standard Terms of Use and Privacy Policy document files into the application workspace.
 - Refactor the signup form in `AuthOverlay.js` to render the legal notice as clickable anchors. (Note: Originally specified to open in new tabs; superseded by `Alice_Legal` handoff which mandates in-app modal overlays).
 - Implement the redesigned global `Footer.js` following the high-fidelity design handoff from issue #108:
-  - Swap the raster logo for the full-color vector `Alice-Sigil-color.svg` at `64x64px`.
+  - Swap the raster logo for the full-color vector `alice-sigil-full.svg` at `64x64px`.
   - Dissolve the version number into the brand text block (vertically centered, below name/tagline).
   - Reorganize the footer columns: remove the STACK column, and structure Feedback, License (including Terms & Conditions and Privacy Policy stubs), and Copyright into 3 columns.
   - Remove the horizontal separator rule.
@@ -21,7 +21,7 @@ Add native legal documents (Terms of Use and Privacy Policy) to Project Alice, l
 ---
 
 ## Non-Goals
-- Drafting finalized, legally binding contracts in this phase (placeholder templates will be used).
+- Drafting finalized, legally binding contracts in this phase (realistic developer-drafted placeholder copy with prominent legal disclaimers is used; formal attorney review is out-of-scope).
 - Creating fully interactive in-app content routers for terms and privacy (Note: Originally specified to open in new tabs; superseded by in-app modal overlays).
 
 ---

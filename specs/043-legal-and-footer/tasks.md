@@ -37,7 +37,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Draft the pre-written static legal documents reflecting Project Alice's architecture, including disclaimer notices.
 
-- [ ] T001 Draft static Terms & Conditions copy
+- [x] T001 Draft static Terms & Conditions copy
   - **Target**: `src/data/legalContent.js` (new file)
   - **Expected behavior**: Define and export a static JavaScript structure representing the 4 sections of the Terms & Conditions (`v0.3.0 · Effective Apr 1, 2026`):
     - Title: "Terms & Conditions"
@@ -49,7 +49,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
     - **Notice**: Injected header calling out that this document is developer-drafted placeholder content and requires professional attorney review.
   - **Validation/test**: Verify the file is correctly created and exports the data structures.
 
-- [ ] T002 Draft static Privacy Policy copy
+- [x] T002 Draft static Privacy Policy copy
   - **Target**: `src/data/legalContent.js`
   - **Expected behavior**: Define and export a static JavaScript structure representing the 4 sections of the Privacy Policy (`v0.2.1 · Effective Mar 15, 2026`):
     - Title: "Privacy Policy"
@@ -69,14 +69,14 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 - [ ] T003 Implement `LegalModal.js` component
   - **Target**: `src/components/LegalModal.js` (new file)
-  - **Expected behavior**: Implement a stateless controller displaying Terms & Conditions or Privacy Policy:
-    - `open(type)`: Instantiates and appends overlay, header title + close button ✕, scrollable content panel populated from `legalContent.js`, and footer with close button. Sets `overflow: hidden` on body. Registers ESC key listener and Tab-key focus trap.
-    - `close()`: Removes modal from body, restores body overflow, removes keyboard listeners, and restores focus to the triggering element.
+  - **Expected behavior**: Implement a stateless modal renderer displaying Terms & Conditions or Privacy Policy:
+    - `render(type, onClose)`: Builds and returns the modal wrapper DOM tree (overlay backdrop, centered container or bottom sheet layout depending on viewport width, close button ✕, scrollable container, disclaimer header, and bottom Close button). Configures ARIA attributes, sets `overflow: hidden` on body, binds ESC key, and traps focus.
+    - Dismissal calls the `onClose` callback to clear shell state.
   - **Constraints**: 
     - Vanilla DOM createElement APIs, no external packages.
     - Desktop/tablet widths (660px desktop, 480px tablet) and max-height constraints (90vh desktop, 86vh tablet) split at 1024px width.
     - Accessibility ARIA attributes: modal root must have `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` referencing the title node ID.
-  - **Validation/test**: Verify DOM elements mount and unmount on call.
+  - **Validation/test**: Verify DOM elements render correctly on call.
 
 - [ ] T004 Write Modal Dialog & spotlight CSS styles
   - **Target**: `src/styles/main.css`
@@ -98,7 +98,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
   - **Target**: `src/pages/welcome/AuthOverlay.js`
   - **Expected behavior**:
     - Under the signup form, replace plain-text with HTML nodes rendering clickable links for "terms of use" and "privacy policy".
-    - Attach click listeners calling `LegalModal.open('terms')` / `LegalModal.open('privacy')`.
+    - Attach click listeners updating parent shell state (e.g. `setLegalDialog('terms')` / `setLegalDialog('privacy')`) rather than direct mounting.
     - Ensure modal opening does not close the AuthOverlay or clear its email/password inputs.
     - Verify interactive elements support visible focus indicators.
   - **Validation/test**: Click links from AuthOverlay signup; verify legal modal opens on top.
@@ -107,7 +107,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
   - **Target**: `src/pages/welcome/WelcomePage.js`
   - **Expected behavior**:
     - Modify `renderFooterMeta()` to render active buttons/links for "Terms & Conditions" and "Privacy Policy" next to version and license.
-    - Wire click handlers to call `LegalModal.open('terms')` / `LegalModal.open('privacy')`.
+    - Wire click handlers to update shell state (`setLegalDialog('terms' | 'privacy')`).
   - **Validation/test**: Verify clicking links launches the appropriate modal overlay.
 
 ---
@@ -123,7 +123,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
     - Dissolve Version section; render inline below tagline.
     - Remove STACK section and horizontal rule (`.footer__rule`).
     - Structure Feedback section: add GitHub repository root link as the first item.
-    - Structure License section: add active links for Terms & Conditions and Privacy Policy calling `LegalModal.open`.
+    - Structure License section: add active links for Terms & Conditions and Privacy Policy that update the shell-level state (`setLegalDialog('terms' | 'privacy')`).
     - Structure Copyright section: 3 stacked lines of text with an active link to `alvinresoso.com`.
     - Hide download/hosted buttons under 1024px.
   - **Validation/test**: Verify footer elements and responsive media classes display on Tracker page.
@@ -142,9 +142,10 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 - [ ] T009 Implement `LegalModal.test.js` unit tests
   - **Target**: `tests/components/LegalModal.test.js` (new file)
   - **Expected behavior**: Assert:
-    - Calling `open` appends overlay wrapper, configures ARIA attributes, and sets body `overflow: hidden`.
-    - Modal body contains headers, static copy, and disclaimer.
-    - ESC key triggers `close()`, unmounting overlay and restoring scroll.
+    - Shell state changes mount the overlay wrapper, configure ARIA attributes, and set body `overflow: hidden`.
+    - Modal body contains headers, static copy, and disclaimer notes.
+    - Full close path coverage: close button (✕) click, footer close button click, backdrop click, and Escape key press successfully clear state/unmount modal and restore body scroll.
+    - Closing the modal successfully returns focus to the active DOM element that triggered the open state.
   - **Validation/test**: Run `npm run test:run` or `vitest run tests/components/LegalModal.test.js`.
 
 ---

@@ -16,7 +16,7 @@
 
 ## Architecture & Focus Soundness
 
-- [x] `LegalModal.js` mounts directly to `document.body` (similar to the `Toast` component) to enable global trigger capability.
+- [x] `LegalModal.js` rendering is decoupled and managed under the shell-level state controller (`setLegalDialog`) rather than mounting directly on `document.body` via dynamic controller open calls.
 - [x] Scroll lock handles potential modal stack overlaps (e.g. opening legal modal on top of AuthOverlay) without breaking scroll restore.
 - [x] Keyboard focus trap is explicitly detailed to prevent focus leaks outside of the active dialog or bottom sheet.
 - [x] Layout breakpoints are translated from prototype container-width queries into real `@media` viewport queries.
