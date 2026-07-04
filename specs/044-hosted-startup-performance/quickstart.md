@@ -25,7 +25,7 @@ npm run dev          # local dev (logic only — not representative of hosted co
 - Write the numbers into [metrics.md](./metrics.md) as the `baseline` row.
 
 ## Per-phase verification walkthrough
-- **WS1 (loader)**: hosted cold load with cache disabled → branded loader paints before the bundle finishes; no blank white page. Toggle `prefers-reduced-motion` → edge glow stops spinning. Re-measure (expect FCP ~8s → ~1s, LCP roughly unchanged).
+- **WS1 (loader)**: hosted cold load with cache disabled → branded loader paints before the bundle finishes; no blank white page. Confirm the glow is static (no motion at any breakpoint) and, under `prefers-reduced-motion`, the loader→app swap is instant (no crossfade). Re-measure (expect FCP ~8s → ~1s, LCP roughly unchanged).
 - **WS2 (handshake)**: signed-out cold load → loader → Welcome without waiting on `/api/health`. Remove hosted env vars → ConfigError with no Welcome/app flash. Block `/api/health` + session → after ~10s, Retry (full reload). Re-measure (expect LCP drop, signed-out especially).
 - **WS3 (skeleton)**: signed-in cold load → shell + Tracker skeleton before data → rows replace skeleton on data arrival, no blank gap.
 - **WS4 (lazy-load)**: `npm run build`; confirm `Calendar`/`Profile`/`ProfileEdit` are separate chunks and `Tracker` is in the initial chunk. Navigate rapidly between routes (latest-wins holds). Simulate a stale chunk (404) → reload fallback fires.

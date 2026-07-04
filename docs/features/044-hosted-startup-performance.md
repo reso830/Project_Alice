@@ -27,7 +27,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## User Experience
-- **On hosted open**: an instant branded loader (Alice sigil + "Project Alice" wordmark + status line, over the cream background with a slow ambient purple/gold edge glow) appears immediately, replacing today's blank white page. Respects `prefers-reduced-motion`.
+- **On hosted open**: an instant branded loader (Alice sigil + "Project Alice" wordmark + status line, over the cream background with a **static** ambient purple/gold edge glow — no motion at any breakpoint) appears immediately, replacing today's blank white page. Responsive across desktop/tablet/mobile; `prefers-reduced-motion` governs only the loader→app transition.
 - **Signed out** → loader hands off to the **Welcome page** as soon as the session resolves, without waiting on the health check / cold start.
 - **Signed in** → loader hands off to the **app shell with a Tracker skeleton**; real application data hydrates into the skeleton when it arrives.
 - **Misconfigured hosted deploy** → ConfigError (unchanged behavior), reached without a flash of Welcome/app.
@@ -66,7 +66,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 - **Cold-start failure or hang** → timeout/retry state; never an infinite spinner.
 - **Deploy mid-session** invalidating hashed chunks (if WS4 ships) → `import()` rejection handled with retry / full-reload fallback.
 - **Rapid navigation races** once `navigate()` is async → latest-wins guard; dirty-check (`ProfileEdit.confirmNavigation`) and `page === _currentPage` early-return must run *before* any `await`.
-- **`prefers-reduced-motion`** → disable the edge-glow spin.
+- **`prefers-reduced-motion`** → loader glow is already static (no motion at any breakpoint); suppress any loader→app crossfade (instant swap).
 - **Handoff branches** → loader must resolve correctly to signed-out (Welcome), signed-in (shell), demo/local (fast path), and config-error, with no flash.
 - **Font swap / FOUT** → loader background + sigil paint independent of Sora; text may swap in.
 - **Very slow / flaky networks** → loader + timeout must degrade gracefully.

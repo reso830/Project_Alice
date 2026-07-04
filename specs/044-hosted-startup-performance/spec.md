@@ -17,6 +17,19 @@
 - **Q: Relationship to 042 (Welcome & Brand Refresh) brand assets** → A: **044 assumes 042 merges first.** The inlined loader reuses 042's `alice-sigil-full.svg` and its Sora font setup rather than re-introducing its own copies. This sequencing dependency is a documented prerequisite for WS1.
 - **Q: Are the FCP < ~1.5s / LCP < ~4s targets hard acceptance gates?** → A: **Directional, not hard gates.** The hard acceptance criterion is a **documented, measured improvement** in hosted FCP and LCP against the recorded baseline (FCP ~8s / LCP ~13.5s). The free-tier serverless cold-start floor is called out explicitly wherever it caps results.
 
+### Session 2026-07-05
+
+- **Design update — startup-loader glow is now STATIC.** The revised `HostedAlice_StartupLoader/` handoff drops the rotating conic-gradient edge glow in favor of a **static two-layer inset `box-shadow`, with no motion at any breakpoint** (rotation was rejected for seaming on portrait aspect ratios and degrading at 4K/ultrawide). Consequence for requirements: `prefers-reduced-motion` no longer "disables the glow spin" (there is none) — it now governs only the loader→app transition (instant swap vs. crossfade). The handoff also specifies **three responsive breakpoints**: icon 140/120/92px, wordmark 26/22/18px, subtitle 14/13/13px, with scaled glow shadows (desktop / tablet-portrait / mobile-portrait).
+
+### Session 2026-07-05 (plan-review pass)
+
+- **Q: Plan review found that "Option 1" optimistic routing can leak the real app shell on a misconfigured hosted deploy — how is it fixed?** → A: **Scope the no-health-wait behavior to the `authenticated` and `unauthenticated` outcomes only** — the two outcomes reached via a genuine `supabase.auth.getSession()` network call, only possible when `isHostedAuthAvailable === true`. The `local-mode` outcome — which `authStore.init()` sets **synchronously, with no network call**, whenever `isHostedAuthAvailable` is false — continues to **wait for `getHealth()` to resolve** before mounting the shell, exactly as today. Rationale: `local-mode` is the one outcome that's genuinely ambiguous (it fires both for an intentional local/portable build *and* for a hosted deploy missing its build-time env vars), and only the server-side health response can disambiguate the two; gating it costs nothing for real local/portable users since local health resolves near-instantly and this feature doesn't target that runtime anyway.
+- **Q: WS3 skeleton — new component or reuse an existing one?** → A: **Reuse.** `src/utils/skeletons.js` already ships `buildApplicationListSkeleton` / `buildProfileSkeleton` / `buildCalendarSkeleton`, used today by Tracker/Profile/Calendar. WS3 adds a boot-skeleton builder to this same file rather than introducing a new component, avoiding a duplicate skeleton system.
+- **Q: How do Footer/UpdateToast pick up the health result if it resolves after the shell has already mounted?** → A: **Explicit remount, not an in-place patch.** Neither exposes an update API today (`Footer.render()` is a one-shot factory; `UpdateToast.mount({health})` bails out entirely when `health` is null/`updateSupported` is falsy). When health resolves after the shell is already mounted, `main.js` replaces the footer element with a fresh `Footer.render({runtime})` call and re-invokes `UpdateToast.mount()` (after `destroy()`) with the resolved health, re-evaluating the update-controller subscription.
+- **Q: WS4 — what does the workspace/nav show while a route chunk is loading?** → A: **Optimistic tab highlight + interim loading state.** `navigate()` updates `_currentPage` / `Navbar.setActive` / `BottomTabBar.setActive` immediately, before awaiting the dynamic import, and shows the WS3 skeleton in the workspace while the chunk downloads; the real page swaps in on resolve, or the active state reverts with a retry affordance on `import()` failure.
+- **Q: Any risk from the loader's CSS class names?** → A: **Scope them.** Both the startup-loader and in-app-loader design handoffs independently prototype the bare class name `.edge-glow`. WS1 uses scoped names (e.g. `.startup-loader__edge-glow`) rather than the bare handoff names, to avoid a future collision if 042's in-app loader implementation adopts the same literal name.
+- **Q: How does the loader's fade-out actually play, given `mountWelcome()` / `mountAppShell()` / `mountConfigError()` call `clearBody()` synchronously?** → A: **Deferred removal.** Loader teardown applies an exiting/fade CSS class and defers the actual `clearBody()` call until the transition completes (`transitionend`, with a timeout fallback); under `prefers-reduced-motion` the transition duration is zero and removal is immediate.
+
 #### Open clarifications (do not block WS0–WS3; resolve before the phase that needs them)
 - **WS5 font strategy** — self-host Sora vs. `<link rel=preload>` of the Google Fonts stylesheet is left to the WS5 plan; either satisfies "remove render-blocking font request from the critical path."
 
@@ -35,10 +48,10 @@ This feature (1) replaces the blank white boot screen with a branded loader inli
 ### In Scope
 
 - **WS0 — Baseline measurement**: capture hosted field metrics (Speed Insights p75 FCP/LCP/CLS/INP/TTFB) and a lab DevTools Performance trace on a **cold** load, segmented (TTFB, bundle download, parse/exec, `/api/health`, `getSession`, Tracker fetch), with **cold vs. warm** `/api/health` isolated. Re-run after each subsequent phase. Record before/after numbers in the feature docs.
-- **WS1 — Inlined startup loader**: loader markup + critical CSS live directly inside `<div id="app">` in `index.html` so first paint does not wait on `main.js`. Recreates the high-fidelity startup-loader handoff (centered sigil + "Project Alice" wordmark + status line over `#F4F1ED`, ambient purple/gold edge glow). The sigil is inlined as `<svg>` (or data URI) — no extra fetch, not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`. Respects `prefers-reduced-motion`. Reuses 042's brand sigil (see Clarifications).
-- **WS2 — Bootstrap rework (parallel + optimistic handshake)**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently. Signed-out routes to Welcome on session resolve without requiring health; signed-in routes to the app shell; ConfigError is still reached for a misconfigured deploy (env-var/session-failure path). The inlined loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
-- **WS3 — App-shell + Tracker skeleton primitive**: the signed-in handoff renders the shell + a Tracker skeleton before data lands; real application data hydrates in. The skeleton is built as a **reusable primitive** that issue #109 will later consume.
-- **WS4 — Route-level lazy loading** *(final phase; may split to its own feature if it balloons)*: dynamic-import `Calendar`, `Profile`, `ProfileEdit` in `navigate()`; keep `Tracker` (landing route) eager. Requires latest-wins race guarding and chunk-load-failure handling.
+- **WS1 — Inlined startup loader**: loader markup + critical CSS live directly inside `<div id="app">` in `index.html` so first paint does not wait on `main.js`. Recreates the high-fidelity startup-loader handoff (centered sigil + "Project Alice" wordmark + status line over `#F4F1ED`, with a **static** ambient purple/gold edge glow — a plain inset box-shadow, **no motion at any breakpoint**). Responsive across desktop / tablet-portrait / mobile-portrait breakpoints (icon 140/120/92px, wordmark 26/22/18px). The sigil is inlined as `<svg>` (or data URI) — no extra fetch, not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`. Reuses 042's brand sigil (see Clarifications).
+- **WS2 — Bootstrap rework (parallel + optimistic handshake)**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently. **Only the two network-backed outcomes** — signed-out (`unauthenticated`) and signed-in (`authenticated`), both reached via a genuine `getSession()` call — route immediately without requiring health. The `local-mode` outcome (which resolves synchronously with no network call) continues to **wait for health** before mounting, preserving ConfigError safety for a misconfigured hosted deploy (env-var/session-failure path). The inlined loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
+- **WS3 — App-shell + Tracker skeleton**: the signed-in handoff renders the shell + a Tracker skeleton before data lands; real application data hydrates in. The skeleton is added to the **existing** `src/utils/skeletons.js` builder set (alongside `buildApplicationListSkeleton` etc.) — not a new component — and issue #109 will later consume it from there.
+- **WS4 — Route-level lazy loading** *(final phase; may split to its own feature if it balloons)*: dynamic-import `Calendar`, `Profile`, `ProfileEdit` in `navigate()`; keep `Tracker` (landing route) eager. `navigate()` updates the active-tab highlight immediately (before awaiting the import) and shows the WS3 skeleton in the workspace while the chunk loads. Requires latest-wins race guarding and chunk-load-failure handling.
 - **WS5 — Font loading**: self-host or preload Sora so the render-blocking Google Fonts request leaves the critical path.
 - **Boot timeout / error state**: a ~10s loader timeout surfaces a "taking longer than expected / Retry" affordance; Retry performs a full page reload. Wired to the existing network-error / ConfigError paths — no infinite spinner.
 - **Measurement discipline** (WS0) re-run before/after each phase; bundle visualizer before WS4.
@@ -46,7 +59,7 @@ This feature (1) replaces the blank white boot screen with a branded loader inli
 ### Non-Goals
 
 - **No change to local / portable / demo boot** — those are local-first and already fast; the loader and handshake parallelization target the **hosted** runtime only (local/demo boot is unchanged or fast-pathed past the loader).
-- **Issue #109 (application-card click latency) is out of scope** — a separate issue with a different journey (warm click), latency source (detail-fetch round-trip), and metric (INP). 044 only *ships* the WS3 skeleton primitive #109 will consume; it does not implement #109's click feedback.
+- **Issue #109 (application-card click latency) is out of scope** — a separate issue with a different journey (warm click), latency source (detail-fetch round-trip), and metric (INP). 044 only *ships* the WS3 skeleton (added to `src/utils/skeletons.js`) #109 will consume; it does not implement #109's click feedback.
 - **No client-side URL-path router** — continue standard tab/state switching, consistent with 042.
 - **No hosting-tier or database-provider migration** — the free-tier serverless cold-start is a floor to design around, not to eliminate.
 - **No visual redesign beyond the loader itself** — brand assets come from 042.
@@ -62,25 +75,25 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
   - **Independent Test**: On the current hosted deploy, record Speed Insights p75 FCP/LCP and a cold DevTools trace; confirm the numbers are written into the feature docs as the baseline.
 
 - **US1 — Branded first paint (WS1).** As a hosted visitor, on first open I immediately see a branded loader instead of a blank white page.
-  - **Independent Test**: Cold-load the hosted URL with cache disabled; confirm the branded loader (sigil + wordmark + status line + edge glow) paints near-instantly, before the JS bundle finishes, and that no blank white screen precedes it.
+  - **Independent Test**: Cold-load the hosted URL with cache disabled; confirm the branded loader (sigil + wordmark + status line + static edge glow) paints near-instantly, before the JS bundle finishes, and that no blank white screen precedes it. Repeat at **desktop, tablet-portrait, and mobile-portrait** widths and confirm the loader stays centered and scales per the handoff breakpoints (icon 140/120/92px, wordmark 26/22/18px, subtitle 14/13/13px, glow shadow scaled) with no clipping or overflow.
 
-- **US2 — Signed-out reaches Welcome fast (WS2).** As a signed-out visitor, the loader hands off to Welcome without waiting on the `/api/health` cold start.
-  - **Independent Test**: Signed-out cold load; confirm handoff to Welcome occurs once the session resolves and does **not** block on health; confirm a measured LCP improvement vs. baseline.
+- **US2 — Signed-out reaches Welcome fast (WS2).** As a signed-out visitor (with hosted auth properly configured), the loader hands off to Welcome without waiting on the `/api/health` cold start.
+  - **Independent Test**: Signed-out cold load on a **correctly configured** hosted deploy; confirm handoff to Welcome occurs once the session resolves via `getSession()` and does **not** block on health; confirm a measured LCP improvement vs. baseline.
 
 - **US3 — Signed-in sees a skeleton, then data (WS3).** As a signed-in user, the loader hands off to the app shell with a Tracker skeleton, and real data hydrates into it.
-  - **Independent Test**: Signed-in cold load; confirm the shell + Tracker skeleton render before data, then application rows replace the skeleton when data arrives — with no blank gap between loader and shell.
+  - **Independent Test**: Signed-in cold load; confirm the shell + Tracker skeleton (built via `src/utils/skeletons.js`) render before data, then application rows replace the skeleton when data arrives — with no blank gap between loader and shell. Confirm the Footer/UpdateToast reflect the health result once it resolves, even if it resolves after the shell has already mounted.
 
 - **US4 — Boot failure is recoverable (timeout).** As a visitor hitting a stalled/failed cold start, after a short wait I get a Retry affordance instead of an endless spinner.
   - **Independent Test**: Simulate a boot stall/failure (e.g. block `/api/health` and the session call); confirm that after ~10s the loader shows "taking longer than expected / Retry" and that Retry reloads the page.
 
-- **US5 — Misconfigured deploy still shows ConfigError.** As a visitor to a misconfigured hosted deploy, I reach ConfigError without a flash of Welcome or the app.
-  - **Independent Test**: With hosted env vars removed, cold-load; confirm ConfigError mounts and neither Welcome nor the app shell flashes first.
+- **US5 — Misconfigured deploy still shows ConfigError.** As a visitor to a hosted deploy that's missing its build-time Supabase env vars, I reach ConfigError without a flash of Welcome or the (local-mode) app shell — even though `authStore.init()` resolves to `local-mode` **synchronously**, faster than `getHealth()`.
+  - **Independent Test**: With hosted env vars removed at build time, cold-load; confirm the loader stays up until `getHealth()` resolves (it does **not** mount the shell for the fast-resolving `local-mode` state), then ConfigError mounts with neither Welcome nor the app shell flashing first.
 
-- **US6 — Reduced motion respected.** As a visitor with `prefers-reduced-motion`, the loader does not spin the ambient glow.
-  - **Independent Test**: Enable reduced-motion at the OS/browser level; cold-load hosted; confirm the edge-glow rotation is disabled while the loader still renders.
+- **US6 — Reduced motion respected.** As a visitor with `prefers-reduced-motion`, the loader presents no motion — its glow is static by design, and the loader→app transition does not animate.
+  - **Independent Test**: Enable reduced-motion at the OS/browser level; cold-load hosted; confirm the loader renders with a static glow (no motion) and that the handoff to Welcome/shell uses no motion (instant swap rather than a crossfade).
 
 - **US7 — Lighter initial bundle (WS4).** As a hosted visitor, the initial download excludes routes I have not visited yet.
-  - **Independent Test**: Inspect the network panel / bundle visualizer; confirm `Calendar` / `Profile` / `ProfileEdit` load as separate chunks on navigation while `Tracker` is in the initial bundle; confirm navigation still works and a failed chunk load degrades gracefully.
+  - **Independent Test**: Inspect the network panel / bundle visualizer; confirm `Calendar` / `Profile` / `ProfileEdit` load as separate chunks on navigation while `Tracker` is in the initial bundle; confirm the target tab highlights immediately and a skeleton shows while the chunk loads (no blank workspace with a stale active tab); confirm navigation still works and a failed chunk load degrades gracefully (active state reverts / retry offered).
 
 - **US8 — Non-blocking fonts (WS5).** As a hosted visitor, the render-blocking Google Fonts request is off the critical path.
   - **Independent Test**: Confirm Sora is self-hosted or preloaded and that no render-blocking third-party font stylesheet sits on the critical path; confirm the loader background + sigil paint independent of Sora (text may swap in).
@@ -91,11 +104,13 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
 
 - Hosted **FCP** and **LCP** show a meaningful, **measured** reduction vs. the documented baseline (aspirational p75 targets FCP < ~1.5s, LCP < ~4s), with the free-tier cold-start floor called out where it caps results. Before/after metrics are recorded in the feature docs.
 - The blank white boot page is **eliminated** on hosted; a branded loader paints near-instantly (WS1).
-- The signed-out path reaches Welcome **without blocking on** the `/api/health` cold start, and never mounts the app shell before the session confirms signed-in (WS2).
-- The signed-in path renders the app shell + Tracker skeleton before data, then hydrates real data in (WS3).
+- The signed-out and signed-in paths (both reached via a genuine `getSession()` call) route **without blocking on** the `/api/health` cold start, and the app shell never mounts before the session confirms signed-in via that network call (WS2).
+- The synchronously-resolving `local-mode` outcome **continues to wait for `getHealth()`** before mounting, so a hosted deploy missing its build-time env vars cannot flash the local-mode shell before ConfigError takes over.
+- The signed-in path renders the app shell + Tracker skeleton (via `src/utils/skeletons.js`) before data, then hydrates real data in; Footer/UpdateToast reflect the health result whenever it resolves, including after the shell has already mounted (WS3).
 - Boot failure surfaces a Retry affordance (full page reload) after ~10s — **never an infinite spinner**.
-- A misconfigured hosted deploy still reaches **ConfigError** with no flash of Welcome/app.
-- `prefers-reduced-motion` disables the edge-glow rotation.
+- A misconfigured hosted deploy still reaches **ConfigError** with no flash of Welcome/app, including the local-mode shell.
+- The loader glow is static (no motion) at every breakpoint; under `prefers-reduced-motion` the loader→app transition also does not animate.
+- The loader renders correctly across **desktop, tablet-portrait, and mobile-portrait** breakpoints — centered, scaled per the handoff (icon 140/120/92px, wordmark 26/22/18px, subtitle 14/13/13px, glow shadow scaled), with no clipping or overflow.
 - (WS4) `Calendar` / `Profile` / `ProfileEdit` are code-split out of the initial bundle; `Tracker` stays eager; navigation races are latest-wins guarded and chunk-load failures handled.
 - (WS5) No render-blocking third-party font request remains on the critical path.
 - **Local / portable / demo boot behavior is unchanged.**
@@ -107,11 +122,14 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
 ## Edge Cases
 
 - **Cold-start failure or hang** → ~10s timeout → Retry (full reload); never an infinite spinner.
-- **Signed-out visitor + misconfigured deploy** → session init fails to construct a Supabase client → ConfigError is reached (not Welcome), so optimistic signed-out routing does not leak a broken Welcome.
-- **Deploy mid-session invalidates hashed chunks** (WS4) → `import()` rejection handled with a retry / full-reload fallback (the Retry reload also fetches fresh chunks).
-- **Rapid navigation races** once `navigate()` is async (WS4) → latest-wins guard; the dirty-check (`ProfileEdit.confirmNavigation`) and `page === _currentPage` early-return must run **before** any `await`.
-- **`prefers-reduced-motion`** → disable the edge-glow spin (loader still renders statically).
-- **Handoff branches** → the loader must resolve correctly to signed-out (Welcome), signed-in (shell + skeleton), local/demo (fast path), and config-error, with no flash between states.
+- **Misconfigured hosted deploy (env vars missing at build time)** → `authStore.init()` resolves to `local-mode` **synchronously** (no network call), faster than `getHealth()` — this outcome is explicitly held behind the health result rather than mounted immediately, so the shell/local-mode UI cannot flash before ConfigError overrides.
+- **Signed-out visitor + misconfigured deploy** → since `isHostedAuthAvailable` is false, `authStore.init()` cannot reach `unauthenticated` via a real session call either — it resolves `local-mode` and is covered by the case above; ConfigError is reached, not a leaked Welcome/shell.
+- **Health resolves after the shell has already mounted (signed-in/authenticated path)** → Footer and UpdateToast do not have an in-place patch API; `main.js` replaces the footer element and re-invokes `UpdateToast.mount()`/the update-controller subscription once health resolves.
+- **Deploy mid-session invalidates hashed chunks** (WS4) → `import()` rejection handled with a retry / full-reload fallback (the Retry reload also fetches fresh chunks); the optimistically-highlighted tab reverts if the import fails.
+- **Rapid navigation races** once `navigate()` is async (WS4) → latest-wins guard; the dirty-check (`ProfileEdit.confirmNavigation`) and `page === _currentPage` early-return must run **before** any `await`; the active-tab highlight and workspace skeleton update immediately (before the `await`), not after the chunk resolves.
+- **`prefers-reduced-motion`** → the loader glow is already static (no motion at any breakpoint); reduced-motion additionally suppresses any loader→app crossfade (instant swap, zero-duration transition, immediate `clearBody()`).
+- **Handoff branches** → the loader must resolve correctly to signed-out (Welcome, via `getSession()`), signed-in (shell + skeleton, via `getSession()`), local/demo (fast path, gated behind health per above), and config-error, with no flash between states.
+- **Loader teardown vs. synchronous `clearBody()`** → `mountWelcome()` / `mountAppShell()` / `mountConfigError()` defer the actual `clearBody()` call until the loader's exit transition completes, rather than clearing immediately underneath a CSS fade.
 - **Font swap / FOUT** (WS5) → loader background + sigil paint independent of Sora; text may swap in.
 - **Very slow / flaky networks** → loader + timeout degrade gracefully; the loader never hides real content it is still waiting for.
 - **Loader LCP hygiene** → keep the wordmark modest (26px) so it never becomes a distorting LCP candidate; the inline SVG is not a candidate; a large full-screen splash is avoided.
@@ -131,7 +149,7 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
 ## Dependencies & Sequencing
 
 - **042 (Welcome & Brand Refresh) must merge first** — WS1's inlined loader reuses 042's `alice-sigil-full.svg` and Sora setup. Building 044 on top of un-merged 042 would duplicate or diverge those assets.
-- **Issue #109** depends on **044/WS3's skeleton primitive** — coordinate so only one skeleton system exists; #109 waits for or explicitly reuses it. (#109 may prove lighter than a skeleton — an instant row-highlight + spinner — in which case the shared-component link is nice-to-have, not a blocker.)
+- **Issue #109** depends on **044/WS3's skeleton builder in `src/utils/skeletons.js`** — coordinate so only one skeleton system exists; #109 waits for or explicitly reuses it. (#109 may prove lighter than a skeleton — an instant row-highlight + spinner — in which case the shared-component link is nice-to-have, not a blocker.)
 
 ---
 
@@ -140,4 +158,4 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
 - **docs/features/044-hosted-startup-performance.md** — feature brief (source of this spec).
 - **Design reference**: `HostedAlice_StartupLoader/design_handoff_startup_loader/` (startup loader — WS1) and `design_handoffs/Alice_InAppLoader/` (in-app loader pattern, informs the WS3 skeleton feel). Visuals are final; integration guidance is superseded by this spec (inline in HTML, not a JS-rendered component).
 - **042 Welcome & Brand Refresh** — source of the brand sigil + Sora.
-- **Issue #109** — application-card click latency (separate; consumes the WS3 skeleton primitive).
+- **Issue #109** — application-card click latency (separate; consumes the WS3 skeleton builder from `src/utils/skeletons.js`).

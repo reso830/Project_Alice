@@ -12,39 +12,43 @@ The boot sequence transitions through these states. Today they are implicit; thi
 
 | State | Enter condition | UI shown | Exit → |
 |---|---|---|---|
-| `booting` | `index.html` parsed | **Inlined loader** (in `#app`) | on session resolve, or timeout |
-| `config-error` | health resolves `configError` (env vars missing) | ConfigError page | terminal |
-| `welcome` | session resolves **unauthenticated** | Welcome page | terminal (until sign-in) |
-| `shell-skeleton` | session resolves **authenticated / local / demo** | App shell + Tracker skeleton | → `shell-ready` |
+| `booting` | `index.html` parsed | **Inlined loader** (in `#app`) | on `authenticated`/`unauthenticated` resolve, on `local-mode-pending` clearing, or timeout |
+| `local-mode-pending` | `authStore.init()` resolves `local-mode` **synchronously** (no network — `isHostedAuthAvailable === false`) | still the loader (not yet mounted) | on `getHealth()` resolve → `config-error` (if misconfig) or `shell-skeleton` (genuine local build) |
+| `config-error` | health resolves `configError` (`runtime==='hosted' && !hostedAuthAvailable`) | ConfigError page | terminal |
+| `welcome` | session resolves **unauthenticated** (via a real `getSession()` call) | Welcome page | terminal (until sign-in) |
+| `shell-skeleton` | session resolves **authenticated** (via a real `getSession()` call), **or** `local-mode-pending` clears without a `config-error` override, **or demo** (`enterDemo()`, out-of-band) | App shell + Tracker skeleton | → `shell-ready` |
 | `shell-ready` | Tracker data resolves | App shell + data | terminal |
-| `boot-timeout` | ~10s elapsed, still `booting` | loader + "Retry" (full reload) | reload → `booting` |
+| `boot-timeout` | ~10s elapsed, still `booting`/`local-mode-pending` | loader + "Retry" (full reload) | reload → `booting` |
 
 **Invariants**
-- Exactly one loader-teardown occurs, at the first mount of `welcome` / `shell-skeleton` / `config-error`.
-- No `shell-*` state renders before the session confirms signed-in (no flash of authed content).
-- `config-error` can override `welcome` if health resolves late (guarded by `_configErrorMounted`), but in practice the env-vars-missing condition also blocks a clean `unauthenticated`.
-- `booting` never persists indefinitely — `boot-timeout` is the escape hatch.
+- Exactly one loader-teardown occurs, at the first mount of `welcome` / `shell-skeleton` / `config-error`, and teardown **defers** the actual DOM removal until the exit transition ends (zero-duration under reduced-motion).
+- No `shell-*` state renders before **either** a real `getSession()` confirms `authenticated`, **or** `local-mode-pending` has been held until `getHealth()` also resolved. `local-mode` never mounts the shell purely on its own (synchronous) resolution — that was the plan-review's critical finding (see research D3): `local-mode` is ambiguous between a genuine local build and a hosted deploy missing its build-time env vars, and only `getHealth()` can disambiguate it.
+- `config-error` can override `welcome`/`shell-skeleton` if health resolves late relative to the network-backed outcomes (guarded by `_configErrorMounted`); for `local-mode-pending` there's nothing to override since it never mounted anything in the first place.
+- `booting`/`local-mode-pending` never persist indefinitely — `boot-timeout` is the escape hatch.
+- When health resolves **after** `shell-skeleton` has already mounted (the `authenticated` fast path), Footer and UpdateToast are not silently "patched" — `main.js` explicitly replaces the footer element and re-invokes `UpdateToast.mount()`, since neither exposes an in-place update API (see research D4).
 
 ## 2. Concurrent boot signals (WS2)
 
-Two async signals resolve independently and are no longer sequential:
+Two async signals resolve independently and are no longer strictly sequential — but one outcome of the session signal is deliberately still gated on health:
 
 | Signal | Source | Consumed for | Blocking? |
 |---|---|---|---|
-| `session` | `authStore.init()` → `getSession()` | routing decision (welcome vs shell) | drives the primary handoff |
-| `health` (`_runtimeHealth`) | `getHealth()` → `/api/health` | ConfigError decision; Footer runtime label; `updateSupported` | **non-blocking** for signed-out; patched into shell UI when it resolves |
+| `session` → `authenticated` / `unauthenticated` | `authStore.init()` → real `getSession()` network call (only when `isHostedAuthAvailable`) | routing decision (welcome vs shell) | **non-blocking** on health — routes immediately |
+| `session` → `local-mode` | `authStore.init()`, **synchronous**, no network (when `!isHostedAuthAvailable`) | routing decision, but held pending | **blocking** — waits for `health` before mounting anything (see invariant above) |
+| `health` (`_runtimeHealth`) | `getHealth()` → `/api/health` | ConfigError decision; resolves `local-mode-pending`; Footer runtime label; `updateSupported` | drives `local-mode-pending`'s exit; explicit remount for Footer/UpdateToast if it resolves after `authenticated` already mounted the shell |
 
-`health` is decision-relevant to routing **only** when `!hostedAuthAvailable` (env vars missing) — see research D3.
+`health` is decision-relevant to routing whenever the session signal resolved `local-mode` (env vars missing is the only case where `!hostedAuthAvailable`) — see research D3.
 
-## 3. Skeleton primitive (WS3)
+## 3. Skeleton builder (WS3)
 
-A presentational component with **no data model** — it renders placeholder shapes matching the Tracker layout and carries no application data. Shared contract so issue #109 can reuse it:
+**Not a new component.** Plan review found `src/utils/skeletons.js` already exists and already ships `buildApplicationListSkeleton` / `buildProfileSkeleton` / `buildCalendarSkeleton` (used today by `Tracker.js`, `Profile.js`, `Calendar.js`), each a presentational DOM-builder function with **no data model** — placeholder shapes only, `aria-busy="true"` / `aria-live="polite"` / `aria-label`, no application data. WS3 adds a Tracker-boot variant to this same file rather than introducing a parallel component system.
 
-| Prop | Type | Purpose |
+| Function (existing pattern) | Returns | Purpose |
 |---|---|---|
-| `variant` | string (e.g. `tracker-list`) | which placeholder layout to render |
-| `count` | number | number of placeholder rows/cards |
-| `aria` | `role`/`aria-busy` passthrough | accessible "loading" semantics |
+| `buildApplicationListSkeleton()` | `HTMLElement` | existing — Tracker's in-page loading state |
+| *new* Tracker-boot builder (name TBD at WS3, e.g. `buildTrackerBootSkeleton()`) | `HTMLElement` | the boot-time shell skeleton shown before Tracker data hydrates |
+
+Issue #109 consumes whichever builder shape fits from `skeletons.js` — not a separate primitive.
 
 ## 4. Metrics artifact (`metrics.md`)
 
