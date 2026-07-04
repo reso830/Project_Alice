@@ -67,7 +67,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Build the global `LegalModal` Vanilla JS class/component and integrate styles for layouts, mobile bottom sheets, and the spotlight background.
 
-- [ ] T003 Implement `LegalModal.js` component
+- [x] T003 Implement `LegalModal.js` component
   - **Target**: `src/components/LegalModal.js` (new file)
   - **Expected behavior**: Implement a stateless modal renderer displaying Terms & Conditions or Privacy Policy:
     - `render(type, onClose)`: Builds and returns the modal wrapper DOM tree (overlay backdrop, centered container or bottom sheet layout depending on viewport width, close button ✕, scrollable container, disclaimer header, and bottom Close button). Configures ARIA attributes, sets `overflow: hidden` on body, binds ESC key, and traps focus.
@@ -78,7 +78,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
     - Accessibility ARIA attributes: modal root must have `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` referencing the title node ID.
   - **Validation/test**: Verify DOM elements render correctly on call.
 
-- [ ] T004 Write Modal Dialog & spotlight CSS styles
+- [x] T004 Write Modal Dialog & spotlight CSS styles
   - **Target**: `src/styles/main.css`
   - **Expected behavior**: Add styles for:
     - Overlay backdrop (`rgba(8,8,24,.52)` + `backdrop-filter: blur(3px)`).
