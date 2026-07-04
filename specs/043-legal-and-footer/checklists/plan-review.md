@@ -38,3 +38,11 @@
 
 - [x] Test cases in `Footer.test.js` are slated for modification to align assertions with the new 3-column, stack-removed structure.
 - [x] A new test suite `LegalModal.test.js` is planned to assert overlay insertion, scroll-locking, and Escape key dismissal paths.
+
+## Architectural Pivot Review & Sign-Off
+- **Change**: Decoupled modal mounting from page-level elements to shell-level state (`setLegalDialog`).
+- **Review Findings**:
+  - Eliminates DOM mounting race conditions and z-index overlap bugs.
+  - Ensures clean state management when stacking modals (e.g. `LegalModal` on top of `AuthOverlay`) without losing form inputs.
+  - Maintains strict alignment with the app-shell layout specifications.
+- **Verdict**: **APPROVED & SIGNED-OFF** for implementation starting Phase 02.

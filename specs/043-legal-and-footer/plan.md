@@ -133,6 +133,7 @@ tests/
 - `src/styles/main.css` (Background and Modal styling)
 
 ### New Files to Add
+- `src/data/legalContent.js` (Static Terms and Privacy document structure definitions)
 - `src/components/LegalModal.js` (Interactive modal container and static legal copy)
 - `tests/components/LegalModal.test.js` (Unit tests for the legal modal)
 
