@@ -48,13 +48,14 @@ This feature replaces the blank white boot screen with a branded loader that pai
 
 ## Technical Notes
 - **Boot path today**: `DOMContentLoaded` → `bootstrap()` → `await runtimeHandshake()` (`getHealth`) → `await authStore.init()` (`getSession`) → `render()` → `mountAppShell()` → `navigate('tracker')` → Tracker data fetch. FCP ≈ everything up to `render()`; LCP ≈ + Tracker data.
-- **Proposed phasing** (dependency-ordered; WS1+WS2 are one deliverable in two commits):
-  - **WS0 — Baseline measurement** (prerequisite; re-run after each phase)
-  - **WS1 — Startup loader inlined in `index.html`** (FCP)
-  - **WS2 — Bootstrap rework: parallel + optimistic handshake, handoff to Welcome / shell / ConfigError** (LCP, real wait) — *unlocked by WS1*
-  - **WS3 — App-shell + Tracker skeleton primitive** (signed-in LCP/feel; shared with #109)
-  - **WS4 — Route-level lazy loading** (bundle/parse) — *independent; may split to its own feature if it balloons*
-  - **WS5 — Font loading** (FCP tail) — *optional*
+- **Proposed phasing** (dependency-ordered; WS1+WS2 are one deliverable in two commits). Impact / effort noted per phase:
+  - **WS0 — Baseline measurement** — prerequisite; re-run after each phase.
+  - **WS1 — Startup loader inlined in `index.html`** (FCP, perceived) — *High impact / Low effort*; depends on WS0.
+  - **WS2 — Bootstrap rework: parallel + optimistic handshake, handoff to Welcome / shell / ConfigError** (LCP, real wait — esp. signed-out) — *High / Med*; unlocked by WS1.
+  - **WS3 — App-shell + Tracker skeleton primitive** (signed-in LCP/feel) — *Med-High / Med*; depends on WS2, coordinates with #109.
+  - **WS4 — Route-level lazy loading via async `navigate()`** (bundle/parse) — *Med / Med*; independent; may split to its own feature if it balloons.
+  - **WS5 — Font loading (self-host / preload Sora)** (FCP tail) — *Low / Low*; independent.
+- **Expected per-phase movement** (what WS0 measurement must confirm): WS1 → FCP collapses (~8s → ~1s), LCP roughly unchanged (the loader now covers the same real wait); WS2 → LCP drops, signed-out especially (parallel `max(...)` instead of a sequential sum, and the signed-out path skips the health cold start); WS3 → signed-in LCP/feel improves (skeleton paints before data); WS4 → parse/download tail shrinks.
 - **Measurement**: Speed Insights p75 (FCP/LCP/CLS/INP/TTFB); DevTools Performance trace on a **cold** load, segmenting TTFB / bundle download / parse-exec / `/api/health` / `getSession` / Tracker fetch; **cold vs warm** `/api/health` isolated to separate architecture from the free-tier floor; bundle visualizer before WS4.
 - **Constitution alignment**: no new analytics/tracking (loader is client-only); explicit loading/error states; a11y (`role="status"`, reduced-motion, keyboard/labels intact); local-first preserved (hosted-only runtime change).
 - **LCP hygiene**: keep the loader wordmark modest (26px) so it never becomes a distorting LCP candidate; inline SVG is not a candidate; a large full-screen splash is explicitly avoided.
@@ -85,6 +86,6 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## Related
-- **Issue #109** (application-card click latency) — separate feature; consumes the WS3 skeleton primitive. Coordinate so only one skeleton system exists.
+- **Issue #109** (application-card click latency) — **stays a separate issue**, not folded into 044: different journey (a warm click, not a cold boot), different latency source (the detail-fetch round-trip on click), and different metric (interaction latency / INP, not FCP/LCP). The *only* real overlap is the **loading-state primitive**: WS3 owns and ships the reusable skeleton; #109 consumes it for the card→detail pending state and should wait for (or explicitly reuse) it, so the two never diverge into separate skeleton systems. Caveat: #109 may turn out lighter than a skeleton — an instant row-highlight + inline spinner — in which case the shared-component link is nice-to-have, not a blocker; if #109 is already mid-flight on its own approach, don't retrofit it onto 044's timeline.
 - **042 Welcome & Brand Refresh** — source of brand assets (sigil, wordmark) used by the loader.
 - Design handoff prototype: `HostedAlice_StartupLoader/design_handoff_startup_loader/` (visuals final; integration guidance superseded by this brief — inline in HTML, not a JS-rendered component).
