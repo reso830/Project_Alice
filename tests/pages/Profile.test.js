@@ -159,6 +159,12 @@ describe('Profile page', () => {
 
     expect(container.querySelector('h1')?.textContent).toBe('Welcome back.');
     expect(container.textContent).toContain('No profile set up yet.');
+    expect(container.querySelector('.profile-empty__icon')?.tagName).toBe('IMG');
+    expect(container.querySelector('.profile-empty__icon')?.getAttribute('src'))
+      .toContain('data:image/svg+xml');
+    expect(container.querySelector('.profile-empty__setup-graphic')?.tagName).toBe('IMG');
+    expect(container.querySelector('.profile-empty__setup-graphic')?.getAttribute('src'))
+      .toContain('data:image/svg+xml');
 
     expect(getButton(container, 'Set Up Profile')).toBeTruthy();
     expect(getButton(container, 'Upload Resume')).toBeUndefined();

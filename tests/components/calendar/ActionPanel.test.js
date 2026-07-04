@@ -207,6 +207,12 @@ describe('ActionPanel', () => {
     expect(document.body.textContent).toContain("No suggestions right now. We'll surface new ones as activity ages.");
     expect(document.body.textContent).toContain('Nothing scheduled');
     expect(document.body.textContent).toContain('No upcoming timeline events tomorrow through end of week.');
+    expect([...document.querySelectorAll('.cal-empty__glyph')].map((node) => node.tagName))
+      .toEqual(['IMG', 'IMG', 'IMG']);
+    const sources = [...document.querySelectorAll('.cal-empty__glyph')]
+      .map((node) => node.getAttribute('src'));
+    expect(sources.every((src) => src?.startsWith('data:image/svg+xml'))).toBe(true);
+    expect(new Set(sources).size).toBe(1);
   });
 
   it('hides count pills for empty sections and shows them for populated sections', () => {

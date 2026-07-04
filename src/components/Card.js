@@ -2,7 +2,7 @@ import { STATUS_CONFIG, TERMINAL_STATES } from '../models/application.js';
 import { formatPeso } from '../utils/currency.js';
 import { toDisplayDate } from '../utils/date.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
-import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { icon } from '../utils/icons.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import * as api from '../services/api.js';
 import { CompatBar } from './CompatBar.js';
@@ -87,24 +87,24 @@ export function render(application, callbacks = {}, { selected = false } = {}) {
   const salary = document.createElement('span');
   const editButton = createActionButton(
     'card-btn--edit',
-    createSvgIcon('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z'),
+    icon('edit'),
   );
   const statusButton = createActionButton(
     'card-btn--status',
-    createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
+    icon('changeStatus'),
   );
-  const copyButton = createActionButton('card-btn--copy', createClipboardIcon());
+  const copyButton = createActionButton('card-btn--copy', icon('copyUrl'));
   const starButton = createActionButton(
     'card-btn--star',
-    createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+    icon('star'),
   );
   const archiveButton = createActionButton(
     'card-btn--archive',
-    createArchiveIcon(),
+    icon('archive'),
   );
   const unarchiveButton = createActionButton(
     'card-btn--unarchive',
-    createSvgIcon('M3 12a9 9 0 0 0 15 6.7M3 12H1m2 0 3 3m-3-3 3-3M21 12A9 9 0 0 0 6 5.3'),
+    icon('unarchive'),
   );
 
   editButton.setAttribute('aria-label', 'Open application details');

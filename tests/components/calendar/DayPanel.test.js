@@ -39,6 +39,9 @@ describe('DayPanel', () => {
     expect(root.classList).toContain('cal-day-panel--prompt');
     expect(root.getAttribute('aria-live')).toBe('polite');
     expect(root.querySelector('.cal-dp-prompt')).not.toBeNull();
+    expect(root.querySelector('.cal-dp-prompt-glyph')?.tagName).toBe('IMG');
+    expect(root.querySelector('.cal-dp-prompt-glyph')?.getAttribute('src'))
+      .toContain('data:image/svg+xml');
   });
 
   it('renders the empty-day state for a selected date', () => {
@@ -49,6 +52,9 @@ describe('DayPanel', () => {
     expect(root.querySelector('.cal-dp-date').textContent).toBe('May 20');
     expect(root.querySelector('.cal-dp-count').textContent).toBe('No events');
     expect(root.querySelector('.cal-dp-empty').textContent).toBe('No events');
+    expect(root.querySelector('.cal-dp-empty-glyph')?.tagName).toBe('IMG');
+    expect(root.querySelector('.cal-dp-empty-glyph')?.getAttribute('src'))
+      .toContain('data:image/svg+xml');
     expect(root.querySelector('.cal-dp-empty-sub')).toBeNull();
   });
 

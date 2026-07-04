@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.10.8 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.10.8');
-    expect(APP_VERSION).toBe('v1.10.8');
+  it('keeps the 1.11.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.11.0');
+    expect(APP_VERSION).toBe('v1.11.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.10.8');
-    expect(lock.packages['']?.version).toBe('1.10.8');
+    expect(lock.version).toBe('1.11.0');
+    expect(lock.packages['']?.version).toBe('1.11.0');
 
-    expect(read('README.md')).toContain('Current version: **1.10.8**');
+    expect(read('README.md')).toContain('Current version: **1.11.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.11.0] — 2026-07-04');
     expect(read('CHANGELOG.md')).toContain('## [1.10.8] — 2026-07-02');
     expect(read('CHANGELOG.md')).toContain('## [1.10.7] — 2026-07-01');
     expect(read('CHANGELOG.md')).toContain('## [1.10.6] — 2026-07-01');
@@ -39,7 +40,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.8...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0');
     expect(read('CHANGELOG.md')).toContain('[1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8');
     expect(read('CHANGELOG.md')).toContain('[1.10.7]: https://github.com/reso830/Project_Alice/compare/v1.10.6...v1.10.7');
     expect(read('CHANGELOG.md')).toContain('[1.10.6]: https://github.com/reso830/Project_Alice/compare/v1.10.5...v1.10.6');
@@ -104,7 +106,7 @@ describe('release metadata', () => {
     expect(repoMap).toContain('src/components/JobPostingImport.js');
     expect(repoMap).toContain('parseJobWithLlm');
     expect(repoMap).toContain('canUseJdParser');
-    expect(read('docs/feature_roadmap.md')).toContain('[x]  035-llm-jd-parser  ·  shipped v1.5.0');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 035-llm-jd-parser  ·  shipped v1.5.0');
 
     for (const path of [
       'specs/035-llm-jd-parser',
@@ -128,7 +130,7 @@ describe('release metadata', () => {
     expect(repoMap).toContain('server/services/compatibility.js');
     expect(repoMap).toContain('computeCompatibility');
     expect(repoMap).toContain('recomputeActive');
-    expect(read('docs/feature_roadmap.md')).toContain('[x]  036-compatibility-engine  ·  shipped v1.6.0');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 036-compatibility-engine  ·  shipped v1.6.0');
 
     for (const path of [
       'specs/036-compatibility-engine',
@@ -231,7 +233,7 @@ describe('release metadata', () => {
     expect(repoMap).toContain('compatNotesService.js');
     expect(repoMap).toContain('skillProficiency.js');
     expect(repoMap).toContain('specs/037-compatibility-insights-panel/');
-    expect(read('docs/feature_roadmap.md')).toContain('[x]  037-compatibility-insights-panel  ·  shipped v1.7.0');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 037-compatibility-insights-panel  ·  shipped v1.7.0');
 
     for (const path of [
       'specs/037-compatibility-insights-panel',
@@ -256,7 +258,7 @@ describe('release metadata', () => {
     expect(repoMap).toContain('src/services/providers/');
     expect(repoMap).toContain('src/services/providers/openrouter.js');
     expect(repoMap).toContain('Removed in 038');
-    expect(read('docs/feature_roadmap.md')).toContain('[x]  038-ai-provider-abstraction  ·  shipped v1.7.1');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 038-ai-provider-abstraction  ·  shipped v1.7.1');
 
     for (const path of [
       'specs/038-ai-provider-abstraction',
@@ -306,7 +308,7 @@ describe('release metadata', () => {
     expect(repoMap).toContain('src/components/EmptyPane.js');
     expect(repoMap).toContain('src/utils/clampText.js');
     expect(repoMap).toContain('renderCollapsedPreview');
-    expect(read('docs/feature_roadmap.md')).toContain('[x]  039-desktop-workspace-refresh  ·  shipped v1.8.0');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 039-desktop-workspace-refresh  ·  shipped v1.8.0');
 
     for (const path of [
       'specs/039-desktop-workspace-refresh',

@@ -4,6 +4,7 @@
 
 import { getAuthState, subscribe as subscribeAuth } from '../data/authStore.js';
 import aiSparkle from '../assets/AI_sparkle.png';
+import pencilAdd from '../assets/graphics/pencil-add.svg';
 import { canUseJdParser } from '../data/aiSettings.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { JobPostingImport } from './JobPostingImport.js';
@@ -47,6 +48,16 @@ function createAiSparkleIcon() {
   icon.setAttribute('aria-hidden', 'true');
 
   return icon;
+}
+
+function createPencilAddGraphic() {
+  const graphic = document.createElement('img');
+
+  graphic.className = 'creation-picker-graphic';
+  graphic.src = pencilAdd;
+  graphic.alt = '';
+  graphic.setAttribute('aria-hidden', 'true');
+  return graphic;
 }
 
 function _makeCard({
@@ -278,7 +289,7 @@ export function open(callbacks) {
   intro.className = 'creation-picker-intro';
   subtitleEl.className = 'creation-picker-subtitle';
   subtitleEl.textContent = 'Start from a job posting, or fill it in yourself. You can edit everything afterward.';
-  intro.append(titleEl, subtitleEl);
+  intro.append(createPencilAddGraphic(), titleEl, subtitleEl);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';

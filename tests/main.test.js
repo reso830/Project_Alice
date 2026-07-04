@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Side-effect imports that main.js performs at module load.
 vi.mock('../src/styles/main.css', () => ({}));
-vi.mock('../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
+vi.mock('../src/assets/logo/alice-sigil-full-white.svg', () => ({
+  default: '/alice-sigil-full-white.svg',
+}));
 
 const authMocks = vi.hoisted(() => ({
   state: { status: 'local-mode', user: null, accessToken: null },

@@ -1,32 +1,40 @@
-// Hero slideshow — docs/design/welcome_page.md §4.4
+// Hero slideshow — Feature 042 showcase carousel.
 //
-// Replaces the 6-screenshot rotation with a 4-scene cycler (stack → pipeline
-// → profile → logo). 5500ms per scene, 700ms cross-fade between layers, 4
-// bottom dots whose active dot shows a 0→1 progress bar matching scene
-// duration. Click a dot to jump (and reset the rotation cadence).
+// Five high-fidelity scenes: constellation → parse → pipeline → momentum →
+// deck. Each scene runs for 8600ms with dot progress synced to the same
+// duration. Click a dot to jump and reset the rotation cadence.
 //
 // `heroScene` prop:
-//   - 'auto' (default): rotates all 4 scenes, renders dots + progress bar.
-//   - 'stack' | 'pipeline' | 'profile' | 'logo': pins to that scene, no
+//   - 'auto' (default): rotates all 5 scenes, renders dots + progress bar.
+//   - 'constellation' | 'parse' | 'pipeline' | 'momentum' | 'deck': pins to that scene, no
 //     rotation, no dots.
 //
-// prefers-reduced-motion → renders scene 1 (`stack`) statically, no dots,
+// prefers-reduced-motion → renders scene 1 (`constellation`) statically, no dots,
 // no progress bar, no JS timers. Scenes themselves also bypass internal
 // animations under reduced-motion.
 
-import { SceneStack } from './scenes/SceneStack.js';
+import { SceneConstellation } from './scenes/SceneConstellation.js';
+import { SceneParse } from './scenes/SceneParse.js';
 import { ScenePipeline } from './scenes/ScenePipeline.js';
-import { SceneProfile } from './scenes/SceneProfile.js';
-import { SceneLogo } from './scenes/SceneLogo.js';
+import { SceneMomentum } from './scenes/SceneMomentum.js';
+import { SceneDeck } from './scenes/SceneDeck.js';
 
-const SCENE_NAMES = ['stack', 'pipeline', 'profile', 'logo'];
+const SCENE_NAMES = ['constellation', 'parse', 'pipeline', 'momentum', 'deck'];
 const SCENE_MODULES = {
-  stack: SceneStack,
+  constellation: SceneConstellation,
+  parse: SceneParse,
   pipeline: ScenePipeline,
-  profile: SceneProfile,
-  logo: SceneLogo,
+  momentum: SceneMomentum,
+  deck: SceneDeck,
 };
-const ROTATION_MS = 5500;
+const SCENE_CAPTIONS = {
+  constellation: 'Every step, in view.',
+  parse: "Paste it. We'll parse it.",
+  pipeline: 'Track every stage.',
+  momentum: 'See your momentum.',
+  deck: 'Everything in one place.',
+};
+const ROTATION_MS = 8600;
 const FADE_MS = 700;
 
 let _state = null;
@@ -57,7 +65,7 @@ function unmountLayer(state, layerIdx) {
 function mountSceneIntoLayer(state, layerIdx, sceneName) {
   const mod = SCENE_MODULES[sceneName];
   state.layers[layerIdx].dataset.scene = sceneName;
-  mod.mount(state.layers[layerIdx], { variant: state.variant });
+  mod.mount(state.layers[layerIdx], { variant: state.variant, motion: !state.reduced });
   state.mountedModules[layerIdx] = mod;
 }
 
@@ -101,6 +109,7 @@ function goToSceneIndex(state, nextIdx) {
   state.activeSceneIndex = nextIdx;
 
   if (state.dots.length) setActiveDot(state, nextIdx);
+  state.caption.textContent = SCENE_CAPTIONS[SCENE_NAMES[nextIdx]];
 
   if (state.fadeTimer) clearTimeout(state.fadeTimer);
   state.fadeTimer = setTimeout(() => {
@@ -120,15 +129,13 @@ function startRotation(state) {
 function buildDots(state) {
   const row = document.createElement('div');
   row.className = 'hero-slideshow__dots';
-  row.setAttribute('role', 'tablist');
   row.setAttribute('aria-label', 'Hero scene navigation');
 
   const dots = SCENE_NAMES.map((sceneName, i) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'hero-slideshow__dot';
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-label', `Show scene ${i + 1}: ${sceneName}`);
+    btn.setAttribute('aria-label', `Show scene ${i + 1}: ${SCENE_CAPTIONS[sceneName]}`);
     btn.dataset.dotIndex = String(i);
     btn.dataset.dotScene = sceneName;
 
@@ -156,6 +163,13 @@ function buildDisclaimer() {
   return note;
 }
 
+function buildCaption(sceneName) {
+  const caption = document.createElement('p');
+  caption.className = 'hero-slideshow__caption';
+  caption.textContent = SCENE_CAPTIONS[sceneName];
+  return caption;
+}
+
 export function mount(container, { heroScene = 'auto', variant = 'default' } = {}) {
   unmount();
 
@@ -167,8 +181,10 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
   layer0.className = 'hero-slideshow__layer hero-slideshow__layer--active';
   const layer1 = document.createElement('div');
   layer1.className = 'hero-slideshow__layer';
+  const caption = buildCaption(SCENE_NAMES[0]);
   const disclaimer = buildDisclaimer();
-  root.append(layer0, layer1, disclaimer);
+  const reduced = prefersReducedMotion();
+  root.append(layer0, layer1, caption, disclaimer);
 
   const state = {
     root,
@@ -177,15 +193,16 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
     activeLayer: 0,
     activeSceneIndex: 0,
     variant,
+    reduced,
+    caption,
     rotationTimer: null,
     fadeTimer: null,
     dots: [],
   };
 
-  const reduced = prefersReducedMotion();
   if (reduced) {
     // Reduced-motion: scene 1 only, static, no dots, no timers.
-    mountSceneIntoLayer(state, 0, 'stack');
+    mountSceneIntoLayer(state, 0, 'constellation');
     container.append(root);
     _state = state;
     return;
@@ -193,8 +210,9 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
 
   // Pinned scene: render single scene, no rotation, no dots.
   if (heroScene !== 'auto') {
-    const sceneName = SCENE_NAMES.includes(heroScene) ? heroScene : 'stack';
+    const sceneName = SCENE_NAMES.includes(heroScene) ? heroScene : 'constellation';
     state.activeSceneIndex = SCENE_NAMES.indexOf(sceneName);
+    caption.textContent = SCENE_CAPTIONS[sceneName];
     mountSceneIntoLayer(state, 0, sceneName);
     container.append(root);
     _state = state;
@@ -204,7 +222,7 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
   // Auto-cycle: dots + rotation timer.
   const { row, dots } = buildDots(state);
   state.dots = dots;
-  mountSceneIntoLayer(state, 0, 'stack');
+  mountSceneIntoLayer(state, 0, 'constellation');
   root.append(row);
   setActiveDot(state, 0);
   container.append(root);

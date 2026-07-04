@@ -291,9 +291,40 @@ describe('ResumeImport — auth-state gating', () => {
     expect(overlay).not.toBeNull();
     expect(overlay.getAttribute('role')).toBe('status');
     expect(overlay.getAttribute('aria-live')).toBe('polite');
-    expect(overlay.querySelector('.resume-import-processing__spinner')).not.toBeNull();
-    expect(overlay.textContent).toContain('Reading your resume...');
-    expect(overlay.textContent).toContain('Extracting your experience, skills, and details');
+    expect(overlay.getAttribute('aria-busy')).toBe('true');
+    expect(overlay.querySelector('.spinner-ring')).not.toBeNull();
+    expect(overlay.querySelector('.spinner-logo')).not.toBeNull();
+    expect(overlay.textContent).toContain('Getting to know your background');
+    expect(overlay.textContent).toContain('Alice is reading through your experience');
+  });
+
+  it('fades out the processing overlay before unmounting on success (T022)', async () => {
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    aiSettings.getModel.mockReturnValue('custom/model');
+    parseWithLlm.mockResolvedValue({
+      draft: { firstName: 'Jane', summary: 'Platform engineer', skills: [{ name: 'TypeScript', level: 4 }] },
+      truncated: false,
+    });
+    const onSuccess = vi.fn();
+    const root = ResumeImport.create({ smartInput: true, showHeader: true, onSuccess });
+
+    // Smart mode defaults to file upload; switch to the paste tab first.
+    [...root.querySelectorAll('.resume-import__mode')]
+      .find((button) => button.textContent.includes('Paste text'))
+      .click();
+    pasteResumeText(root, 'Jane Doe — TypeScript platform engineering resume with plenty of detail here');
+    root.querySelector('.resume-import__process').click();
+    expect(root.querySelector('.processing-overlay')).not.toBeNull();
+
+    await flushPromises();
+
+    expect(onSuccess).toHaveBeenCalled();
+    // On completion the overlay detaches to <body> and gets `--closing`
+    // (opacity → 0 over 400ms) before removal after the transition.
+    const closing = document.body.querySelector('.processing-overlay--closing');
+    expect(closing).not.toBeNull();
+    closing.remove();
   });
 
   it('clears a selected file when switching to paste mode so stale file data is not parsed', () => {

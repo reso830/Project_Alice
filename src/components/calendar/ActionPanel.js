@@ -1,3 +1,5 @@
+import calendarQuiet from '../../assets/graphics/calendar-quiet.svg';
+
 const BODY_ID = 'cal-action-panel-body';
 
 let _host = null;
@@ -7,17 +9,17 @@ let _isStacked = false;
 
 const EMPTY_STATES = {
   today: {
-    glyph: '\u25cb',
+    image: calendarQuiet,
     headline: 'Quiet day',
     sub: 'Nothing on today. Enjoy the breather.',
   },
   suggestions: {
-    glyph: '\u2299',
+    image: calendarQuiet,
     headline: "You're caught up",
     sub: "No suggestions right now. We'll surface new ones as activity ages.",
   },
   upcoming: {
-    glyph: '\u2014',
+    image: calendarQuiet,
     headline: 'Nothing scheduled',
     sub: 'No upcoming timeline events tomorrow through end of week.',
   },
@@ -260,9 +262,15 @@ function createSectionHeader(label, count, hint = '') {
 function createEmptyState(kind) {
   const copy = EMPTY_STATES[kind];
   const empty = document.createElement('div');
+  const graphic = document.createElement('img');
+
   empty.className = 'cal-empty';
+  graphic.className = 'cal-empty__glyph';
+  graphic.src = copy.image;
+  graphic.alt = '';
+  graphic.setAttribute('aria-hidden', 'true');
   empty.append(
-    createText('cal-empty__glyph', copy.glyph),
+    graphic,
     createText('cal-empty__h', copy.headline),
     createText('cal-empty__sub', copy.sub),
   );

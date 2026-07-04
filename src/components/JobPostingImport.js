@@ -1,6 +1,7 @@
 import * as aiSettings from '../data/aiSettings.js';
 import { mapErrorToReason, parseJobWithLlm, REASON_CODES } from '../services/llmParser.js';
 import { parseJobPost } from '../utils/jobPostParser.js';
+import aliceSigil from '../assets/logo/alice-sigil-full.svg';
 
 const MIN_POSTING_CHARS = 40;
 const VISIBLE_PARSE_FIELDS = new Set([
@@ -88,6 +89,78 @@ const JD_REASON_MESSAGES = Object.freeze({
 
 function getReasonMessage(reasonKey) {
   return JD_REASON_MESSAGES[reasonKey] ?? getReason(reasonKey).message;
+}
+
+function createSpinnerRing() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+
+  svg.setAttribute('class', 'spinner-ring');
+  svg.setAttribute('viewBox', '0 0 76 76');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const circle of [glow, core]) {
+    circle.setAttribute('cx', '38');
+    circle.setAttribute('cy', '38');
+    circle.setAttribute('r', '33');
+    circle.setAttribute('stroke', '#F4A71F');
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke-dasharray', '52 155');
+  }
+  glow.setAttribute('class', 'ring-glow');
+  glow.setAttribute('stroke-width', '6');
+  core.setAttribute('class', 'ring-core');
+  core.setAttribute('stroke-width', '2');
+  svg.append(glow, core);
+
+  return svg;
+}
+
+function createProcessingOverlay() {
+  const overlay = createElement('div', 'processing-overlay job-posting-import-processing');
+  const edgeGlow = createElement('div', 'edge-glow');
+  const spinnerWrap = createElement('div', 'spinner-wrap');
+  const logo = document.createElement('img');
+  const text = createElement('div', 'processing-text');
+  const title = createElement('h3', 'processing-title', 'Making sense of the posting');
+  const subtitle = createElement('p', 'processing-subtitle', 'Alice is pulling out the role details');
+
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-busy', 'true');
+  edgeGlow.setAttribute('aria-hidden', 'true');
+  logo.src = aliceSigil;
+  logo.className = 'spinner-logo';
+  logo.alt = '';
+  logo.setAttribute('aria-hidden', 'true');
+  spinnerWrap.append(logo, createSpinnerRing());
+  text.append(title, subtitle);
+  overlay.append(edgeGlow, spinnerWrap, text);
+
+  return overlay;
+}
+
+// Fade the processing overlay to opacity 0 over 400ms (CSS ease-out) before
+// unmounting. Detach to <body> first so the completion re-render (which clears
+// `root`) can't drop it mid-fade — the overlay is position:fixed, so
+// re-parenting is visually seamless.
+function dismissProcessingOverlay(node) {
+  if (!node || !node.classList || !node.classList.contains('processing-overlay')) {
+    return;
+  }
+  document.body.append(node);
+  node.classList.add('processing-overlay--closing');
+  let removed = false;
+  const remove = () => {
+    if (removed) {
+      return;
+    }
+    removed = true;
+    node.remove();
+  };
+  node.addEventListener('transitionend', remove, { once: true });
+  // Fallback for reduced-motion / jsdom, where transitionend never fires.
+  window.setTimeout(remove, 500);
 }
 
 export const JobPostingImport = {
@@ -236,17 +309,7 @@ export const JobPostingImport = {
       isProcessing = true;
       root.setAttribute('aria-busy', 'true');
 
-      const overlay = createElement('div', 'job-posting-import-processing');
-      const panel = createElement('div', 'job-posting-import-processing__panel');
-      const spinner = createElement('span', 'job-posting-import-processing__spinner');
-      const title = createElement('p', 'job-posting-import-processing__title', 'Reading the job posting...');
-      const detail = createElement('p', 'job-posting-import-processing__detail', 'Extracting title, company, skills, and details.');
-
-      overlay.setAttribute('role', 'status');
-      overlay.setAttribute('aria-live', 'polite');
-      spinner.setAttribute('aria-hidden', 'true');
-      panel.append(spinner, title, detail);
-      overlay.append(panel);
+      const overlay = createProcessingOverlay();
       root.append(overlay);
 
       return overlay;
@@ -356,6 +419,7 @@ export const JobPostingImport = {
       try {
         const draft = await Promise.resolve(parseJobPost(text));
 
+        dismissProcessingOverlay(status);
         return completeWithDraft(draft, 'basic', '');
       } catch {
         const inline = createElement('p', 'job-posting-import__error', "Couldn't parse the posting. Try again.");
@@ -387,7 +451,7 @@ export const JobPostingImport = {
         pendingBasicText = '';
       }
       pendingBasicText = text;
-      renderProcessing();
+      const status = renderProcessing();
 
       try {
         const result = await parseJobWithLlm(text, aiSettings.getKey(), aiSettings.getModel());
@@ -402,6 +466,7 @@ export const JobPostingImport = {
 
         root.setAttribute('aria-busy', 'false');
         isProcessing = false;
+        dismissProcessingOverlay(status);
         return completeWithDraft(result.draft, 'ai', notice);
       } catch (errorObject) {
         if (destroyed) {
@@ -410,6 +475,7 @@ export const JobPostingImport = {
 
         const reason = mapErrorToReason(errorObject);
 
+        dismissProcessingOverlay(status);
         renderFailureDialog(reason);
         return null;
       }

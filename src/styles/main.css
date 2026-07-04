@@ -76,7 +76,7 @@
 
   /* Phase 14: welcome-page tokens. `--warm` is an alias of `--bg` matching
      the design-doc spelling; `--navy-deep` is the slab background on the
-     navy theme; `--gold` is the SceneLogo sparkle color (used by Phase 15). */
+     navy theme; `--gold` is the showcase sparkle color. */
   --warm: var(--bg);
   --navy-deep: #0E0E20;
   --gold: #F2B544;
@@ -1120,33 +1120,10 @@ textarea.edit-field__control {
 }
 
 .profile-empty__icon {
-  display: flex;
-  position: relative;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #F0EEFF;
-  color: var(--indigo);
-}
-
-.profile-empty__icon-head {
-  position: absolute;
-  top: 12px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.profile-empty__icon-body {
-  position: absolute;
-  bottom: 11px;
-  width: 26px;
-  height: 14px;
-  border-radius: 14px 14px 4px 4px;
-  background: currentColor;
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
 }
 
 .profile-empty__title,
@@ -1166,8 +1143,16 @@ textarea.edit-field__control {
 .profile-empty__actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   width: min(100%, 360px);
+}
+
+.profile-empty__setup-graphic {
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
 }
 
 .resume-import {
@@ -5235,8 +5220,8 @@ textarea.modal-inline-control {
   }
 
   .footer__brand-icon {
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
   }
 
   /* Align the control under the brand text (logo width + brand gap). */
@@ -6649,6 +6634,19 @@ textarea.modal-inline-control {
   display: none;
 }
 
+.creation-picker-intro {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.creation-picker-graphic {
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+}
+
 .creation-picker-title {
   color: var(--t1);
   font: 800 24px/1.2 var(--font-ui);
@@ -6968,7 +6966,9 @@ button[aria-busy="true"] {
 
 .welcome {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 46fr 54fr;
   background: var(--bg);
   overflow: hidden;
   font-family: var(--font-ui);
@@ -6982,11 +6982,11 @@ button[aria-busy="true"] {
   flex-direction: column;
   justify-content: center;
   gap: 22px;
-  width: 55%;
-  min-height: 100vh;
-  padding: 6vw 5vw 6vw 6vw;
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(32px, 5vw, 68px);
   box-sizing: border-box;
-  max-width: 760px;
+  max-width: 620px;
 }
 
 .welcome__brand {
@@ -7017,10 +7017,10 @@ button[aria-busy="true"] {
 
 .welcome__headline {
   font-family: var(--font-ui);
-  font-size: 54px;
+  font-size: clamp(38px, 5.4vw, 62px);
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -1.6px;
+  line-height: 1.02;
+  letter-spacing: 0;
   color: var(--t1);
   margin: 0;
 }
@@ -7048,11 +7048,11 @@ button[aria-busy="true"] {
 
 .welcome__supporting {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: clamp(15px, 1.5vw, 17px);
   font-weight: 400;
-  line-height: 1.7;
+  line-height: 1.62;
   color: var(--t2);
-  max-width: 420px;
+  max-width: 440px;
   margin: 0;
 }
 
@@ -7156,7 +7156,7 @@ button[aria-busy="true"] {
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--t3);
   margin: 28px 0 0 0;
 }
@@ -7188,17 +7188,24 @@ button[aria-busy="true"] {
   color: var(--indigo);
 }
 
+.welcome__footer-download {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--indigo);
+}
+
 /* Phase 16 — Hero slab. Width / clip-path / position vary by layout class
    (see `.welcome--layout-*` blocks below). Default values match the
    `diagonal` layout so legacy callers without a layout class continue to
    render the original Phase 14 design. */
 
 .welcome__hero {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 62%;
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
   z-index: 1;
   background:
     radial-gradient(circle at top right, rgba(79, 70, 229, 0.18), transparent 40%),
@@ -7216,11 +7223,11 @@ button[aria-busy="true"] {
 
 /* `split` — straight 55/45 vertical, no diagonal clip-path. */
 .welcome--layout-split .welcome__hero {
-  width: 45%;
+  width: 100%;
   clip-path: none;
 }
 .welcome--layout-split .welcome__content {
-  width: 55%;
+  width: 100%;
   max-width: none;
 }
 
@@ -7256,6 +7263,7 @@ button[aria-busy="true"] {
   width: 100%;
   max-width: 1100px;
   height: 280px;
+  min-height: 0;
   margin-top: 56px;
   border-radius: 16px;
   clip-path: none;
@@ -7383,6 +7391,22 @@ button[aria-busy="true"] {
   pointer-events: none;
 }
 
+.hero-slideshow__caption {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(46px, 5.4vw, 64px);
+  z-index: 4;
+  margin: 0;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--font-ui);
+  font-size: clamp(13px, 1.4vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
 .hero-slideshow__dots {
   position: absolute;
   bottom: clamp(20px, 3vw, 32px);
@@ -7426,7 +7450,7 @@ button[aria-busy="true"] {
 }
 
 .hero-slideshow__dot--active .hero-slideshow__dot-progress--running {
-  animation: hero-slideshow-progress 5500ms linear forwards;
+  animation: hero-slideshow-progress 8600ms linear forwards;
 }
 
 @keyframes hero-slideshow-progress {
@@ -7435,7 +7459,434 @@ button[aria-busy="true"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Scene 1 — SceneStack
+   Feature 042 showcase scenes
+   --------------------------------------------------------------------------- */
+
+.scene-constellation,
+.scene-parse,
+.scene-pipeline,
+.scene-momentum,
+.scene-deck {
+  position: relative;
+  width: min(520px, 84%);
+  height: min(390px, 76%);
+  display: grid;
+  place-items: center;
+}
+
+.scene-constellation__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.scene-constellation__line {
+  stroke: rgba(255, 255, 255, .34);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: constellation-line .72s ease forwards;
+  animation-delay: var(--line-delay, 0ms);
+}
+
+.scene-constellation__line.is-settled {
+  stroke-dashoffset: 0;
+}
+
+.scene-constellation__node {
+  opacity: 0;
+  animation: constellation-node .55s ease forwards, constellation-twinkle 2.8s ease-in-out infinite;
+  animation-delay: var(--node-delay, 0ms), calc(var(--node-delay, 0ms) + 600ms);
+}
+
+.scene-constellation__node.is-settled {
+  opacity: 1;
+  animation: none;
+}
+
+.scene-constellation__star {
+  filter: drop-shadow(0 0 8px var(--node-color)) drop-shadow(0 0 18px var(--node-color));
+}
+
+.scene-constellation__label {
+  fill: rgba(255, 255, 255, .72);
+  font-family: "DM Mono", monospace;
+  font-size: 3.1px;
+  font-weight: 500;
+  letter-spacing: .3px;
+}
+
+@keyframes constellation-line {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes constellation-node {
+  to { opacity: 1; }
+}
+
+@keyframes constellation-twinkle {
+  0%, 100% { opacity: .74; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.05); }
+}
+
+.scene-parse__wrap {
+  position: relative;
+  width: min(420px, 90%);
+  min-height: 270px;
+}
+
+.scene-parse__window,
+.scene-parse__card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(330px, 100%);
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .10);
+  box-shadow: 0 24px 70px rgba(14, 14, 32, .38);
+  transform: translate(-50%, -50%);
+}
+
+.scene-parse__window {
+  overflow: hidden;
+  padding: 14px 16px 18px;
+  transition: opacity .42s ease, transform .42s ease;
+}
+
+.scene-parse.is-parsed .scene-parse__window {
+  opacity: 0;
+  transform: translate(-50%, -54%) scale(.72);
+}
+
+.scene-parse__window-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: rgba(255, 255, 255, .54);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-parse__window-head span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .34);
+}
+
+.scene-parse__title,
+.scene-parse__card-title {
+  margin: 0 0 5px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.scene-parse__meta,
+.scene-parse__card-meta {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, .66);
+  font-size: 12px;
+}
+
+.scene-parse__line {
+  display: block;
+  width: 82%;
+  height: 7px;
+  margin-bottom: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+}
+
+.scene-parse__line--long { width: 94%; }
+.scene-parse__line--short { width: 64%; }
+.scene-parse__line--mid { width: 76%; }
+
+.scene-parse__beam {
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  width: 116%;
+  height: 32px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, rgba(242, 181, 68, .64), transparent);
+  filter: blur(.5px);
+  opacity: 0;
+}
+
+.scene-parse.is-scanned .scene-parse__beam {
+  opacity: 1;
+  animation: parse-beam 1.08s cubic-bezier(.3,.6,.3,1) forwards;
+}
+
+.scene-parse__card {
+  padding: 18px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.82);
+  transition: opacity .46s ease, transform .56s cubic-bezier(.2,.7,.3,1.15);
+}
+
+.scene-parse.is-parsed .scene-parse__card,
+.scene-parse.is-settled .scene-parse__card {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.scene-parse.is-settled .scene-parse__window {
+  display: none;
+}
+
+.scene-parse__tag,
+.scene-parse__chips span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(242, 181, 68, .14);
+  color: #F2B544;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-parse__tag {
+  margin-bottom: 12px;
+  padding: 4px 8px;
+}
+
+.scene-parse__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scene-parse__chips span {
+  padding: 5px 7px;
+}
+
+.scene-parse__spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #F2B544;
+  opacity: 0;
+}
+
+.scene-parse.is-parsed .scene-parse__spark {
+  animation: parse-spark .62s ease-out forwards;
+  animation-delay: var(--spark-delay, 0ms);
+  transform: rotate(var(--spark-angle)) translateX(0);
+}
+
+@keyframes parse-beam {
+  0%   { top: -34px; opacity: 0; }
+  12%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% + 8px); opacity: 0; }
+}
+
+@keyframes parse-spark {
+  0%   { opacity: .9; transform: rotate(var(--spark-angle)) translateX(0) scale(.6); }
+  100% { opacity: 0; transform: rotate(var(--spark-angle)) translateX(112px) scale(.15); }
+}
+
+.scene-pipeline__track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(330px, 88%);
+  margin-bottom: 18px;
+}
+
+.scene-pipeline__node {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .20);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12);
+}
+
+.scene-pipeline__node.is-done {
+  background: #F2B544;
+  box-shadow: 0 0 18px rgba(242, 181, 68, .44);
+}
+
+.scene-pipeline__node.is-current {
+  transform: scale(1.22);
+}
+
+.scene-momentum {
+  gap: 18px;
+}
+
+.scene-momentum__chips {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: min(430px, 100%);
+}
+
+.scene-momentum__chip {
+  display: grid;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+}
+
+.scene-momentum__chip-label {
+  color: rgba(255, 255, 255, .58);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.scene-momentum__chip-value {
+  color: #FFFFFF;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.scene-momentum__donut {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.scene-momentum__track {
+  stroke: rgba(255, 255, 255, .08);
+  stroke-width: 18;
+}
+
+.scene-momentum__segment {
+  transition: stroke-dasharray .7s ease, stroke-dashoffset .7s ease;
+  transition-delay: var(--segment-delay, 0ms);
+}
+
+.scene-momentum__total {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.scene-momentum__total-value {
+  color: #FFFFFF;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scene-momentum__total-label {
+  color: rgba(255, 255, 255, .54);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-deck__stack {
+  position: relative;
+  width: min(450px, 100%);
+  height: 260px;
+}
+
+.scene-deck__card {
+  position: absolute;
+  left: 50%;
+  top: 36px;
+  width: 220px;
+  min-height: 158px;
+  padding: 15px;
+  border-radius: 14px;
+  background: #FFFFFF;
+  color: var(--t1);
+  box-shadow: 0 24px 70px rgba(14, 14, 32, .38);
+  transform: translateX(-50%) translateX(var(--deck-x)) rotate(var(--deck-rotation));
+  transform-origin: center bottom;
+}
+
+.scene-deck__card--0 { z-index: 1; }
+.scene-deck__card--1 { z-index: 2; top: 24px; }
+.scene-deck__card--2 { z-index: 3; }
+
+.scene-deck__sigil {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 34px;
+  height: 34px;
+  padding: 6px;
+  border-radius: 50%;
+  background: var(--navy);
+  object-fit: contain;
+}
+
+.scene-deck__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.scene-deck__id {
+  color: var(--t3);
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+}
+
+.scene-deck__badge {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--indigo-dim);
+  color: var(--indigo);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scene-deck__role,
+.scene-deck__company {
+  margin: 0;
+}
+
+.scene-deck__role {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.scene-deck__company {
+  margin-top: 4px;
+  color: var(--t2);
+  font-size: 12px;
+}
+
+.scene-deck__bar {
+  display: block;
+  width: 120px;
+  height: 6px;
+  margin-top: 22px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #E8E4DD;
+}
+
+.scene-deck__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.scene-deck__bar-fill--great { background: #22C55E; }
+.scene-deck__bar-fill--good { background: #F2B544; }
+.scene-deck__bar-fill--low { background: #818CF8; }
+
+/* ---------------------------------------------------------------------------
+   Legacy Phase 15 card stack styles
    --------------------------------------------------------------------------- */
 
 .scene-stack {
@@ -7620,7 +8071,7 @@ button[aria-busy="true"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Scene 3 — SceneProfile
+   Legacy Phase 15 profile scene styles
    --------------------------------------------------------------------------- */
 
 .scene-profile {
@@ -7805,34 +8256,92 @@ button[aria-busy="true"] {
   50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
 }
 
-/* Tablet (760–1100px) — hero slab narrows slightly per design §4 */
-@media (max-width: 1100px) {
+/* Tablet (621–900px) — height-locked flex column per Feature 042. */
+@media (min-width: 621px) and (max-width: 900px) and (orientation: portrait) {
+  .welcome {
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+    padding: 24px 32px 18px;
+  }
+
   .welcome__content {
-    width: 58%;
-    padding: 5vw;
+    width: 100%;
+    max-width: none;
+    min-height: auto;
+    padding: 0;
+    gap: 14px;
+    align-items: center;
+    text-align: center;
+    flex: 0 0 auto;
   }
-  .welcome__hero {
-    width: 58%;
+
+  .welcome__brand {
+    justify-content: center;
   }
+
+  .welcome__brand-mark {
+    width: 64px;
+    height: 64px;
+  }
+
+  .welcome__brand-text {
+    font-size: 32px;
+  }
+
   .welcome__headline {
-    font-size: 46px;
+    font-size: clamp(30px, 4.4vw, 40px);
+  }
+
+  .welcome__supporting {
+    font-size: 14px;
+    max-width: 400px;
+  }
+
+  .welcome__cta {
+    font-size: 13px;
+    padding: 11px 18px;
+  }
+
+  .welcome__hero {
+    width: 100%;
+    max-width: 760px;
+    height: clamp(220px, 33dvh, 320px);
+    min-height: 0;
+    margin: 12px auto 0;
+    border-radius: 16px;
+    clip-path: none;
+    flex: 1 1 auto;
+  }
+
+  .welcome__footer-meta {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    justify-content: center;
+    margin: 12px 0 0;
+    font-size: 10.5px;
+    flex: 0 0 auto;
   }
 }
 
 /* ---------------------------------------------------------------------------
-   Phase 18 — Mobile branch (`<760px`) per design §3.3
+   Feature 042 — Mobile branch (`≤620px`) per responsive welcome spec
    Driven by JS-toggled `.welcome--mobile` class on the welcome root, NOT
-   by a media query. Phase 18.1 ignores all layout/theme classes when
-   `.welcome--mobile` is present.
+   by a media query.
    --------------------------------------------------------------------------- */
 
 .welcome--mobile {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  padding: 96px 28px 56px;
-  min-height: 100vh;
-  overflow: visible;
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: 22px 22px 14px;
+  overflow: hidden;
 }
 
 .welcome--mobile .welcome__content {
@@ -7841,8 +8350,8 @@ button[aria-busy="true"] {
   max-width: none;
   min-height: auto;
   padding: 0;
-  gap: 18px;
-  flex: 1;
+  gap: 10px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -7850,31 +8359,44 @@ button[aria-busy="true"] {
 }
 
 .welcome--mobile .welcome__brand {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .welcome--mobile .welcome__brand-mark {
-  width: 68px;
-  height: 68px;
+  width: 52px;
+  height: 52px;
 }
 
 .welcome--mobile .welcome__brand-text {
-  font-size: 32px;
-  letter-spacing: -0.6px;
+  font-size: 25px;
+  letter-spacing: 0;
 }
 
 .welcome--mobile .welcome__headline {
-  font-size: 38px;
-  letter-spacing: -1.2px;
+  font-size: clamp(27px, 8vw, 36px);
+  letter-spacing: 0;
   line-height: 1.04;
   text-wrap: balance;
 }
 
-.welcome--mobile .welcome__supporting,
 .welcome--mobile .welcome__supporting {
-  display: none;
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.welcome--mobile .welcome__hero {
+  position: relative;
+  width: 100%;
+  height: 158px;
+  min-height: 0;
+  margin: 10px 0 0;
+  border-radius: 14px;
+  clip-path: none;
+  flex: 0 0 158px;
 }
 
 .welcome--mobile .welcome__footer-meta {
@@ -7882,26 +8404,26 @@ button[aria-busy="true"] {
   left: auto;
   bottom: auto;
   z-index: 2;
-  margin: 28px 0 0;
+  margin: 10px 0 0;
   justify-content: flex-start;
   gap: 8px;
   font-size: 10px;
-  line-height: 1.7;
+  line-height: 1.45;
 }
 
 .welcome--mobile .welcome__cta-group {
-  margin-top: auto;
+  margin-top: 0;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
 .welcome--mobile .welcome__cta {
   width: 100%;
   border-radius: 12px;
-  padding: 16px 20px;
-  font-size: 15px;
+  padding: 12px 16px;
+  font-size: 12.5px;
 }
 
 .welcome--mobile .welcome__cta--ghost {
@@ -7921,6 +8443,70 @@ button[aria-busy="true"] {
   transform: translateY(-50%);
   box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
   animation: mw-pulse 1.8s ease-out infinite;
+}
+
+@media (max-width: 900px) {
+  .welcome::before,
+  .welcome::after {
+    display: none;
+  }
+
+  .welcome__footer-desktop-only {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) and (orientation: landscape) {
+  .welcome--mobile {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 620px) and (orientation: portrait) and (max-height: 599px) {
+  .welcome--mobile {
+    padding: 12px 18px 10px;
+  }
+
+  .welcome--mobile .welcome__content {
+    gap: 7px;
+  }
+
+  .welcome--mobile .welcome__brand-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .welcome--mobile .welcome__brand-text {
+    font-size: 22px;
+  }
+
+  .welcome--mobile .welcome__headline {
+    font-size: clamp(24px, 7vw, 30px);
+  }
+
+  .welcome--mobile .welcome__supporting {
+    display: none;
+  }
+
+  .welcome--mobile .welcome__hero {
+    height: 110px;
+    flex-basis: 110px;
+    margin-top: 6px;
+  }
+
+  .welcome--mobile .welcome__cta-group {
+    gap: 6px;
+  }
+
+  .welcome--mobile .welcome__cta {
+    padding: 10px 14px;
+  }
+
+  .welcome--mobile .welcome__footer-link {
+    display: none;
+  }
 }
 
 @keyframes mw-pulse {
@@ -8329,8 +8915,8 @@ button[aria-busy="true"] {
 }
 
 .config-error__brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -8380,6 +8966,12 @@ button[aria-busy="true"] {
   }
 
   .hero-slideshow__dot-progress--running,
+  .scene-constellation__line,
+  .scene-constellation__node,
+  .scene-parse__beam,
+  .scene-parse__card,
+  .scene-parse__spark,
+  .scene-momentum__segment,
   .scene-logo__inner,
   .scene-logo__sparkle,
   .scene-pipeline__badge,
@@ -8740,16 +9332,10 @@ button[aria-busy="true"] {
 
 .cal-empty__glyph {
   grid-row: 1 / span 2;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--indigo);
-  font-family: "DM Mono", monospace;
-  font-size: 15px;
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
 }
 
 .cal-empty__h {
@@ -9265,10 +9851,12 @@ button[aria-busy="true"] {
   text-align: center;
 }
 
-.cal-dp-prompt-glyph {
-  color: var(--indigo);
-  font-family: "DM Mono", monospace;
-  font-size: 18px;
+.cal-dp-prompt-glyph,
+.cal-dp-empty-glyph {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .cal-dp-prompt-h,
@@ -9332,7 +9920,9 @@ button[aria-busy="true"] {
 .cal-dp-empty {
   display: grid;
   gap: 4px;
+  justify-items: center;
   padding: 18px 0;
+  text-align: center;
 }
 
 .cal-dp-body,
@@ -11139,4 +11729,224 @@ button[aria-busy="true"] {
   .cx-skel-line {
     animation: none;
   }
+}
+
+/* =========================================================================
+   Feature 042 — In-app LLM processing overlay (Phase 06, T022–T024)
+   Contract: specs/042-welcome-brand-refresh/contracts/api.md §3
+   ========================================================================= */
+
+.processing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: rgba(244, 241, 236, 0.96);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 1;
+  transition: opacity 400ms ease-out;
+}
+
+/* Fade to 0 over 400ms before the overlay is detached (T022/T023). */
+.processing-overlay--closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Edge glow — static purple/gold bloom on all viewports; the rotating
+   conic layer is added only on desktop (≥900px) to avoid the diagonal
+   seam that conic rotation produces on portrait aspect ratios. */
+.processing-overlay .edge-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 140px 12px rgba(61, 26, 138, 0.18),
+    inset 0 0 90px 8px rgba(244, 167, 31, 0.16);
+}
+
+.processing-overlay .spinner-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+
+.processing-overlay .spinner-logo {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.processing-overlay .spinner-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  animation: processing-spin 0.6s linear infinite;
+}
+
+.processing-overlay .spinner-ring .ring-glow {
+  filter: blur(4px);
+  opacity: 0.65;
+}
+
+.processing-overlay .processing-text {
+  text-align: center;
+  max-width: 320px;
+}
+
+.processing-overlay .processing-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--t1);
+}
+
+.processing-overlay .processing-subtitle {
+  margin: 4px 0 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--t2);
+}
+
+@keyframes processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Desktop-only rotating conic edge glow (≥900px). */
+@media (min-width: 900px) {
+  .processing-overlay .edge-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(
+      from 0deg,
+      rgba(61, 26, 138, 0) 0deg,
+      rgba(61, 26, 138, 0.22) 90deg,
+      rgba(244, 167, 31, 0.24) 180deg,
+      rgba(61, 26, 138, 0.22) 270deg,
+      rgba(61, 26, 138, 0) 360deg
+    );
+    mix-blend-mode: multiply;
+    animation: processing-edge-rotate 9s linear infinite;
+  }
+}
+
+@keyframes processing-edge-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion — freeze the spinner ring and edge glow, drop the fade (T024). */
+@media (prefers-reduced-motion: reduce) {
+  .processing-overlay {
+    transition: none;
+  }
+
+  .processing-overlay .spinner-ring,
+  .processing-overlay .edge-glow::after {
+    animation: none;
+  }
+}
+
+/* =========================================================================
+   Feature 042 — Auth overlay redesign (Phase 06, T021)
+   New header copy, glassmorphism panel, password peek, touched validation.
+   ========================================================================= */
+
+.auth-overlay__panel {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.auth-overlay__header-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.auth-overlay__subtitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--t2);
+}
+
+.auth-form__input-wrap {
+  position: relative;
+  display: block;
+}
+
+.auth-form__input-wrap .auth-form__input {
+  width: 100%;
+}
+
+.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input {
+  padding-right: 40px;
+}
+
+.auth-form__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--t2);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.auth-form__password-toggle:hover {
+  color: var(--t1);
+  background: var(--indigo-soft);
+}
+
+.auth-form__password-toggle:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 1px;
+}
+
+.auth-form__password-toggle .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-form__field--error .auth-form__input {
+  border-color: var(--color-danger);
+}
+
+.auth-form__field--error .auth-form__input:focus-visible {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+.auth-form__field-error:empty {
+  display: none;
 }

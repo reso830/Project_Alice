@@ -31,24 +31,25 @@ describe('ScenePipeline', () => {
     const card = container.querySelector('.scene-pipeline__card');
     expect(card).not.toBeNull();
     expect(container.querySelectorAll('.scene-pipeline__card').length).toBe(1);
+    expect(container.querySelectorAll('.scene-pipeline__node')).toHaveLength(4);
     const badge = container.querySelector('.scene-pipeline__badge');
     expect(badge.dataset.status).toBe('applied');
   });
 
-  it('cycles through all five statuses over time (fake timers)', () => {
+  it('cycles through all four handoff statuses over time (fake timers)', () => {
     vi.useFakeTimers();
     ScenePipeline.mount(container, { variant: 'default' });
 
     const seen = [];
     seen.push(container.querySelector('.scene-pipeline__badge').dataset.status);
-    for (let i = 0; i < 4; i += 1) {
-      vi.advanceTimersByTime(1100);
+    for (let i = 0; i < 3; i += 1) {
+      vi.advanceTimersByTime(1150);
       seen.push(container.querySelector('.scene-pipeline__badge').dataset.status);
     }
-    expect(seen).toEqual(['applied', 'phone_screen', 'interview', 'assessment', 'offer']);
+    expect(seen).toEqual(['applied', 'phone_screen', 'interview', 'offer']);
 
     // One more cycle wraps back to applied.
-    vi.advanceTimersByTime(1100);
+    vi.advanceTimersByTime(1150);
     expect(container.querySelector('.scene-pipeline__badge').dataset.status).toBe('applied');
   });
 
@@ -66,6 +67,7 @@ describe('ScenePipeline', () => {
     vi.useFakeTimers();
     ScenePipeline.mount(container, { variant: 'default' });
     expect(vi.getTimerCount()).toBe(0);
-    expect(container.querySelector('.scene-pipeline__badge').dataset.status).toBe('offer');
+    expect(container.querySelector('.scene-pipeline__badge').dataset.status).toBe('applied');
+    expect(container.querySelectorAll('.scene-pipeline__node.is-current')).toHaveLength(1);
   });
 });

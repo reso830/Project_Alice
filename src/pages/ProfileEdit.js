@@ -15,6 +15,7 @@ import {
 } from '../models/profile.js';
 import { getProfile, saveProfile } from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
+import { icon } from '../utils/icons.js';
 import { buildProfileEditSkeleton } from '../utils/skeletons.js';
 import { sortEducation, sortExperience } from '../utils/sort.js';
 import { validateMonthYear, validateRequired, validateUrl, validateYear } from '../utils/validate.js';
@@ -69,9 +70,6 @@ const SECTION_TITLES = Object.freeze({
   LANGUAGES: 'languages',
   LINKS: 'links',
 });
-const MANUAL_ENTRY_ICON_PATH = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z';
-const CHEVRON_DOWN_ICON_PATH = 'm6 9 6 6 6-6';
-
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
 
@@ -98,24 +96,6 @@ function createButton(label, className, onClick, ariaLabel = '') {
   button.addEventListener('click', onClick);
 
   return button;
-}
-
-function createSvgIcon(pathData) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('aria-hidden', 'true');
-  path.setAttribute('d', pathData);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', 'currentColor');
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-  svg.append(path);
-
-  return svg;
 }
 
 function createIconButton(icon, className, onClick, ariaLabel) {
@@ -507,7 +487,7 @@ function createStructuredEntryRow(display, { onEdit, onRemove, aiPath = '' } = {
 
   if (onEdit) {
     actions.append(createIconButton(
-      createSvgIcon('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z'),
+      icon('edit'),
       'entry-row__edit',
       () => {
         clearAiIndicator(aiPath, row);
@@ -518,7 +498,7 @@ function createStructuredEntryRow(display, { onEdit, onRemove, aiPath = '' } = {
   }
 
   actions.append(createIconButton(
-    createSvgIcon('M5 5l14 14M19 5 5 19'),
+    icon('close'),
     'entry-row__remove',
     () => {
       clearAiIndicator(aiPath, row);
@@ -1614,7 +1594,7 @@ function createSparkleTile(className = 'profile-ai-tile') {
 function createManualEntryTile() {
   const tile = createElement('span', 'profile-ai-tile profile-entry-gate__icon profile-entry-gate__icon--manual');
 
-  tile.append(createSvgIcon(MANUAL_ENTRY_ICON_PATH));
+  tile.append(icon('edit'));
 
   return tile;
 }
@@ -1821,7 +1801,7 @@ function renderImportBar(page) {
   const chevron = createElement('span', 'profile-import-bar__chevron');
 
   toggle.setAttribute('aria-expanded', String(_importBarExpanded));
-  chevron.append(createSvgIcon(CHEVRON_DOWN_ICON_PATH));
+  chevron.append(icon('chevronDown'));
   toggle.append(chevron);
   header.append(toggle);
   bar.append(header);

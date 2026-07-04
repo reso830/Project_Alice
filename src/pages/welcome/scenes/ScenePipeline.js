@@ -1,16 +1,14 @@
-// Scene 2 — Pipeline animation (`ScenePipeline`)
-// docs/design/welcome_page.md §4.4
-//
-// Single straight preview card ("J024 · UX Engineer · Vertex AI", compat 94).
-// Status cycles applied → phone_screen → interview → assessment → offer every
-// 1100ms. Each stage swap re-keys the badge so the .scene-pipeline__badge
-// CSS keyframe (`pipeline-badge`, 0.55s pop-in) plays.
-// prefers-reduced-motion → render the final status statically, no setInterval.
+// Scene 3 - Pipeline: a tracker card whose badge walks the hiring stages.
 
 let _state = null;
 
-const STATUSES = ['applied', 'phone_screen', 'interview', 'assessment', 'offer'];
-const STAGE_MS = 1100;
+const STATUSES = [
+  { key: 'applied', label: 'Applied' },
+  { key: 'phone_screen', label: 'Phone Screen' },
+  { key: 'interview', label: 'Interview' },
+  { key: 'offer', label: 'Offer' },
+];
+const STAGE_MS = 1150;
 
 function prefersReducedMotion() {
   if (typeof globalThis.matchMedia !== 'function') return false;
@@ -21,12 +19,32 @@ function prefersReducedMotion() {
   }
 }
 
+function effectiveMotion(motion) {
+  return motion !== undefined ? motion : !prefersReducedMotion();
+}
+
 function buildBadge(status) {
   const badge = document.createElement('span');
-  badge.className = `scene-pipeline__badge scene-pipeline__badge--${status}`;
-  badge.dataset.status = status;
-  badge.textContent = status.replace('_', ' ');
+  badge.className = `scene-pipeline__badge scene-pipeline__badge--${status.key}`;
+  badge.dataset.status = status.key;
+  badge.textContent = status.label;
   return badge;
+}
+
+function buildTrack(activeIndex) {
+  const track = document.createElement('div');
+  track.className = 'scene-pipeline__track';
+  STATUSES.forEach((status, index) => {
+    const node = document.createElement('span');
+    node.className = [
+      'scene-pipeline__node',
+      index <= activeIndex ? 'is-done' : '',
+      index === activeIndex ? 'is-current' : '',
+    ].filter(Boolean).join(' ');
+    node.dataset.status = status.key;
+    track.append(node);
+  });
+  return track;
 }
 
 function buildCard() {
@@ -50,36 +68,41 @@ function buildCard() {
 
   const compat = document.createElement('span');
   compat.className = 'scene-pipeline__compat';
-  compat.textContent = '94 fit';
+  compat.textContent = '88% compat';
 
   foot.append(compat);
   card.append(eyebrow, role, company, foot);
   return { card, foot };
 }
 
-export function mount(container, { variant = 'default' } = {}) {
+function updateTrack(root, activeIndex) {
+  root.querySelector('.scene-pipeline__track')?.replaceWith(buildTrack(activeIndex));
+}
+
+export function mount(container, { variant = 'default', motion } = {}) {
   unmount();
-  const reduced = prefersReducedMotion();
+  const animate = effectiveMotion(motion);
 
   const root = document.createElement('div');
   root.className = `scene-pipeline scene-pipeline--${variant}`;
   root.dataset.variant = variant;
 
   const { card, foot } = buildCard();
-  let statusIndex = reduced ? STATUSES.length - 1 : 0;
+  let statusIndex = 0;
   let badge = buildBadge(STATUSES[statusIndex]);
   foot.append(badge);
 
-  root.append(card);
+  root.append(buildTrack(statusIndex), card);
   container.append(root);
 
   let interval = null;
-  if (!reduced) {
+  if (animate) {
     interval = globalThis.setInterval(() => {
       statusIndex = (statusIndex + 1) % STATUSES.length;
       const next = buildBadge(STATUSES[statusIndex]);
       badge.replaceWith(next);
       badge = next;
+      updateTrack(root, statusIndex);
     }, STAGE_MS);
   }
 

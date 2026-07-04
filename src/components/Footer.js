@@ -1,5 +1,5 @@
 /* global __BUILD_MONTH__ */
-import aliceWhite from '../assets/Alice_White.png';
+import aliceLogo from '../assets/logo/alice-sigil-full.svg';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welcome/shared/appMeta.js';
 
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
@@ -39,7 +39,7 @@ function createBrandIcon() {
   const img = document.createElement('img');
 
   img.className = 'footer__brand-icon';
-  img.src = aliceWhite;
+  img.src = aliceLogo;
   img.alt = '';
   img.setAttribute('aria-hidden', 'true');
 

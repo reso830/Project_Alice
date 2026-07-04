@@ -525,6 +525,13 @@ schema migration**, and **no runtime-mode change**. No deployment action is
 required for feature 035. See
 [`specs/035-llm-jd-parser/quickstart.md`](../specs/035-llm-jd-parser/quickstart.md).
 
+### Welcome Page & Brand Refresh — no new env vars
+
+Feature `042-welcome-brand-refresh` (v1.11.0) refreshes the welcome page layout responsiveness, logo asset paths, and updates empty-state illustrations and in-app LLM processing loaders.
+
+Feature 042 introduces **no new server environment variables**, **no database schema migration**, and **no runtime-mode change**. No deployment action is required.
+
+
 ---
 
 ## Environment Variable Checklist

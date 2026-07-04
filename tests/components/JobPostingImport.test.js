@@ -143,7 +143,10 @@ describe('JobPostingImport', () => {
 
     expect(processing).not.toBeNull();
     expect(processing.getAttribute('role')).toBe('status');
-    expect(processing.textContent).toContain('Reading the job posting');
+    expect(processing.getAttribute('aria-busy')).toBe('true');
+    expect(processing.querySelector('.spinner-ring')).not.toBeNull();
+    expect(processing.textContent).toContain('Making sense of the posting');
+    expect(processing.textContent).toContain('Alice is pulling out the role details');
     expect(root.getAttribute('aria-busy')).toBe('true');
   });
 

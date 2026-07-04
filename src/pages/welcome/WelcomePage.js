@@ -1,8 +1,11 @@
-import aliceColored from '../../assets/Alice_Colored.png';
-import aliceWhite from '../../assets/Alice_White.png';
+import aliceColored from '../../assets/logo/alice-sigil-full.svg';
+import aliceWhite from '../../assets/logo/alice-sigil-full-white.svg';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
+
+const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
+const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 
 // Theme-driven brand mark. Production uses the warm default; white/navy
 // variants remain as CSS design states after the prototype controls were
@@ -50,7 +53,7 @@ function classMatcher(prefix, allowed) {
 function tabletMatches() {
   if (typeof globalThis.matchMedia !== 'function') return false;
   try {
-    return globalThis.matchMedia('(min-width: 760px) and (max-width: 1099px)').matches === true;
+    return globalThis.matchMedia('(min-width: 621px) and (max-width: 900px)').matches === true;
   } catch {
     return false;
   }
@@ -59,18 +62,16 @@ function tabletMatches() {
 function mobileMatches() {
   if (typeof globalThis.matchMedia !== 'function') return false;
   try {
-    return globalThis.matchMedia('(max-width: 759px)').matches === true;
+    return globalThis.matchMedia('(max-width: 620px)').matches === true;
   } catch {
     return false;
   }
 }
 
 function computeEffective(config) {
-  // Plan §14.C: tablet width forces `layout: centered` regardless of Tweaks
-  // panel selection. `variant` flows to `HeroSlideshow` so SceneStack /
-  // SceneLogo render their tablet-correct DOM (2 cards / fixed 200×200).
   const isTablet = tabletMatches();
-  const layout = isTablet ? 'centered' : config.layout;
+  const isMobile = mobileMatches();
+  const layout = (isTablet || isMobile) ? 'centered' : config.layout;
   const variant = layout === 'centered' ? 'centered' : 'default';
   return {
     layout,
@@ -79,6 +80,7 @@ function computeEffective(config) {
     heroScene: config.heroScene,
     variant,
     isTablet,
+    isMobile,
   };
 }
 
@@ -98,8 +100,6 @@ function applyTweakClasses(root, eff) {
 }
 
 function effectiveBrandMark(theme, isMobile) {
-  // Phase 18 / design §3.3: mobile always uses Alice_Colored regardless of
-  // the active theme. Mobile ignores theme + layout selectors entirely.
   if (isMobile) return BRAND_MARKS.warm;
   return BRAND_MARKS[theme] ?? BRAND_MARKS.warm;
 }
@@ -140,17 +140,6 @@ function ensureSlideshowMounted() {
   } else {
     _root.append(_heroSlot);
   }
-}
-
-function teardownSlideshow() {
-  if (_heroSlideshow) {
-    try { _heroSlideshow.unmount(); } catch { /* best-effort */ }
-    _heroSlideshow = null;
-  }
-  if (_heroSlot && _heroSlot.parentNode) {
-    _heroSlot.remove();
-  }
-  _heroSlot = null;
 }
 
 function handleViewportChange() {
@@ -280,6 +269,18 @@ function renderFooterMeta() {
     makeExternalLink('⊙ Report an issue', ISSUE_URL, 'Report an issue on GitHub'),
     makeExternalLink('✦ Request a feature', ISSUE_URL, 'Request a feature on GitHub'),
   );
+
+  const repo = makeExternalLink('GitHub', REPOSITORY_URL, 'Open Project Alice repository');
+  repo.classList.add('welcome__footer-desktop-only');
+
+  const download = makeExternalLink(
+    `Download Alice Portable ${APP_VERSION}`,
+    RELEASES_URL,
+    `Download Alice Portable ${APP_VERSION}`,
+  );
+  download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
+
+  wrap.append(repo, download);
 
   return wrap;
 }
@@ -449,11 +450,7 @@ export function mount(container, deps = {}) {
   _root.append(left, footerMeta, _overlaySlot);
   container.replaceChildren(_root);
 
-  // On mobile the hero slideshow is omitted entirely; on desktop + tablet it
-  // mounts before the footer/overlay slot.
-  if (!_isMobile) {
-    ensureSlideshowMounted();
-  }
+  ensureSlideshowMounted();
 
   _keyHandler = onKeyDown;
   document.addEventListener('keydown', _keyHandler);
@@ -462,28 +459,27 @@ export function mount(container, deps = {}) {
   // resize-driven layout swaps mount the right scene variant.
   if (typeof globalThis.matchMedia === 'function') {
     try {
-      _tabletMql = globalThis.matchMedia('(min-width: 760px) and (max-width: 1099px)');
+      _tabletMql = globalThis.matchMedia('(min-width: 621px) and (max-width: 900px)');
       _tabletListener = () => handleViewportChange();
       _tabletMql.addEventListener('change', _tabletListener);
     } catch {
       _tabletMql = null;
       _tabletListener = null;
     }
-    // Mobile listener toggles the `.welcome--mobile` class and mounts/unmounts
-    // the hero slideshow so the DOM matches the viewport branch.
+    // Mobile listener toggles the `.welcome--mobile` class while keeping the
+    // showcase mounted; CSS owns the portrait/landscape height behavior.
     try {
-      _mobileMql = globalThis.matchMedia('(max-width: 759px)');
+      _mobileMql = globalThis.matchMedia('(max-width: 620px)');
       _mobileListener = () => {
         if (!_root) return;
         const nextMobile = _mobileMql.matches === true;
         if (nextMobile === _isMobile) return;
         _isMobile = nextMobile;
         _root.classList.toggle('welcome--mobile', _isMobile);
-        if (_isMobile) {
-          teardownSlideshow();
-        } else {
-          ensureSlideshowMounted();
-        }
+        _effective = computeEffective(DEFAULT_WELCOME_CONFIG);
+        applyTweakClasses(_root, _effective);
+        ensureSlideshowMounted();
+        mountHero(_heroSlot, _effective);
         updateBrandMark(_effective.theme);
       };
       _mobileMql.addEventListener('change', _mobileListener);

@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
-vi.mock('../../src/assets/Alice_Colored.png', () => ({ default: '/Alice_Colored.png' }));
+vi.mock('../../src/assets/logo/alice-sigil-full.svg', () => ({
+  default: '/alice-sigil-full.svg',
+}));
+vi.mock('../../src/assets/logo/alice-sigil-full-white.svg', () => ({
+  default: '/alice-sigil-full-white.svg',
+}));
 
 const demoStubMocks = vi.hoisted(() => ({
   enterDemo: vi.fn(),
@@ -113,7 +117,7 @@ describe('WelcomePage — structure', () => {
     expect(accent.textContent).toBe('organized.');
   });
 
-  it('renders the mini footer with version, license link, and two issue links sourced from appMeta', () => {
+  it('renders the mini footer with version, issue links, repo link, and download chip sourced from appMeta', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const meta = container.querySelector('.welcome__footer-meta');
@@ -123,7 +127,7 @@ describe('WelcomePage — structure', () => {
     expect(version?.textContent).toBe(APP_VERSION);
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
-    expect(links.length).toBe(3);
+    expect(links.length).toBe(5);
 
     // [0] license link
     expect(links[0].textContent).toBe('PolyForm Noncommercial 1.0.0');
@@ -146,6 +150,17 @@ describe('WelcomePage — structure', () => {
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
+
+    expect(links[3].textContent).toBe('GitHub');
+    expect(links[3].getAttribute('href')).toBe('https://github.com/reso830/Project_Alice');
+    expect(links[3].classList.contains('welcome__footer-desktop-only')).toBe(true);
+
+    expect(links[4].textContent).toBe(`Download Alice Portable ${APP_VERSION}`);
+    expect(links[4].getAttribute('href')).toBe(
+      'https://github.com/reso830/Project_Alice/releases/latest',
+    );
+    expect(links[4].classList.contains('welcome__footer-download')).toBe(true);
+    expect(links[4].classList.contains('welcome__footer-desktop-only')).toBe(true);
   });
 
   it('clicking "Try the demo" invokes demoStub.enterDemo() (feature 020)', () => {
@@ -515,6 +530,68 @@ describe('AuthOverlay — focus trap', () => {
   });
 });
 
+describe('AuthOverlay — password toggle & touched validation (Phase 06 / T021)', () => {
+  function openLogin() {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    return container.querySelector('.auth-form--login');
+  }
+
+  function openSignup() {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    container.querySelector('.auth-overlay__swap').click();
+    return container.querySelector('.auth-form--signup');
+  }
+
+  for (const [label, open] of [['login', openLogin], ['signup', openSignup]]) {
+    it(`password toggle flips input type, aria-label, and icon (${label})`, () => {
+      const form = open();
+      const password = form.querySelector('input[name="password"]');
+      const toggle = form.querySelector('.auth-form__password-toggle');
+
+      expect(password.type).toBe('password');
+      expect(toggle.getAttribute('aria-label')).toBe('Show password');
+      const iconBefore = toggle.querySelector('path').getAttribute('d');
+
+      toggle.click();
+      expect(password.type).toBe('text');
+      expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+      expect(toggle.querySelector('path').getAttribute('d')).not.toBe(iconBefore);
+
+      toggle.click();
+      expect(password.type).toBe('password');
+      expect(toggle.getAttribute('aria-label')).toBe('Show password');
+      expect(toggle.querySelector('path').getAttribute('d')).toBe(iconBefore);
+    });
+
+    it(`invalid email stays quiet until touched, then warns on blur (${label})`, () => {
+      const form = open();
+      const email = form.querySelector('input[name="email"]');
+      const field = email.closest('.auth-form__field');
+      const fieldError = field.querySelector('.auth-form__field-error');
+
+      // Typing an invalid value without blurring must not surface a warning.
+      email.value = 'not-an-email';
+      email.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(fieldError.textContent).toBe('');
+      expect(field.classList.contains('auth-form__field--error')).toBe(false);
+
+      // Blur marks the field touched and reveals the warning.
+      email.dispatchEvent(new Event('blur', { bubbles: true }));
+      expect(fieldError.textContent).toContain('valid email');
+      expect(field.classList.contains('auth-form__field--error')).toBe(true);
+      expect(email.getAttribute('aria-invalid')).toBe('true');
+
+      // Correcting the value clears the touched warning.
+      email.value = 'jane@example.com';
+      email.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(fieldError.textContent).toBe('');
+      expect(field.classList.contains('auth-form__field--error')).toBe(false);
+    });
+  }
+});
+
 describe('LoginForm — submit behavior', () => {
   it('on success, the form clears the error region (authStore handles routing)', async () => {
     supabaseMocks.signInWithPassword.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
@@ -857,29 +934,33 @@ describe('Phase 17 — Auth modal footer', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 18 — Mobile branch (`<760px`) per design §3.3 + FR-025
+// Feature 042 — Mobile branch (`≤620px`) per responsive welcome spec
 // ---------------------------------------------------------------------------
 
 function stubMobile(isMobile) {
   globalThis.matchMedia = vi.fn().mockImplementation((q) => ({
-    matches: typeof q === 'string' && q.includes('max-width: 759px') ? isMobile : false,
+    matches: typeof q === 'string' && q.includes('max-width: 620px') ? isMobile : false,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }));
 }
 
-describe('Phase 18 — Mobile branch (<760px)', () => {
+describe('Feature 042 — Mobile branch (≤620px)', () => {
   it('applies the .welcome--mobile class when the mobile media query matches at mount', () => {
     stubMobile(true);
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     expect(container.querySelector('.welcome--mobile')).not.toBeNull();
   });
 
-  it('does not mount the hero slideshow on mobile (DOM-free)', () => {
+  it('mounts the capped showcase on mobile using the centered variant', () => {
     stubMobile(true);
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
-    expect(heroSlideshowStub.mount).not.toHaveBeenCalled();
-    expect(container.querySelector('.welcome__hero')).toBeNull();
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
+    expect(heroSlideshowStub.mount.mock.calls[0][1]).toMatchObject({
+      heroScene: 'auto',
+      variant: 'centered',
+    });
   });
 
   it('does not render the removed prototyping controls on mobile', () => {
@@ -919,7 +1000,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
 
   it('renders the centered/tablet mini footer after the slideshow in DOM order', () => {
     globalThis.matchMedia = vi.fn().mockImplementation((q) => ({
-      matches: typeof q === 'string' && q.includes('min-width: 760px'),
+      matches: typeof q === 'string' && q.includes('min-width: 621px'),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
@@ -935,14 +1016,14 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Live viewport-resize handling (FR-025: desktop MUST keep slideshow/panel;
-  // mobile MUST omit them — applies on resize, not just initial mount).
+  // Live viewport-resize handling: desktop and mobile both keep the showcase,
+  // but mobile toggles the height-locked `.welcome--mobile` shell and centered variant.
   // -------------------------------------------------------------------------
 
   function liveMatchMedia(initialMobile) {
     const state = { mobile: initialMobile, listeners: new Set() };
     globalThis.matchMedia = vi.fn().mockImplementation((q) => {
-      const isMobileQuery = typeof q === 'string' && q.includes('max-width: 759px');
+      const isMobileQuery = typeof q === 'string' && q.includes('max-width: 620px');
       const mql = {
         get matches() {
           return isMobileQuery ? state.mobile : false;
@@ -964,7 +1045,7 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
     return state;
   }
 
-  it('desktop → mobile resize tears down the slideshow', () => {
+  it('desktop → mobile resize keeps the showcase and remounts it with the centered variant', () => {
     const media = liveMatchMedia(false);
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     expect(container.querySelector('.welcome__hero')).not.toBeNull();
@@ -974,49 +1055,62 @@ describe('Phase 18 — Mobile branch (<760px)', () => {
     media.setMobile(true);
 
     expect(container.querySelector('.welcome--mobile')).not.toBeNull();
-    expect(container.querySelector('.welcome__hero')).toBeNull();
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
     expect(container.querySelector('.tweaks-panel')).toBeNull();
     expect(heroSlideshowStub.unmount).toHaveBeenCalled();
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(2);
+    expect(heroSlideshowStub.mount.mock.calls[1][1]).toMatchObject({
+      heroScene: 'auto',
+      variant: 'centered',
+    });
   });
 
-  it('mobile → desktop resize mounts the slideshow without prototyping controls', () => {
+  it('mobile → desktop resize keeps the showcase and remounts it with the default variant', () => {
     const media = liveMatchMedia(true);
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
-    expect(container.querySelector('.welcome__hero')).toBeNull();
+    expect(container.querySelector('.welcome__hero')).not.toBeNull();
     expect(container.querySelector('.tweaks-panel')).toBeNull();
-    expect(heroSlideshowStub.mount).not.toHaveBeenCalled();
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
+    expect(heroSlideshowStub.mount.mock.calls[0][1]).toMatchObject({
+      heroScene: 'auto',
+      variant: 'centered',
+    });
 
     media.setMobile(false);
 
     expect(container.querySelector('.welcome--mobile')).toBeNull();
     expect(container.querySelector('.welcome__hero')).not.toBeNull();
     expect(container.querySelector('.tweaks-panel')).toBeNull();
-    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(1);
+    expect(heroSlideshowStub.mount).toHaveBeenCalledTimes(2);
+    expect(heroSlideshowStub.mount.mock.calls[1][1]).toMatchObject({
+      heroScene: 'auto',
+      variant: 'default',
+    });
   });
 
   // -------------------------------------------------------------------------
-  // Brand mark override — mobile always uses Alice_Colored.png regardless of
-  // the active theme (design §3.3).
+  // Brand mark override — mobile uses the full-color vector sigil regardless
+  // of the active theme.
   // -------------------------------------------------------------------------
 
-  it('mobile mount uses Alice_Colored.png', () => {
+  it('mobile mount uses alice-sigil-full.svg', () => {
     stubMobile(true);
 
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const mark = container.querySelector('.welcome__brand-mark');
-    expect(mark.src).toContain('Alice_Colored');
+    expect(mark.src).toContain('alice-sigil-full.svg');
   });
 
-  it('desktop → mobile resize keeps Alice_Colored.png', () => {
+  it('desktop → mobile resize keeps alice-sigil-full.svg', () => {
     const media = liveMatchMedia(false);
 
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
     const mark = container.querySelector('.welcome__brand-mark');
-    expect(mark.src).toContain('Alice_Colored');
+    expect(mark.src).toContain('alice-sigil-full.svg');
 
     media.setMobile(true);
 
-    expect(mark.src).toContain('Alice_Colored');
+    expect(mark.src).toContain('alice-sigil-full.svg');
   });
 });

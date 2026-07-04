@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-07-04
+
+Welcome page and brand refresh — updated brand vector logos across global views, restructured the welcome page for layout responsiveness, standardized visual toolbar and action icons from a centralized line-icon registry factory, integrated new empty-state illustrations, and redesigned full-screen in-app LLM loaders with prefers-reduced-motion gating.
+
+### Added
+
+- **Unified line-icon registry factory** — replaces local inline SVG paths in filters, cards, modals, and profile views with standard `icon()` calls using custom icons. (#104)
+- **Brand vector logo and favicon set** — integrates the new Alice sigil SVG vector logo across the navbar, footer, and configuration error views, and wires a modern favicon asset block into the index.html head. (#105)
+- **High-fidelity welcome page scenes** — introducing responsive constellation, gold-beam scan parse, badge pipeline transitions, momentum progress, and 3D fanned deck cycles. (#106)
+- **Illustrations in empty panels** — DayPanel calendar and empty Profile views now show new monochrome asset drawings. (#104)
+
+### Changed
+
+- **Responsiveness layout upgrades** — welcome page diagonal grids auto-scale, lock height at `100dvh` for mobile portrait orientations, and collapse headers below 600px height. (#106)
+- **Full-screen LLM parser loader overlay** — replaces basic spinners with a gold circle spinner ring orbiting the Alice sigil and fixed status copy. (#110)
+
 ## [1.10.8] — 2026-07-02
 
 AI service correctness patch — OpenRouter key testing and recoverable provider
@@ -1499,7 +1515,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.10.8...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0
 [1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8
 [1.10.7]: https://github.com/reso830/Project_Alice/compare/v1.10.6...v1.10.7
 [1.10.6]: https://github.com/reso830/Project_Alice/compare/v1.10.5...v1.10.6

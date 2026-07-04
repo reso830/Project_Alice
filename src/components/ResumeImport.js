@@ -4,6 +4,7 @@ import { mapErrorToReason, parseWithLlm, REASON_CODES } from '../services/llmPar
 import { bindBusyButton, renderInlineError } from '../utils/asyncUI.js';
 import { createSvgIcon } from '../utils/icons.js';
 import { extractText, parseResume, parseText } from '../services/resumeApi.js';
+import aliceSigil from '../assets/logo/alice-sigil-full.svg';
 
 // Exported (feature 020) so the demo test can assert
 // `!VISIBLE_STATUSES.has(DEMO_STATUS)` as a design-by-contract guard.
@@ -152,6 +153,78 @@ function supportsDesktopDrop() {
 function stopEvent(event) {
   event.preventDefault();
   event.stopPropagation();
+}
+
+function createSpinnerRing() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+
+  svg.setAttribute('class', 'spinner-ring');
+  svg.setAttribute('viewBox', '0 0 76 76');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const circle of [glow, core]) {
+    circle.setAttribute('cx', '38');
+    circle.setAttribute('cy', '38');
+    circle.setAttribute('r', '33');
+    circle.setAttribute('stroke', '#F4A71F');
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke-dasharray', '52 155');
+  }
+  glow.setAttribute('class', 'ring-glow');
+  glow.setAttribute('stroke-width', '6');
+  core.setAttribute('class', 'ring-core');
+  core.setAttribute('stroke-width', '2');
+  svg.append(glow, core);
+
+  return svg;
+}
+
+function createProcessingOverlay() {
+  const overlay = createElement('div', 'processing-overlay resume-import-processing');
+  const edgeGlow = createElement('div', 'edge-glow');
+  const spinnerWrap = createElement('div', 'spinner-wrap');
+  const logo = document.createElement('img');
+  const text = createElement('div', 'processing-text');
+  const title = createElement('h3', 'processing-title', 'Getting to know your background');
+  const subtitle = createElement('p', 'processing-subtitle', 'Alice is reading through your experience');
+
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-busy', 'true');
+  edgeGlow.setAttribute('aria-hidden', 'true');
+  logo.src = aliceSigil;
+  logo.className = 'spinner-logo';
+  logo.alt = '';
+  logo.setAttribute('aria-hidden', 'true');
+  spinnerWrap.append(logo, createSpinnerRing());
+  text.append(title, subtitle);
+  overlay.append(edgeGlow, spinnerWrap, text);
+
+  return overlay;
+}
+
+// Fade the processing overlay to opacity 0 over 400ms (CSS ease-out) before
+// unmounting. Detach to <body> first so the completion re-render (which clears
+// `root`) can't drop it mid-fade — the overlay is position:fixed, so
+// re-parenting is visually seamless. No-ops for the non-smart status element.
+function dismissProcessingOverlay(node) {
+  if (!node || !node.classList || !node.classList.contains('processing-overlay')) {
+    return;
+  }
+  document.body.append(node);
+  node.classList.add('processing-overlay--closing');
+  let removed = false;
+  const remove = () => {
+    if (removed) {
+      return;
+    }
+    removed = true;
+    node.remove();
+  };
+  node.addEventListener('transitionend', remove, { once: true });
+  // Fallback for reduced-motion / jsdom, where transitionend never fires.
+  window.setTimeout(remove, 500);
 }
 
 export const ResumeImport = {
@@ -452,17 +525,7 @@ export const ResumeImport = {
       root.setAttribute('aria-busy', 'true');
 
       if (smartInput) {
-        const overlay = createElement('div', 'resume-import-processing');
-        const panel = createElement('div', 'resume-import-processing__panel');
-        const spinner = createElement('span', 'resume-import-processing__spinner');
-        const title = createElement('p', 'resume-import-processing__title', 'Reading your resume...');
-        const detail = createElement('p', 'resume-import-processing__detail', 'Extracting your experience, skills, and details');
-
-        overlay.setAttribute('role', 'status');
-        overlay.setAttribute('aria-live', 'polite');
-        spinner.setAttribute('aria-hidden', 'true');
-        panel.append(spinner, title, detail);
-        overlay.append(panel);
+        const overlay = createProcessingOverlay();
         root.append(overlay);
         return overlay;
       }
@@ -685,17 +748,20 @@ export const ResumeImport = {
         }
         if (result.reason) {
           pendingBasicText = result.rawText ?? '';
+          dismissProcessingOverlay(status);
           renderFailureDialog(result.reason);
           return null;
         }
         const { parsedData, aiFieldSet, notice } = result;
 
         if (!hasExtractedData(parsedData)) {
+          dismissProcessingOverlay(status);
           renderFailureDialog('NO_TEXT');
           return null;
         }
 
         appendNotice(notice);
+        dismissProcessingOverlay(status);
         onSuccess(parsedData, aiFieldSet, { notice, source: result.source });
         completed = true;
         applyVisibility();

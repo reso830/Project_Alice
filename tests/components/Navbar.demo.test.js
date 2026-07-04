@@ -7,7 +7,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/assets/Alice_White.png', () => ({ default: '/Alice_White.png' }));
+vi.mock('../../src/assets/logo/alice-sigil-full-white.svg', () => ({
+  default: '/alice-sigil-full-white.svg',
+}));
 
 const authStoreMock = vi.hoisted(() => ({
   getAuthState: vi.fn(),

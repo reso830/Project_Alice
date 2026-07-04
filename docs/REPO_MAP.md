@@ -301,7 +301,8 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 
 | Path | Purpose |
 |------|---------|
-| `src/assets/Alice_White.png` · `Alice_Colored.png` | Brand marks (used by Navbar, Footer, WelcomePage, ConfigError, Auth modal header, Scene 4 of `HeroSlideshow`) |
+| `src/assets/logo/alice-sigil-full.svg` · `alice-sigil-full-white.svg` | Brand vector marks (used by Navbar, Footer, WelcomePage, ConfigError, Auth modal header, and HeroSlideshow scene) |
+| `src/assets/graphics/` | Empty-state and action illustrations (used by ActionPanel, DayPanel, Profile, and CreationPicker) |
 
 ---
 
@@ -360,7 +361,7 @@ Before exploring:
 
 **Do NOT scan unless necessary:**
 - `server/db-seed.js`, `server/db-clear.js` — dev tooling only, never touches production logic
-- `src/assets/` — static images, no logic
+- `src/assets/` — brand logos and empty-state graphics, no logic
 - `src/data/store.js` — legacy localStorage store, superseded by API; avoid
 - `src/components/Toolbar.js` — orphaned; superseded by QuickFiltersToolbar; do not use
 

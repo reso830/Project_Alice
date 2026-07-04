@@ -89,7 +89,7 @@ Alice is evolving through four major phases:
 - [x] 039-desktop-workspace-refresh  ·  shipped v1.8.0
 - [x] 040-portable-distribution-package  ·  shipped v1.9.0
 - [x] 041-self-update-support  ·  shipped v1.10.0
-- [ ] 042-welcome-brand-refresh
+- [x] 042-welcome-brand-refresh  ·  shipped v1.11.0
 - [ ] 043-legal-and-footer
 - [ ] 044-hosted-startup-performance
 
