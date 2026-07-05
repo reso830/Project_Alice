@@ -280,7 +280,12 @@ function renderFooterMeta() {
   );
   download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
 
-  wrap.append(repo, download);
+  // Download chip drops to its own line below the rest of the footer.
+  const downloadRow = document.createElement('div');
+  downloadRow.className = 'welcome__footer-download-row welcome__footer-desktop-only';
+  downloadRow.append(download);
+
+  wrap.append(repo, downloadRow);
 
   return wrap;
 }
@@ -436,12 +441,9 @@ export function mount(container, deps = {}) {
   if (_isMobile) _root.classList.add('welcome--mobile');
 
   const left = el('section', 'welcome__content');
-  left.append(
-    renderBrand({ theme: _effective.theme }),
-    renderHeadline(),
-    renderSupportingCopy(),
-    renderCtaGroup(),
-  );
+  const pitchMid = el('div', 'welcome__pitch-mid');
+  pitchMid.append(renderHeadline(), renderSupportingCopy(), renderCtaGroup());
+  left.append(renderBrand({ theme: _effective.theme }), pitchMid);
   const footerMeta = renderFooterMeta();
 
   _overlaySlot = el('div', 'welcome__auth-overlay-slot');
