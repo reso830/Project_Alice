@@ -3,13 +3,13 @@
 let _state = null;
 
 const STATUSES = [
-  { key: 'wishlisted', label: 'Wishlisted', color: '#ffafcc', x: 8, y: 88 },
-  { key: 'applied', label: 'Applied', color: '#60A5FA', x: 23, y: 78 },
-  { key: 'phone', label: 'Phone', color: '#F2B544', x: 38, y: 65 },
-  { key: 'interview', label: 'Interview', color: '#FBBF24', x: 54, y: 50 },
-  { key: 'technical', label: 'Technical', color: '#A78BFA', x: 69, y: 32 },
-  { key: 'offer', label: 'Offer', color: '#4ADE80', x: 83, y: 16 },
-  { key: 'accepted', label: 'Accepted', color: '#2EC4B6', x: 94, y: 8, bright: true },
+  { key: 'wishlisted', label: 'Wishlisted', color: '#ffafcc', x: 6, y: 52 },
+  { key: 'applied', label: 'Applied', color: '#60A5FA', x: 21, y: 46 },
+  { key: 'phone', label: 'Phone', color: '#F2B544', x: 37, y: 38 },
+  { key: 'interview', label: 'Interview', color: '#FBBF24', x: 53, y: 29 },
+  { key: 'technical', label: 'Technical', color: '#A78BFA', x: 69, y: 19 },
+  { key: 'offer', label: 'Offer', color: '#4ADE80', x: 84, y: 10 },
+  { key: 'accepted', label: 'Accepted', color: '#2EC4B6', x: 95, y: 5, bright: true },
 ];
 
 function prefersReducedMotion() {
@@ -38,7 +38,8 @@ function createStar(status, index, motion) {
   group.style.setProperty('--node-delay', `${index * 180}ms`);
 
   // The end node (Accepted) is emphasised — a larger star than the rest.
-  const scale = status.bright ? 0.34 : 0.22;
+  // Scales are tuned for the wide 100x58 viewBox render.
+  const scale = status.bright ? 0.20 : 0.13;
   const offset = (12 * scale).toFixed(2);
   const star = svgEl('path');
   star.classList.add('scene-constellation__star');
@@ -49,7 +50,7 @@ function createStar(status, index, motion) {
   const label = svgEl('text');
   label.classList.add('scene-constellation__label');
   label.setAttribute('x', String(status.x));
-  label.setAttribute('y', String(status.y + (index % 2 ? -7 : 8)));
+  label.setAttribute('y', String(status.y + (index % 2 ? -4 : 5)));
   label.setAttribute('text-anchor', 'middle');
   label.textContent = status.label.toUpperCase();
 
@@ -71,7 +72,7 @@ export function mount(container, { variant = 'default', motion } = {}) {
   root.className = `scene-constellation scene-constellation--${variant}`;
   root.dataset.variant = variant;
   svg.classList.add('scene-constellation__svg');
-  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('viewBox', '0 0 100 58');
   svg.setAttribute('aria-hidden', 'true');
   lineGroup.classList.add('scene-constellation__lines');
   nodeGroup.classList.add('scene-constellation__nodes');

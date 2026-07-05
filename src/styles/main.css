@@ -7250,6 +7250,11 @@ button[aria-busy="true"] {
   margin-top: 8px;
 }
 
+/* No leading separator dot before the download row (it starts a new line). */
+.welcome__footer-meta > .welcome__footer-download-row::before {
+  content: none;
+}
+
 /* Phase 16 — Hero slab. Width / clip-path / position vary by layout class
    (see `.welcome--layout-*` blocks below). Default values match the
    `diagonal` layout so legacy callers without a layout class continue to
@@ -7505,12 +7510,9 @@ button[aria-busy="true"] {
 }
 
 .hero-slideshow__caption {
-  position: absolute;
-  left: 50%;
-  bottom: clamp(46px, 5.4vw, 64px);
+  position: relative;
   z-index: 4;
   margin: 0;
-  transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.82);
   font-family: var(--font-ui);
   font-size: clamp(13px, 1.4vw, 15px);
@@ -7521,10 +7523,7 @@ button[aria-busy="true"] {
 }
 
 .hero-slideshow__dots {
-  position: absolute;
-  bottom: clamp(20px, 3vw, 32px);
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7595,7 +7594,7 @@ button[aria-busy="true"] {
 
 .scene-constellation__line {
   stroke: rgba(255, 255, 255, .34);
-  stroke-width: 1.4;
+  stroke-width: 0.3;
   stroke-linecap: round;
   stroke-dasharray: 120;
   stroke-dashoffset: 120;
@@ -7633,7 +7632,7 @@ button[aria-busy="true"] {
 .scene-constellation__label {
   fill: rgba(255, 255, 255, .72);
   font-family: "DM Mono", monospace;
-  font-size: 2.6px;
+  font-size: 1.5px;
   font-weight: 400;
   letter-spacing: .3px;
 }

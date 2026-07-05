@@ -274,6 +274,20 @@ const PAGE_TWINKLES = [
   { top: '6%', left: '82%', size: 12, dur: '3.3s', del: '1.0s' },
   { top: '42%', left: '88%', size: 14, dur: '2.9s', del: '.5s' },
   { top: '90%', left: '80%', size: 9, dur: '3.7s', del: '2.0s' },
+  { top: '10%', left: '38%', size: 16, dur: '3.0s', del: '.7s' },
+  { top: '24%', left: '70%', size: 11, dur: '2.6s', del: '1.7s' },
+  { top: '54%', left: '78%', size: 18, dur: '3.4s', del: '.4s' },
+  { top: '78%', left: '70%', size: 12, dur: '2.9s', del: '2.1s' },
+  { top: '30%', left: '90%', size: 10, dur: '3.6s', del: '1.2s' },
+  { top: '4%', left: '52%', size: 13, dur: '2.8s', del: '.6s' },
+  { top: '48%', left: '18%', size: 20, dur: '3.9s', del: '1.4s' },
+  { top: '66%', left: '36%', size: 9, dur: '2.4s', del: '2.3s' },
+  { top: '88%', left: '18%', size: 14, dur: '3.2s', del: '.9s' },
+  { top: '18%', left: '9%', size: 22, dur: '4.0s', del: '1.9s' },
+  { top: '40%', left: '68%', size: 11, dur: '2.7s', del: '.3s' },
+  { top: '58%', left: '52%', size: 8, dur: '3.3s', del: '1.6s' },
+  { top: '94%', left: '46%', size: 12, dur: '2.5s', del: '2.4s' },
+  { top: '14%', left: '92%', size: 15, dur: '3.5s', del: '1.0s' },
 ];
 
 function renderStarfield() {
