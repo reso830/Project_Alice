@@ -184,7 +184,12 @@ export function mount(container, { heroScene = 'auto', variant = 'default' } = {
   const caption = buildCaption(SCENE_NAMES[0]);
   const disclaimer = buildDisclaimer();
   const reduced = prefersReducedMotion();
-  root.append(layer0, layer1, caption, disclaimer);
+  // Contain the scenes in a fixed frame (not full-bleed across the pane);
+  // caption + dots stack below it.
+  const frame = document.createElement('div');
+  frame.className = 'hero-slideshow__frame';
+  frame.append(layer0, layer1);
+  root.append(frame, caption, disclaimer);
 
   const state = {
     root,

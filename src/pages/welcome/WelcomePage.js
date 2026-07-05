@@ -253,6 +253,72 @@ function makeExternalLink(text, href, ariaLabel) {
   return a;
 }
 
+// Scattered ambient sparkles across the galaxy background (prototype
+// PAGE_TWINKLES). Desktop-only; behind the content.
+const PAGE_TWINKLES = [
+  { top: '8%', left: '4%', size: 14, dur: '3.4s', del: '.2s' },
+  { top: '16%', left: '22%', size: 10, dur: '2.7s', del: '1.1s' },
+  { top: '28%', left: '9%', size: 12, dur: '3.9s', del: '.6s' },
+  { top: '38%', left: '31%', size: 9, dur: '2.4s', del: '1.8s' },
+  { top: '52%', left: '6%', size: 13, dur: '3.1s', del: '2.2s' },
+  { top: '64%', left: '24%', size: 10, dur: '2.9s', del: '.4s' },
+  { top: '74%', left: '12%', size: 15, dur: '3.6s', del: '1.5s' },
+  { top: '86%', left: '34%', size: 9, dur: '2.5s', del: '2.6s' },
+  { top: '20%', left: '44%', size: 10, dur: '3.2s', del: '.9s' },
+  { top: '46%', left: '40%', size: 8, dur: '2.8s', del: '1.9s' },
+  { top: '70%', left: '46%', size: 11, dur: '3.5s', del: '.3s' },
+  { top: '12%', left: '62%', size: 12, dur: '2.6s', del: '1.3s' },
+  { top: '34%', left: '56%', size: 9, dur: '3.8s', del: '2.4s' },
+  { top: '60%', left: '62%', size: 13, dur: '3.0s', del: '.7s' },
+  { top: '82%', left: '58%', size: 10, dur: '2.3s', del: '1.6s' },
+  { top: '6%', left: '82%', size: 12, dur: '3.3s', del: '1.0s' },
+  { top: '42%', left: '88%', size: 14, dur: '2.9s', del: '.5s' },
+  { top: '90%', left: '80%', size: 9, dur: '3.7s', del: '2.0s' },
+];
+
+function renderStarfield() {
+  const svgns = 'http://www.w3.org/2000/svg';
+  const field = document.createElement('div');
+  field.className = 'welcome__starfield';
+  field.setAttribute('aria-hidden', 'true');
+  for (const t of PAGE_TWINKLES) {
+    const span = document.createElement('span');
+    span.className = 'welcome__spark';
+    span.style.top = t.top;
+    span.style.left = t.left;
+    span.style.setProperty('--tw-dur', t.dur);
+    span.style.setProperty('--tw-del', t.del);
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('width', String(t.size));
+    svg.setAttribute('height', String(t.size));
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    const path = document.createElementNS(svgns, 'path');
+    path.setAttribute('d', 'M12 1.5c.8 6.4 3.1 8.7 9.5 9.5-6.4.8-8.7 3.1-9.5 9.5-.8-6.4-3.1-8.7-9.5-9.5 6.4-.8 8.7-3.1 9.5-9.5Z');
+    svg.append(path);
+    span.append(svg);
+    field.append(span);
+  }
+  return field;
+}
+
+function createDownloadIcon() {
+  const svgns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgns, 'svg');
+  svg.setAttribute('class', 'welcome__footer-download-icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(svgns, 'path');
+  path.setAttribute('d', 'M12 3v12m0 0 4-4m-4 4-4-4M5 20h14');
+  svg.append(path);
+  return svg;
+}
+
 function renderFooterMeta() {
   const wrap = document.createElement('p');
   wrap.className = 'welcome__footer-meta';
@@ -279,6 +345,7 @@ function renderFooterMeta() {
     `Download Alice Portable ${APP_VERSION}`,
   );
   download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
+  download.prepend(createDownloadIcon());
 
   // Download chip drops to its own line below the rest of the footer.
   const downloadRow = document.createElement('div');
@@ -449,7 +516,7 @@ export function mount(container, deps = {}) {
   _overlaySlot = el('div', 'welcome__auth-overlay-slot');
   _overlaySlot.hidden = true;
 
-  _root.append(left, footerMeta, _overlaySlot);
+  _root.append(renderStarfield(), left, footerMeta, _overlaySlot);
   container.replaceChildren(_root);
 
   ensureSlideshowMounted();

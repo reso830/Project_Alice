@@ -6987,6 +6987,40 @@ button[aria-busy="true"] {
   min-height: 0;
 }
 
+/* Ambient starfield — scattered twinkling sparkles behind the galaxy content. */
+.welcome__starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.welcome__spark {
+  position: absolute;
+  color: var(--gold);
+  display: block;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  animation: welcome-twinkle var(--tw-dur, 3s) ease-in-out var(--tw-del, 0s) infinite;
+}
+.welcome__spark svg {
+  display: block;
+}
+@keyframes welcome-twinkle {
+  0%, 100% { opacity: 0.08; transform: translate(-50%, -50%) scale(0.6); }
+  50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+}
+@media (max-width: 900px) {
+  .welcome__starfield {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome__spark {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 .welcome__brand {
   display: flex;
   align-items: center;
@@ -7191,10 +7225,23 @@ button[aria-busy="true"] {
 .welcome__footer-download {
   display: inline-flex;
   align-items: center;
-  padding: 5px 8px;
+  gap: 6px;
+  padding: 5px 10px;
   border-radius: 6px;
-  background: rgba(79, 70, 229, 0.08);
-  color: var(--indigo);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(129, 140, 248, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.welcome__footer-download:hover {
+  background: rgba(129, 140, 248, 0.18);
+  color: #FFFFFF;
+}
+
+.welcome__footer-download-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 /* Force the download chip onto its own line below the footer links. */
@@ -7412,8 +7459,19 @@ button[aria-busy="true"] {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
+}
+
+/* Contained scene frame (prototype scene-frame ≈ min(760px,94%) × 400px) so the
+   scene doesn't stretch across the whole pane. Caption/dots stack below it. */
+.hero-slideshow__frame {
+  position: relative;
+  width: min(760px, 92%);
+  height: min(400px, 58vh);
+  flex-shrink: 0;
 }
 
 .hero-slideshow__layer {
@@ -7551,8 +7609,8 @@ button[aria-busy="true"] {
 
 .scene-constellation__node {
   opacity: 0;
-  animation: constellation-node .55s ease forwards, constellation-twinkle 2.8s ease-in-out infinite;
-  animation-delay: var(--node-delay, 0ms), calc(var(--node-delay, 0ms) + 600ms);
+  animation: constellation-node .55s ease forwards;
+  animation-delay: var(--node-delay, 0ms);
 }
 
 .scene-constellation__node.is-settled {
@@ -7560,16 +7618,29 @@ button[aria-busy="true"] {
   animation: none;
 }
 
+/* Stars twinkle by pulsing opacity + glow only — no transform, so they stay
+   put (the group-scale approach made them drift/wave). */
 .scene-constellation__star {
-  filter: drop-shadow(0 0 8px var(--node-color)) drop-shadow(0 0 18px var(--node-color));
+  filter: drop-shadow(0 0 3px var(--node-color));
+  animation: constellation-pulse 2.8s ease-in-out infinite;
+  animation-delay: calc(var(--node-delay, 0ms) + 600ms);
+}
+
+.scene-constellation__node.is-settled .scene-constellation__star {
+  animation: none;
 }
 
 .scene-constellation__label {
   fill: rgba(255, 255, 255, .72);
   font-family: "DM Mono", monospace;
-  font-size: 3.1px;
-  font-weight: 500;
+  font-size: 2.6px;
+  font-weight: 400;
   letter-spacing: .3px;
+}
+
+.scene-constellation__node--bright .scene-constellation__label {
+  fill: var(--node-color);
+  font-weight: 600;
 }
 
 @keyframes constellation-line {
@@ -7580,9 +7651,9 @@ button[aria-busy="true"] {
   to { opacity: 1; }
 }
 
-@keyframes constellation-twinkle {
-  0%, 100% { opacity: .74; transform: scale(1); }
-  50%      { opacity: 1; transform: scale(1.05); }
+@keyframes constellation-pulse {
+  0%, 100% { opacity: .78; filter: drop-shadow(0 0 2px var(--node-color)); }
+  50%      { opacity: 1; filter: drop-shadow(0 0 5px var(--node-color)) drop-shadow(0 0 11px var(--node-color)); }
 }
 
 .scene-parse__wrap {
@@ -9023,6 +9094,7 @@ button[aria-busy="true"] {
   .hero-slideshow__dot-progress--running,
   .scene-constellation__line,
   .scene-constellation__node,
+  .scene-constellation__star,
   .scene-parse__beam,
   .scene-parse__card,
   .scene-parse__spark,

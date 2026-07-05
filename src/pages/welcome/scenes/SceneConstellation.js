@@ -9,7 +9,7 @@ const STATUSES = [
   { key: 'interview', label: 'Interview', color: '#FBBF24', x: 54, y: 50 },
   { key: 'technical', label: 'Technical', color: '#A78BFA', x: 69, y: 32 },
   { key: 'offer', label: 'Offer', color: '#4ADE80', x: 83, y: 16 },
-  { key: 'accepted', label: 'Accepted', color: '#2EC4B6', x: 94, y: 8 },
+  { key: 'accepted', label: 'Accepted', color: '#2EC4B6', x: 94, y: 8, bright: true },
 ];
 
 function prefersReducedMotion() {
@@ -32,14 +32,18 @@ function svgEl(name) {
 function createStar(status, index, motion) {
   const group = svgEl('g');
   group.classList.add('scene-constellation__node');
+  if (status.bright) group.classList.add('scene-constellation__node--bright');
   group.dataset.status = status.key;
   group.style.setProperty('--node-color', status.color);
   group.style.setProperty('--node-delay', `${index * 180}ms`);
 
+  // The end node (Accepted) is emphasised — a larger star than the rest.
+  const scale = status.bright ? 0.34 : 0.22;
+  const offset = (12 * scale).toFixed(2);
   const star = svgEl('path');
   star.classList.add('scene-constellation__star');
   star.setAttribute('d', 'M12 1.5c.8 6.4 3.1 8.7 9.5 9.5-6.4.8-8.7 3.1-9.5 9.5-.8-6.4-3.1-8.7-9.5-9.5 6.4-.8 8.7-3.1 9.5-9.5Z');
-  star.setAttribute('transform', `translate(${status.x - 2.6} ${status.y - 2.6}) scale(.22)`);
+  star.setAttribute('transform', `translate(${status.x - offset} ${status.y - offset}) scale(${scale})`);
   star.setAttribute('fill', status.color);
 
   const label = svgEl('text');
