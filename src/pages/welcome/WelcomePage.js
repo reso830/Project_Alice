@@ -1,5 +1,4 @@
 import aliceColored from '../../assets/logo/alice-sigil-full.svg';
-import aliceWhite from '../../assets/logo/alice-sigil-full-white.svg';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
@@ -7,18 +6,17 @@ import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appM
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 
-// Theme-driven brand mark. Production uses the warm default; white/navy
-// variants remain as CSS design states after the prototype controls were
-// removed.
+// Theme-driven brand mark. Production ships the midnight (navy) theme per the
+// welcome-redesign prototype default; warm/white remain as CSS design states.
 const BRAND_MARKS = {
   warm: aliceColored,
   white: aliceColored,
-  navy: aliceWhite,
+  navy: aliceColored,
 };
 
 const DEFAULT_WELCOME_CONFIG = Object.freeze({
   layout: 'diagonal',
-  theme: 'warm',
+  theme: 'navy',
   copyIntensity: 'none',
   heroScene: 'auto',
 });

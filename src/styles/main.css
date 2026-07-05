@@ -7296,10 +7296,57 @@ button[aria-busy="true"] {
   background: var(--surface);
 }
 
+/* Midnight galaxy — the shipped welcome background per the redesign prototype.
+   A full-bleed deep-navy/violet starfield gradient spans BOTH columns (no
+   warm/navy split, no diagonal clip); the stage is transparent so the galaxy
+   reads straight through it. */
 .welcome--theme-navy {
-  background: var(--navy);
+  background:
+    radial-gradient(ellipse 60% 50% at 28% 18%, rgba(76, 58, 140, 0.55) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 78% 82%, rgba(96, 42, 150, 0.42) 0%, transparent 55%),
+    radial-gradient(circle at 62% 40%, rgba(129, 140, 248, 0.14) 0%, transparent 45%),
+    linear-gradient(158deg, #17152f 0%, #100e24 55%, #0a0916 100%);
   color: rgba(255, 255, 255, 0.92);
 }
+
+/* Ambient 56px grid spanning both columns, alpha-masked to fade in from the
+   stage side rather than a hard boundary. Desktop only. */
+.welcome--theme-navy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 32%, #000 68%, #000 100%);
+          mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 32%, #000 68%, #000 100%);
+}
+
+/* Large radial accent glow centred near the stage. Desktop only. */
+.welcome--theme-navy::after {
+  content: '';
+  position: absolute;
+  top: 44%;
+  left: 64%;
+  width: min(760px, 72%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(129, 140, 248, 0.18) 0%, rgba(129, 140, 248, 0) 62%);
+}
+
+@media (max-width: 900px) {
+  .welcome--theme-navy::before,
+  .welcome--theme-navy::after {
+    display: none;
+  }
+}
+
 .welcome--theme-navy .welcome__brand-text,
 .welcome--theme-navy .welcome__headline {
   color: #FFFFFF;
@@ -7308,11 +7355,13 @@ button[aria-busy="true"] {
 .welcome--theme-navy .welcome__footer-meta {
   color: rgba(255, 255, 255, 0.72);
 }
+
+/* Stage sits transparent over the galaxy — no separate navy block, no diagonal
+   clip. (Scenes inside are unchanged.) */
 .welcome--theme-navy .welcome__hero {
-  background:
-    radial-gradient(circle at top right, rgba(129, 140, 248, 0.22), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.04), transparent 30%),
-    var(--navy-deep);
+  background: none;
+  clip-path: none;
+  z-index: 1;
 }
 .welcome--theme-navy .welcome__headline-accent {
   color: var(--indigo-mid);
