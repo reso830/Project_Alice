@@ -6995,9 +6995,10 @@ button[aria-busy="true"] {
 
 .welcome__brand-text {
   font-family: var(--font-ui);
-  font-size: clamp(28px, 3vw, 40px);
+  font-size: clamp(30px, 3.1vw, 42px);
   font-weight: 700;
-  letter-spacing: -0.6px;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--t1);
 }
 
@@ -7006,7 +7007,8 @@ button[aria-busy="true"] {
   font-size: clamp(38px, 5.4vw, 62px);
   font-weight: 700;
   line-height: 1.02;
-  letter-spacing: 0;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
   color: var(--t1);
   margin: 0;
 }

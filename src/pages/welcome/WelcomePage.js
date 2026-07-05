@@ -5,6 +5,7 @@ import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appM
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
+const PORTFOLIO_URL = 'https://alvinresoso.com';
 
 // Theme-driven brand mark. Production ships the midnight (navy) theme per the
 // welcome-redesign prototype default; warm/white remain as CSS design states.
@@ -210,7 +211,7 @@ function renderSupportingCopy() {
   return el(
     'p',
     'welcome__supporting',
-    'Track applications, monitor status changes, and stay on top of follow-ups without losing the thread.',
+    'Track every application and surface the right next move — from first apply to signed offer.',
   );
 }
 
@@ -264,8 +265,9 @@ function renderFooterMeta() {
   wrap.append(
     version,
     makeExternalLink(LICENSE_NAME, LICENSE_URL, `${LICENSE_NAME} license`),
-    makeExternalLink('⊙ Report an issue', ISSUE_URL, 'Report an issue on GitHub'),
-    makeExternalLink('✦ Request a feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('Report issue', ISSUE_URL, 'Report an issue on GitHub'),
+    makeExternalLink('Request feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('alvinresoso.com', PORTFOLIO_URL, 'Visit alvinresoso.com'),
   );
 
   const repo = makeExternalLink('GitHub', REPOSITORY_URL, 'Open Project Alice repository');

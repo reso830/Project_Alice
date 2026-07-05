@@ -127,7 +127,7 @@ describe('WelcomePage — structure', () => {
     expect(version?.textContent).toBe(APP_VERSION);
 
     const links = meta.querySelectorAll('a.welcome__footer-link');
-    expect(links.length).toBe(5);
+    expect(links.length).toBe(6);
 
     // [0] license link
     expect(links[0].textContent).toBe('PolyForm Noncommercial 1.0.0');
@@ -138,29 +138,36 @@ describe('WelcomePage — structure', () => {
     expect(links[0].getAttribute('rel')).toBe('noopener noreferrer');
 
     // [1] report-issue link → ISSUE_URL
-    expect(links[1].textContent).toBe('⊙ Report an issue');
+    expect(links[1].textContent).toBe('Report issue');
     expect(links[1].getAttribute('href')).toBe(
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[1].getAttribute('rel')).toBe('noopener noreferrer');
 
     // [2] request-feature link → ISSUE_URL
-    expect(links[2].textContent).toBe('✦ Request a feature');
+    expect(links[2].textContent).toBe('Request feature');
     expect(links[2].getAttribute('href')).toBe(
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
 
-    expect(links[3].textContent).toBe('GitHub');
-    expect(links[3].getAttribute('href')).toBe('https://github.com/reso830/Project_Alice');
-    expect(links[3].classList.contains('welcome__footer-desktop-only')).toBe(true);
+    // [3] portfolio link (part of the base 5 items, not desktop-only)
+    expect(links[3].textContent).toBe('alvinresoso.com');
+    expect(links[3].getAttribute('href')).toBe('https://alvinresoso.com');
+    expect(links[3].classList.contains('welcome__footer-desktop-only')).toBe(false);
 
-    expect(links[4].textContent).toBe(`Download Alice Portable ${APP_VERSION}`);
-    expect(links[4].getAttribute('href')).toBe(
+    // [4] GitHub (desktop-only)
+    expect(links[4].textContent).toBe('GitHub');
+    expect(links[4].getAttribute('href')).toBe('https://github.com/reso830/Project_Alice');
+    expect(links[4].classList.contains('welcome__footer-desktop-only')).toBe(true);
+
+    // [5] download chip (desktop-only)
+    expect(links[5].textContent).toBe(`Download Alice Portable ${APP_VERSION}`);
+    expect(links[5].getAttribute('href')).toBe(
       'https://github.com/reso830/Project_Alice/releases/latest',
     );
-    expect(links[4].classList.contains('welcome__footer-download')).toBe(true);
-    expect(links[4].classList.contains('welcome__footer-desktop-only')).toBe(true);
+    expect(links[5].classList.contains('welcome__footer-download')).toBe(true);
+    expect(links[5].classList.contains('welcome__footer-desktop-only')).toBe(true);
   });
 
   it('clicking "Try the demo" invokes demoStub.enterDemo() (feature 020)', () => {
