@@ -7657,7 +7657,7 @@ button[aria-busy="true"] {
 
 .scene-parse__wrap {
   position: relative;
-  width: min(420px, 90%);
+  width: min(470px, 92%);
   min-height: 270px;
 }
 
@@ -7666,15 +7666,24 @@ button[aria-busy="true"] {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(330px, 100%);
-  border: 1px solid rgba(0, 0, 0, .04);
   border-radius: 16px;
-  background: #FFFFFF;
-  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .55);
   transform: translate(-50%, -50%);
 }
 
-/* Parsed card is a solid white card with dark text (over the dark scene). */
+/* Pasted job post — translucent glass over the dark scene. */
+.scene-parse__window {
+  width: min(360px, 100%);
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06);
+}
+
+/* Parsed card — solid white with dark text, wider than the post. */
+.scene-parse__card {
+  width: min(420px, 100%);
+  border: 1px solid rgba(0, 0, 0, .04);
+  background: #FFFFFF;
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .55);
+}
 .scene-parse__card .scene-parse__card-title { color: #1A1A2E; }
 .scene-parse__card .scene-parse__card-meta { color: #4B5563; }
 .scene-parse__card .scene-parse__tag {
@@ -7750,8 +7759,10 @@ button[aria-busy="true"] {
   width: 168%;
   height: 32px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, transparent, rgba(242, 181, 68, .64), transparent);
-  filter: blur(.5px);
+  background: linear-gradient(180deg, rgba(242, 181, 68, 0) 0%, rgba(242, 181, 68, .30) 42%, rgba(255, 214, 120, .95) 50%, rgba(242, 181, 68, .30) 58%, rgba(242, 181, 68, 0) 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  filter: drop-shadow(0 0 12px rgba(242, 181, 68, .65));
   opacity: 0;
 }
 
@@ -7824,6 +7835,38 @@ button[aria-busy="true"] {
   animation: parse-spark .62s ease-out forwards;
   animation-delay: var(--spark-delay, 0ms);
   transform: rotate(var(--spark-angle)) translateX(0);
+}
+
+.scene-parse__spinner {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 3px solid rgba(242, 181, 68, .22);
+  border-top-color: #F2B544;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+
+/* Spinner fades in near the end of the scan, then hides as the card pops in. */
+.scene-parse.is-scanned .scene-parse__spinner {
+  opacity: 1;
+  transition-delay: .85s;
+  animation: parse-spin .8s linear infinite;
+}
+
+.scene-parse.is-parsed .scene-parse__spinner {
+  opacity: 0;
+  animation: none;
+  transition-delay: 0s;
+}
+
+@keyframes parse-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 @keyframes parse-beam {

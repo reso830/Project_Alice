@@ -72,16 +72,19 @@ export function mount(container, { variant = 'default', motion } = {}) {
   const pasteWindow = buildPasteWindow();
   const card = buildCard();
   const burst = document.createElement('div');
+  const spinner = document.createElement('div');
   const timers = [];
 
   root.className = `scene-parse scene-parse--${variant}`;
   root.dataset.variant = variant;
   wrap.className = 'scene-parse__wrap';
+  spinner.className = 'scene-parse__spinner';
+  spinner.setAttribute('aria-hidden', 'true');
   burst.className = 'scene-parse__burst';
   for (let i = 0; i < 22; i += 1) {
     burst.append(buildSpark(i));
   }
-  wrap.append(pasteWindow, burst, card);
+  wrap.append(pasteWindow, spinner, burst, card);
   root.append(wrap);
   container.append(root);
 
