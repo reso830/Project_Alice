@@ -60,14 +60,14 @@ public/
 src/
 ├── assets/
 │   ├── logo/              # Brand logos (alice-sigil-full.svg / alice-sigil-full-white.svg)
-│   ├── graphics/          # Illustrations (calendar-quiet.svg, profile-empty.svg, pencil-add.svg, etc.)
+│   ├── graphics/          # Illustrations (calendar-quiet.svg, calendar-empty.svg, profile-empty.svg)
 │   └── icons/             # System SVGs (compatibility.svg, timeline.svg, etc.)
 ├── components/
 │   ├── Card.js            # Hardcoded SVGs replaced
 │   ├── Footer.js          # SVG logo integration
 │   ├── Modal.js           # Hardcoded SVGs replaced
 │   ├── Navbar.js          # SVG logo integration
-│   ├── CreationPicker.js  # Illustration integration (pencil-add.svg)
+│   ├── CreationPicker.js  # Modal visual polish
 │   ├── QuickFiltersToolbar.js
 │   ├── JobPostingImport.js # In-app LLM loader update
 │   ├── ResumeImport.js     # In-App LLM loader update
@@ -130,10 +130,10 @@ tests/
 - `src/components/Card.js` (registry icons swap)
 - `src/components/Modal.js` (registry icons swap)
 - `src/pages/ProfileEdit.js` (registry icons swap)
-- `src/components/CreationPicker.js` (pencil-add.svg illustration integration)
+- `src/components/CreationPicker.js` (creation modal visual polish)
 - `src/components/calendar/ActionPanel.js` (calendar-quiet.svg illustration integration)
 - `src/components/calendar/DayPanel.js` (calendar-empty.svg illustration integration)
-- `src/pages/Profile.js` (profile-empty.svg and pencil-add.svg illustrations)
+- `src/pages/Profile.js` (profile-empty.svg illustration)
 - `src/components/JobPostingImport.js` (in-app loader redesign & exit transition fade-out)
 - `src/components/ResumeImport.js` (in-app loader redesign & exit transition fade-out)
 - `public/favicon-32x32.png` & favicons set (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`)

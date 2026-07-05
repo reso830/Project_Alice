@@ -302,7 +302,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | Path | Purpose |
 |------|---------|
 | `src/assets/logo/alice-sigil-full.svg` · `alice-sigil-full-white.svg` | Brand vector marks (used by Navbar, Footer, WelcomePage, ConfigError, Auth modal header, and HeroSlideshow scene) |
-| `src/assets/graphics/` | Empty-state and action illustrations (used by ActionPanel, DayPanel, Profile, and CreationPicker) |
+| `src/assets/graphics/` | Empty-state illustrations (used by ActionPanel, DayPanel, and Profile) |
 
 ---
 

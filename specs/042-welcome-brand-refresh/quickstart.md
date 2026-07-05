@@ -17,7 +17,7 @@ First, stage the vector and illustration assets from the design handoff packages
    - Copy `alice-sigil-full.svg` to `src/assets/logo/alice-sigil-full.svg`
    - Copy `alice-sigil-full-white.svg` to `src/assets/logo/alice-sigil-full-white.svg`
 3. Copy the empty-state illustrations:
-   - Copy `calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, and `pencil-add.svg` to `src/assets/graphics/`
+   - Copy `calendar-quiet.svg`, `calendar-empty.svg`, and `profile-empty.svg` to `src/assets/graphics/`
 4. Copy the standard favicons:
    - Copy `favicon-32.png` to `public/favicon-32x32.png`
    - Copy `favicon.ico` to `public/favicon.ico`

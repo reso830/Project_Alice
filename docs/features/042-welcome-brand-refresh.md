@@ -20,7 +20,7 @@ Modernize Project Alice's unauthenticated welcome/login page, brand assets, and 
 - Redesign the welcome page layout to support desktop, tablet portrait, and mobile portrait modes.
 - Integrate the new brand logo assets (`alice-sigil-full.svg` and `alice-sigil-full-white.svg`) across all pages, footers, navbars, and welcome scenes.
 - Update all system SVG icons (`src/assets/icons/` and `src/utils/icons.js`) with the new unified icon paths.
-- Integrate new empty-state illustrations (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, `pencil-add.svg`) into their designated places across ActionPanel, DayPanel, Profile, and CreationPicker.
+- Integrate new empty-state illustrations (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`) into their designated places across ActionPanel, DayPanel, and Profile.
 - Recreate the animated showcase carousel (with 5 storytelling scenes: Constellation, Parse, Pipeline, Momentum, Deck) and progress/dot navigation.
 - Implement responsive, height-locked (`100dvh`, no-scroll) layouts for mobile and tablet screens.
 - Enhance the Auth overlay forms (sign-in, registration, demo) with modern visuals (glassmorphism), clean error boundaries, and transitions.
@@ -63,11 +63,10 @@ Modernize Project Alice's unauthenticated welcome/login page, brand assets, and 
   - `src/assets/icons/skills.svg`
   - `src/assets/icons/timeline.svg`
 - Update `createClipboardIcon()`, `createArchiveIcon()`, and `createSvgIcon()` in `src/utils/icons.js` to match the new icon set style.
-- Wire new empty-state illustrations across five app files (preventing inline duplicates):
+- Wire new empty-state illustrations across app files (preventing inline duplicates):
   - **`illustrations/calendar-quiet.svg`**: Use for `ActionPanel.js` dashboard empty states (today, suggestions, upcoming).
   - **`illustrations/calendar-empty.svg`**: Use for `DayPanel.js` compact empty states (select a day, no events prompt).
   - **`illustrations/profile-empty.svg`**: Use for `Profile.js` empty avatar placeholder, deleting old head/body span styles.
-  - **`illustrations/pencil-add.svg`**: Use for create/add moments (e.g. `Profile.js` "Set Up Profile" prompt, and `CreationPicker.js` header).
 
 ### 3. In-App Processing Loader (Issue #110)
 - Update `src/components/ResumeImport.js` and `src/components/JobPostingImport.js` to render the redesigned full-screen overlay during LLM operations.

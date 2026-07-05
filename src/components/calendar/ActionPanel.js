@@ -269,11 +269,11 @@ function createEmptyState(kind) {
   graphic.src = copy.image;
   graphic.alt = '';
   graphic.setAttribute('aria-hidden', 'true');
-  empty.append(
-    graphic,
-    createText('cal-empty__h', copy.headline),
-    createText('cal-empty__sub', copy.sub),
-  );
+
+  const body = document.createElement('div');
+  body.className = 'cal-empty__copy';
+  body.append(createText('cal-empty__h', copy.headline), createText('cal-empty__sub', copy.sub));
+  empty.append(graphic, body);
   return empty;
 }
 

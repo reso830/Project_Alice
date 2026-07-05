@@ -159,12 +159,12 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09
 
 - [x] T017 [US2] Integrate Profile empty-state and add illustrations
   - **Target**: [src/pages/Profile.js](../../src/pages/Profile.js)
-  - **Expected behavior**: Replace CSS-drawn avatar body/head spans in `renderEmptyProfile()` with a single `<img src="/src/assets/graphics/profile-empty.svg" />`. Add `<img src="/src/assets/graphics/pencil-add.svg" />` above the "Set Up Profile" CTA button.
+  - **Expected behavior**: Replace CSS-drawn avatar body/head spans in `renderEmptyProfile()` with a single `<img src="/src/assets/graphics/profile-empty.svg" />`.
   - **Validation/test**: Check empty profile view layout renders illustrations correctly.
 
-- [x] T017b [P] [US2] Integrate CreationPicker pencil-add illustration
+- [x] T017b [P] [US2] Polish CreationPicker visual header
   - **Target**: [src/components/CreationPicker.js](../../src/components/CreationPicker.js)
-  - **Expected behavior**: Import and render `src/assets/graphics/pencil-add.svg` at **110×110px** inside the header section of the CreationPicker modal view.
+  - **Expected behavior**: Keep CreationPicker header focused on title/subtitle and card choices; smoke-test remediation removed the out-of-place pencil illustration.
   - **Validation/test**: Verify "New Application" picker overlay displays the graphic.
 
 ---

@@ -1148,13 +1148,6 @@ textarea.edit-field__control {
   width: min(100%, 360px);
 }
 
-.profile-empty__setup-graphic {
-  display: block;
-  width: 110px;
-  height: 110px;
-  object-fit: contain;
-}
-
 .resume-import {
   display: flex;
   flex-direction: column;
@@ -6640,13 +6633,6 @@ textarea.modal-inline-control {
   gap: 6px;
 }
 
-.creation-picker-graphic {
-  display: block;
-  width: 110px;
-  height: 110px;
-  object-fit: contain;
-}
-
 .creation-picker-title {
   color: var(--t1);
   font: 800 24px/1.2 var(--font-ui);
@@ -9320,35 +9306,40 @@ button[aria-busy="true"] {
 }
 
 .cal-empty {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 10px;
+  display: flex;
   align-items: center;
-  padding: 14px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
 }
 
 .cal-empty__glyph {
-  grid-row: 1 / span 2;
+  flex: 0 0 auto;
   display: block;
-  width: 110px;
-  height: 110px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
+}
+
+.cal-empty__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .cal-empty__h {
   color: var(--t1);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.15;
 }
 
 .cal-empty__sub {
   color: var(--t3);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 10.5px;
+  line-height: 1.25;
 }
 
 .cal-row-list,
@@ -11758,16 +11749,27 @@ button[aria-busy="true"] {
   pointer-events: none;
 }
 
-/* Edge glow — static purple/gold bloom on all viewports; the rotating
-   conic layer is added only on desktop (≥900px) to avoid the diagonal
-   seam that conic rotation produces on portrait aspect ratios. */
+/* Edge glow — ambient purple/gold bloom behind the spinner and status text.
+   `z-index: -1` keeps this positioned (fixed) layer UNDER the in-flow text, so
+   the bright centre never washes out the copy. Desktop (≥900px) overrides the
+   background with a distinct static composition below. */
 .processing-overlay .edge-glow {
   position: fixed;
   inset: 0;
+  z-index: -1;
   pointer-events: none;
-  box-shadow:
-    inset 0 0 140px 12px rgba(61, 26, 138, 0.18),
-    inset 0 0 90px 8px rgba(244, 167, 31, 0.16);
+  /* Tablet/mobile (portrait) — same white-centre "circular mask" as desktop,
+     with Alice's gold (#F8BE43) across the top and deep purple (#3D1A8A) along
+     the base, plus brand accents in opposite corners. */
+  background:
+    radial-gradient(54% 44% at 50% 50%,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.5) 34%,
+      rgba(255, 255, 255, 0) 62%),
+    radial-gradient(72% 40% at 50% -4%, rgba(248, 190, 67, 0.36), transparent 66%),
+    radial-gradient(72% 40% at 50% 104%, rgba(61, 26, 138, 0.30), transparent 66%),
+    radial-gradient(48% 40% at 4% 30%, rgba(61, 26, 138, 0.22), transparent 60%),
+    radial-gradient(48% 40% at 96% 70%, rgba(248, 190, 67, 0.24), transparent 60%);
 }
 
 .processing-overlay .spinner-wrap {
@@ -11826,39 +11828,41 @@ button[aria-busy="true"] {
   }
 }
 
-/* Desktop-only rotating conic edge glow (≥900px). */
+/* Desktop edge glow (≥900px) — static composition per the Claude Design
+   handoff: a bright white centre spotlight (the "circular mask") framed by
+   Alice's deep-purple (#3D1A8A) and gold (#F8BE43) blooms. Static in prod for
+   simplicity (the mockup is static and rotation is not required). */
 @media (min-width: 900px) {
+  .processing-overlay .edge-glow {
+    background:
+      /* Bright white centre spotlight — top layer keeps the middle clean. */
+      radial-gradient(46% 64% at 50% 50%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.5) 34%,
+        rgba(255, 255, 255, 0) 62%),
+      /* Gold blooms on the left & right edges. */
+      radial-gradient(44% 82% at 0% 50%, rgba(248, 190, 67, 0.38), transparent 72%),
+      radial-gradient(44% 82% at 100% 50%, rgba(248, 190, 67, 0.38), transparent 72%),
+      /* Deep-purple blooms in the top corners and along the base. */
+      radial-gradient(54% 56% at 8% 0%, rgba(61, 26, 138, 0.34), transparent 60%),
+      radial-gradient(54% 56% at 92% 0%, rgba(61, 26, 138, 0.34), transparent 60%),
+      radial-gradient(72% 48% at 50% 104%, rgba(61, 26, 138, 0.22), transparent 66%);
+  }
+
+  /* Rotation removed — the desktop glow is now static. */
   .processing-overlay .edge-glow::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: conic-gradient(
-      from 0deg,
-      rgba(61, 26, 138, 0) 0deg,
-      rgba(61, 26, 138, 0.22) 90deg,
-      rgba(244, 167, 31, 0.24) 180deg,
-      rgba(61, 26, 138, 0.22) 270deg,
-      rgba(61, 26, 138, 0) 360deg
-    );
-    mix-blend-mode: multiply;
-    animation: processing-edge-rotate 9s linear infinite;
+    content: none;
   }
 }
 
-@keyframes processing-edge-rotate {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Reduced motion — freeze the spinner ring and edge glow, drop the fade (T024). */
+/* Reduced motion — freeze the spinner ring and drop the fade (T024). The edge
+   glow is a static gradient, so nothing else needs disabling. */
 @media (prefers-reduced-motion: reduce) {
   .processing-overlay {
     transition: none;
   }
 
-  .processing-overlay .spinner-ring,
-  .processing-overlay .edge-glow::after {
+  .processing-overlay .spinner-ring {
     animation: none;
   }
 }

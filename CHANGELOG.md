@@ -9,7 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.11.0] — 2026-07-04
 
-Welcome page and brand refresh — updated brand vector logos across global views, restructured the welcome page for layout responsiveness, standardized visual toolbar and action icons from a centralized line-icon registry factory, integrated new empty-state illustrations, and redesigned full-screen in-app LLM loaders with prefers-reduced-motion gating.
+Welcome page and brand refresh — updated brand vector logos across global views, restructured the welcome page for layout responsiveness, standardized visual toolbar and action icons from a centralized line-icon registry factory, integrated compact empty-state illustrations, and redesigned full-screen in-app LLM loaders with prefers-reduced-motion gating.
 
 ### Added
 

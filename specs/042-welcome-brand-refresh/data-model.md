@@ -38,7 +38,6 @@ All empty-state vector illustrations are placed in `src/assets/graphics/`:
 | `design_handoffs/Alice_Icons_Graphics/handoff/illustrations/calendar-quiet.svg` | `src/assets/graphics/calendar-quiet.svg` | **Quiet Calendar (Dashboard)**: Wide empty state in `src/components/calendar/ActionPanel.js`. | 110×110px |
 | `design_handoffs/Alice_Icons_Graphics/handoff/illustrations/calendar-empty.svg` | `src/assets/graphics/calendar-empty.svg` | **Empty Calendar (Inline)**: Compact prompt/empty events in `src/components/calendar/DayPanel.js`. | 44×44px |
 | `design_handoffs/Alice_Icons_Graphics/handoff/illustrations/profile-empty.svg` | `src/assets/graphics/profile-empty.svg` | **Empty Avatar**: Replaces CSS-drawn avatar shape on `src/pages/Profile.js`. | 110×110px |
-| `design_handoffs/Alice_Icons_Graphics/handoff/illustrations/pencil-add.svg` | `src/assets/graphics/pencil-add.svg` | **Add/Create Moment**: Displays above "Set Up Profile" CTA in `src/pages/Profile.js` and header in `src/components/CreationPicker.js`. | 110×110px |
 
 ---
 

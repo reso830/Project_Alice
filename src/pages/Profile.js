@@ -27,7 +27,6 @@ import { validateKey } from '../services/aiService.js';
 import { APP_VERSION } from './welcome/shared/appMeta.js';
 import { renderInlineError } from '../utils/asyncUI.js';
 import { createSvgIcon } from '../utils/icons.js';
-import pencilAdd from '../assets/graphics/pencil-add.svg';
 import profileEmpty from '../assets/graphics/profile-empty.svg';
 import { buildProfileAppsSkeleton, buildProfileSkeleton } from '../utils/skeletons.js';
 import { getSafeExternalHref } from '../utils/url.js';
@@ -339,19 +338,13 @@ function renderApplicationsVisuals(body, applications, archivedCount, navigate) 
 function renderEmptyProfile(section, navigate) {
   const empty = createElement('div', 'profile-empty');
   const icon = document.createElement('img');
-  const addGraphic = document.createElement('img');
   const actions = createElement('div', 'profile-empty__actions');
 
   icon.className = 'profile-empty__icon';
   icon.src = profileEmpty;
   icon.alt = '';
   icon.setAttribute('aria-hidden', 'true');
-  addGraphic.className = 'profile-empty__setup-graphic';
-  addGraphic.src = pencilAdd;
-  addGraphic.alt = '';
-  addGraphic.setAttribute('aria-hidden', 'true');
   actions.append(
-    addGraphic,
     createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
   );
   empty.append(

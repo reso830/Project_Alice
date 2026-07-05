@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mainCss = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
 import { ActionPanel } from '../../../src/components/calendar/ActionPanel.js';
 
 function row(id, overrides = {}) {
@@ -209,10 +212,28 @@ describe('ActionPanel', () => {
     expect(document.body.textContent).toContain('No upcoming timeline events tomorrow through end of week.');
     expect([...document.querySelectorAll('.cal-empty__glyph')].map((node) => node.tagName))
       .toEqual(['IMG', 'IMG', 'IMG']);
+    expect([...document.querySelectorAll('.cal-empty__copy')].map((node) => (
+      [...node.children].map((child) => child.className)
+    ))).toEqual([
+      ['cal-empty__h', 'cal-empty__sub'],
+      ['cal-empty__h', 'cal-empty__sub'],
+      ['cal-empty__h', 'cal-empty__sub'],
+    ]);
     const sources = [...document.querySelectorAll('.cal-empty__glyph')]
       .map((node) => node.getAttribute('src'));
     expect(sources.every((src) => src?.startsWith('data:image/svg+xml'))).toBe(true);
     expect(new Set(sources).size).toBe(1);
+  });
+
+  it('keeps dashboard empty states compact after the 042 smoke-test pass', () => {
+    expect(mainCss).toContain('.cal-empty {\n  display: flex;');
+    expect(mainCss).toContain('gap: 8px;');
+    expect(mainCss).toContain('padding: 8px 10px;');
+    expect(mainCss).toContain('.cal-empty__glyph {\n  flex: 0 0 auto;');
+    expect(mainCss).toContain('width: 40px;');
+    expect(mainCss).toContain('height: 40px;');
+    expect(mainCss).toContain('.cal-empty__copy {\n  display: grid;\n  gap: 3px;');
+    expect(mainCss).toContain('.cal-empty__sub {\n  color: var(--t3);\n  font-size: 10.5px;');
   });
 
   it('hides count pills for empty sections and shows them for populated sections', () => {

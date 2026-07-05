@@ -52,7 +52,7 @@ To establish visual excellence, this feature will standardize icons across the c
   - Re-organize assets under `src/assets/`:
     - `src/assets/logo/alice-sigil-full.svg` (supersedes `Alice_Colored.png`)
     - `src/assets/logo/alice-sigil-full-white.svg` (supersedes `Alice_White.png`)
-    - `src/assets/graphics/` (empty-state illustrations: `calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, `pencil-add.svg`)
+    - `src/assets/graphics/` (empty-state illustrations: `calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`)
     - `src/assets/icons/` (standard utility SVG icons)
 - **Responsive Welcome Layout**: Update `src/pages/welcome/WelcomePage.js` to support:
   - **Desktop (>900px)**: Two-column grid (left pitch, right animated showcase).
@@ -68,7 +68,7 @@ To establish visual excellence, this feature will standardize icons across the c
   - Redesign email/password login and signup forms with glassmorphism, password peek, touched validation, and success/verification transitions.
 - **Standardized Line Icons**:
   - Replace hardcoded SVG icon paths across `Card.js`, `Modal.js`, `QuickFiltersToolbar.js`, and `ProfileEdit.js` with the unified 24x24 line-icon registry from the new `src/utils/icons.js`.
-  - Wire empty-state illustrations (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, `pencil-add.svg`) across designated app views.
+  - Wire empty-state illustrations (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`) across designated app views.
 - **In-App LLM Processing Overlays**:
   - Implement full-screen dimmed/blurred backdrops with a centered gold spinner (0.6s linear rotation around a 64px sigil) for `ResumeImport.js` and `JobPostingImport.js`.
   - Constrain rotating edge glow to desktop viewports (≥900px) only.
@@ -112,7 +112,7 @@ To establish visual excellence, this feature will standardize icons across the c
 - **Independent Test**: Open the Tracker and Profile pages. Verify all status, action, sorting, and filter icons match the new 24x24 line-icon family and that no two filters share the same icon.
 - **Acceptance Scenarios**:
   - **Given** a job card or application details modal, **When** rendering actions, **Then** icons for Edit, Change Status, Copy URL, Star, Archive, Unarchive, and Close are built from `src/utils/icons.js` paths.
-  - **Given** the `src/components/calendar/ActionPanel.js`, `src/components/calendar/DayPanel.js`, `src/pages/Profile.js`, or `src/components/CreationPicker.js` has no data / needs illustration, **When** rendering empty states or action buttons, **Then** the designated SVGs (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, or `pencil-add.svg`) render at their correct target dimensions.
+  - **Given** the `src/components/calendar/ActionPanel.js`, `src/components/calendar/DayPanel.js`, or `src/pages/Profile.js` has no data / needs illustration, **When** rendering empty states, **Then** the designated SVGs (`calendar-quiet.svg`, `calendar-empty.svg`, or `profile-empty.svg`) render at their correct target dimensions.
 
 ### User Story 3: High-Fidelity Showcase Carousel (Priority: P2)
 - **As a** visitor, **I want** to see an animated showcase of Project Alice's features, **so that** I can quickly understand the product value.

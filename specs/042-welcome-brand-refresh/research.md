@@ -29,7 +29,7 @@ Standardize all application icons into a unified 24x24 viewBox, line-drawing for
 Create two new subfolders `logo/` and `graphics/` under `src/assets/` to organize logo vector files and empty-state illustrations cleanly:
 - `src/assets/logo/alice-sigil-full.svg` (replaces `Alice_Colored.png`)
 - `src/assets/logo/alice-sigil-full-white.svg` (replaces `Alice_White.png`)
-- `src/assets/graphics/` (contains empty-state illustrations: `calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`, `pencil-add.svg`)
+- `src/assets/graphics/` (contains empty-state illustrations: `calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`)
 Update all component imports (`Navbar.js`, `Footer.js`, `ConfigError.js`, `WelcomePage.js`, `SceneDeck.js`, `AuthOverlay.js`) and tests to load from these structured directories.
 
 ### Rationale
