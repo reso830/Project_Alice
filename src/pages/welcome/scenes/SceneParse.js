@@ -53,6 +53,14 @@ function buildSpark(index) {
   spark.style.setProperty('--spark-angle', `${index * 16}deg`);
   spark.style.setProperty('--spark-delay', `${index * 18}ms`);
   spark.setAttribute('aria-hidden', 'true');
+  const svgns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(svgns, 'path');
+  path.setAttribute('d', 'M12 1.5c.8 6.4 3.1 8.7 9.5 9.5-6.4.8-8.7 3.1-9.5 9.5-.8-6.4-3.1-8.7-9.5-9.5 6.4-.8 8.7-3.1 9.5-9.5Z');
+  svg.append(path);
+  spark.append(svg);
   return spark;
 }
 
