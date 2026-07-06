@@ -7150,7 +7150,7 @@ button[aria-busy="true"] {
   background: transparent;
   color: var(--t2);
   border-color: transparent;
-  padding-left: 36px;
+  padding-left: 40px;
 }
 
 .welcome__cta--ghost:hover {
@@ -8475,13 +8475,13 @@ button[aria-busy="true"] {
     min-height: auto;
     padding: 0;
     gap: 14px;
-    align-items: center;
-    text-align: center;
+    align-items: flex-start;
+    text-align: left;
     flex: 0 0 auto;
   }
 
   .welcome__brand {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .welcome__brand-mark {
@@ -8507,6 +8507,11 @@ button[aria-busy="true"] {
     padding: 11px 18px;
   }
 
+  /* Keep the ghost button's dot offset — the shorthand above resets it. */
+  .welcome__cta--ghost {
+    padding-left: 40px;
+  }
+
   .welcome__hero {
     width: 100%;
     max-width: 760px;
@@ -8522,7 +8527,7 @@ button[aria-busy="true"] {
     position: relative;
     left: auto;
     bottom: auto;
-    justify-content: center;
+    justify-content: flex-start;
     margin: 12px 0 0;
     font-size: 10.5px;
     flex: 0 0 auto;
@@ -8652,6 +8657,15 @@ button[aria-busy="true"] {
     display: none;
   }
 
+  .welcome__footer-desktop-only {
+    display: none;
+  }
+}
+
+/* The portable-app download is desktop-only. Hide it on any touch device
+   (no hover / coarse pointer) regardless of width — e.g. tablet landscape,
+   which can exceed 900px yet must not offer the desktop download. */
+@media (hover: none), (pointer: coarse) {
   .welcome__footer-desktop-only {
     display: none;
   }
