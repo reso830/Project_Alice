@@ -21,8 +21,8 @@ All brand vector marks are moved to `src/assets/logo/`:
 
 | Source File | Destination File | Target Usage |
 | :--- | :--- | :--- |
-| `design_handoffs/Alice_new_logo/favicon/alice-sigil-full.svg` | `src/assets/logo/alice-sigil-full.svg` | **Full-Color Sigil**: Used on warm/white themes, mobile welcome header, auth modal header, and global footer. |
-| `design_handoffs/Alice_new_logo/favicon/alice-sigil-full-white.svg` | `src/assets/logo/alice-sigil-full-white.svg` | **All-White Sigil**: Used on dark/navy themes, the desktop/mobile navigation bar, scene 4 showcase logo, and config error screen. |
+| `design_handoffs/Alice_new_logo/favicon/alice-sigil-full.svg` | `src/assets/logo/alice-sigil-full.svg` | **Full-Color Sigil**: Used on the welcome brand header across all themes (warm/white/navy — the emblem reads on both light and dark backgrounds per the design prototype), mobile welcome header, auth modal header, and global footer. |
+| `design_handoffs/Alice_new_logo/favicon/alice-sigil-full-white.svg` | `src/assets/logo/alice-sigil-full-white.svg` | **All-White Sigil**: Used on the desktop/mobile navigation bar and the config error screen. (The earlier navy-theme welcome header and scene-4 showcase-logo usages were superseded — the welcome header uses the color sigil across themes and the redesigned scenes embed no sigil.) |
 
 ---
 
