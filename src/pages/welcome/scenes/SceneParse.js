@@ -47,11 +47,23 @@ function buildCard() {
   return card;
 }
 
-function buildSpark(index) {
+function buildSpark(index, total) {
   const spark = document.createElement('span');
   spark.className = 'scene-parse__spark';
-  spark.style.setProperty('--spark-angle', `${index * 16}deg`);
-  spark.style.setProperty('--spark-delay', `${index * 18}ms`);
+  // Evenly distributed around a full circle with a little jitter, so the
+  // stars fan out radially all at once (not a staggered spiral).
+  const angle = (Math.PI * 2 * index) / total + (Math.random() * 0.4 - 0.2);
+  const dist = 100 + Math.random() * 120;
+  const dx = Math.cos(angle) * dist;
+  const dy = Math.sin(angle) * dist * 0.8;
+  const size = 12 + Math.random() * 18;
+  const rot = Math.random() * 160 - 80;
+  const dur = 0.65 + Math.random() * 0.4;
+  spark.style.setProperty('--spark-dx', `${dx.toFixed(0)}px`);
+  spark.style.setProperty('--spark-dy', `${dy.toFixed(0)}px`);
+  spark.style.setProperty('--spark-rot', `${rot.toFixed(0)}deg`);
+  spark.style.setProperty('--spark-size', `${size.toFixed(0)}px`);
+  spark.style.setProperty('--spark-dur', `${dur.toFixed(2)}s`);
   spark.setAttribute('aria-hidden', 'true');
   const svgns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(svgns, 'svg');
@@ -82,7 +94,7 @@ export function mount(container, { variant = 'default', motion } = {}) {
   spinner.setAttribute('aria-hidden', 'true');
   burst.className = 'scene-parse__burst';
   for (let i = 0; i < 22; i += 1) {
-    burst.append(buildSpark(i));
+    burst.append(buildSpark(i, 22));
   }
   wrap.append(pasteWindow, spinner, burst, card);
   root.append(wrap);

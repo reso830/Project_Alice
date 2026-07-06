@@ -7820,27 +7820,34 @@ button[aria-busy="true"] {
   padding: 5px 7px;
 }
 
+/* Burst layer sits in front of the parsed card so the stars pop over it. */
+.scene-parse__burst {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
 .scene-parse__spark {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 13px;
-  height: 13px;
-  color: #F2B544;
+  width: var(--spark-size, 16px);
+  height: var(--spark-size, 16px);
+  color: #F8BE43;
   opacity: 0;
+  transform: translate(-50%, -50%) scale(.3);
 }
 
 .scene-parse__spark svg {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 4px rgba(242, 181, 68, .7));
+  filter: drop-shadow(0 0 5px rgba(248, 190, 67, .9)) drop-shadow(0 0 12px rgba(248, 190, 67, .5));
 }
 
 .scene-parse.is-parsed .scene-parse__spark {
-  animation: parse-spark .62s ease-out forwards;
-  animation-delay: calc(.25s + var(--spark-delay, 0ms));
-  transform: rotate(var(--spark-angle)) translateX(0);
+  animation: parse-spark var(--spark-dur, .8s) cubic-bezier(.2, .7, .35, 1) .25s forwards;
 }
 
 .scene-parse__spinner {
@@ -7882,9 +7889,12 @@ button[aria-busy="true"] {
 }
 
 @keyframes parse-spark {
-  0%   { opacity: 0; transform: rotate(var(--spark-angle)) translateX(4px) scale(.2); }
-  25%  { opacity: 1; }
-  100% { opacity: 0; transform: rotate(var(--spark-angle)) translateX(128px) scale(.9); }
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0deg); }
+  14%  { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-dx, 0px)), calc(-50% + var(--spark-dy, 0px))) scale(1) rotate(var(--spark-rot, 0deg));
+  }
 }
 
 .scene-pipeline__track {
@@ -7925,11 +7935,13 @@ button[aria-busy="true"] {
 
 .scene-momentum__chip {
   display: grid;
+  justify-items: center;
   gap: 2px;
   padding: 10px 8px;
   border: 1px solid rgba(255, 255, 255, .11);
   border-radius: 10px;
   background: rgba(255, 255, 255, .07);
+  text-align: center;
 }
 
 .scene-momentum__chip-label {
@@ -7989,6 +8001,12 @@ button[aria-busy="true"] {
   height: 240px;
 }
 
+@property --deck-float {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 .scene-deck__card {
   position: absolute;
   left: 50%;
@@ -8004,23 +8022,26 @@ button[aria-busy="true"] {
   border: 1px solid #E8E3DA;
   color: var(--navy);
   box-shadow: 0 30px 60px -26px rgba(0, 0, 0, .6), 0 6px 16px rgba(0, 0, 0, .28);
-  transform: translateX(-50%) translate(var(--deck-x), var(--deck-y)) rotate(var(--deck-rotation));
+  transform: translateX(-50%) translate(var(--deck-x), calc(var(--deck-y) + var(--deck-float))) rotate(var(--deck-rotation));
   transform-origin: center bottom;
+  will-change: transform;
 }
 
 .scene-deck__card--0 { z-index: 1; opacity: .8; }
 .scene-deck__card--1 { z-index: 2; opacity: .92; }
 .scene-deck__card--2 { z-index: 3; }
 
+/* Float via a registered custom property so the transform is composited
+   (smooth) instead of animating margin-top (which reflows and looks choppy). */
 @media (prefers-reduced-motion: no-preference) {
-  .scene-deck__card--0 { animation: scene-deck-float 5.5s ease-in-out 1s infinite; }
-  .scene-deck__card--1 { animation: scene-deck-float 5.5s ease-in-out .5s infinite; }
-  .scene-deck__card--2 { animation: scene-deck-float 5.5s ease-in-out infinite; }
+  .scene-deck__card--0 { animation: scene-deck-float 6s ease-in-out 1s infinite; }
+  .scene-deck__card--1 { animation: scene-deck-float 6s ease-in-out .5s infinite; }
+  .scene-deck__card--2 { animation: scene-deck-float 6s ease-in-out infinite; }
 }
 
 @keyframes scene-deck-float {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -9px; }
+  0%, 100% { --deck-float: 0px; }
+  50% { --deck-float: -10px; }
 }
 
 .scene-deck__accent {
