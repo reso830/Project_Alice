@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.11.1] — 2026-07-06
+
+Legal docs and footer redesign — native Terms & Conditions and Privacy Policy pages reachable app-wide, and a redesigned global footer with a shorter, cleaner layout.
+
+### Added
+
+- **Terms & Conditions and Privacy Policy** — static, read-only legal documents rendered in-app via a new `LegalModal` component, with disclaimer banners noting the content is developer-drafted placeholder copy pending attorney review. Reachable from the global footer's LICENSE column, the Welcome page mini-footer, and the signup consent copy in `AuthOverlay`. Centered dialog on desktop/tablet, bottom sheet on mobile; focus-trapped, closes via ✕, footer Close button, backdrop click, or Escape. (043-legal-and-footer)
+
+### Changed
+
+- **Global footer redesign** — reuses 042's full-color vector sigil at 64×64px, dissolves the standalone VERSION section into an inline line under the brand tagline, removes the STACK section and the horizontal rule, adds a GitHub repository link ahead of the existing feedback links, restructures the copyright block into 3 stacked lines with a new `alvinresoso.com` link, and applies a layered spotlight-and-grid background. The download/hosted-version control is now hidden below 1024px. (043-legal-and-footer)
+
 ## [1.11.0] — 2026-07-04
 
 Welcome page and brand refresh — updated brand vector logos across global views, restructured the welcome page for layout responsiveness, standardized visual toolbar and action icons from a centralized line-icon registry factory, integrated compact empty-state illustrations, and redesigned full-screen in-app LLM loaders with prefers-reduced-motion gating.
@@ -1515,7 +1527,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.1...HEAD
+[1.11.1]: https://github.com/reso830/Project_Alice/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0
 [1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8
 [1.10.7]: https://github.com/reso830/Project_Alice/compare/v1.10.6...v1.10.7

@@ -94,7 +94,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Integrate the modal triggers inside the Welcome page mini-footer and the signup form modal overlay.
 
-- [ ] T005 Refactor AuthOverlay Signup Consent
+- [x] T005 Refactor AuthOverlay Signup Consent
   - **Target**: `src/pages/welcome/AuthOverlay.js`
   - **Expected behavior**:
     - Under the signup form, replace plain-text with HTML nodes rendering clickable links for "terms of use" and "privacy policy".
@@ -103,7 +103,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
     - Verify interactive elements support visible focus indicators.
   - **Validation/test**: Click links from AuthOverlay signup; verify legal modal opens on top.
 
-- [ ] T006 Refactor WelcomePage Mini-Footer Links
+- [x] T006 Refactor WelcomePage Mini-Footer Links
   - **Target**: `src/pages/welcome/WelcomePage.js`
   - **Expected behavior**:
     - Modify `renderFooterMeta()` to render active buttons/links for "Terms & Conditions" and "Privacy Policy" next to version and license.
@@ -116,7 +116,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Re-create the global footer layout, assets, column groups, version details, and spotlight background according to high-fidelity mockups.
 
-- [ ] T007 Refactor global `Footer.js` columns & brand row
+- [x] T007 Refactor global `Footer.js` columns & brand row
   - **Target**: `src/components/Footer.js`
   - **Expected behavior**:
     - Render 042's existing vector sigil `alice-sigil-full.svg` (64x64px) imported from `../assets/logo/alice-sigil-full.svg` instead of the raster PNG.
@@ -134,12 +134,12 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Update existing unit tests and write new ones to assert modal lifecycle and footer layout correctness.
 
-- [ ] T008 Update `Footer.test.js` unit assertions
+- [x] T008 Update `Footer.test.js` unit assertions
   - **Target**: `tests/components/Footer.test.js`
   - **Expected behavior**: Refactor test suite assertions to check for vector sigil image source (`alice-sigil-full.svg`), inline version, Feedback repo link, License terms/privacy triggers, and 3-line copyright. STACK column check is removed.
   - **Validation/test**: Run `npm run test:run` or `vitest run tests/components/Footer.test.js`.
 
-- [ ] T009 Implement `LegalModal.test.js` unit tests
+- [x] T009 Implement `LegalModal.test.js` unit tests
   - **Target**: `tests/components/LegalModal.test.js` (new file)
   - **Expected behavior**: Assert:
     - Shell state changes mount the overlay wrapper, configure ARIA attributes, and set body `overflow: hidden`.
@@ -154,27 +154,27 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Increment version numbering across the project, update documentation maps, and complete code-quality checks.
 
-- [ ] T010 Bump application version dynamically
+- [x] T010 Bump application version dynamically
   - **Target**: `package.json`, `package-lock.json`, and `src/pages/welcome/shared/appMeta.js`
   - **Expected behavior**: Target the next sequential version following Feature 042's final release state (e.g. bump to `v1.11.1` assuming 042 released as `v1.11.0`).
   - **Validation/test**: Verify `APP_VERSION` matches package manifest version exactly.
 
-- [ ] T011 Update `CHANGELOG.md`
+- [x] T011 Update `CHANGELOG.md`
   - **Target**: [CHANGELOG.md](../../CHANGELOG.md)
   - **Expected behavior**: Add release notes for version bump documenting the footer redesign, SVG logo reuse, and legal modal updates.
   - **Validation/test**: Verify changelog formatting.
 
-- [ ] T012 Tick Feature roadmap row
+- [x] T012 Tick Feature roadmap row
   - **Target**: [docs/feature_roadmap.md](../../docs/feature_roadmap.md)
   - **Expected behavior**: Update feature `043-legal-and-footer` status to `[x]` and add metadata referencing the shipped version.
   - **Validation/test**: Verify roadmap formatting.
 
-- [ ] T013 Update repo directories map
+- [x] T013 Update repo directories map
   - **Target**: [docs/REPO_MAP.md](../../docs/REPO_MAP.md)
   - **Expected behavior**: Document the new file `src/components/LegalModal.js` under the component directory structure.
   - **Validation/test**: Verify file link works.
 
-- [ ] T014 Run validation check suite
+- [x] T014 Run validation check suite
   - **Target**: Codebase
   - **Expected behavior**: Verify code passes syntax, formatting, and formatting rules.
   - **Validation/test**: Run `npm run lint` and `npm run test:run`. All checks must return green.

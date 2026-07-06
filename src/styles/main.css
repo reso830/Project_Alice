@@ -5136,7 +5136,7 @@ textarea.modal-inline-control {
 
 /* Footer */
 .site-footer {
-  padding: 28px 20px 24px;
+  padding: 22px 24px 24px;
   background:
     radial-gradient(circle at 12% 10%, rgba(129, 140, 248, 0.38), transparent 52%),
     radial-gradient(circle at 90% 90%, rgba(129, 140, 248, 0.28), transparent 50%),
@@ -5149,8 +5149,8 @@ textarea.modal-inline-control {
 .footer__inner {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px 32px;
-  max-width: 900px;
+  gap: 3px 32px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -5159,14 +5159,27 @@ textarea.modal-inline-control {
   grid-column: 1 / -1;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding-bottom: 22px;
 }
 
 .footer__brand-text {
   display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.footer__brand-line1 {
+  display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 8px;
+  gap: 3px 10px;
+}
+
+.footer__version-inline {
+  color: rgba(255, 255, 255, .32);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .footer__download,
@@ -5208,10 +5221,18 @@ textarea.modal-inline-control {
   color: rgba(255, 255, 255, .8);
 }
 
-/* Narrow screens: stack name over tagline beside a larger logo (a brand
-   lockup), and drop the mode control to its own line aligned under the text. */
+/* Download / hosted-link control is desktop-only chrome; tablet and mobile
+   drop it entirely rather than reserving space for it. */
+@media (max-width: 1023px) {
+  .footer__download,
+  .footer__hosted-link {
+    display: none;
+  }
+}
+
+/* Narrow screens: stack name over tagline beside a smaller logo. */
 @media (max-width: 480px) {
-  .footer__brand-text {
+  .footer__brand-line1 {
     flex-direction: column;
     align-items: flex-start;
     gap: 1px;
@@ -5220,12 +5241,6 @@ textarea.modal-inline-control {
   .footer__brand-icon {
     width: 40px;
     height: 40px;
-  }
-
-  /* Align the control under the brand text (logo width + brand gap). */
-  .footer__download,
-  .footer__hosted-link {
-    margin-left: 54px;
   }
 }
 
@@ -5281,30 +5296,22 @@ textarea.modal-inline-control {
 }
 
 .footer__brand-icon {
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   object-fit: contain;
 }
 
 .footer__brand-name {
   color: var(--surface);
-  font-size: 13px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: .4px;
 }
 
 .footer__tagline {
   color: rgba(255, 255, 255, .38);
-  font-size: 11px;
-}
-
-.footer__rule {
-  grid-column: 1 / -1;
-  width: 100%;
-  margin: 0;
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, .08);
+  font-size: 12px;
 }
 
 .footer__label {
@@ -5314,14 +5321,6 @@ textarea.modal-inline-control {
   font-weight: 600;
   letter-spacing: .9px;
   text-transform: uppercase;
-}
-
-.footer__value {
-  margin: 0;
-  color: rgba(255, 255, 255, .45);
-  font-family: "DM Mono", monospace;
-  font-size: 10px;
-  line-height: 1.6;
 }
 
 .footer__link {
@@ -5341,13 +5340,24 @@ textarea.modal-inline-control {
   color: rgba(255, 255, 255, .75);
 }
 
+button.footer__link {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+}
+
+.footer__portfolio-link {
+  display: inline;
+  text-decoration: underline;
+}
+
 .footer__copyright {
-  grid-column: 1 / -1;
   margin: 0;
   padding-top: 4px;
   color: rgba(255, 255, 255, .22);
   font-family: "DM Mono", monospace;
   font-size: 9px;
+  line-height: 1.6;
 }
 
 @media (min-width: 1024px) {
@@ -5532,6 +5542,10 @@ textarea.modal-inline-control {
   .footer__brand,
   .footer__copyright {
     grid-column: 1 / -1;
+  }
+
+  .footer__brand {
+    padding-bottom: 10px;
   }
 
   .month-grid {
@@ -7225,6 +7239,15 @@ button[aria-busy="true"] {
 .welcome__footer-link:hover,
 .welcome__footer-link:focus-visible {
   color: var(--indigo);
+}
+
+button.welcome__footer-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .welcome__footer-download {
@@ -9072,6 +9095,28 @@ button[aria-busy="true"] {
 
 .auth-overlay__legal[hidden] {
   display: none;
+}
+
+.auth-overlay__legal-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--indigo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-overlay__legal-link:hover,
+.auth-overlay__legal-link:focus-visible {
+  color: var(--indigo-hover);
+}
+
+.auth-overlay__legal-link:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .auth-overlay__verification-text {
