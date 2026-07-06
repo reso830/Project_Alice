@@ -303,18 +303,22 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09
 
 **Purpose**: Walk through each user story's Independent Test in a real browser to guarantee production readiness before merge.
 
-- [ ] T032 Verify Welcome Page responsive viewports
+- [x] T032 Verify Welcome Page responsive viewports
   - **Expected behavior**: Open local dev server. Validate desktop diagonal grid (`>900px`), tablet portrait layout (`621–900px`), and mobile portrait stacked buttons (`≤620px`) adjust without clipping or layout shifts.
   - **Validation/test**: Physical browser resizing verification.
+  - **Verified (2026-07-06)**: Desktop (incl. ultrawide 4K/5K stress test), tablet portrait (iPad mini), and mobile portrait (Z Fold 5 / iPhone SE) confirmed on the Vercel preview. iPhone SE stage reads slightly cramped — accepted as a small-viewport limitation.
 
-- [ ] T033 Verify Icon Standardization & Empty States
+- [x] T033 Verify Icon Standardization & Empty States
   - **Expected behavior**: Navigate to Tracker and Profile views. Check that toolbar filters display distinct line icons, empty states render graphics (`calendar-quiet.svg`, `calendar-empty.svg`, `profile-empty.svg`) at correct sizes, and old head/body spans are removed.
   - **Validation/test**: Visual browser verification.
+  - **Verified**: Confirmed in a prior session.
 
-- [ ] T034 Verify Showcase Carousel & Reduced Motion
+- [x] T034 Verify Showcase Carousel & Reduced Motion
   - **Expected behavior**: Observe the showcase carousel loops every 8.6s. Verify clicking progress dots jumps instantly. Toggle prefers-reduced-motion and verify all carousel slides freeze.
   - **Validation/test**: Visual browser verification.
+  - **Verified (2026-07-06)**: 8.6s loop and instant dot-jump confirmed; reduced-motion (DevTools emulation) collapses to a single static scene with no rotation/dots.
 
-- [ ] T035 Verify Auth Modal & In-App LLM Loaders
+- [x] T035 Verify Auth Modal & In-App LLM Loaders
   - **Expected behavior**: Open Auth Modal, verify glassmorphism and password peek. Trigger a mock resume upload and mock JD parse. Check that blurred overlays with gold spin rings block interaction, status copy matches Option A, and edge glows rotate only on desktop viewports.
   - **Validation/test**: Visual browser verification.
+  - **Verified (2026-07-06)**: Auth modal + password peek confirmed. **Deviation**: the panel is intentionally solid white (approved), not glassmorphism — the "glassmorphism" wording above is superseded by the shipped design. Full-screen LLM loaders confirmed on desktop, tablet, and mobile.
