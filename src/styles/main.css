@@ -8669,11 +8669,11 @@ button[aria-busy="true"] {
 }
 
 .welcome--mobile .scene-momentum {
-  gap: 12px;
+  gap: 8px;
 }
 
 .welcome--mobile .scene-momentum__chips {
-  gap: 5px;
+  gap: 4px;
 }
 
 .welcome--mobile .scene-momentum__chip {
@@ -8690,22 +8690,21 @@ button[aria-busy="true"] {
 }
 
 .welcome--mobile .scene-momentum__donut {
-  width: 118px;
-  height: 118px;
+  width: 96px;
+  height: 96px;
 }
 
 .welcome--mobile .scene-momentum__total-value {
-  font-size: 23px;
+  font-size: 19px;
 }
 
-/* Disclaimer: centre it along the stage bottom so the long label never
-   clips against the narrow frame edge. */
+/* Disclaimer: tuck it into the bottom-right of the stage, small, so it
+   neither clips against the frame edge nor collides with the centred
+   caption below (overflow:hidden on the frame keeps it contained). */
 .welcome--mobile .hero-slideshow__disclaimer {
-  right: auto;
-  left: 50%;
-  bottom: 4px;
-  transform: translateX(-50%);
-  font-size: 8px;
+  right: 8px;
+  bottom: 6px;
+  font-size: 7.5px;
 }
 
 .welcome--mobile .welcome__footer-meta {
@@ -8736,21 +8735,24 @@ button[aria-busy="true"] {
   font-size: 12.5px;
 }
 
+/* Full-width mobile button centres its text, so the dot can't be pinned to
+   the left edge (that leaves a big gap). Make the dot an inline flex item so
+   the [dot · label] pair stays centred together. */
 .welcome--mobile .welcome__cta--ghost {
-  position: relative;
-  padding-left: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-left: 0;
 }
 
 .welcome--mobile .welcome__cta--ghost::before {
   content: "";
-  position: absolute;
-  left: 20px;
-  top: 50%;
+  position: static;
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: #16A34A;
-  transform: translateY(-50%);
   box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
   animation: mw-pulse 1.8s ease-out infinite;
 }
