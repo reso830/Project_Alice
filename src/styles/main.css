@@ -8656,6 +8656,56 @@ button[aria-busy="true"] {
   height: min(320px, 40vh);
   flex-shrink: 1;
   min-height: 0;
+  /* Contain any scene overflow within the stage instead of spilling over the
+     caption/footer (deck side-cards clip cleanly here — accepted). */
+  overflow: hidden;
+}
+
+/* --- Mobile scene fit: shrink the desktop-sized scenes so they sit inside
+   the smaller stage without clipping the caption, dots, or footer. --- */
+.welcome--mobile .scene-parse__wrap {
+  width: min(320px, 96%);
+  min-height: 0;
+}
+
+.welcome--mobile .scene-momentum {
+  gap: 12px;
+}
+
+.welcome--mobile .scene-momentum__chips {
+  gap: 5px;
+}
+
+.welcome--mobile .scene-momentum__chip {
+  padding: 7px 3px;
+}
+
+.welcome--mobile .scene-momentum__chip-label {
+  font-size: 7.5px;
+  letter-spacing: 0;
+}
+
+.welcome--mobile .scene-momentum__chip-value {
+  font-size: 15px;
+}
+
+.welcome--mobile .scene-momentum__donut {
+  width: 118px;
+  height: 118px;
+}
+
+.welcome--mobile .scene-momentum__total-value {
+  font-size: 23px;
+}
+
+/* Disclaimer: centre it along the stage bottom so the long label never
+   clips against the narrow frame edge. */
+.welcome--mobile .hero-slideshow__disclaimer {
+  right: auto;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  font-size: 8px;
 }
 
 .welcome--mobile .welcome__footer-meta {
