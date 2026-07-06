@@ -53,4 +53,32 @@ describe('parseLegalDocument', () => {
     const result = parseLegalDocument(SAMPLE);
     expect(result.sections[0].content).toBe('First section content, all on one line.');
   });
+
+  it('preserves section content lines that look like metadata (> or Version:) once past the first ## heading', () => {
+    const sampleWithMetadataLookingContent = `# Sample Title
+Version: v1.0 · Effective July 6, 2026
+
+> Notice: This is a disclaimer.
+
+## 1. First Section
+> This line looks like a blockquote but is real content.
+Version: this line looks like a version tag but is real content.
+`;
+    const result = parseLegalDocument(sampleWithMetadataLookingContent);
+    expect(result.sections).toHaveLength(1);
+    expect(result.sections[0].content).toBe(
+      '> This line looks like a blockquote but is real content. Version: this line looks like a version tag but is real content.',
+    );
+  });
+
+  it('throws when there is no # title line', () => {
+    const noTitle = `Version: v1.0 · Effective July 6, 2026
+
+## 1. First Section
+Some content.
+`;
+    expect(() => parseLegalDocument(noTitle)).toThrow(
+      'Malformed legal document: missing title or no sections found',
+    );
+  });
 });

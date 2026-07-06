@@ -24,22 +24,15 @@ export function parseLegalDocument(rawMarkdown) {
     }
   }
 
+  let inHeader = true;
+
   for (; index < lines.length; index += 1) {
     const trimmed = lines[index].trim();
 
     if (!trimmed) continue;
 
-    if (trimmed.startsWith('Version:')) {
-      version = trimmed.slice('Version:'.length).trim();
-      continue;
-    }
-
-    if (trimmed.startsWith('> ')) {
-      disclaimer = trimmed.slice(2).trim();
-      continue;
-    }
-
     if (trimmed.startsWith('## ')) {
+      inHeader = false;
       if (currentSection) {
         sections.push({
           title: currentSection.title,
@@ -47,6 +40,16 @@ export function parseLegalDocument(rawMarkdown) {
         });
       }
       currentSection = { title: trimmed.slice(3).trim(), lines: [] };
+      continue;
+    }
+
+    if (inHeader && trimmed.startsWith('Version:')) {
+      version = trimmed.slice('Version:'.length).trim();
+      continue;
+    }
+
+    if (inHeader && trimmed.startsWith('> ')) {
+      disclaimer = trimmed.slice(2).trim();
       continue;
     }
 
@@ -60,6 +63,10 @@ export function parseLegalDocument(rawMarkdown) {
       title: currentSection.title,
       content: currentSection.lines.join(' ').trim(),
     });
+  }
+
+  if (!title || sections.length === 0) {
+    throw new Error('Malformed legal document: missing title or no sections found');
   }
 
   return { title, version, disclaimer, sections };
