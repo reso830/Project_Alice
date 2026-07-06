@@ -116,11 +116,11 @@ export function mountSignupForm(container, { email = '', onEmailChange, onSucces
     clearFieldErrors();
     let valid = true;
     if (!EMAIL_RE.test(emailField.input.value)) {
-      emailField.fieldError.textContent = 'Enter a valid email address.';
+      setFieldError(emailField, 'Enter a valid email address.');
       valid = false;
     }
     if (passwordField.input.value.length < PASSWORD_MIN) {
-      passwordField.fieldError.textContent = `Password must be at least ${PASSWORD_MIN} characters.`;
+      setFieldError(passwordField, `Password must be at least ${PASSWORD_MIN} characters.`);
       valid = false;
     }
     return valid;

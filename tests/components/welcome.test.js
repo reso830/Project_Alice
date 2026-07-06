@@ -729,6 +729,11 @@ describe('SignupForm — field validation + submit behavior', () => {
     expect(fieldErrors[0].textContent).toContain('valid email');
     expect(fieldErrors[1].textContent).toContain('at least 8');
     expect(supabaseMocks.signUp).not.toHaveBeenCalled();
+
+    // Submit validation must also set the a11y + styling error state (not just text).
+    expect(form.querySelector('input[name="email"]').getAttribute('aria-invalid')).toBe('true');
+    expect(form.querySelector('input[name="password"]').getAttribute('aria-invalid')).toBe('true');
+    expect(form.querySelectorAll('.auth-form__field--error')).toHaveLength(2);
   });
 
   it('happy path transitions the overlay to verification_sent', async () => {

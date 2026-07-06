@@ -12123,6 +12123,9 @@ button[aria-busy="true"] {
   width: 64px;
   height: 64px;
   object-fit: contain;
+  /* Sigil sits above the ring (per design) so the blurred glow is occluded
+     rather than bleeding over the icon footprint. */
+  z-index: 2;
 }
 
 .processing-overlay .spinner-ring {
@@ -12132,6 +12135,7 @@ button[aria-busy="true"] {
   height: 100%;
   transform-origin: 50% 50%;
   animation: processing-spin 0.6s linear infinite;
+  z-index: 1;
 }
 
 .processing-overlay .spinner-ring .ring-glow {
