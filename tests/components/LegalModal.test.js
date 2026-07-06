@@ -24,9 +24,9 @@ describe('LegalModal renderer', () => {
     expect(dialog.getAttribute('aria-labelledby')).toBe(title.id);
     expect(title.textContent).toBe('Terms & Conditions');
     expect(overlay.querySelector('.legal-modal__close').textContent).toBe('✕');
-    expect(overlay.textContent).toContain('v0.3.0 · Effective Apr 1, 2026');
+    expect(overlay.textContent).toContain('v1.0 · Effective July 6, 2026');
     expect(overlay.textContent).toContain('Notice:');
-    expect(overlay.textContent).toContain('1. Acceptance of terms');
+    expect(overlay.textContent).toContain('1. Acceptance of Terms');
     expect(document.body.style.overflow).toBe('hidden');
   });
 
