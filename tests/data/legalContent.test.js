@@ -1,68 +1,76 @@
 import { describe, expect, it } from 'vitest';
-import {
-  LEGAL_DISCLAIMER,
-  TERMS_AND_CONDITIONS,
-  PRIVACY_POLICY,
-} from '../../src/data/legalContent.js';
+import { TERMS_AND_CONDITIONS, PRIVACY_POLICY } from '../../src/data/legalContent.js';
 
-describe('legalContent data structure validation', () => {
-  it('exports a valid, descriptive legal disclaimer', () => {
-    expect(LEGAL_DISCLAIMER).toBeTypeOf('string');
-    expect(LEGAL_DISCLAIMER).toContain('Notice:');
-    expect(LEGAL_DISCLAIMER).toContain('requires professional attorney review');
-  });
-
-  describe('Terms & Conditions structure', () => {
-    it('has correct top-level metadata', () => {
+describe('legalContent', () => {
+  describe('Terms & Conditions', () => {
+    it('has the real title, version, and disclaimer', () => {
       expect(TERMS_AND_CONDITIONS.title).toBe('Terms & Conditions');
-      expect(TERMS_AND_CONDITIONS.version).toBe('v0.3.0 · Effective Apr 1, 2026');
-      expect(TERMS_AND_CONDITIONS.disclaimer).toBe(LEGAL_DISCLAIMER);
+      expect(TERMS_AND_CONDITIONS.version).toBe('v1.0 · Effective July 6, 2026');
+      expect(TERMS_AND_CONDITIONS.disclaimer).toContain('Notice:');
+      expect(TERMS_AND_CONDITIONS.disclaimer).toContain('have not been reviewed by a licensed attorney');
     });
 
-    it('has exactly 4 required sections', () => {
-      expect(Array.isArray(TERMS_AND_CONDITIONS.sections)).toBe(true);
-      expect(TERMS_AND_CONDITIONS.sections).toHaveLength(4);
-
-      for (const section of TERMS_AND_CONDITIONS.sections) {
-        expect(section).toHaveProperty('title');
-        expect(section).toHaveProperty('content');
-        expect(section.title).toBeTypeOf('string');
-        expect(section.content).toBeTypeOf('string');
-      }
+    it('has all 22 sections in order, including flattened AI Features subsections', () => {
+      expect(TERMS_AND_CONDITIONS.sections).toHaveLength(22);
+      expect(TERMS_AND_CONDITIONS.sections[0].title).toBe('1. Acceptance of Terms');
+      expect(TERMS_AND_CONDITIONS.sections[7].title).toBe('8. AI Features');
+      expect(TERMS_AND_CONDITIONS.sections[8].title).toBe('8.1 Bring Your Own Key (BYOK)');
+      expect(TERMS_AND_CONDITIONS.sections[9].title).toBe('8.2 AI Output Disclaimer');
+      expect(TERMS_AND_CONDITIONS.sections[21].title).toBe('20. Contact Information');
     });
 
-    it('enforces SQLite/local data responsibility in Section 2', () => {
-      const section2 = TERMS_AND_CONDITIONS.sections[1];
-      expect(section2.title).toContain('2. Your account');
-      expect(section2.content).toContain('SQLite database or browser storage');
-      expect(section2.content).toContain('keeping your login credentials secure');
+    it('states the 18+ eligibility requirement', () => {
+      const eligibility = TERMS_AND_CONDITIONS.sections.find((s) => s.title === '3. Eligibility and Accounts');
+      expect(eligibility.content).toContain('at least 18 years old');
+    });
+
+    it('states the OFAC-sanctioned-country restriction', () => {
+      const eligibility = TERMS_AND_CONDITIONS.sections.find((s) => s.title === '3. Eligibility and Accounts');
+      expect(eligibility.content).toContain('Office of Foreign Assets Control');
+    });
+
+    it('states the liability cap', () => {
+      const liability = TERMS_AND_CONDITIONS.sections.find((s) => s.title === '15. Limitation of Liability');
+      expect(liability.content).toContain('fifty United States dollars');
     });
   });
 
-  describe('Privacy Policy structure', () => {
-    it('has correct top-level metadata', () => {
+  describe('Privacy Policy', () => {
+    it('has the real title, version, and disclaimer', () => {
       expect(PRIVACY_POLICY.title).toBe('Privacy Policy');
-      expect(PRIVACY_POLICY.version).toBe('v0.2.1 · Effective Mar 15, 2026');
-      expect(PRIVACY_POLICY.disclaimer).toBe(LEGAL_DISCLAIMER);
+      expect(PRIVACY_POLICY.version).toBe('v1.0 · Effective July 6, 2026');
+      expect(PRIVACY_POLICY.disclaimer).toContain('Notice:');
     });
 
-    it('has exactly 4 required sections', () => {
-      expect(Array.isArray(PRIVACY_POLICY.sections)).toBe(true);
-      expect(PRIVACY_POLICY.sections).toHaveLength(4);
-
-      for (const section of PRIVACY_POLICY.sections) {
-        expect(section).toHaveProperty('title');
-        expect(section).toHaveProperty('content');
-        expect(section.title).toBeTypeOf('string');
-        expect(section.content).toBeTypeOf('string');
-      }
+    it('has all 25 sections in order, including flattened subsections', () => {
+      expect(PRIVACY_POLICY.sections).toHaveLength(25);
+      expect(PRIVACY_POLICY.sections[0].title).toBe('1. Introduction');
+      expect(PRIVACY_POLICY.sections[9].title).toBe('4.6 Technical Information');
+      expect(PRIVACY_POLICY.sections[24].title).toBe('15. Contact Us');
     });
 
-    it('enforces Supabase persistence warning in Section 3', () => {
-      const section3 = PRIVACY_POLICY.sections[2];
-      expect(section3.title).toContain('3. Storage & retention');
-      expect(section3.content).toContain('Supabase persistence backend');
-      expect(section3.content).toContain('no cloud synchronization or remote data transmission');
+    it('describes resume files as processed, not retained', () => {
+      const resumeSection = PRIVACY_POLICY.sections.find((s) => s.title === '4.4 Resume Files');
+      expect(resumeSection.content).toContain('not written to disk');
+      expect(resumeSection.content).toContain('discarded once the extraction request completes');
+    });
+
+    it('describes export requests as fulfilled manually, not as a self-service feature', () => {
+      const rightsSection = PRIVACY_POLICY.sections.find((s) => s.title === '10. Your Rights');
+      expect(rightsSection.content).toContain('fulfilled manually');
+      // Note: the content does mention "automated self-service export" — but only to say
+      // this is NOT how requests are handled. This assertion checks for the manual-fulfillment
+      // claim rather than the string's absence, since the word "self-service" legitimately
+      // appears in that negation.
+      expect(rightsSection.content).not.toContain('export your entire application history');
+    });
+
+    it('discloses the Sydney, Australia hosting region and SCC safeguard', () => {
+      const hostedStorage = PRIVACY_POLICY.sections.find((s) => s.title === '6.3 Hosted Mode');
+      expect(hostedStorage.content).toContain('Sydney, Australia');
+
+      const transfers = PRIVACY_POLICY.sections.find((s) => s.title === '11. International Data Transfers');
+      expect(transfers.content).toContain('Standard Contractual Clauses');
     });
   });
 });
