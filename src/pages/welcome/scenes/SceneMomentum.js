@@ -47,23 +47,51 @@ function sum(data) {
 function paintDonut(group, data) {
   const total = sum(data) || 1;
   let offset = 0;
-  group.replaceChildren(...data.map((item, index) => {
+  // Update segments in place (don't recreate) so CSS can transition the
+  // dasharray/dashoffset when the dataset grows.
+  data.forEach((item, index) => {
     const length = (item.value / total) * CIRC;
-    const segment = svgEl('circle');
-    segment.classList.add('scene-momentum__segment');
+    let segment = group.children[index];
+    if (!segment) {
+      segment = svgEl('circle');
+      segment.classList.add('scene-momentum__segment');
+      segment.setAttribute('cx', String(SIZE / 2));
+      segment.setAttribute('cy', String(SIZE / 2));
+      segment.setAttribute('r', String(RADIUS));
+      segment.setAttribute('fill', 'none');
+      segment.setAttribute('stroke-width', '18');
+      group.append(segment);
+    }
     segment.dataset.segment = item.key;
-    segment.setAttribute('cx', String(SIZE / 2));
-    segment.setAttribute('cy', String(SIZE / 2));
-    segment.setAttribute('r', String(RADIUS));
-    segment.setAttribute('fill', 'none');
     segment.setAttribute('stroke', item.color);
-    segment.setAttribute('stroke-width', '18');
     segment.setAttribute('stroke-dasharray', `${length.toFixed(2)} ${(CIRC - length).toFixed(2)}`);
     segment.setAttribute('stroke-dashoffset', String((-offset).toFixed(2)));
     segment.style.setProperty('--segment-delay', `${index * 120}ms`);
     offset += length;
-    return segment;
-  }));
+  });
+}
+
+let _raf = 0;
+
+function countUp(root, fromData, toData, duration) {
+  globalThis.cancelAnimationFrame(_raf);
+  let start = null;
+  const totalFrom = sum(fromData);
+  const totalTo = sum(toData);
+  const frame = (now) => {
+    if (start === null) start = now;
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    toData.forEach((item, i) => {
+      const value = Math.round(fromData[i].value + (item.value - fromData[i].value) * eased);
+      const el = root.querySelector(`.scene-momentum__chip[data-stat="${item.key}"] .scene-momentum__chip-value`);
+      if (el) el.textContent = String(value);
+    });
+    const totalEl = root.querySelector('.scene-momentum__total-value');
+    if (totalEl) totalEl.textContent = String(Math.round(totalFrom + (totalTo - totalFrom) * eased));
+    if (t < 1) _raf = globalThis.requestAnimationFrame(frame);
+  };
+  _raf = globalThis.requestAnimationFrame(frame);
 }
 
 function renderChips(root, data) {
@@ -129,7 +157,7 @@ export function mount(container, { variant = 'default', motion } = {}) {
   if (animate) {
     timers.push(setTimeout(() => {
       paintDonut(segments, GROWN);
-      renderChips(root, GROWN);
+      countUp(root, INITIAL, GROWN, 900);
     }, SWAP_MS));
   }
 
@@ -138,6 +166,7 @@ export function mount(container, { variant = 'default', motion } = {}) {
 
 export function unmount() {
   if (!_state) return;
+  globalThis.cancelAnimationFrame(_raf);
   _state.timers.forEach((timer) => clearTimeout(timer));
   _state.root.remove();
   _state = null;

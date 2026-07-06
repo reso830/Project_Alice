@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../src/assets/logo/alice-sigil-full-white.svg', () => ({
-  default: '/alice-sigil-full-white.svg',
-}));
-
 import { SceneDeck } from '../../../../src/pages/welcome/scenes/SceneDeck.js';
 
 let container;
@@ -21,13 +17,14 @@ afterEach(() => {
 });
 
 describe('SceneDeck', () => {
-  it('mounts three fanned cards with the white sigil asset', () => {
+  it('mounts three fanned tracker cards with accent, badge, and compat label', () => {
     SceneDeck.mount(container, { variant: 'default' });
 
     expect(container.querySelector('.scene-deck')?.dataset.variant).toBe('default');
     expect(container.querySelectorAll('.scene-deck__card')).toHaveLength(3);
-    expect(container.querySelector('.scene-deck__sigil')?.getAttribute('src'))
-      .toBe('/alice-sigil-full-white.svg');
+    expect(container.querySelectorAll('.scene-deck__accent')).toHaveLength(3);
+    expect(container.querySelector('.scene-deck__badge--offer')?.textContent).toBe('Offer');
+    expect(container.querySelector('.scene-deck__bar-label')?.textContent).toBe('94% compat');
   });
 
   it('mounts with the centered variant class', () => {

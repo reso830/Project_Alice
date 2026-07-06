@@ -7702,6 +7702,7 @@ button[aria-busy="true"] {
   transition: opacity .42s ease, transform .42s ease;
 }
 
+.scene-parse.is-shrunk .scene-parse__window,
 .scene-parse.is-parsed .scene-parse__window {
   opacity: 0;
   transform: translate(-50%, -54%) scale(.72);
@@ -7784,6 +7785,11 @@ button[aria-busy="true"] {
   transform: translate(-50%, -50%) scale(1);
 }
 
+/* Card pops in only after the spinner has faded. */
+.scene-parse.is-parsed .scene-parse__card {
+  transition-delay: .25s;
+}
+
 .scene-parse.is-settled .scene-parse__window {
   display: none;
 }
@@ -7833,7 +7839,7 @@ button[aria-busy="true"] {
 
 .scene-parse.is-parsed .scene-parse__spark {
   animation: parse-spark .62s ease-out forwards;
-  animation-delay: var(--spark-delay, 0ms);
+  animation-delay: calc(.25s + var(--spark-delay, 0ms));
   transform: rotate(var(--spark-angle)) translateX(0);
 }
 
@@ -7853,9 +7859,8 @@ button[aria-busy="true"] {
 }
 
 /* Spinner fades in near the end of the scan, then hides as the card pops in. */
-.scene-parse.is-scanned .scene-parse__spinner {
+.scene-parse.is-shrunk .scene-parse__spinner {
   opacity: 1;
-  transition-delay: .85s;
   animation: parse-spin .8s linear infinite;
 }
 
@@ -7980,61 +7985,86 @@ button[aria-busy="true"] {
 
 .scene-deck__stack {
   position: relative;
-  width: min(450px, 100%);
-  height: 260px;
+  width: min(680px, 98%);
+  height: 240px;
 }
 
 .scene-deck__card {
   position: absolute;
   left: 50%;
-  top: 36px;
-  width: 220px;
-  min-height: 158px;
-  padding: 15px;
-  border-radius: 14px;
+  top: 6px;
+  width: min(330px, 84%);
+  overflow: hidden;
+  padding: 15px 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  border-radius: 13px;
   background: #FFFFFF;
-  color: var(--t1);
-  box-shadow: 0 24px 70px rgba(14, 14, 32, .38);
-  transform: translateX(-50%) translateX(var(--deck-x)) rotate(var(--deck-rotation));
+  border: 1px solid #E8E3DA;
+  color: var(--navy);
+  box-shadow: 0 30px 60px -26px rgba(0, 0, 0, .6), 0 6px 16px rgba(0, 0, 0, .28);
+  transform: translateX(-50%) translate(var(--deck-x), var(--deck-y)) rotate(var(--deck-rotation));
   transform-origin: center bottom;
 }
 
-.scene-deck__card--0 { z-index: 1; }
-.scene-deck__card--1 { z-index: 2; top: 24px; }
+.scene-deck__card--0 { z-index: 1; opacity: .8; }
+.scene-deck__card--1 { z-index: 2; opacity: .92; }
 .scene-deck__card--2 { z-index: 3; }
 
-.scene-deck__sigil {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 34px;
-  height: 34px;
-  padding: 6px;
-  border-radius: 50%;
-  background: var(--navy);
-  object-fit: contain;
+@media (prefers-reduced-motion: no-preference) {
+  .scene-deck__card--0 { animation: scene-deck-float 5.5s ease-in-out 1s infinite; }
+  .scene-deck__card--1 { animation: scene-deck-float 5.5s ease-in-out .5s infinite; }
+  .scene-deck__card--2 { animation: scene-deck-float 5.5s ease-in-out infinite; }
 }
 
-.scene-deck__top {
+@keyframes scene-deck-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -9px; }
+}
+
+.scene-deck__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #818CF8;
+}
+
+.scene-deck__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 7px;
 }
 
 .scene-deck__id {
-  color: var(--t3);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #FFFFFF;
   font-family: "DM Mono", monospace;
-  font-size: 11px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .4px;
 }
 
 .scene-deck__badge {
-  padding: 4px 9px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: var(--indigo-dim);
-  color: var(--indigo);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.scene-deck__badge--applied { background: #DBEAFE; color: #1E40AF; }
+.scene-deck__badge--interview { background: #EDE9FE; color: #6D28D9; }
+.scene-deck__badge--offer { background: #DCFCE7; color: #15803D; }
+
+.scene-deck__upd {
+  margin-left: auto;
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  color: #9CA3AF;
 }
 
 .scene-deck__role,
@@ -8043,30 +8073,42 @@ button[aria-busy="true"] {
 }
 
 .scene-deck__role {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14.5px;
+  font-weight: 600;
 }
 
 .scene-deck__company {
-  margin-top: 4px;
-  color: var(--t2);
-  font-size: 12px;
+  margin-top: 1px;
+  color: #4B5563;
+  font-size: 12.5px;
 }
 
 .scene-deck__bar {
+  position: relative;
   display: block;
-  width: 120px;
-  height: 6px;
-  margin-top: 22px;
+  height: 15px;
+  margin-top: 1px;
   overflow: hidden;
   border-radius: 999px;
-  background: #E8E4DD;
+  background: #EDE8DF;
 }
 
 .scene-deck__bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+
+.scene-deck__bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "DM Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 500;
+  color: #FFFFFF;
 }
 
 .scene-deck__bar-fill--great { background: #22C55E; }

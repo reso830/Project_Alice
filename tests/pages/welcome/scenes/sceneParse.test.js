@@ -30,9 +30,11 @@ describe('SceneParse', () => {
     vi.useFakeTimers();
     SceneParse.mount(container);
 
-    vi.advanceTimersByTime(520);
+    vi.advanceTimersByTime(420);
     expect(container.querySelector('.scene-parse')?.classList).toContain('is-scanned');
-    vi.advanceTimersByTime(1280);
+    vi.advanceTimersByTime(1130);
+    expect(container.querySelector('.scene-parse')?.classList).toContain('is-shrunk');
+    vi.advanceTimersByTime(1200);
     expect(container.querySelector('.scene-parse')?.classList).toContain('is-parsed');
   });
 

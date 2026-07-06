@@ -30,6 +30,8 @@ describe('SceneMomentum', () => {
     SceneMomentum.mount(container);
 
     vi.advanceTimersByTime(2500);
+    // Swap fires at 2500ms, then the count-up animates over 900ms via rAF.
+    vi.advanceTimersByTime(1000);
 
     expect(container.querySelector('.scene-momentum__total-value')?.textContent).toBe('36');
     expect(container.querySelector('[data-stat="offer"] .scene-momentum__chip-value')?.textContent).toBe('3');

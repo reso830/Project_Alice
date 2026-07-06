@@ -91,8 +91,10 @@ export function mount(container, { variant = 'default', motion } = {}) {
   if (!animate) {
     root.classList.add('is-settled');
   } else {
-    timers.push(setTimeout(() => root.classList.add('is-scanned'), 520));
-    timers.push(setTimeout(() => root.classList.add('is-parsed'), 1800));
+    // Phased: scan → window shrinks/fades + spinner spins → card pops + burst.
+    timers.push(setTimeout(() => root.classList.add('is-scanned'), 420));
+    timers.push(setTimeout(() => root.classList.add('is-shrunk'), 1550));
+    timers.push(setTimeout(() => root.classList.add('is-parsed'), 2750));
   }
 
   _state = { root, timers };
