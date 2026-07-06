@@ -28,6 +28,39 @@ specification or when needed to protect the changed behavior.
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
+## Visual-Fidelity Task Pattern
+
+*Applies ONLY to visual-fidelity features (plan.md Visual-Fidelity Mode filled
+in). For logic features and small visual tweaks, ignore this section. Do not add
+these artifacts speculatively — proportionality governs (Principle V).*
+
+For a visual-fidelity feature, visual tasks **reference** the canonical design
+source rather than paraphrasing it, and they carry a fidelity acceptance bar:
+
+- **One scene/component per task.** Never bundle multiple scenes into one task.
+- **Task shape** (replaces prose "Expected behavior" for visual tasks):
+  - **Match**: `<prototype file>#<section or Lnn-Lnn>` — the canonical reference.
+  - **Breakpoints/checkpoints**: e.g. `390 / 768 / 1440px` (+ animation
+    checkpoints / reduced-motion where relevant).
+  - **Translation note** (cross-stack only): lift stylesheet/tokens wholesale;
+    replicate DOM element-for-element.
+  - **Provenance**: mark each style block `lifted from prototype CSS` or
+    `recreated manually` (recreated needs a reason).
+  - **Done when**: Tier 1 (`npm run test:visual` geometry) green at every
+    breakpoint AND Tier 2 frozen-state screenshots reviewed against the prototype.
+- **Tier-1 harness setup task** (Foundational phase): stand up `npm run
+  test:visual` (Playwright geometry assertions, headless, animations frozen, mock
+  data seeded) IF it does not already exist. The harness is reused across features;
+  only the per-component assertions are authored per feature. Blocks visual US tasks.
+- **Conditional artifacts (produce only when triggered):**
+  - *Deviation ledger* — add an entry ONLY when an intentional difference from the
+    prototype is accepted (what changed, why, who approved). No deviation → no ledger.
+  - *`visual-artifacts.md` manifest* — required ONLY when Tier 2 judgment is handed
+    from implementer to a separate reviewer. Lists: prototype screenshot paths ·
+    implementation screenshot paths (`[task-id]_prototype.png` / `[task-id]_built.png`)
+    · viewport/checkpoint labels · geometry report path · deviation-ledger link.
+    Self-served Tier 2 does not need it.
+
 <!-- 
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
@@ -197,6 +230,8 @@ For each user story in this feature, add one task using the Independent Test fro
 - [ ] TXXX Mobile layout — open DevTools at ≤ 640px; confirm no broken layout, single-column stacking, and all interactions work with touch/click
 
 **Note**: Each task MUST define clear pass criteria. A task is complete only when a human has walked through the steps in a real browser and all pass criteria are met. Document any deviations or deferred items with rationale.
+
+**Visual-fidelity features**: the Design Fidelity gate (Tier 1 geometry + Tier 2 visual judgment) MUST have already passed per-task during implementation. This smoke test then *confirms* the merged state — it should surface little or no appearance drift. If it is generating many "align to prototype" fixes, the fidelity gate was not run in-loop and should be, rather than absorbing the drift here.
 
 ---
 

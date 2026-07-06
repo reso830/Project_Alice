@@ -1,4 +1,37 @@
 <!--
+Sync Impact Report (1.6.0 — 2026-07-06)
+Version change: 1.5.0 -> 1.6.0
+Reason: Amendment 1.6.0 — adds a Design Fidelity gate for visual-fidelity
+features (any feature implemented against a design prototype, mockup set, or
+high-fidelity handoff). Identified after feature 042 (welcome brand refresh):
+the handoff was excellent, but the pixel/motion detail was lost when the
+prototype was paraphrased down the spec -> plan -> tasks chain, and appearance
+was only checked by the operator at the very end — producing ~18 "align to
+prototype" rework commits. For visual work the design artifact IS the
+requirement; prose is a lossy encoding of pixels and motion. The gate makes the
+prototype the referenced source of truth, decomposes visual work per
+scene/component, and moves the appearance check into the implementation loop
+(automated geometry + agent visual judgment) instead of onto the human at merge.
+Proportionality is built in: the gate scales down for small visual changes, and
+documentary artifacts are produced only when actually needed.
+Modified principles:
+- V. Testing and Quality Gates — added the Design Fidelity gate for
+  visual-fidelity features (source-of-truth referencing, faithful cross-stack
+  translation, per-component decomposition, two-tier fidelity check).
+Modified sections:
+- Development Workflow and Review Gates — plans classify visual-fidelity
+  features and name the canonical design source; tasks reference it directly
+  and pass the Design Fidelity gate before a visual phase is accepted.
+Templates requiring updates:
+- .specify/templates/plan-template.md — Visual-Fidelity Mode section added.
+- .specify/templates/tasks-template.md — visual-task pattern, Tier-1 harness
+  setup task, and conditional artifacts added.
+- .specify/templates/checklist-fidelity-template.md — new fidelity checklist
+  variant (with the test:visual harness spec) added.
+Follow-up TODOs: none.
+
+---
+
 Sync Impact Report (1.5.0 — 2026-05-30)
 Version change: 1.4.0 -> 1.5.0
 Reason: Amendment 1.5.0 — records the first explicit, scoped exception to
@@ -156,6 +189,32 @@ Follow-up TODOs (pre-existing, not introduced by this amendment):
   field — both deferred to a future template-sync amendment.
 - plan-template.md Constitution Check bullet (line 34) omits
   `responsibilities` per 1.2.0 — also deferred.
+
+Amendment 1.6.0 — 2026-07-06
+Reason: Added a Design Fidelity gate for visual-fidelity features (features
+implemented against a design prototype, mockup set, or high-fidelity handoff).
+Identified after feature 042: the handoff README was high-fidelity, but the
+pixel/motion detail evaporated when the prototype was paraphrased through
+spec -> plan -> tasks, and appearance was verified only by the operator at the
+end — the ~18 "align to prototype" rework commits were that late human review
+firing. Speckit's normal summarization is correct for logic requirements and
+lossy for visual ones, where the design artifact is the requirement itself.
+The gate: (1) the prototype/handoff is the referenced canonical source, never
+paraphrased; (2) cross-stack ports lift the stylesheet wholesale and replicate
+the DOM element-for-element; (3) each scene/component is its own task; (4) a
+two-tier check runs inside implementation — Tier 1 automated geometry
+assertions (mandatory) and Tier 2 frozen-state visual judgment (capability-
+preflight-gated, artifacts always produced). Proportionality and an
+artifact-must-name-the-failure-it-prevents rule guard against process bloat.
+Modified principles:
+- V. Testing and Quality Gates — Design Fidelity gate added for visual features
+Modified sections:
+- Development Workflow and Review Gates — visual-fidelity classification and
+  gate referenced as a pre-acceptance requirement for visual phases
+Templates updated: .specify/templates/plan-template.md (Visual-Fidelity Mode),
+.specify/templates/tasks-template.md (visual-task pattern + Tier-1 harness task
++ conditional artifacts), .specify/templates/checklist-fidelity-template.md (new)
+Follow-up TODOs: none
 -->
 
 # Application Tracker Constitution
@@ -224,10 +283,48 @@ docs updates when env vars or runtime modes change, and repo-map / navigation
 docs updates when new directories or files were introduced. The smoke test
 walks the same state the operator will merge, so docs and version land first.
 
+**Design Fidelity gate (visual-fidelity features).** A *visual-fidelity
+feature* is any feature implemented against a design prototype, mockup set, or
+high-fidelity handoff. For these, the design artifact IS the requirement, not
+supporting evidence, and the following MUST hold:
+
+- **Source of truth.** The prototype/handoff is canonical and MUST be referenced
+  directly (file + section or line range), never paraphrased into prose. On
+  conflict, precedence is prototype / screenshots > handoff README > spec > plan
+  > tasks. Ambiguities are resolved by asking, not by inventing detail.
+- **Faithful translation.** When porting across stacks (e.g. a React prototype
+  to Vanilla JS), lift the prototype's stylesheet and design tokens wholesale
+  and replicate its DOM structure element-for-element. Do not restructure or
+  "clean up" the node tree — the lifted CSS depends on the exact hierarchy.
+- **Decomposition.** Each animated scene or distinct component is its own task.
+  Bundling several into one task is prohibited.
+- **Two-tier fidelity check, run inside implementation before a visual phase is
+  accepted:** *Tier 1 (mandatory, automated)* — geometry/layout assertions
+  (viewport-relative sizing, non-overlap, responsive visibility) run headless
+  with animations frozen and identical mock data seeded; tolerances are ranges,
+  not exact pixels. *Tier 2 (visual judgment)* — frozen-state screenshots at the
+  defined breakpoints/checkpoints, compared against the prototype. The
+  implementing agent self-serves Tier 2 only after passing an in-session
+  image-view preflight; otherwise it MUST still produce the screenshot artifacts
+  and hand judgment to a vision-capable reviewer or the operator. Tier 2 is never
+  skipped — only its judge changes.
+
+Proportionality governs this gate: it applies in full to substantial visual
+features and scales down for small visual changes, which follow the principles
+above without the full harness. Documentary artifacts (a deviation ledger; a
+per-task visual-artifacts manifest) are produced only when actually needed — when
+a real intentional deviation exists, or when Tier 2 judgment is handed between
+parties. Every recurring fidelity artifact MUST name the specific failure it
+prevents; one that cannot is removed.
+
 Rationale: Validation and status behavior define the reliability of the tracker,
 so they require repeatable automated checks. Docs and version metadata define
 how the tracker is discovered, deployed, and rolled forward, so they belong in
-the merge boundary rather than in a follow-up pass.
+the merge boundary rather than in a follow-up pass. Prose is a lossy encoding of
+pixels and motion: visual features fail when the design is summarized instead of
+referenced, and when appearance is checked only by a human at the end instead of
+by the implementer during the work — so fidelity is referenced, decomposed, and
+verified in-loop.
 
 ## Privacy, Accessibility, and Extensibility Constraints
 
@@ -272,6 +369,13 @@ phase, walking through each user story's Independent Test from spec.md in a real
 browser against the to-be-merged state. Any skipped check MUST be documented with
 the reason and residual risk.
 
+For visual-fidelity features (Principle V), plans MUST classify the feature as
+such and name the canonical design source, tasks MUST reference that source
+directly rather than paraphrase it, and each visual phase MUST pass the Design
+Fidelity gate (Tier 1 automated geometry + Tier 2 visual judgment) before it is
+accepted. This gate runs during implementation; the Browser Smoke Test then
+confirms the merged state rather than discovering drift for the first time.
+
 ## Governance
 
 This constitution overrides convenience during specification, planning, and
@@ -288,4 +392,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.5.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-30
+**Version**: 1.6.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-07-06
