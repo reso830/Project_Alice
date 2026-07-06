@@ -1025,7 +1025,7 @@ switch ($Action) {
         }
 
         $CodexReviewLog = New-LogPath -BaseName "06-codex-requirements-review"
-        Run-Codex -Prompt (Load-Prompt -TemplateName "codex-check-requirements") -LogFile $CodexReviewLog
+        Run-Codex -Prompt (Load-Prompt -TemplateName "codex-check-requirements") -LogFile $CodexReviewLog -SandboxMode "workspace-write"
         $CodexReqVerdict = Get-ReviewVerdict -LogFile $CodexReviewLog -AllowedVerdicts @("Ready", "Not Ready")
         Append-AiWorkflowReview -ActionName "Requirements Review" -Reviewer "Codex" -Verdict $CodexReqVerdict -LogFile $CodexReviewLog -AllowedVerdicts @("Ready", "Not Ready")
         if ($CodexReqVerdict -eq "Not Ready") {

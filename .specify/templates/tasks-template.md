@@ -28,6 +28,62 @@ specification or when needed to protect the changed behavior.
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
+## Phase Summary
+
+*Required immediately after this header, before Phase 1, per `scripts/prompts/claude-tasks.md`. One row per phase; keep it consistent with the detailed phases below it.*
+
+| Phase | Focus | Tasks | Stories |
+|---|---|---|---|
+| 1 | Setup | T001–T00N | — |
+| 2 | Foundational | T00N–T0NN | — |
+| 3 | User Story 1 | T0NN–T0NN | US1 |
+| N | Polish & Cross-Cutting | T0NN–T0NN | — |
+| N+1 | Release Prep | T0NN–T0NN | — |
+| N+2 | Browser Smoke Test | T0NN–T0NN | US1, US2, ... |
+
+## Visual-Fidelity Task Pattern
+
+*Applies to visual-fidelity features (plan.md Visual-Fidelity Mode filled in).
+For logic features, this section does not apply. For a small visual tweak against
+a design reference, the fidelity principles still apply in full — reference the
+source directly (never paraphrase it), and still verify with Tier 2 visual
+judgment before calling it done. Proportionality (Principle V) only thins the
+process, not the fidelity bar: skip the Tier-1 harness setup task if the change
+doesn't warrant it, and skip the conditional artifacts below unless they're
+actually triggered. Do not add unneeded artifacts speculatively.*
+
+For a visual-fidelity feature, visual tasks **reference** the canonical design
+source rather than paraphrasing it, and they carry a fidelity acceptance bar:
+
+- **One scene/component per task.** Never bundle multiple scenes into one task.
+- **Task shape** (replaces prose "Expected behavior" for visual tasks):
+  - **Match**: `<prototype file>#<section or Lnn-Lnn>` — the canonical reference.
+  - **Breakpoints/checkpoints**: e.g. `390 / 768 / 1440px` (+ animation
+    checkpoints / reduced-motion where relevant).
+  - **Translation note** (cross-stack only): lift stylesheet/tokens wholesale;
+    replicate DOM element-for-element.
+  - **Provenance**: mark each style block `lifted from prototype CSS` or
+    `recreated manually` (recreated needs a reason).
+  - **Done when**: Tier 1 (`npm run test:visual` geometry) green at every
+    breakpoint AND Tier 2 frozen-state screenshots reviewed against the prototype.
+- **Tier-1 harness setup task** (Foundational phase): stand up `npm run
+  test:visual` (Playwright geometry assertions, headless, animations frozen, mock
+  data seeded) IF it does not already exist. The harness is reused across features;
+  only the per-component assertions are authored per feature. Blocks visual US tasks.
+- **Conditional artifacts (produce only when triggered) — canonical locations:**
+  - *Deviation ledger* — `specs/[###-feature-name]/deviation-ledger.md`. Add an
+    entry ONLY when an intentional difference from the prototype is accepted (what
+    changed, why, who approved). No deviation → no file.
+  - *Visual artifacts* — screenshots and geometry reports live under
+    `specs/[###-feature-name]/visual-artifacts/`, named `[task-id]_prototype.png` /
+    `[task-id]_built.png` per breakpoint/checkpoint. The manifest,
+    `specs/[###-feature-name]/visual-artifacts.md`, is required ONLY when Tier 2
+    judgment is handed from the implementer to a separate reviewer — it lists the
+    prototype/implementation screenshot paths, viewport/checkpoint labels, the
+    geometry report path, and a link to the deviation ledger if one exists.
+    Self-served Tier 2 does not need the manifest, but screenshots still land in
+    the same directory so they're findable if a handoff later becomes necessary.
+
 <!-- 
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
@@ -197,6 +253,8 @@ For each user story in this feature, add one task using the Independent Test fro
 - [ ] TXXX Mobile layout — open DevTools at ≤ 640px; confirm no broken layout, single-column stacking, and all interactions work with touch/click
 
 **Note**: Each task MUST define clear pass criteria. A task is complete only when a human has walked through the steps in a real browser and all pass criteria are met. Document any deviations or deferred items with rationale.
+
+**Visual-fidelity features**: the Design Fidelity gate (Tier 1 geometry + Tier 2 visual judgment) MUST have already passed per-task during implementation. This smoke test then *confirms* the merged state — it should surface little or no appearance drift. If it is generating many "align to prototype" fixes, the fidelity gate was not run in-loop and should be, rather than absorbing the drift here.
 
 ---
 

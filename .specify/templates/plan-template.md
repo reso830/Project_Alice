@@ -48,6 +48,32 @@
   navigation, and non-color-only status indicators are planned.
 - Data model choices preserve future extensibility for interviews, contacts,
   documents, reminders, and salary tracking without overbuilding them.
+- If this is a visual-fidelity feature (Principle V — implemented against a
+  design prototype / high-fidelity handoff), the Visual-Fidelity Mode section
+  below is filled in; otherwise it is marked N/A.
+
+## Visual-Fidelity Mode
+
+*Fill in ONLY if this feature is implemented against a design prototype, mockup
+set, or high-fidelity handoff. Otherwise write "N/A — no design handoff; standard
+logic-feature flow." Small visual tweaks follow the principles below without the
+full harness (see the proportionality note in Principle V).*
+
+- **Feature classification**: [Visual-fidelity | Mixed | N/A]
+- **Canonical design source**: [path(s) to the prototype/handoff, pinned. This is
+  the source of truth — tasks reference it (file + section/lines); they do NOT
+  paraphrase pixels or motion into prose.]
+- **Target stack vs prototype stack**: [e.g. prototype = React+HTML; target =
+  Vanilla JS. If they differ, tasks lift the prototype stylesheet/tokens wholesale
+  and replicate the DOM element-for-element — no restructuring.]
+- **Breakpoints / checkpoints to verify**: [e.g. 390 / 768 / 1440px; animation
+  checkpoints where applicable, e.g. 0 / 900 / 1800ms + reduced-motion/settled.]
+- **Tier 1 harness**: [`npm run test:visual` — Playwright geometry assertions,
+  headless, animations frozen, mock data seeded via a test flag. Note whether the
+  harness already exists (reused across features) or needs a setup task this
+  feature. See `.specify/templates/checklist-fidelity-template.md` for the spec.]
+- **Tier 2 judge**: [implementing agent self-serves after an in-session image-view
+  preflight; otherwise names the vision-capable reviewer / operator who does it.]
 
 ## Project Structure
 
