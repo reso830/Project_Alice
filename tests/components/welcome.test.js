@@ -596,6 +596,19 @@ describe('AuthOverlay — password toggle & touched validation (Phase 06 / T021)
       expect(fieldError.textContent).toBe('');
       expect(field.classList.contains('auth-form__field--error')).toBe(false);
     });
+
+    it(`blurring an empty email stays quiet (navigating away must not warn) (${label})`, () => {
+      const form = open();
+      const email = form.querySelector('input[name="email"]');
+      const field = email.closest('.auth-form__field');
+      const fieldError = field.querySelector('.auth-form__field-error');
+
+      // Focus then leave the empty field (e.g. clicking close/swap/demo).
+      email.dispatchEvent(new Event('blur', { bubbles: true }));
+      expect(fieldError.textContent).toBe('');
+      expect(field.classList.contains('auth-form__field--error')).toBe(false);
+      expect(email.getAttribute('aria-invalid')).not.toBe('true');
+    });
   }
 });
 

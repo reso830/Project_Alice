@@ -159,12 +159,17 @@ export function mountSignupForm(container, { email = '', onEmailChange, onSucces
     }
   }
 
+  // Only validate on blur once the field has content, so navigating away from
+  // an empty field (closing the modal, swapping mode, hitting the demo button)
+  // never fires the "enter a valid email" warning. Real submits still validate.
   emailField.input.addEventListener('blur', () => {
+    if (emailField.input.value.trim() === '') return;
     touched.email = true;
     validateTouched();
   });
   emailField.input.addEventListener('input', validateTouched);
   passwordField.input.addEventListener('blur', () => {
+    if (passwordField.input.value === '') return;
     touched.password = true;
     validateTouched();
   });

@@ -92,7 +92,7 @@ function buildFooter({ onDemo, onSwap }) {
   demo.className = 'auth-overlay__demo';
   const demoDot = el('span', 'auth-overlay__demo-dot');
   demoDot.setAttribute('aria-hidden', 'true');
-  const demoText = el('span', 'auth-overlay__demo-text', 'Try the demo — no account needed');
+  const demoText = el('span', 'auth-overlay__demo-text', 'Try the demo');
   demo.append(demoDot, demoText);
   demo.addEventListener('click', () => onDemo?.());
 
