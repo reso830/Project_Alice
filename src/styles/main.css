@@ -8469,7 +8469,14 @@ button[aria-busy="true"] {
     padding: 24px 32px 18px;
   }
 
-  .welcome__content {
+  /* JS forces the `centered` layout at tablet width; override it to left-align
+     the brand, headline, CTAs, and supporting copy to match the prototype
+     (and the mobile branch). These are scoped to beat `.welcome--layout-centered`. */
+  .welcome--layout-centered {
+    align-items: stretch;
+  }
+
+  .welcome--layout-centered .welcome__content {
     width: 100%;
     max-width: none;
     min-height: auto;
@@ -8480,8 +8487,14 @@ button[aria-busy="true"] {
     flex: 0 0 auto;
   }
 
-  .welcome__brand {
+  .welcome--layout-centered .welcome__brand,
+  .welcome--layout-centered .welcome__cta-group {
     justify-content: flex-start;
+  }
+
+  .welcome--layout-centered .welcome__supporting {
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .welcome__brand-mark {
@@ -8523,7 +8536,7 @@ button[aria-busy="true"] {
     flex: 1 1 auto;
   }
 
-  .welcome__footer-meta {
+  .welcome--layout-centered .welcome__footer-meta {
     position: relative;
     left: auto;
     bottom: auto;
@@ -8543,7 +8556,8 @@ button[aria-busy="true"] {
 .welcome--mobile {
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  /* No background override — inherit the galaxy gradient from
+     `.welcome--theme-navy` so mobile matches the desktop/tablet theme. */
   height: 100dvh;
   min-height: 100dvh;
   padding: 22px 22px 14px;
@@ -8610,7 +8624,8 @@ button[aria-busy="true"] {
   left: auto;
   bottom: auto;
   z-index: 2;
-  margin: 10px 0 0;
+  /* Push the footer to the bottom of the viewport-height flex column. */
+  margin: auto 0 0;
   justify-content: flex-start;
   gap: 8px;
   font-size: 10px;
