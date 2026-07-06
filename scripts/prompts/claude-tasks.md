@@ -14,6 +14,10 @@ Open `tasks.md` with a conventions header (match recent tasks files in `specs/`)
 - the `[P]` marker for tasks that can run in parallel (different files, no shared edits)
 - the phase-dependency line (e.g. `01 → 02 → 03`)
 - the commands: `npm run test:run`, `npm run lint`
+- a **phase summary table** immediately after the header (before Phase 01), giving a
+  scannable overview — one row per phase with: phase number, short focus/name, task ID
+  range (e.g. `T001–T004`), and the user stories it covers (or `—` for non-story phases
+  like Release Prep). Keep it consistent with the detailed phases below it.
 
 Requirements:
 - Group work by phase, for example `Phase 01`, `Phase 02`, etc.
