@@ -22,9 +22,9 @@ describe('SceneDeck', () => {
 
     expect(container.querySelector('.scene-deck')?.dataset.variant).toBe('default');
     expect(container.querySelectorAll('.scene-deck__card')).toHaveLength(3);
-    expect(container.querySelectorAll('.scene-deck__accent')).toHaveLength(3);
-    expect(container.querySelector('.scene-deck__badge--offer')?.textContent).toBe('Offer');
-    expect(container.querySelector('.scene-deck__bar-label')?.textContent).toBe('94% compat');
+    expect(container.querySelectorAll('.tracker-card__accent')).toHaveLength(3);
+    expect(container.querySelector('.tracker-card__badge--offer')?.textContent).toBe('Offer');
+    expect(container.querySelector('.tracker-card__bar-label')?.textContent).toBe('94% compat');
   });
 
   it('mounts with the centered variant class', () => {

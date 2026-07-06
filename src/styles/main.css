@@ -7900,26 +7900,24 @@ button[aria-busy="true"] {
 .scene-pipeline__track {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: min(330px, 88%);
-  margin-bottom: 18px;
+  gap: 8px;
 }
 
 .scene-pipeline__node {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .20);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12);
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .16);
+  transition: background .35s ease, box-shadow .35s ease;
 }
 
 .scene-pipeline__node.is-done {
-  background: #F2B544;
-  box-shadow: 0 0 18px rgba(242, 181, 68, .44);
+  background: #818CF8;
 }
 
 .scene-pipeline__node.is-current {
-  transform: scale(1.22);
+  background: #F8BE43;
+  box-shadow: 0 0 9px rgba(248, 190, 67, .6);
 }
 
 .scene-momentum {
@@ -8007,11 +8005,11 @@ button[aria-busy="true"] {
   initial-value: 0px;
 }
 
-.scene-deck__card {
-  position: absolute;
-  left: 50%;
-  top: 6px;
-  width: min(330px, 84%);
+/* ---------------------------------------------------------------------------
+   Shared tracker card (pipeline scene 3 + deck scene 5)
+   --------------------------------------------------------------------------- */
+.tracker-card {
+  position: relative;
   overflow: hidden;
   padding: 15px 17px;
   display: flex;
@@ -8022,6 +8020,114 @@ button[aria-busy="true"] {
   border: 1px solid #E8E3DA;
   color: var(--navy);
   box-shadow: 0 30px 60px -26px rgba(0, 0, 0, .6), 0 6px 16px rgba(0, 0, 0, .28);
+}
+
+.tracker-card__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #818CF8;
+}
+
+.tracker-card__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tracker-card__id {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #FFFFFF;
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .4px;
+}
+
+.tracker-card__badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 500;
+  animation: tracker-badge-pop .26s cubic-bezier(.2, .8, .3, 1);
+}
+
+.tracker-card__badge--applied { background: #DBEAFE; color: #1E40AF; }
+.tracker-card__badge--phone { background: #FFEDD5; color: #9A3412; }
+.tracker-card__badge--interview { background: #EDE9FE; color: #6D28D9; }
+.tracker-card__badge--offer { background: #DCFCE7; color: #15803D; }
+
+/* Status badge swooshes up whenever it changes (matches the prototype). */
+@keyframes tracker-badge-pop {
+  from { opacity: 0; transform: translateY(65%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tracker-card__upd {
+  margin-left: auto;
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  color: #9CA3AF;
+}
+
+.tracker-card__role,
+.tracker-card__company {
+  margin: 0;
+}
+
+.tracker-card__role {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.tracker-card__company {
+  margin-top: 1px;
+  color: #4B5563;
+  font-size: 12.5px;
+}
+
+.tracker-card__bar {
+  position: relative;
+  display: block;
+  height: 15px;
+  margin-top: 1px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #EDE8DF;
+}
+
+.tracker-card__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+
+.tracker-card__bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "DM Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.tracker-card__bar-fill--great { background: #22C55E; }
+.tracker-card__bar-fill--good { background: #F2B544; }
+.tracker-card__bar-fill--low { background: #818CF8; }
+
+/* Deck scene positions each shared card absolutely and floats it. */
+.scene-deck__card {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: min(330px, 84%);
   transform: translateX(-50%) translate(var(--deck-x), calc(var(--deck-y) + var(--deck-float))) rotate(var(--deck-rotation));
   transform-origin: center bottom;
   will-change: transform;
@@ -8043,98 +8149,6 @@ button[aria-busy="true"] {
   0%, 100% { --deck-float: 0px; }
   50% { --deck-float: -10px; }
 }
-
-.scene-deck__accent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: #818CF8;
-}
-
-.scene-deck__row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.scene-deck__id {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--navy);
-  color: #FFFFFF;
-  font-family: "DM Mono", monospace;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: .4px;
-}
-
-.scene-deck__badge {
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 9.5px;
-  font-weight: 500;
-}
-
-.scene-deck__badge--applied { background: #DBEAFE; color: #1E40AF; }
-.scene-deck__badge--interview { background: #EDE9FE; color: #6D28D9; }
-.scene-deck__badge--offer { background: #DCFCE7; color: #15803D; }
-
-.scene-deck__upd {
-  margin-left: auto;
-  font-family: "DM Mono", monospace;
-  font-size: 9.5px;
-  color: #9CA3AF;
-}
-
-.scene-deck__role,
-.scene-deck__company {
-  margin: 0;
-}
-
-.scene-deck__role {
-  font-size: 14.5px;
-  font-weight: 600;
-}
-
-.scene-deck__company {
-  margin-top: 1px;
-  color: #4B5563;
-  font-size: 12.5px;
-}
-
-.scene-deck__bar {
-  position: relative;
-  display: block;
-  height: 15px;
-  margin-top: 1px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #EDE8DF;
-}
-
-.scene-deck__bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 999px;
-}
-
-.scene-deck__bar-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "DM Mono", monospace;
-  font-size: 8.5px;
-  font-weight: 500;
-  color: #FFFFFF;
-}
-
-.scene-deck__bar-fill--great { background: #22C55E; }
-.scene-deck__bar-fill--good { background: #F2B544; }
-.scene-deck__bar-fill--low { background: #818CF8; }
 
 /* ---------------------------------------------------------------------------
    Legacy Phase 15 card stack styles
@@ -8244,81 +8258,17 @@ button[aria-busy="true"] {
    Scene 2 — ScenePipeline
    --------------------------------------------------------------------------- */
 
+/* Stack the stage track above the shared tracker card, centered. */
 .scene-pipeline {
-  width: min(420px, 70%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 18px;
 }
 
 .scene-pipeline__card {
-  width: 100%;
-  background: #FFFFFF;
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  box-shadow:
-    0 24px 60px -20px rgba(0, 0, 0, 0.45),
-    0 8px 22px rgba(0, 0, 0, 0.18);
-}
-
-.scene-pipeline__eyebrow {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  color: var(--t3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.scene-pipeline__role {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--t1);
-}
-
-.scene-pipeline__company {
-  margin: 0;
-  font-size: 13px;
-  color: var(--t2);
-}
-
-.scene-pipeline__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-}
-
-.scene-pipeline__compat {
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
-  color: var(--indigo);
-}
-
-.scene-pipeline__badge {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: capitalize;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--indigo-dim);
-  color: var(--indigo);
-  animation: pipeline-badge 0.55s cubic-bezier(.2,.7,.3,1.05);
-}
-
-.scene-pipeline__badge--applied      { background: var(--indigo-dim);  color: var(--indigo); }
-.scene-pipeline__badge--phone_screen { background: #FFF7E5;            color: #B47A00; }
-.scene-pipeline__badge--interview    { background: #FEEBC8;            color: #92400E; }
-.scene-pipeline__badge--assessment   { background: #DCFCE7;            color: #166534; }
-.scene-pipeline__badge--offer        { background: var(--gold);        color: #2A1B00; }
-
-@keyframes pipeline-badge {
-  0%   { transform: scale(0.6); opacity: 0; }
-  60%  { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(1);   opacity: 1; }
+  width: min(330px, 84%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -9226,7 +9176,7 @@ button[aria-busy="true"] {
   .scene-momentum__segment,
   .scene-logo__inner,
   .scene-logo__sparkle,
-  .scene-pipeline__badge,
+  .tracker-card__badge,
   .skeleton-line,
   .scene-stack__card,
   .scene-stack__card--entering,

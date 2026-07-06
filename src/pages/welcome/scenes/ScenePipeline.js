@@ -1,12 +1,14 @@
-// Scene 3 - Pipeline: a tracker card whose badge walks the hiring stages.
+// Scene 3 - Pipeline: a tracker card whose status badge walks the hiring stages.
+
+import { buildBadge, buildTrackerCard } from './trackerCard.js';
 
 let _state = null;
 
-const STATUSES = [
-  { key: 'applied', label: 'Applied' },
-  { key: 'phone_screen', label: 'Phone Screen' },
-  { key: 'interview', label: 'Interview' },
-  { key: 'offer', label: 'Offer' },
+const STAGES = [
+  { key: 'applied', status: 'Applied', badgeCls: 'applied' },
+  { key: 'phone_screen', status: 'Phone Screen', badgeCls: 'phone' },
+  { key: 'interview', status: 'Interview', badgeCls: 'interview' },
+  { key: 'offer', status: 'Offer', badgeCls: 'offer' },
 ];
 const STAGE_MS = 1150;
 
@@ -23,56 +25,28 @@ function effectiveMotion(motion) {
   return motion !== undefined ? motion : !prefersReducedMotion();
 }
 
-function buildBadge(status) {
-  const badge = document.createElement('span');
-  badge.className = `scene-pipeline__badge scene-pipeline__badge--${status.key}`;
-  badge.dataset.status = status.key;
-  badge.textContent = status.label;
+// Pipeline reuses the shared badge but tags it for the cycle logic + tests.
+function pipelineBadge(stage) {
+  const badge = buildBadge(stage.status, stage.badgeCls);
+  badge.classList.add('scene-pipeline__badge');
+  badge.dataset.status = stage.key;
   return badge;
 }
 
 function buildTrack(activeIndex) {
   const track = document.createElement('div');
   track.className = 'scene-pipeline__track';
-  STATUSES.forEach((status, index) => {
+  STAGES.forEach((stage, index) => {
     const node = document.createElement('span');
     node.className = [
       'scene-pipeline__node',
       index <= activeIndex ? 'is-done' : '',
       index === activeIndex ? 'is-current' : '',
     ].filter(Boolean).join(' ');
-    node.dataset.status = status.key;
+    node.dataset.status = stage.key;
     track.append(node);
   });
   return track;
-}
-
-function buildCard() {
-  const card = document.createElement('div');
-  card.className = 'scene-pipeline__card';
-
-  const eyebrow = document.createElement('span');
-  eyebrow.className = 'scene-pipeline__eyebrow';
-  eyebrow.textContent = 'J024';
-
-  const role = document.createElement('p');
-  role.className = 'scene-pipeline__role';
-  role.textContent = 'UX Engineer';
-
-  const company = document.createElement('p');
-  company.className = 'scene-pipeline__company';
-  company.textContent = 'Vertex AI';
-
-  const foot = document.createElement('div');
-  foot.className = 'scene-pipeline__foot';
-
-  const compat = document.createElement('span');
-  compat.className = 'scene-pipeline__compat';
-  compat.textContent = '88% compat';
-
-  foot.append(compat);
-  card.append(eyebrow, role, company, foot);
-  return { card, foot };
 }
 
 function updateTrack(root, activeIndex) {
@@ -87,10 +61,20 @@ export function mount(container, { variant = 'default', motion } = {}) {
   root.className = `scene-pipeline scene-pipeline--${variant}`;
   root.dataset.variant = variant;
 
-  const { card, foot } = buildCard();
   let statusIndex = 0;
-  let badge = buildBadge(STATUSES[statusIndex]);
-  foot.append(badge);
+  const { card, badge: cardBadge } = buildTrackerCard({
+    id: 'J024',
+    status: STAGES[statusIndex].status,
+    badgeCls: STAGES[statusIndex].badgeCls,
+    upd: 'Just now',
+    role: 'UX Engineer',
+    company: 'Vertex AI',
+    compat: 88,
+  });
+  card.classList.add('scene-pipeline__card');
+  // Swap the shared card's badge for a pipeline-tagged one (drives the cycle).
+  let badge = pipelineBadge(STAGES[statusIndex]);
+  cardBadge.replaceWith(badge);
 
   root.append(buildTrack(statusIndex), card);
   container.append(root);
@@ -98,8 +82,8 @@ export function mount(container, { variant = 'default', motion } = {}) {
   let interval = null;
   if (animate) {
     interval = globalThis.setInterval(() => {
-      statusIndex = (statusIndex + 1) % STATUSES.length;
-      const next = buildBadge(STATUSES[statusIndex]);
+      statusIndex = (statusIndex + 1) % STAGES.length;
+      const next = pipelineBadge(STAGES[statusIndex]);
       badge.replaceWith(next);
       badge = next;
       updateTrack(root, statusIndex);
