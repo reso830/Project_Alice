@@ -12,6 +12,7 @@ import { FilterPanel } from './FilterPanel.js';
 import { renderStatusFilterPanel } from './QuickFiltersStatusPopup.js';
 import { RangeSlider } from './RangeSlider.js';
 import { SortPanel } from './SortPanel.js';
+import { icon } from '../utils/icons.js';
 
 let _allApps = [];
 let _toolbarEl = null;
@@ -46,26 +47,6 @@ let _viewBusy = false;
 
 const SALARY_FILTER_MIN = 50000;
 const SALARY_FILTER_MAX = 250000;
-
-function createSvgIcon(pathData) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('width', '15');
-  svg.setAttribute('height', '15');
-  svg.setAttribute('aria-hidden', 'true');
-  path.setAttribute('d', pathData);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', 'currentColor');
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-  svg.append(path);
-
-  return svg;
-}
 
 function setButtonDisabled(button, disabled) {
   if (!button) {
@@ -486,7 +467,7 @@ function renderSortPanel() {
   });
 }
 
-function createFilterButton({ className, label, title, icon, onClick }) {
+function createFilterButton({ className, label, title, icon: iconNode, onClick }) {
   const trigger = document.createElement('span');
   const button = document.createElement('button');
 
@@ -497,7 +478,7 @@ function createFilterButton({ className, label, title, icon, onClick }) {
   button.setAttribute('aria-label', label);
   button.setAttribute('aria-pressed', 'false');
   button.setAttribute('aria-disabled', 'false');
-  button.append(icon);
+  button.append(iconNode);
   button.addEventListener('click', (event) => {
     event.stopPropagation();
     onClick(button);
@@ -516,7 +497,7 @@ function createEraseButton() {
   button.title = 'Clear all filters';
   button.setAttribute('aria-label', 'Clear all filters');
   button.setAttribute('aria-disabled', 'false');
-  button.append(createSvgIcon('M5 5l14 14M19 5 5 19'));
+  button.append(icon('close'));
   button.addEventListener('click', () => {
     _callbacks.onClearAll?.();
   });
@@ -647,56 +628,56 @@ export function render(options = {}) {
     className: 'filter-btn--status',
     label: 'Filter by Status',
     title: 'Status',
-    icon: createSvgIcon('M12 8v5l3 2m5-3a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'),
+    icon: icon('status'),
     onClick: (button) => openPanel('status', button, renderStatusPanel()),
   });
   const salary = createFilterButton({
     className: 'filter-btn--salary',
     label: 'Filter by Salary',
     title: 'Salary',
-    icon: createSvgIcon('M6 7h12M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M5 7h14v12H5V7Zm7 3v6M9.5 12h4'),
+    icon: icon('salary'),
     onClick: (button) => openPanel('salary', button, renderSalaryPanel()),
   });
   const compat = createFilterButton({
     className: 'filter-btn--compat',
     label: 'Filter by Compatibility',
     title: 'Compatibility',
-    icon: createSvgIcon('M4 19V5m0 14h16M7 15l3-3 3 2 4-6'),
+    icon: icon('compatibility'),
     onClick: (button) => openPanel('compat', button, renderCompatPanel()),
   });
   const company = createFilterButton({
     className: 'filter-btn--company',
     label: 'Filter by Company',
     title: 'Company',
-    icon: createSvgIcon('M3 21h18M5 21V5a2 2 0 0 1 2-2h7v18M14 8h5a2 2 0 0 1 2 2v11M9 7h1M9 11h1M9 15h1'),
+    icon: icon('company'),
     onClick: (button) => openPanel('company', button, renderCompanyPanel()),
   });
   const shift = createFilterButton({
     className: 'filter-btn--shift',
     label: 'Filter by Shift',
     title: 'Shift',
-    icon: createSvgIcon('M12 6v6l4 2m4-2a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'),
+    icon: icon('shift'),
     onClick: (button) => openPanel('shift', button, renderShiftPanel()),
   });
   const workSetup = createFilterButton({
     className: 'filter-btn--work-setup',
     label: 'Filter by Work Setup',
     title: 'Work Setup',
-    icon: createSvgIcon('M4 19V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11M8 19v-4h8v4M8 10h.01M12 10h.01M16 10h.01'),
+    icon: icon('workSetup'),
     onClick: (button) => openPanel('workSetup', button, renderWorkSetupPanel()),
   });
   const location = createFilterButton({
     className: 'filter-btn--location',
     label: 'Filter by Location',
     title: 'Location',
-    icon: createSvgIcon('M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Zm0-8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'),
+    icon: icon('location'),
     onClick: (button) => openPanel('location', button, renderLocationPanel()),
   });
   const favorites = createFilterButton({
     className: 'filter-btn--favorites',
     label: 'Favorites only',
     title: 'Favorites only',
-    icon: createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+    icon: icon('star'),
     onClick: () => {
       _callbacks.onFilterChange?.({
         ..._filterState,
@@ -708,7 +689,7 @@ export function render(options = {}) {
     className: 'filter-btn--sort',
     label: 'Sort',
     title: 'Sort',
-    icon: createSvgIcon('M7 6h10M7 12h7M7 18h4m7-2 3 3 3-3m-3 3V5'),
+    icon: icon('sort'),
     onClick: (button) => openPanel('sort', button, renderSortPanel()),
   });
   const erase = createEraseButton();

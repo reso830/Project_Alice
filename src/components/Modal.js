@@ -16,7 +16,7 @@ import * as api from '../services/api.js';
 import { bindBusyButton } from '../utils/asyncUI.js';
 import { formatPeso, parseSalaryInput } from '../utils/currency.js';
 import { createStatusBadge, displayValue } from '../utils/dom.js';
-import { createArchiveIcon, createClipboardIcon, createSvgIcon } from '../utils/icons.js';
+import { icon } from '../utils/icons.js';
 import { resolveSkillLevel } from '../utils/skillProficiency.js';
 import { validateUrl } from '../utils/validate.js';
 import { valuesDiffer } from '../../shared/compatFields.js';
@@ -235,10 +235,10 @@ function updateStatusBadge(badge, status) {
 }
 
 function updateFavoriteButton(button, isFavorite) {
-  const icon = createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z');
+  const starIcon = icon('star');
 
-  icon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
-  button.replaceChildren(icon);
+  starIcon.querySelector('path').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
+  button.replaceChildren(starIcon);
   button.setAttribute('aria-pressed', String(isFavorite));
 }
 
@@ -406,7 +406,7 @@ function renderTextDisplay(valueEl, key, formatter, clampOptions = null) {
     copyButton.type = 'button';
     copyButton.className = 'modal-inline-copy';
     copyButton.setAttribute('aria-label', 'Copy job posting URL');
-    copyButton.append(createClipboardIcon());
+    copyButton.append(icon('copyUrl'));
     copyButton.addEventListener('click', copyJobPostingUrl);
     valueEl.append(copyButton);
   }
@@ -1767,23 +1767,23 @@ export function open(application, {
   const quickActions = document.createElement('div');
   const favoriteButton = createQuickButton(
     'modal-quick-action--favorite',
-    createSvgIcon('M12 3.5 14.8 9l6.1.9-4.4 4.3 1 6-5.5-2.9-5.5 2.9 1-6L3.1 9l6.1-.9L12 3.5Z'),
+    icon('star'),
   );
   const statusButton = createQuickButton(
     'modal-quick-action--status',
-    createSvgIcon('M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3 3m-3-3 3-3'),
+    icon('changeStatus'),
   );
   const archiveButton = createQuickButton(
     'modal-quick-action--archive',
-    createArchiveIcon(),
+    icon('archive'),
   );
   const unarchiveButton = createQuickButton(
     'modal-quick-action--unarchive',
-    createSvgIcon('M3 12a9 9 0 0 0 15 6.7M3 12H1m2 0 3 3m-3-3 3-3M21 12A9 9 0 0 0 6 5.3'),
+    icon('unarchive'),
   );
   const closeButton = createQuickButton(
     'modal-quick-action--close',
-    createSvgIcon('M6 6l12 12M18 6 6 18'),
+    icon('close'),
   );
   const body = document.createElement('div');
   _body = body;

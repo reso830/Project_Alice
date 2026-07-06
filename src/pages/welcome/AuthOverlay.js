@@ -8,7 +8,7 @@
 // entered email persists. No Forgot-password affordance (spec FR "no
 // custom in-app reset UI"; password reset stays operator-driven).
 
-import aliceColored from '../../assets/Alice_Colored.png';
+import aliceColored from '../../assets/logo/alice-sigil-full.svg';
 import { mountLoginForm } from './LoginForm.js';
 import { mountSignupForm } from './SignupForm.js';
 import { enterDemo } from './demoStub.js';
@@ -64,15 +64,19 @@ function buildHeader() {
 
   const title = el('h2', 'auth-overlay__title');
   title.id = 'auth-overlay-title';
+  const subtitle = el('p', 'auth-overlay__subtitle');
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'auth-overlay__close';
-  closeBtn.textContent = 'Close';
+  closeBtn.textContent = '×';
   closeBtn.setAttribute('aria-label', 'Close authentication overlay');
 
-  header.append(logo, title, closeBtn);
-  return { header, title, closeBtn };
+  const copy = el('div', 'auth-overlay__header-copy');
+  copy.append(title, subtitle);
+
+  header.append(logo, copy, closeBtn);
+  return { header, title, subtitle, closeBtn };
 }
 
 function buildFooter({ onDemo, onSwap }) {
@@ -141,7 +145,7 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-labelledby', 'auth-overlay-title');
 
-  const { header, title, closeBtn } = buildHeader();
+  const { header, title, subtitle, closeBtn } = buildHeader();
   const formSlot = el('div', 'auth-overlay__form-slot');
   const body = el('div', 'auth-overlay__body');
   body.append(formSlot);
@@ -181,7 +185,8 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
     footerBuilt.legal.hidden = state.view !== 'signup';
 
     if (state.view === 'login') {
-      title.textContent = 'Sign in to Project Alice';
+      title.textContent = 'Welcome back';
+      subtitle.textContent = 'Sign in to Project Alice.';
       formUnmount = mountLoginForm(formSlot, {
         email: state.email,
         onEmailChange: (value) => {
@@ -190,7 +195,8 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
       });
       applySwap(footerBuilt, 'login');
     } else if (state.view === 'signup') {
-      title.textContent = 'Create your Project Alice account';
+      title.textContent = 'Create account';
+      subtitle.textContent = 'Start organizing your job search.';
       formUnmount = mountSignupForm(formSlot, {
         email: state.email,
         onEmailChange: (value) => {
@@ -201,6 +207,7 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
       applySwap(footerBuilt, 'signup');
     } else if (isVerification) {
       title.textContent = 'Check your email';
+      subtitle.textContent = 'One last step to activate your workspace.';
       const message = el(
         'p',
         'auth-overlay__verification-text',

@@ -1,4 +1,4 @@
-# Feature Brief: 037 - ATS Resume Quality Checks
+# Feature Brief: 045 - ATS Resume Quality Checks
 
 ## Summary
 Analyze resumes for ATS-friendliness and common resume quality issues using lightweight deterministic checks.

@@ -2,6 +2,7 @@ import {
   STATUS_CONFIG,
   STATUS_DISPLAY_PRIORITY,
 } from '../../models/application.js';
+import calendarEmpty from '../../assets/graphics/calendar-empty.svg';
 
 let _host = null;
 let _root = null;
@@ -32,6 +33,16 @@ function createText(className, text, tagName = 'span') {
   node.className = className;
   node.textContent = text;
   return node;
+}
+
+function createEmptyGraphic(className) {
+  const graphic = document.createElement('img');
+
+  graphic.className = className;
+  graphic.src = calendarEmpty;
+  graphic.alt = '';
+  graphic.setAttribute('aria-hidden', 'true');
+  return graphic;
 }
 
 function createStatusBadge(status) {
@@ -101,7 +112,7 @@ function createPrompt() {
   const prompt = document.createElement('div');
   prompt.className = 'cal-dp-prompt';
   prompt.append(
-    createText('cal-dp-prompt-glyph', '\u25cc'),
+    createEmptyGraphic('cal-dp-prompt-glyph'),
     createText('cal-dp-prompt-h', 'Select a day', 'h3'),
     createText('cal-dp-prompt-sub', 'Pick any date in the month grid to review its activity here.', 'p'),
   );
@@ -111,7 +122,10 @@ function createPrompt() {
 function createEmpty() {
   const empty = document.createElement('div');
   empty.className = 'cal-dp-empty';
-  empty.append(createText('cal-dp-empty-h', 'No events', 'h3'));
+  empty.append(
+    createEmptyGraphic('cal-dp-empty-glyph'),
+    createText('cal-dp-empty-h', 'No events', 'h3'),
+  );
   return empty;
 }
 

@@ -76,7 +76,7 @@
 
   /* Phase 14: welcome-page tokens. `--warm` is an alias of `--bg` matching
      the design-doc spelling; `--navy-deep` is the slab background on the
-     navy theme; `--gold` is the SceneLogo sparkle color (used by Phase 15). */
+     navy theme; `--gold` is the showcase sparkle color. */
   --warm: var(--bg);
   --navy-deep: #0E0E20;
   --gold: #F2B544;
@@ -1120,33 +1120,10 @@ textarea.edit-field__control {
 }
 
 .profile-empty__icon {
-  display: flex;
-  position: relative;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #F0EEFF;
-  color: var(--indigo);
-}
-
-.profile-empty__icon-head {
-  position: absolute;
-  top: 12px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.profile-empty__icon-body {
-  position: absolute;
-  bottom: 11px;
-  width: 26px;
-  height: 14px;
-  border-radius: 14px 14px 4px 4px;
-  background: currentColor;
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
 }
 
 .profile-empty__title,
@@ -1166,6 +1143,7 @@ textarea.edit-field__control {
 .profile-empty__actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   width: min(100%, 360px);
 }
@@ -5235,8 +5213,8 @@ textarea.modal-inline-control {
   }
 
   .footer__brand-icon {
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
   }
 
   /* Align the control under the brand text (logo width + brand gap). */
@@ -6649,6 +6627,12 @@ textarea.modal-inline-control {
   display: none;
 }
 
+.creation-picker-intro {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
 .creation-picker-title {
   color: var(--t1);
   font: 800 24px/1.2 var(--font-ui);
@@ -6968,7 +6952,9 @@ button[aria-busy="true"] {
 
 .welcome {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 46fr 54fr;
   background: var(--bg);
   overflow: hidden;
   font-family: var(--font-ui);
@@ -6980,13 +6966,59 @@ button[aria-busy="true"] {
   z-index: 2;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  gap: 22px;
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(32px, 5vw, 68px);
+  box-sizing: border-box;
+  max-width: 620px;
+}
+
+/* Pitch mid-band: headline / sub / CTA fill the space below the brand and
+   centre vertically, so the brand pins to the top (prototype brand-top /
+   pitch-mid-centre / footer-bottom). */
+.welcome__pitch-mid {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   gap: 22px;
-  width: 55%;
-  min-height: 100vh;
-  padding: 6vw 5vw 6vw 6vw;
-  box-sizing: border-box;
-  max-width: 760px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Ambient starfield — scattered twinkling sparkles behind the galaxy content. */
+.welcome__starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.welcome__spark {
+  position: absolute;
+  color: var(--gold);
+  display: block;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  animation: welcome-twinkle var(--tw-dur, 3s) ease-in-out var(--tw-del, 0s) infinite;
+}
+.welcome__spark svg {
+  display: block;
+}
+@keyframes welcome-twinkle {
+  0%, 100% { opacity: 0.08; transform: translate(-50%, -50%) scale(0.6); }
+  50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+}
+@media (max-width: 900px) {
+  .welcome__starfield {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome__spark {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 .welcome__brand {
@@ -7009,18 +7041,20 @@ button[aria-busy="true"] {
 
 .welcome__brand-text {
   font-family: var(--font-ui);
-  font-size: clamp(28px, 3vw, 40px);
+  font-size: clamp(30px, 3.1vw, 42px);
   font-weight: 700;
-  letter-spacing: -0.6px;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--t1);
 }
 
 .welcome__headline {
   font-family: var(--font-ui);
-  font-size: 54px;
+  font-size: clamp(38px, 5.4vw, 62px);
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -1.6px;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
   color: var(--t1);
   margin: 0;
 }
@@ -7048,11 +7082,11 @@ button[aria-busy="true"] {
 
 .welcome__supporting {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: clamp(15px, 1.5vw, 17px);
   font-weight: 400;
-  line-height: 1.7;
+  line-height: 1.62;
   color: var(--t2);
-  max-width: 420px;
+  max-width: 440px;
   margin: 0;
 }
 
@@ -7116,7 +7150,7 @@ button[aria-busy="true"] {
   background: transparent;
   color: var(--t2);
   border-color: transparent;
-  padding-left: 36px;
+  padding-left: 40px;
 }
 
 .welcome__cta--ghost:hover {
@@ -7156,7 +7190,7 @@ button[aria-busy="true"] {
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--t3);
   margin: 28px 0 0 0;
 }
@@ -7188,17 +7222,48 @@ button[aria-busy="true"] {
   color: var(--indigo);
 }
 
+.welcome__footer-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(129, 140, 248, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.welcome__footer-download:hover {
+  background: rgba(129, 140, 248, 0.18);
+  color: #FFFFFF;
+}
+
+.welcome__footer-download-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* Force the download chip onto its own line below the footer links. */
+.welcome__footer-download-row {
+  flex-basis: 100%;
+  margin-top: 8px;
+}
+
+/* No leading separator dot before the download row (it starts a new line). */
+.welcome__footer-meta > .welcome__footer-download-row::before {
+  content: none;
+}
+
 /* Phase 16 — Hero slab. Width / clip-path / position vary by layout class
    (see `.welcome--layout-*` blocks below). Default values match the
    `diagonal` layout so legacy callers without a layout class continue to
    render the original Phase 14 design. */
 
 .welcome__hero {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 62%;
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
   z-index: 1;
   background:
     radial-gradient(circle at top right, rgba(79, 70, 229, 0.18), transparent 40%),
@@ -7216,11 +7281,11 @@ button[aria-busy="true"] {
 
 /* `split` — straight 55/45 vertical, no diagonal clip-path. */
 .welcome--layout-split .welcome__hero {
-  width: 45%;
+  width: 100%;
   clip-path: none;
 }
 .welcome--layout-split .welcome__content {
-  width: 55%;
+  width: 100%;
   max-width: none;
 }
 
@@ -7256,6 +7321,7 @@ button[aria-busy="true"] {
   width: 100%;
   max-width: 1100px;
   height: 280px;
+  min-height: 0;
   margin-top: 56px;
   border-radius: 16px;
   clip-path: none;
@@ -7302,10 +7368,57 @@ button[aria-busy="true"] {
   background: var(--surface);
 }
 
+/* Midnight galaxy — the shipped welcome background per the redesign prototype.
+   A full-bleed deep-navy/violet starfield gradient spans BOTH columns (no
+   warm/navy split, no diagonal clip); the stage is transparent so the galaxy
+   reads straight through it. */
 .welcome--theme-navy {
-  background: var(--navy);
+  background:
+    radial-gradient(ellipse 60% 50% at 28% 18%, rgba(76, 58, 140, 0.55) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 78% 82%, rgba(96, 42, 150, 0.42) 0%, transparent 55%),
+    radial-gradient(circle at 62% 40%, rgba(129, 140, 248, 0.14) 0%, transparent 45%),
+    linear-gradient(158deg, #17152f 0%, #100e24 55%, #0a0916 100%);
   color: rgba(255, 255, 255, 0.92);
 }
+
+/* Ambient 56px grid spanning both columns, alpha-masked to fade in from the
+   stage side rather than a hard boundary. Desktop only. */
+.welcome--theme-navy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 32%, #000 68%, #000 100%);
+          mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 32%, #000 68%, #000 100%);
+}
+
+/* Large radial accent glow centred near the stage. Desktop only. */
+.welcome--theme-navy::after {
+  content: '';
+  position: absolute;
+  top: 44%;
+  left: 64%;
+  width: min(760px, 72%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(129, 140, 248, 0.18) 0%, rgba(129, 140, 248, 0) 62%);
+}
+
+@media (max-width: 900px) {
+  .welcome--theme-navy::before,
+  .welcome--theme-navy::after {
+    display: none;
+  }
+}
+
 .welcome--theme-navy .welcome__brand-text,
 .welcome--theme-navy .welcome__headline {
   color: #FFFFFF;
@@ -7314,11 +7427,13 @@ button[aria-busy="true"] {
 .welcome--theme-navy .welcome__footer-meta {
   color: rgba(255, 255, 255, 0.72);
 }
+
+/* Stage sits transparent over the galaxy — no separate navy block, no diagonal
+   clip. (Scenes inside are unchanged.) */
 .welcome--theme-navy .welcome__hero {
-  background:
-    radial-gradient(circle at top right, rgba(129, 140, 248, 0.22), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.04), transparent 30%),
-    var(--navy-deep);
+  background: none;
+  clip-path: none;
+  z-index: 1;
 }
 .welcome--theme-navy .welcome__headline-accent {
   color: var(--indigo-mid);
@@ -7349,8 +7464,19 @@ button[aria-busy="true"] {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
+}
+
+/* Contained scene frame (prototype scene-frame ≈ min(760px,94%) × 400px) so the
+   scene doesn't stretch across the whole pane. Caption/dots stack below it. */
+.hero-slideshow__frame {
+  position: relative;
+  width: min(840px, 94%);
+  height: min(400px, 58vh);
+  flex-shrink: 0;
 }
 
 .hero-slideshow__layer {
@@ -7383,11 +7509,21 @@ button[aria-busy="true"] {
   pointer-events: none;
 }
 
+.hero-slideshow__caption {
+  position: relative;
+  z-index: 4;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--font-ui);
+  font-size: clamp(13px, 1.4vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
 .hero-slideshow__dots {
-  position: absolute;
-  bottom: clamp(20px, 3vw, 32px);
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7426,7 +7562,7 @@ button[aria-busy="true"] {
 }
 
 .hero-slideshow__dot--active .hero-slideshow__dot-progress--running {
-  animation: hero-slideshow-progress 5500ms linear forwards;
+  animation: hero-slideshow-progress 8600ms linear forwards;
 }
 
 @keyframes hero-slideshow-progress {
@@ -7435,7 +7571,587 @@ button[aria-busy="true"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Scene 1 — SceneStack
+   Feature 042 showcase scenes
+   --------------------------------------------------------------------------- */
+
+.scene-constellation,
+.scene-parse,
+.scene-pipeline,
+.scene-momentum,
+.scene-deck {
+  position: relative;
+  width: min(520px, 84%);
+  height: min(390px, 76%);
+  display: grid;
+  place-items: center;
+}
+
+.scene-constellation__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.scene-constellation__line {
+  stroke: rgba(255, 255, 255, .34);
+  stroke-width: 0.3;
+  stroke-linecap: round;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: constellation-line .72s ease forwards;
+  animation-delay: var(--line-delay, 0ms);
+}
+
+.scene-constellation__line.is-settled {
+  stroke-dashoffset: 0;
+}
+
+.scene-constellation__node {
+  opacity: 0;
+  animation: constellation-node .55s ease forwards;
+  animation-delay: var(--node-delay, 0ms);
+}
+
+.scene-constellation__node.is-settled {
+  opacity: 1;
+  animation: none;
+}
+
+/* Stars twinkle by pulsing opacity + glow only — no transform, so they stay
+   put (the group-scale approach made them drift/wave). */
+.scene-constellation__star {
+  filter: drop-shadow(0 0 3px var(--node-color));
+  animation: constellation-pulse 2.8s ease-in-out infinite;
+  animation-delay: calc(var(--node-delay, 0ms) + 600ms);
+}
+
+.scene-constellation__node.is-settled .scene-constellation__star {
+  animation: none;
+}
+
+.scene-constellation__label {
+  fill: rgba(255, 255, 255, .72);
+  font-family: "DM Mono", monospace;
+  font-size: 1.9px;
+  font-weight: 400;
+  letter-spacing: .3px;
+}
+
+.scene-constellation__node--bright .scene-constellation__label {
+  fill: var(--node-color);
+  font-weight: 600;
+}
+
+@keyframes constellation-line {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes constellation-node {
+  to { opacity: 1; }
+}
+
+@keyframes constellation-pulse {
+  0%, 100% { opacity: .78; filter: drop-shadow(0 0 2px var(--node-color)); }
+  50%      { opacity: 1; filter: drop-shadow(0 0 5px var(--node-color)) drop-shadow(0 0 11px var(--node-color)); }
+}
+
+.scene-parse__wrap {
+  position: relative;
+  width: min(470px, 92%);
+  min-height: 270px;
+}
+
+.scene-parse__window,
+.scene-parse__card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 16px;
+  transform: translate(-50%, -50%);
+}
+
+/* Pasted job post — translucent glass over the dark scene. */
+.scene-parse__window {
+  width: min(360px, 100%);
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06);
+}
+
+/* Parsed card — solid white with dark text, wider than the post. */
+.scene-parse__card {
+  width: min(420px, 100%);
+  border: 1px solid rgba(0, 0, 0, .04);
+  background: #FFFFFF;
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .55);
+}
+.scene-parse__card .scene-parse__card-title { color: #1A1A2E; }
+.scene-parse__card .scene-parse__card-meta { color: #4B5563; }
+.scene-parse__card .scene-parse__tag {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+.scene-parse__card .scene-parse__chips span {
+  background: #F3F1EC;
+  color: #374151;
+}
+
+/* Overflow visible so the scan beam can extend beyond the post edges. */
+.scene-parse__window {
+  overflow: visible;
+  padding: 14px 16px 18px;
+  transition: opacity .42s ease, transform .42s ease;
+}
+
+.scene-parse.is-shrunk .scene-parse__window,
+.scene-parse.is-parsed .scene-parse__window {
+  opacity: 0;
+  transform: translate(-50%, -54%) scale(.72);
+}
+
+.scene-parse__window-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: rgba(255, 255, 255, .54);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-parse__window-head span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .34);
+}
+
+.scene-parse__title,
+.scene-parse__card-title {
+  margin: 0 0 5px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.scene-parse__meta,
+.scene-parse__card-meta {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, .66);
+  font-size: 12px;
+}
+
+.scene-parse__line {
+  display: block;
+  width: 82%;
+  height: 7px;
+  margin-bottom: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+}
+
+.scene-parse__line--long { width: 94%; }
+.scene-parse__line--short { width: 64%; }
+.scene-parse__line--mid { width: 76%; }
+
+.scene-parse__beam {
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  width: 168%;
+  height: 32px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(242, 181, 68, 0) 0%, rgba(242, 181, 68, .30) 42%, rgba(255, 214, 120, .95) 50%, rgba(242, 181, 68, .30) 58%, rgba(242, 181, 68, 0) 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  filter: drop-shadow(0 0 12px rgba(242, 181, 68, .65));
+  opacity: 0;
+}
+
+.scene-parse.is-scanned .scene-parse__beam {
+  opacity: 1;
+  animation: parse-beam 1.08s cubic-bezier(.3,.6,.3,1) forwards;
+}
+
+.scene-parse__card {
+  padding: 18px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.82);
+  transition: opacity .46s ease, transform .56s cubic-bezier(.2,.7,.3,1.15);
+}
+
+.scene-parse.is-parsed .scene-parse__card,
+.scene-parse.is-settled .scene-parse__card {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Card pops in only after the spinner has faded. */
+.scene-parse.is-parsed .scene-parse__card {
+  transition-delay: .25s;
+}
+
+.scene-parse.is-settled .scene-parse__window {
+  display: none;
+}
+
+.scene-parse__tag,
+.scene-parse__chips span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(242, 181, 68, .14);
+  color: #F2B544;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-parse__tag {
+  margin-bottom: 12px;
+  padding: 4px 8px;
+}
+
+.scene-parse__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scene-parse__chips span {
+  padding: 5px 7px;
+}
+
+/* Burst layer sits in front of the parsed card so the stars pop over it. */
+.scene-parse__burst {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.scene-parse__spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--spark-size, 16px);
+  height: var(--spark-size, 16px);
+  color: #F8BE43;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.3);
+}
+
+.scene-parse__spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 5px rgba(248, 190, 67, .9)) drop-shadow(0 0 12px rgba(248, 190, 67, .5));
+}
+
+.scene-parse.is-parsed .scene-parse__spark {
+  animation: parse-spark var(--spark-dur, .8s) cubic-bezier(.2, .7, .35, 1) .25s forwards;
+}
+
+.scene-parse__spinner {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 3px solid rgba(242, 181, 68, .22);
+  border-top-color: #F2B544;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+
+/* Spinner fades in near the end of the scan, then hides as the card pops in. */
+.scene-parse.is-shrunk .scene-parse__spinner {
+  opacity: 1;
+  animation: parse-spin .8s linear infinite;
+}
+
+.scene-parse.is-parsed .scene-parse__spinner {
+  opacity: 0;
+  animation: none;
+  transition-delay: 0s;
+}
+
+@keyframes parse-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes parse-beam {
+  0%   { top: -34px; opacity: 0; }
+  12%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% + 8px); opacity: 0; }
+}
+
+@keyframes parse-spark {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0deg); }
+  14%  { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-dx, 0px)), calc(-50% + var(--spark-dy, 0px))) scale(1) rotate(var(--spark-rot, 0deg));
+  }
+}
+
+.scene-pipeline__track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-pipeline__node {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .16);
+  transition: background .35s ease, box-shadow .35s ease;
+}
+
+.scene-pipeline__node.is-done {
+  background: #818CF8;
+}
+
+.scene-pipeline__node.is-current {
+  background: #F8BE43;
+  box-shadow: 0 0 9px rgba(248, 190, 67, .6);
+}
+
+.scene-momentum {
+  gap: 18px;
+}
+
+.scene-momentum__chips {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: min(430px, 100%);
+}
+
+.scene-momentum__chip {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+  text-align: center;
+}
+
+.scene-momentum__chip-label {
+  color: rgba(255, 255, 255, .58);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.scene-momentum__chip-value {
+  color: #FFFFFF;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.scene-momentum__donut {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.scene-momentum__track {
+  stroke: rgba(255, 255, 255, .08);
+  stroke-width: 18;
+}
+
+.scene-momentum__segment {
+  transition: stroke-dasharray .7s ease, stroke-dashoffset .7s ease;
+  transition-delay: var(--segment-delay, 0ms);
+}
+
+.scene-momentum__total {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.scene-momentum__total-value {
+  color: #FFFFFF;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scene-momentum__total-label {
+  color: rgba(255, 255, 255, .54);
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+}
+
+.scene-deck__stack {
+  position: relative;
+  width: min(680px, 98%);
+  height: 240px;
+}
+
+@property --deck-float {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared tracker card (pipeline scene 3 + deck scene 5)
+   --------------------------------------------------------------------------- */
+.tracker-card {
+  position: relative;
+  overflow: hidden;
+  padding: 15px 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  border-radius: 13px;
+  background: #FFFFFF;
+  border: 1px solid #E8E3DA;
+  color: var(--navy);
+  box-shadow: 0 30px 60px -26px rgba(0, 0, 0, .6), 0 6px 16px rgba(0, 0, 0, .28);
+}
+
+.tracker-card__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #818CF8;
+}
+
+.tracker-card__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tracker-card__id {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #FFFFFF;
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .4px;
+}
+
+.tracker-card__badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 500;
+  animation: tracker-badge-pop .26s cubic-bezier(.2, .8, .3, 1);
+}
+
+.tracker-card__badge--applied { background: #DBEAFE; color: #1E40AF; }
+.tracker-card__badge--phone { background: #FFEDD5; color: #9A3412; }
+.tracker-card__badge--interview { background: #EDE9FE; color: #6D28D9; }
+.tracker-card__badge--offer { background: #DCFCE7; color: #15803D; }
+
+/* Status badge swooshes up whenever it changes (matches the prototype). */
+@keyframes tracker-badge-pop {
+  from { opacity: 0; transform: translateY(65%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tracker-card__upd {
+  margin-left: auto;
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  color: #9CA3AF;
+}
+
+.tracker-card__role,
+.tracker-card__company {
+  margin: 0;
+}
+
+.tracker-card__role {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.tracker-card__company {
+  margin-top: 1px;
+  color: #4B5563;
+  font-size: 12.5px;
+}
+
+.tracker-card__bar {
+  position: relative;
+  display: block;
+  height: 15px;
+  margin-top: 1px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #EDE8DF;
+}
+
+.tracker-card__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+
+.tracker-card__bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "DM Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.tracker-card__bar-fill--great { background: #22C55E; }
+.tracker-card__bar-fill--good { background: #F2B544; }
+.tracker-card__bar-fill--low { background: #818CF8; }
+
+/* Deck scene positions each shared card absolutely and floats it. */
+.scene-deck__card {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: min(330px, 84%);
+  transform: translateX(-50%) translate(var(--deck-x), calc(var(--deck-y) + var(--deck-float))) rotate(var(--deck-rotation));
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+.scene-deck__card--0 { z-index: 1; opacity: .8; }
+.scene-deck__card--1 { z-index: 2; opacity: .92; }
+.scene-deck__card--2 { z-index: 3; }
+
+/* Float via a registered custom property so the transform is composited
+   (smooth) instead of animating margin-top (which reflows and looks choppy). */
+@media (prefers-reduced-motion: no-preference) {
+  .scene-deck__card--0 { animation: scene-deck-float 6s ease-in-out 1s infinite; }
+  .scene-deck__card--1 { animation: scene-deck-float 6s ease-in-out .5s infinite; }
+  .scene-deck__card--2 { animation: scene-deck-float 6s ease-in-out infinite; }
+}
+
+@keyframes scene-deck-float {
+  0%, 100% { --deck-float: 0px; }
+  50% { --deck-float: -10px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Legacy Phase 15 card stack styles
    --------------------------------------------------------------------------- */
 
 .scene-stack {
@@ -7542,85 +8258,21 @@ button[aria-busy="true"] {
    Scene 2 — ScenePipeline
    --------------------------------------------------------------------------- */
 
+/* Stack the stage track above the shared tracker card, centered. */
 .scene-pipeline {
-  width: min(420px, 70%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 18px;
 }
 
 .scene-pipeline__card {
-  width: 100%;
-  background: #FFFFFF;
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  box-shadow:
-    0 24px 60px -20px rgba(0, 0, 0, 0.45),
-    0 8px 22px rgba(0, 0, 0, 0.18);
-}
-
-.scene-pipeline__eyebrow {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  color: var(--t3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.scene-pipeline__role {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--t1);
-}
-
-.scene-pipeline__company {
-  margin: 0;
-  font-size: 13px;
-  color: var(--t2);
-}
-
-.scene-pipeline__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-}
-
-.scene-pipeline__compat {
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
-  color: var(--indigo);
-}
-
-.scene-pipeline__badge {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: capitalize;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--indigo-dim);
-  color: var(--indigo);
-  animation: pipeline-badge 0.55s cubic-bezier(.2,.7,.3,1.05);
-}
-
-.scene-pipeline__badge--applied      { background: var(--indigo-dim);  color: var(--indigo); }
-.scene-pipeline__badge--phone_screen { background: #FFF7E5;            color: #B47A00; }
-.scene-pipeline__badge--interview    { background: #FEEBC8;            color: #92400E; }
-.scene-pipeline__badge--assessment   { background: #DCFCE7;            color: #166534; }
-.scene-pipeline__badge--offer        { background: var(--gold);        color: #2A1B00; }
-
-@keyframes pipeline-badge {
-  0%   { transform: scale(0.6); opacity: 0; }
-  60%  { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(1);   opacity: 1; }
+  width: min(330px, 84%);
 }
 
 /* ---------------------------------------------------------------------------
-   Scene 3 — SceneProfile
+   Legacy Phase 15 profile scene styles
    --------------------------------------------------------------------------- */
 
 .scene-profile {
@@ -7805,34 +8457,134 @@ button[aria-busy="true"] {
   50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
 }
 
-/* Tablet (760–1100px) — hero slab narrows slightly per design §4 */
-@media (max-width: 1100px) {
-  .welcome__content {
-    width: 58%;
-    padding: 5vw;
+/* Tablet (621–900px) — height-locked flex column per Feature 042. */
+@media (min-width: 621px) and (max-width: 900px) and (orientation: portrait) {
+  .welcome {
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+    padding: 24px 32px 18px;
   }
-  .welcome__hero {
-    width: 58%;
+
+  /* JS forces the `centered` layout at tablet width; override it to left-align
+     the brand, headline, CTAs, and supporting copy to match the prototype
+     (and the mobile branch). These are scoped to beat `.welcome--layout-centered`. */
+  .welcome--layout-centered {
+    align-items: stretch;
   }
+
+  .welcome--layout-centered .welcome__content {
+    width: 100%;
+    max-width: none;
+    min-height: auto;
+    padding: 0;
+    gap: 14px;
+    align-items: flex-start;
+    text-align: left;
+    flex: 0 0 auto;
+  }
+
+  .welcome--layout-centered .welcome__brand,
+  .welcome--layout-centered .welcome__cta-group {
+    justify-content: flex-start;
+  }
+
+  .welcome--layout-centered .welcome__supporting {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .welcome__brand-mark {
+    width: 64px;
+    height: 64px;
+  }
+
+  .welcome__brand-text {
+    font-size: 32px;
+  }
+
   .welcome__headline {
-    font-size: 46px;
+    font-size: clamp(30px, 4.4vw, 40px);
+  }
+
+  .welcome__supporting {
+    font-size: 14px;
+    max-width: 400px;
+  }
+
+  .welcome__cta {
+    font-size: 13px;
+    padding: 11px 18px;
+  }
+
+  /* Keep the ghost button's dot offset — the shorthand above resets it. */
+  .welcome__cta--ghost {
+    padding-left: 40px;
+  }
+
+  .welcome__hero {
+    width: 100%;
+    max-width: 760px;
+    height: clamp(220px, 33dvh, 320px);
+    min-height: 0;
+    margin: 12px auto 0;
+    border-radius: 16px;
+    clip-path: none;
+    flex: 1 1 auto;
+  }
+
+  .welcome--layout-centered .welcome__footer-meta {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    justify-content: flex-start;
+    margin: 12px 0 0;
+    font-size: 10.5px;
+    flex: 0 0 auto;
   }
 }
 
 /* ---------------------------------------------------------------------------
-   Phase 18 — Mobile branch (`<760px`) per design §3.3
+   Feature 042 — Mobile branch (`≤620px`) per responsive welcome spec
    Driven by JS-toggled `.welcome--mobile` class on the welcome root, NOT
-   by a media query. Phase 18.1 ignores all layout/theme classes when
-   `.welcome--mobile` is present.
+   by a media query.
    --------------------------------------------------------------------------- */
 
 .welcome--mobile {
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  padding: 96px 28px 56px;
-  min-height: 100vh;
-  overflow: visible;
+  /* No background override — inherit the galaxy gradient from
+     `.welcome--theme-navy` so mobile matches the desktop/tablet theme. */
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: 22px 22px 14px;
+  overflow: hidden;
+}
+
+/* Keep the galaxy grid + sparkle starfield on mobile for theme consistency
+   (both are otherwise suppressed at <=900px). The grid mask is dropped so the
+   faint lines read evenly across the single-column layout. */
+.welcome--mobile .welcome__starfield {
+  display: block;
+}
+
+.welcome--mobile.welcome--theme-navy::before {
+  display: block;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  -webkit-mask-image: none;
+          mask-image: none;
+}
+
+.welcome--mobile.welcome--theme-navy::after {
+  display: block;
+  top: 38%;
+  left: 50%;
+  width: min(560px, 120%);
 }
 
 .welcome--mobile .welcome__content {
@@ -7841,8 +8593,8 @@ button[aria-busy="true"] {
   max-width: none;
   min-height: auto;
   padding: 0;
-  gap: 18px;
-  flex: 1;
+  gap: 10px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -7850,31 +8602,109 @@ button[aria-busy="true"] {
 }
 
 .welcome--mobile .welcome__brand {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .welcome--mobile .welcome__brand-mark {
-  width: 68px;
-  height: 68px;
+  width: 52px;
+  height: 52px;
 }
 
 .welcome--mobile .welcome__brand-text {
-  font-size: 32px;
-  letter-spacing: -0.6px;
+  font-size: 25px;
+  letter-spacing: 0;
 }
 
 .welcome--mobile .welcome__headline {
-  font-size: 38px;
-  letter-spacing: -1.2px;
+  font-size: clamp(27px, 8vw, 36px);
+  letter-spacing: 0;
   line-height: 1.04;
   text-wrap: balance;
 }
 
-.welcome--mobile .welcome__supporting,
 .welcome--mobile .welcome__supporting {
-  display: none;
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.welcome--mobile .welcome__hero {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 10px 0 0;
+  border-radius: 14px;
+  clip-path: none;
+  /* Grow to fill the space between the pitch and the footer so the stage is
+     centred (not clipped) and the footer stays pinned to the bottom. */
+  flex: 1 1 auto;
+}
+
+/* Constrain the slideshow stage so the scene, caption, and dots all fit
+   inside the mobile hero instead of overflowing (which clipped the card and
+   hid the dots). */
+.welcome--mobile .hero-slideshow {
+  gap: 10px;
+}
+
+.welcome--mobile .hero-slideshow__frame {
+  width: 100%;
+  height: min(320px, 40vh);
+  flex-shrink: 1;
+  min-height: 0;
+  /* Contain any scene overflow within the stage instead of spilling over the
+     caption/footer (deck side-cards clip cleanly here — accepted). */
+  overflow: hidden;
+}
+
+/* --- Mobile scene fit: shrink the desktop-sized scenes so they sit inside
+   the smaller stage without clipping the caption, dots, or footer. --- */
+.welcome--mobile .scene-parse__wrap {
+  width: min(320px, 96%);
+  min-height: 0;
+}
+
+.welcome--mobile .scene-momentum {
+  gap: 8px;
+}
+
+.welcome--mobile .scene-momentum__chips {
+  gap: 4px;
+}
+
+.welcome--mobile .scene-momentum__chip {
+  padding: 7px 3px;
+}
+
+.welcome--mobile .scene-momentum__chip-label {
+  font-size: 7.5px;
+  letter-spacing: 0;
+}
+
+.welcome--mobile .scene-momentum__chip-value {
+  font-size: 15px;
+}
+
+.welcome--mobile .scene-momentum__donut {
+  width: 96px;
+  height: 96px;
+}
+
+.welcome--mobile .scene-momentum__total-value {
+  font-size: 19px;
+}
+
+/* Disclaimer: tuck it into the bottom-right of the stage, small, so it
+   neither clips against the frame edge nor collides with the centred
+   caption below (overflow:hidden on the frame keeps it contained). */
+.welcome--mobile .hero-slideshow__disclaimer {
+  right: 8px;
+  bottom: 6px;
+  font-size: 7.5px;
 }
 
 .welcome--mobile .welcome__footer-meta {
@@ -7882,45 +8712,124 @@ button[aria-busy="true"] {
   left: auto;
   bottom: auto;
   z-index: 2;
-  margin: 28px 0 0;
+  /* The growing hero above pins this to the bottom of the viewport column. */
+  margin: 12px 0 0;
   justify-content: flex-start;
   gap: 8px;
   font-size: 10px;
-  line-height: 1.7;
+  line-height: 1.45;
 }
 
 .welcome--mobile .welcome__cta-group {
-  margin-top: auto;
+  margin-top: 0;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
 .welcome--mobile .welcome__cta {
   width: 100%;
   border-radius: 12px;
-  padding: 16px 20px;
-  font-size: 15px;
+  padding: 12px 16px;
+  font-size: 12.5px;
 }
 
+/* Full-width mobile button centres its text, so the dot can't be pinned to
+   the left edge (that leaves a big gap). Make the dot an inline flex item so
+   the [dot · label] pair stays centred together. */
 .welcome--mobile .welcome__cta--ghost {
-  position: relative;
-  padding-left: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-left: 0;
 }
 
 .welcome--mobile .welcome__cta--ghost::before {
   content: "";
-  position: absolute;
-  left: 20px;
-  top: 50%;
+  position: static;
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: #16A34A;
-  transform: translateY(-50%);
   box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
   animation: mw-pulse 1.8s ease-out infinite;
+}
+
+@media (max-width: 900px) {
+  .welcome::before,
+  .welcome::after {
+    display: none;
+  }
+
+  .welcome__footer-desktop-only {
+    display: none;
+  }
+}
+
+/* The portable-app download is desktop-only. Hide it on any touch device
+   (no hover / coarse pointer) regardless of width — e.g. tablet landscape,
+   which can exceed 900px yet must not offer the desktop download. */
+@media (hover: none), (pointer: coarse) {
+  .welcome__footer-desktop-only {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) and (orientation: landscape) {
+  .welcome--mobile {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 620px) and (orientation: portrait) and (max-height: 599px) {
+  .welcome--mobile {
+    padding: 12px 18px 10px;
+  }
+
+  .welcome--mobile .welcome__content {
+    gap: 7px;
+  }
+
+  .welcome--mobile .welcome__brand-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .welcome--mobile .welcome__brand-text {
+    font-size: 22px;
+  }
+
+  .welcome--mobile .welcome__headline {
+    font-size: clamp(24px, 7vw, 30px);
+  }
+
+  .welcome--mobile .welcome__supporting {
+    display: none;
+  }
+
+  .welcome--mobile .welcome__hero {
+    margin-top: 6px;
+  }
+
+  .welcome--mobile .hero-slideshow__frame {
+    height: min(200px, 32vh);
+  }
+
+  .welcome--mobile .welcome__cta-group {
+    gap: 6px;
+  }
+
+  .welcome--mobile .welcome__cta {
+    padding: 10px 14px;
+  }
+
+  .welcome--mobile .welcome__footer-link {
+    display: none;
+  }
 }
 
 @keyframes mw-pulse {
@@ -8329,8 +9238,8 @@ button[aria-busy="true"] {
 }
 
 .config-error__brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -8380,9 +9289,16 @@ button[aria-busy="true"] {
   }
 
   .hero-slideshow__dot-progress--running,
+  .scene-constellation__line,
+  .scene-constellation__node,
+  .scene-constellation__star,
+  .scene-parse__beam,
+  .scene-parse__card,
+  .scene-parse__spark,
+  .scene-momentum__segment,
   .scene-logo__inner,
   .scene-logo__sparkle,
-  .scene-pipeline__badge,
+  .tracker-card__badge,
   .skeleton-line,
   .scene-stack__card,
   .scene-stack__card--entering,
@@ -8728,41 +9644,40 @@ button[aria-busy="true"] {
 }
 
 .cal-empty {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 10px;
+  display: flex;
   align-items: center;
-  padding: 14px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
 }
 
 .cal-empty__glyph {
-  grid-row: 1 / span 2;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--indigo);
-  font-family: "DM Mono", monospace;
-  font-size: 15px;
+  flex: 0 0 auto;
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.cal-empty__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .cal-empty__h {
   color: var(--t1);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.15;
 }
 
 .cal-empty__sub {
   color: var(--t3);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 10.5px;
+  line-height: 1.25;
 }
 
 .cal-row-list,
@@ -9265,10 +10180,12 @@ button[aria-busy="true"] {
   text-align: center;
 }
 
-.cal-dp-prompt-glyph {
-  color: var(--indigo);
-  font-family: "DM Mono", monospace;
-  font-size: 18px;
+.cal-dp-prompt-glyph,
+.cal-dp-empty-glyph {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .cal-dp-prompt-h,
@@ -9332,7 +10249,9 @@ button[aria-busy="true"] {
 .cal-dp-empty {
   display: grid;
   gap: 4px;
+  justify-items: center;
   padding: 18px 0;
+  text-align: center;
 }
 
 .cal-dp-body,
@@ -11139,4 +12058,247 @@ button[aria-busy="true"] {
   .cx-skel-line {
     animation: none;
   }
+}
+
+/* =========================================================================
+   Feature 042 — In-app LLM processing overlay (Phase 06, T022–T024)
+   Contract: specs/042-welcome-brand-refresh/contracts/api.md §3
+   ========================================================================= */
+
+.processing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: rgba(244, 241, 236, 0.96);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 1;
+  transition: opacity 400ms ease-out;
+}
+
+/* Fade to 0 over 400ms before the overlay is detached (T022/T023). */
+.processing-overlay--closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Edge glow — ambient purple/gold bloom behind the spinner and status text.
+   `z-index: -1` keeps this positioned (fixed) layer UNDER the in-flow text, so
+   the bright centre never washes out the copy. Desktop (≥900px) overrides the
+   background with a distinct static composition below. */
+.processing-overlay .edge-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Tablet/mobile (portrait) — same white-centre "circular mask" as desktop,
+     with Alice's gold (#F8BE43) across the top and deep purple (#3D1A8A) along
+     the base, plus brand accents in opposite corners. */
+  background:
+    radial-gradient(54% 44% at 50% 50%,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.5) 34%,
+      rgba(255, 255, 255, 0) 62%),
+    radial-gradient(72% 40% at 50% -4%, rgba(248, 190, 67, 0.36), transparent 66%),
+    radial-gradient(72% 40% at 50% 104%, rgba(61, 26, 138, 0.30), transparent 66%),
+    radial-gradient(48% 40% at 4% 30%, rgba(61, 26, 138, 0.22), transparent 60%),
+    radial-gradient(48% 40% at 96% 70%, rgba(248, 190, 67, 0.24), transparent 60%);
+}
+
+.processing-overlay .spinner-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+
+.processing-overlay .spinner-logo {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  /* Sigil sits above the ring (per design) so the blurred glow is occluded
+     rather than bleeding over the icon footprint. */
+  z-index: 2;
+}
+
+.processing-overlay .spinner-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  animation: processing-spin 0.6s linear infinite;
+  z-index: 1;
+}
+
+.processing-overlay .spinner-ring .ring-glow {
+  filter: blur(4px);
+  opacity: 0.65;
+}
+
+.processing-overlay .processing-text {
+  text-align: center;
+  max-width: 320px;
+}
+
+.processing-overlay .processing-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--t1);
+}
+
+.processing-overlay .processing-subtitle {
+  margin: 4px 0 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--t2);
+}
+
+@keyframes processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Desktop edge glow (≥900px) — static composition per the Claude Design
+   handoff: a bright white centre spotlight (the "circular mask") framed by
+   Alice's deep-purple (#3D1A8A) and gold (#F8BE43) blooms. Static in prod for
+   simplicity (the mockup is static and rotation is not required). */
+@media (min-width: 900px) {
+  .processing-overlay .edge-glow {
+    background:
+      /* Bright white centre spotlight — top layer keeps the middle clean. */
+      radial-gradient(46% 64% at 50% 50%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.5) 34%,
+        rgba(255, 255, 255, 0) 62%),
+      /* Gold blooms on the left & right edges. */
+      radial-gradient(44% 82% at 0% 50%, rgba(248, 190, 67, 0.38), transparent 72%),
+      radial-gradient(44% 82% at 100% 50%, rgba(248, 190, 67, 0.38), transparent 72%),
+      /* Deep-purple blooms in the top corners and along the base. */
+      radial-gradient(54% 56% at 8% 0%, rgba(61, 26, 138, 0.34), transparent 60%),
+      radial-gradient(54% 56% at 92% 0%, rgba(61, 26, 138, 0.34), transparent 60%),
+      radial-gradient(72% 48% at 50% 104%, rgba(61, 26, 138, 0.22), transparent 66%);
+  }
+
+  /* Rotation removed — the desktop glow is now static. */
+  .processing-overlay .edge-glow::after {
+    content: none;
+  }
+}
+
+/* Reduced motion — freeze the spinner ring and drop the fade (T024). The edge
+   glow is a static gradient, so nothing else needs disabling. */
+@media (prefers-reduced-motion: reduce) {
+  .processing-overlay {
+    transition: none;
+  }
+
+  .processing-overlay .spinner-ring {
+    animation: none;
+  }
+}
+
+/* =========================================================================
+   Feature 042 — Auth overlay redesign (Phase 06, T021)
+   New header copy, glassmorphism panel, password peek, touched validation.
+   ========================================================================= */
+
+/* Solid white modal per the prototype (not glassmorphism), 404px / 16px radius. */
+.auth-overlay__panel {
+  max-width: 404px;
+  background: #FFFFFF;
+  border-radius: 16px;
+}
+
+.auth-overlay__title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.auth-overlay__header-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.auth-overlay__subtitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--t2);
+}
+
+.auth-form__input-wrap {
+  position: relative;
+  display: block;
+}
+
+.auth-form__input-wrap .auth-form__input {
+  width: 100%;
+}
+
+.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input {
+  padding-right: 40px;
+}
+
+.auth-form__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--t2);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.auth-form__password-toggle:hover {
+  color: var(--t1);
+  background: var(--indigo-soft);
+}
+
+.auth-form__password-toggle:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 1px;
+}
+
+.auth-form__password-toggle .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-form__field--error .auth-form__input {
+  border-color: var(--color-danger);
+}
+
+.auth-form__field--error .auth-form__input:focus-visible {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+.auth-form__field-error:empty {
+  display: none;
 }

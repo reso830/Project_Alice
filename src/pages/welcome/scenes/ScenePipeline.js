@@ -1,16 +1,16 @@
-// Scene 2 — Pipeline animation (`ScenePipeline`)
-// docs/design/welcome_page.md §4.4
-//
-// Single straight preview card ("J024 · UX Engineer · Vertex AI", compat 94).
-// Status cycles applied → phone_screen → interview → assessment → offer every
-// 1100ms. Each stage swap re-keys the badge so the .scene-pipeline__badge
-// CSS keyframe (`pipeline-badge`, 0.55s pop-in) plays.
-// prefers-reduced-motion → render the final status statically, no setInterval.
+// Scene 3 - Pipeline: a tracker card whose status badge walks the hiring stages.
+
+import { buildBadge, buildTrackerCard } from './trackerCard.js';
 
 let _state = null;
 
-const STATUSES = ['applied', 'phone_screen', 'interview', 'assessment', 'offer'];
-const STAGE_MS = 1100;
+const STAGES = [
+  { key: 'applied', status: 'Applied', badgeCls: 'applied' },
+  { key: 'phone_screen', status: 'Phone Screen', badgeCls: 'phone' },
+  { key: 'interview', status: 'Interview', badgeCls: 'interview' },
+  { key: 'offer', status: 'Offer', badgeCls: 'offer' },
+];
+const STAGE_MS = 1150;
 
 function prefersReducedMotion() {
   if (typeof globalThis.matchMedia !== 'function') return false;
@@ -21,65 +21,72 @@ function prefersReducedMotion() {
   }
 }
 
-function buildBadge(status) {
-  const badge = document.createElement('span');
-  badge.className = `scene-pipeline__badge scene-pipeline__badge--${status}`;
-  badge.dataset.status = status;
-  badge.textContent = status.replace('_', ' ');
+function effectiveMotion(motion) {
+  return motion !== undefined ? motion : !prefersReducedMotion();
+}
+
+// Pipeline reuses the shared badge but tags it for the cycle logic + tests.
+function pipelineBadge(stage) {
+  const badge = buildBadge(stage.status, stage.badgeCls);
+  badge.classList.add('scene-pipeline__badge');
+  badge.dataset.status = stage.key;
   return badge;
 }
 
-function buildCard() {
-  const card = document.createElement('div');
-  card.className = 'scene-pipeline__card';
-
-  const eyebrow = document.createElement('span');
-  eyebrow.className = 'scene-pipeline__eyebrow';
-  eyebrow.textContent = 'J024';
-
-  const role = document.createElement('p');
-  role.className = 'scene-pipeline__role';
-  role.textContent = 'UX Engineer';
-
-  const company = document.createElement('p');
-  company.className = 'scene-pipeline__company';
-  company.textContent = 'Vertex AI';
-
-  const foot = document.createElement('div');
-  foot.className = 'scene-pipeline__foot';
-
-  const compat = document.createElement('span');
-  compat.className = 'scene-pipeline__compat';
-  compat.textContent = '94 fit';
-
-  foot.append(compat);
-  card.append(eyebrow, role, company, foot);
-  return { card, foot };
+function buildTrack(activeIndex) {
+  const track = document.createElement('div');
+  track.className = 'scene-pipeline__track';
+  STAGES.forEach((stage, index) => {
+    const node = document.createElement('span');
+    node.className = [
+      'scene-pipeline__node',
+      index <= activeIndex ? 'is-done' : '',
+      index === activeIndex ? 'is-current' : '',
+    ].filter(Boolean).join(' ');
+    node.dataset.status = stage.key;
+    track.append(node);
+  });
+  return track;
 }
 
-export function mount(container, { variant = 'default' } = {}) {
+function updateTrack(root, activeIndex) {
+  root.querySelector('.scene-pipeline__track')?.replaceWith(buildTrack(activeIndex));
+}
+
+export function mount(container, { variant = 'default', motion } = {}) {
   unmount();
-  const reduced = prefersReducedMotion();
+  const animate = effectiveMotion(motion);
 
   const root = document.createElement('div');
   root.className = `scene-pipeline scene-pipeline--${variant}`;
   root.dataset.variant = variant;
 
-  const { card, foot } = buildCard();
-  let statusIndex = reduced ? STATUSES.length - 1 : 0;
-  let badge = buildBadge(STATUSES[statusIndex]);
-  foot.append(badge);
+  let statusIndex = 0;
+  const { card, badge: cardBadge } = buildTrackerCard({
+    id: 'J024',
+    status: STAGES[statusIndex].status,
+    badgeCls: STAGES[statusIndex].badgeCls,
+    upd: 'Just now',
+    role: 'UX Engineer',
+    company: 'Vertex AI',
+    compat: 88,
+  });
+  card.classList.add('scene-pipeline__card');
+  // Swap the shared card's badge for a pipeline-tagged one (drives the cycle).
+  let badge = pipelineBadge(STAGES[statusIndex]);
+  cardBadge.replaceWith(badge);
 
-  root.append(card);
+  root.append(buildTrack(statusIndex), card);
   container.append(root);
 
   let interval = null;
-  if (!reduced) {
+  if (animate) {
     interval = globalThis.setInterval(() => {
-      statusIndex = (statusIndex + 1) % STATUSES.length;
-      const next = buildBadge(STATUSES[statusIndex]);
+      statusIndex = (statusIndex + 1) % STAGES.length;
+      const next = pipelineBadge(STAGES[statusIndex]);
       badge.replaceWith(next);
       badge = next;
+      updateTrack(root, statusIndex);
     }, STAGE_MS);
   }
 

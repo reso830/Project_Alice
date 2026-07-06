@@ -1,4 +1,4 @@
-import aliceWhite from '../assets/Alice_White.png';
+import aliceWhite from '../assets/logo/alice-sigil-full-white.svg';
 
 let _container = null;
 

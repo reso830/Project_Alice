@@ -124,6 +124,7 @@ describe('CreationPicker.open() callback contract (issue #41)', () => {
 
     expect(smart).not.toBeNull();
     expect(findCardByTitle('Manual entry')).not.toBeNull();
+    expect(document.querySelector('.creation-picker-graphic')).toBeNull();
     expect(document.querySelector('.creation-picker-subtitle')?.textContent)
       .toBe('Start from a job posting, or fill it in yourself. You can edit everything afterward.');
     expect(smart.textContent).toContain('Fastest');

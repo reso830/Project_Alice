@@ -1,21 +1,23 @@
-import aliceColored from '../../assets/Alice_Colored.png';
-import aliceWhite from '../../assets/Alice_White.png';
+import aliceColored from '../../assets/logo/alice-sigil-full.svg';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 
-// Theme-driven brand mark. Production uses the warm default; white/navy
-// variants remain as CSS design states after the prototype controls were
-// removed.
+const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
+const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
+const PORTFOLIO_URL = 'https://alvinresoso.com';
+
+// Theme-driven brand mark. Production ships the midnight (navy) theme per the
+// welcome-redesign prototype default; warm/white remain as CSS design states.
 const BRAND_MARKS = {
   warm: aliceColored,
   white: aliceColored,
-  navy: aliceWhite,
+  navy: aliceColored,
 };
 
 const DEFAULT_WELCOME_CONFIG = Object.freeze({
   layout: 'diagonal',
-  theme: 'warm',
+  theme: 'navy',
   copyIntensity: 'none',
   heroScene: 'auto',
 });
@@ -50,7 +52,7 @@ function classMatcher(prefix, allowed) {
 function tabletMatches() {
   if (typeof globalThis.matchMedia !== 'function') return false;
   try {
-    return globalThis.matchMedia('(min-width: 760px) and (max-width: 1099px)').matches === true;
+    return globalThis.matchMedia('(min-width: 621px) and (max-width: 900px)').matches === true;
   } catch {
     return false;
   }
@@ -59,18 +61,16 @@ function tabletMatches() {
 function mobileMatches() {
   if (typeof globalThis.matchMedia !== 'function') return false;
   try {
-    return globalThis.matchMedia('(max-width: 759px)').matches === true;
+    return globalThis.matchMedia('(max-width: 620px)').matches === true;
   } catch {
     return false;
   }
 }
 
 function computeEffective(config) {
-  // Plan §14.C: tablet width forces `layout: centered` regardless of Tweaks
-  // panel selection. `variant` flows to `HeroSlideshow` so SceneStack /
-  // SceneLogo render their tablet-correct DOM (2 cards / fixed 200×200).
   const isTablet = tabletMatches();
-  const layout = isTablet ? 'centered' : config.layout;
+  const isMobile = mobileMatches();
+  const layout = (isTablet || isMobile) ? 'centered' : config.layout;
   const variant = layout === 'centered' ? 'centered' : 'default';
   return {
     layout,
@@ -79,6 +79,7 @@ function computeEffective(config) {
     heroScene: config.heroScene,
     variant,
     isTablet,
+    isMobile,
   };
 }
 
@@ -98,8 +99,6 @@ function applyTweakClasses(root, eff) {
 }
 
 function effectiveBrandMark(theme, isMobile) {
-  // Phase 18 / design §3.3: mobile always uses Alice_Colored regardless of
-  // the active theme. Mobile ignores theme + layout selectors entirely.
   if (isMobile) return BRAND_MARKS.warm;
   return BRAND_MARKS[theme] ?? BRAND_MARKS.warm;
 }
@@ -140,17 +139,6 @@ function ensureSlideshowMounted() {
   } else {
     _root.append(_heroSlot);
   }
-}
-
-function teardownSlideshow() {
-  if (_heroSlideshow) {
-    try { _heroSlideshow.unmount(); } catch { /* best-effort */ }
-    _heroSlideshow = null;
-  }
-  if (_heroSlot && _heroSlot.parentNode) {
-    _heroSlot.remove();
-  }
-  _heroSlot = null;
 }
 
 function handleViewportChange() {
@@ -223,7 +211,7 @@ function renderSupportingCopy() {
   return el(
     'p',
     'welcome__supporting',
-    'Track applications, monitor status changes, and stay on top of follow-ups without losing the thread.',
+    'Track every application and surface the right next move — from first apply to signed offer.',
   );
 }
 
@@ -265,6 +253,86 @@ function makeExternalLink(text, href, ariaLabel) {
   return a;
 }
 
+// Scattered ambient sparkles across the galaxy background (prototype
+// PAGE_TWINKLES). Desktop-only; behind the content.
+const PAGE_TWINKLES = [
+  { top: '8%', left: '4%', size: 14, dur: '3.4s', del: '.2s' },
+  { top: '16%', left: '22%', size: 10, dur: '2.7s', del: '1.1s' },
+  { top: '28%', left: '9%', size: 12, dur: '3.9s', del: '.6s' },
+  { top: '38%', left: '31%', size: 9, dur: '2.4s', del: '1.8s' },
+  { top: '52%', left: '6%', size: 13, dur: '3.1s', del: '2.2s' },
+  { top: '64%', left: '24%', size: 10, dur: '2.9s', del: '.4s' },
+  { top: '74%', left: '12%', size: 15, dur: '3.6s', del: '1.5s' },
+  { top: '86%', left: '34%', size: 9, dur: '2.5s', del: '2.6s' },
+  { top: '20%', left: '44%', size: 10, dur: '3.2s', del: '.9s' },
+  { top: '46%', left: '40%', size: 8, dur: '2.8s', del: '1.9s' },
+  { top: '70%', left: '46%', size: 11, dur: '3.5s', del: '.3s' },
+  { top: '12%', left: '62%', size: 12, dur: '2.6s', del: '1.3s' },
+  { top: '34%', left: '56%', size: 9, dur: '3.8s', del: '2.4s' },
+  { top: '60%', left: '62%', size: 13, dur: '3.0s', del: '.7s' },
+  { top: '82%', left: '58%', size: 10, dur: '2.3s', del: '1.6s' },
+  { top: '6%', left: '82%', size: 12, dur: '3.3s', del: '1.0s' },
+  { top: '42%', left: '88%', size: 14, dur: '2.9s', del: '.5s' },
+  { top: '90%', left: '80%', size: 9, dur: '3.7s', del: '2.0s' },
+  { top: '10%', left: '38%', size: 16, dur: '3.0s', del: '.7s' },
+  { top: '24%', left: '70%', size: 11, dur: '2.6s', del: '1.7s' },
+  { top: '54%', left: '78%', size: 18, dur: '3.4s', del: '.4s' },
+  { top: '78%', left: '70%', size: 12, dur: '2.9s', del: '2.1s' },
+  { top: '30%', left: '90%', size: 10, dur: '3.6s', del: '1.2s' },
+  { top: '4%', left: '52%', size: 13, dur: '2.8s', del: '.6s' },
+  { top: '48%', left: '18%', size: 20, dur: '3.9s', del: '1.4s' },
+  { top: '66%', left: '36%', size: 9, dur: '2.4s', del: '2.3s' },
+  { top: '88%', left: '18%', size: 14, dur: '3.2s', del: '.9s' },
+  { top: '18%', left: '9%', size: 22, dur: '4.0s', del: '1.9s' },
+  { top: '40%', left: '68%', size: 11, dur: '2.7s', del: '.3s' },
+  { top: '58%', left: '52%', size: 8, dur: '3.3s', del: '1.6s' },
+  { top: '94%', left: '46%', size: 12, dur: '2.5s', del: '2.4s' },
+  { top: '14%', left: '92%', size: 15, dur: '3.5s', del: '1.0s' },
+];
+
+function renderStarfield() {
+  const svgns = 'http://www.w3.org/2000/svg';
+  const field = document.createElement('div');
+  field.className = 'welcome__starfield';
+  field.setAttribute('aria-hidden', 'true');
+  for (const t of PAGE_TWINKLES) {
+    const span = document.createElement('span');
+    span.className = 'welcome__spark';
+    span.style.top = t.top;
+    span.style.left = t.left;
+    span.style.setProperty('--tw-dur', t.dur);
+    span.style.setProperty('--tw-del', t.del);
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('width', String(t.size));
+    svg.setAttribute('height', String(t.size));
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    const path = document.createElementNS(svgns, 'path');
+    path.setAttribute('d', 'M12 1.5c.8 6.4 3.1 8.7 9.5 9.5-6.4.8-8.7 3.1-9.5 9.5-.8-6.4-3.1-8.7-9.5-9.5 6.4-.8 8.7-3.1 9.5-9.5Z');
+    svg.append(path);
+    span.append(svg);
+    field.append(span);
+  }
+  return field;
+}
+
+function createDownloadIcon() {
+  const svgns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgns, 'svg');
+  svg.setAttribute('class', 'welcome__footer-download-icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(svgns, 'path');
+  path.setAttribute('d', 'M12 3v12m0 0 4-4m-4 4-4-4M5 20h14');
+  svg.append(path);
+  return svg;
+}
+
 function renderFooterMeta() {
   const wrap = document.createElement('p');
   wrap.className = 'welcome__footer-meta';
@@ -277,9 +345,28 @@ function renderFooterMeta() {
   wrap.append(
     version,
     makeExternalLink(LICENSE_NAME, LICENSE_URL, `${LICENSE_NAME} license`),
-    makeExternalLink('⊙ Report an issue', ISSUE_URL, 'Report an issue on GitHub'),
-    makeExternalLink('✦ Request a feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('Report issue', ISSUE_URL, 'Report an issue on GitHub'),
+    makeExternalLink('Request feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('alvinresoso.com', PORTFOLIO_URL, 'Visit alvinresoso.com'),
   );
+
+  const repo = makeExternalLink('GitHub', REPOSITORY_URL, 'Open Project Alice repository');
+  repo.classList.add('welcome__footer-desktop-only');
+
+  const download = makeExternalLink(
+    `Download Alice Portable ${APP_VERSION}`,
+    RELEASES_URL,
+    `Download Alice Portable ${APP_VERSION}`,
+  );
+  download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
+  download.prepend(createDownloadIcon());
+
+  // Download chip drops to its own line below the rest of the footer.
+  const downloadRow = document.createElement('div');
+  downloadRow.className = 'welcome__footer-download-row welcome__footer-desktop-only';
+  downloadRow.append(download);
+
+  wrap.append(repo, downloadRow);
 
   return wrap;
 }
@@ -435,25 +522,18 @@ export function mount(container, deps = {}) {
   if (_isMobile) _root.classList.add('welcome--mobile');
 
   const left = el('section', 'welcome__content');
-  left.append(
-    renderBrand({ theme: _effective.theme }),
-    renderHeadline(),
-    renderSupportingCopy(),
-    renderCtaGroup(),
-  );
+  const pitchMid = el('div', 'welcome__pitch-mid');
+  pitchMid.append(renderHeadline(), renderSupportingCopy(), renderCtaGroup());
+  left.append(renderBrand({ theme: _effective.theme }), pitchMid);
   const footerMeta = renderFooterMeta();
 
   _overlaySlot = el('div', 'welcome__auth-overlay-slot');
   _overlaySlot.hidden = true;
 
-  _root.append(left, footerMeta, _overlaySlot);
+  _root.append(renderStarfield(), left, footerMeta, _overlaySlot);
   container.replaceChildren(_root);
 
-  // On mobile the hero slideshow is omitted entirely; on desktop + tablet it
-  // mounts before the footer/overlay slot.
-  if (!_isMobile) {
-    ensureSlideshowMounted();
-  }
+  ensureSlideshowMounted();
 
   _keyHandler = onKeyDown;
   document.addEventListener('keydown', _keyHandler);
@@ -462,28 +542,27 @@ export function mount(container, deps = {}) {
   // resize-driven layout swaps mount the right scene variant.
   if (typeof globalThis.matchMedia === 'function') {
     try {
-      _tabletMql = globalThis.matchMedia('(min-width: 760px) and (max-width: 1099px)');
+      _tabletMql = globalThis.matchMedia('(min-width: 621px) and (max-width: 900px)');
       _tabletListener = () => handleViewportChange();
       _tabletMql.addEventListener('change', _tabletListener);
     } catch {
       _tabletMql = null;
       _tabletListener = null;
     }
-    // Mobile listener toggles the `.welcome--mobile` class and mounts/unmounts
-    // the hero slideshow so the DOM matches the viewport branch.
+    // Mobile listener toggles the `.welcome--mobile` class while keeping the
+    // showcase mounted; CSS owns the portrait/landscape height behavior.
     try {
-      _mobileMql = globalThis.matchMedia('(max-width: 759px)');
+      _mobileMql = globalThis.matchMedia('(max-width: 620px)');
       _mobileListener = () => {
         if (!_root) return;
         const nextMobile = _mobileMql.matches === true;
         if (nextMobile === _isMobile) return;
         _isMobile = nextMobile;
         _root.classList.toggle('welcome--mobile', _isMobile);
-        if (_isMobile) {
-          teardownSlideshow();
-        } else {
-          ensureSlideshowMounted();
-        }
+        _effective = computeEffective(DEFAULT_WELCOME_CONFIG);
+        applyTweakClasses(_root, _effective);
+        ensureSlideshowMounted();
+        mountHero(_heroSlot, _effective);
         updateBrandMark(_effective.theme);
       };
       _mobileMql.addEventListener('change', _mobileListener);
