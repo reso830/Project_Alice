@@ -27,7 +27,6 @@ describe('LegalModal renderer', () => {
     expect(overlay.textContent).toContain('v0.3.0 · Effective Apr 1, 2026');
     expect(overlay.textContent).toContain('Notice:');
     expect(overlay.textContent).toContain('1. Acceptance of terms');
-    expect(overlay.querySelector('.legal-modal__handle')).not.toBeNull();
     expect(document.body.style.overflow).toBe('hidden');
   });
 

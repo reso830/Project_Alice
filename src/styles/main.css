@@ -5548,6 +5548,12 @@ button.footer__link {
     padding-bottom: 10px;
   }
 
+  /* Reserve room for the fixed bottom tab bar (same clearance as
+     .card-list) so the copyright block isn't hidden behind it. */
+  .site-footer {
+    padding-bottom: 86px;
+  }
+
   .month-grid {
     gap: 6px;
     grid-auto-rows: minmax(54px, auto);
@@ -12387,15 +12393,6 @@ button.welcome__footer-link {
   background: #1a1a2e;
 }
 
-.legal-modal__handle {
-  display: none;
-  width: 36px;
-  height: 4px;
-  margin: 0 auto 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
-}
-
 .legal-modal__title {
   flex: 1;
   margin: 0;
@@ -12557,16 +12554,6 @@ button.welcome__footer-link {
     max-height: 82vh;
     border-radius: 14px 14px 0 0;
     animation: legal-sheet-enter 200ms ease-out;
-  }
-
-  .legal-modal__header {
-    flex-wrap: wrap;
-  }
-
-  .legal-modal__handle {
-    display: block;
-    flex: 0 0 100%;
-    width: 36px;
   }
 
   .legal-modal__title {

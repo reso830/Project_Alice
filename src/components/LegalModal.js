@@ -32,7 +32,6 @@ export const LegalModal = {
     const overlay = createElement('div', 'legal-overlay');
     const dialog = createElement('section', 'legal-modal');
     const header = createElement('header', 'legal-modal__header');
-    const handle = createElement('span', 'legal-modal__handle');
     const title = createElement('h2', 'legal-modal__title', documentContent.title);
     const closeButton = createElement('button', 'legal-modal__close', '✕');
     const body = createElement('div', 'legal-modal__body');
@@ -115,7 +114,7 @@ export const LegalModal = {
     overlay.dataset.previousBodyOverflow = document.body.style.overflow || '';
     document.body.style.overflow = 'hidden';
 
-    header.append(handle, title, closeButton);
+    header.append(title, closeButton);
     body.prepend(disclaimer);
     footer.append(metadata, footerButton);
     dialog.append(header, body, footer);
