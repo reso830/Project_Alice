@@ -8564,6 +8564,29 @@ button[aria-busy="true"] {
   overflow: hidden;
 }
 
+/* Keep the galaxy grid + sparkle starfield on mobile for theme consistency
+   (both are otherwise suppressed at <=900px). The grid mask is dropped so the
+   faint lines read evenly across the single-column layout. */
+.welcome--mobile .welcome__starfield {
+  display: block;
+}
+
+.welcome--mobile.welcome--theme-navy::before {
+  display: block;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  -webkit-mask-image: none;
+          mask-image: none;
+}
+
+.welcome--mobile.welcome--theme-navy::after {
+  display: block;
+  top: 38%;
+  left: 50%;
+  width: min(560px, 120%);
+}
+
 .welcome--mobile .welcome__content {
   position: relative;
   width: 100%;
@@ -8611,12 +8634,28 @@ button[aria-busy="true"] {
 .welcome--mobile .welcome__hero {
   position: relative;
   width: 100%;
-  height: 158px;
+  height: auto;
   min-height: 0;
   margin: 10px 0 0;
   border-radius: 14px;
   clip-path: none;
-  flex: 0 0 158px;
+  /* Grow to fill the space between the pitch and the footer so the stage is
+     centred (not clipped) and the footer stays pinned to the bottom. */
+  flex: 1 1 auto;
+}
+
+/* Constrain the slideshow stage so the scene, caption, and dots all fit
+   inside the mobile hero instead of overflowing (which clipped the card and
+   hid the dots). */
+.welcome--mobile .hero-slideshow {
+  gap: 10px;
+}
+
+.welcome--mobile .hero-slideshow__frame {
+  width: 100%;
+  height: min(320px, 40vh);
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 .welcome--mobile .welcome__footer-meta {
@@ -8624,8 +8663,8 @@ button[aria-busy="true"] {
   left: auto;
   bottom: auto;
   z-index: 2;
-  /* Push the footer to the bottom of the viewport-height flex column. */
-  margin: auto 0 0;
+  /* The growing hero above pins this to the bottom of the viewport column. */
+  margin: 12px 0 0;
   justify-content: flex-start;
   gap: 8px;
   font-size: 10px;
@@ -8721,9 +8760,11 @@ button[aria-busy="true"] {
   }
 
   .welcome--mobile .welcome__hero {
-    height: 110px;
-    flex-basis: 110px;
     margin-top: 6px;
+  }
+
+  .welcome--mobile .hero-slideshow__frame {
+    height: min(200px, 32vh);
   }
 
   .welcome--mobile .welcome__cta-group {
