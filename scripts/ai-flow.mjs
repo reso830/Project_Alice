@@ -841,7 +841,7 @@ function runReqReview() {
   addFindingsFromReview('Req-Review', 'Claude', claudeLog, ['Ready', 'Not Ready']);
   const codexLog = newLogPath('06-codex-requirements-review');
   try {
-    runCodex(loadPrompt('codex-check-requirements'), codexLog);
+    runCodex(loadPrompt('codex-check-requirements'), codexLog, { sandbox: 'workspace-write' });
   } catch (error) {
     const note = `Codex requirements review failed before producing a parseable verdict.\n\n${error.message}`;
     appendWorkflowNote('Requirements Review', 'Codex', 'Not Ready', codexLog, note);

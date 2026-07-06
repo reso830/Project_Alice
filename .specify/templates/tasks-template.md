@@ -28,11 +28,29 @@ specification or when needed to protect the changed behavior.
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
+## Phase Summary
+
+*Required immediately after this header, before Phase 1, per `scripts/prompts/claude-tasks.md`. One row per phase; keep it consistent with the detailed phases below it.*
+
+| Phase | Focus | Tasks | Stories |
+|---|---|---|---|
+| 1 | Setup | T001–T00N | — |
+| 2 | Foundational | T00N–T0NN | — |
+| 3 | User Story 1 | T0NN–T0NN | US1 |
+| N | Polish & Cross-Cutting | T0NN–T0NN | — |
+| N+1 | Release Prep | T0NN–T0NN | — |
+| N+2 | Browser Smoke Test | T0NN–T0NN | US1, US2, ... |
+
 ## Visual-Fidelity Task Pattern
 
-*Applies ONLY to visual-fidelity features (plan.md Visual-Fidelity Mode filled
-in). For logic features and small visual tweaks, ignore this section. Do not add
-these artifacts speculatively — proportionality governs (Principle V).*
+*Applies to visual-fidelity features (plan.md Visual-Fidelity Mode filled in).
+For logic features, this section does not apply. For a small visual tweak against
+a design reference, the fidelity principles still apply in full — reference the
+source directly (never paraphrase it), and still verify with Tier 2 visual
+judgment before calling it done. Proportionality (Principle V) only thins the
+process, not the fidelity bar: skip the Tier-1 harness setup task if the change
+doesn't warrant it, and skip the conditional artifacts below unless they're
+actually triggered. Do not add unneeded artifacts speculatively.*
 
 For a visual-fidelity feature, visual tasks **reference** the canonical design
 source rather than paraphrasing it, and they carry a fidelity acceptance bar:
@@ -52,14 +70,19 @@ source rather than paraphrasing it, and they carry a fidelity acceptance bar:
   test:visual` (Playwright geometry assertions, headless, animations frozen, mock
   data seeded) IF it does not already exist. The harness is reused across features;
   only the per-component assertions are authored per feature. Blocks visual US tasks.
-- **Conditional artifacts (produce only when triggered):**
-  - *Deviation ledger* — add an entry ONLY when an intentional difference from the
-    prototype is accepted (what changed, why, who approved). No deviation → no ledger.
-  - *`visual-artifacts.md` manifest* — required ONLY when Tier 2 judgment is handed
-    from implementer to a separate reviewer. Lists: prototype screenshot paths ·
-    implementation screenshot paths (`[task-id]_prototype.png` / `[task-id]_built.png`)
-    · viewport/checkpoint labels · geometry report path · deviation-ledger link.
-    Self-served Tier 2 does not need it.
+- **Conditional artifacts (produce only when triggered) — canonical locations:**
+  - *Deviation ledger* — `specs/[###-feature-name]/deviation-ledger.md`. Add an
+    entry ONLY when an intentional difference from the prototype is accepted (what
+    changed, why, who approved). No deviation → no file.
+  - *Visual artifacts* — screenshots and geometry reports live under
+    `specs/[###-feature-name]/visual-artifacts/`, named `[task-id]_prototype.png` /
+    `[task-id]_built.png` per breakpoint/checkpoint. The manifest,
+    `specs/[###-feature-name]/visual-artifacts.md`, is required ONLY when Tier 2
+    judgment is handed from the implementer to a separate reviewer — it lists the
+    prototype/implementation screenshot paths, viewport/checkpoint labels, the
+    geometry report path, and a link to the deviation ledger if one exists.
+    Self-served Tier 2 does not need the manifest, but screenshots still land in
+    the same directory so they're findable if a handoff later becomes necessary.
 
 <!-- 
   ============================================================================
