@@ -72,5 +72,23 @@ describe('legalContent', () => {
       const transfers = PRIVACY_POLICY.sections.find((s) => s.title === '11. International Data Transfers');
       expect(transfers.content).toContain('Standard Contractual Clauses');
     });
+
+    it('describes Supabase/Vercel as the Owner\'s own service providers, not as "sub-processors" of the Owner', () => {
+      const thirdParty = PRIVACY_POLICY.sections.find((s) => s.title === '8. Third-Party Services');
+      // "Sub-processor" is Supabase's own DPA term for vendors underneath Supabase itself
+      // (e.g. AWS, Cloudflare) — Supabase/Vercel are the Owner's direct processors, not
+      // sub-processors of the Owner. Only Supabase's own downstream vendors get that label.
+      expect(thirdParty.content).not.toContain("process data on the Owner's behalf as sub-processors");
+      expect(thirdParty.content).toContain('third-party service providers');
+      expect(thirdParty.content).toContain('its own sub-processors, such as underlying cloud infrastructure providers');
+    });
+
+    it('does not overclaim that Speed Insights metrics are categorically "not personal data"', () => {
+      const technical = PRIVACY_POLICY.sections.find((s) => s.title === '4.6 Technical Information');
+      // IP/device metrics can be personal data in some jurisdictions (e.g. GDPR) depending on
+      // context — describe what's not done with the data instead of asserting a legal category.
+      expect(technical.content).not.toContain('this is not personal data');
+      expect(technical.content).toContain('not used to identify individual users');
+    });
   });
 });
