@@ -82,6 +82,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/models/compatibility.js` | Deterministic compatibility engine (036) — pure `computeCompatibility(profile, application, { asOf })` → `{ score, label }`; `COMPAT_WEIGHTS` (skills 43 / roleAlignment 25 / experience 12 / keywords 10 / certifications 10), pooled weighted skill coverage, `COMPAT_BANDS`, `getCompatLabel`, `derivedYears`. No I/O, no `Math.random`, no clock read — time enters only via the caller-supplied `asOf`. Shared by the server service, the demo store, and `CompatBar` |
 | `shared/constants.js` | `STATUS_VALUES` — 10 status strings shared between frontend and backend |
 | `shared/util/date.js` | `isValidISODate(value)` — round-trip parse that rejects impossible dates like `2030-02-30`. Re-exported by `src/utils/date.js` for the client (form/timeline) and imported by `server/middleware/requestDate.js` for server-side `X-Client-Date` validation (#43) |
+| `shared/startupLoader.js` | `stripStartupLoaderMarkup(html)` + the `STARTUP_LOADER_START_MARKER`/`STARTUP_LOADER_END_MARKER` HTML comment markers (feature 044/WS1) — single source used by both `server/index.js` (portable's `serveStatic` catch-all) and `vite.config.js` (the `stripStartupLoaderInDev` plugin) to strip the inlined hosted-only loader block from `index.html` for every non-hosted serving path |
 
 **Application fields (required):** `jobTitle`, `companyName`, `status`, `lastStatusUpdate`, `responsibilities`
 
@@ -187,7 +188,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `src/utils/calendarSuggestions.js` | `evaluateSuggestions(apps, todayISO, dismissals)` — 5 rule-based suggestion kinds: `followup`, `feedback`, `interview_followup`, `offer_expiry`, `ghost`; skips terminal-state apps and apps with future entries |
 | `src/utils/calendarDismissals.js` | In-memory dismissal store for Calendar Suggested Actions; `dismiss(key)`, `isDismissed(key)`, `clearAll()` — never touches localStorage (feature 020 FR-004) |
 | `src/utils/asyncUI.js` | Shared client-side loading + async-state utilities — `bindBusyButton`, `bindContainerBusy`, `renderInlineError`. Used by Modal, Card, CreationPicker, ResumeImport, StatusDropdown, Tracker, Calendar, Profile, ProfileEdit (feature 029) |
-| `src/utils/skeletons.js` | Shared DOM-factory builders for loading skeletons — `buildApplicationListSkeleton`, `buildProfileSkeleton`, `buildCalendarSkeleton`, `buildProfileEditSkeleton`, `buildProfileAppsSkeleton` (feature 029) |
+| `src/utils/skeletons.js` | Shared DOM-factory builders for loading skeletons — `buildApplicationListSkeleton`, `buildProfileSkeleton`, `buildCalendarSkeleton`, `buildProfileEditSkeleton`, `buildProfileAppsSkeleton` (feature 029); `buildTrackerBootSkeleton` (feature 044/WS3) — same card shape as `buildApplicationListSkeleton`, distinct class/label, used for the signed-in boot handoff in `main.js` and as the generic workspace placeholder while `navigate()` dynamic-imports `Calendar`/`Profile`/`ProfileEdit` (WS4) |
 | `src/styles/main.css` | Global styles and CSS design tokens |
 
 ---
@@ -222,8 +223,8 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `tests/pages/` | Page-level integration (Tracker, Profile, ProfileEdit, ConfigError) |
 | `tests/pages/Calendar.test.js` | Calendar page integration — month nav, status filter, inline DayPanel selection, ActionPanel wiring, greeting name injection, dismiss toast |
 | `tests/seed-data.test.js` | Cross-validates demo seed and SQLite seed — parity checks + Calendar suggestion coverage (all 5 kinds exercised with date-shifted records) |
-| `tests/build/` | Vite build-time env-var assertion |
-| `tests/main.test.js` | `bootstrap()` + runtime handshake → ConfigError wiring |
+| `tests/build/` | Vite build-time env-var assertion (`vite-config.test.js`, incl. `stripStartupLoaderInDev`); favicon asset staging (`favicon.test.js`); feature 044 — `code-splitting.test.js` (real `vite build` asserts `Calendar`/`Profile`/`ProfileEdit` split into separate chunks, `Tracker` stays in the main chunk) and `font-loading.test.js` (built `index.html` has no `fonts.googleapis.com`, self-hosted `@font-face`/`.woff2` present) |
+| `tests/main.test.js` | `bootstrap()` + runtime handshake → ConfigError wiring; feature 044 — parallel handshake (C1–C6), startup-loader lifecycle + boot-timeout Retry, and `navigate()` lazy-route tests (N1–N6: pre-await nav highlight/skeleton, latest-wins, chunk-failure revert + Reload, `ProfileEdit.confirmNavigation` guard) |
 
 Run: `npm test` (watch) · `npm run test:run` (CI)
 
@@ -281,8 +282,10 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/036-compatibility-engine/` | Compatibility Engine spec package — deterministic profile-vs-JD scoring in a pure shared module (weighted skills/role/experience/keywords/certifications, proficiency weighting, graded experience, renormalization, Low/Medium/High/Great bands), server-authoritative compute on create/update + active recompute on profile save (archived frozen), demo parity via the same module, optional `min_years_experience` column + `assertHostedSchema` probe, removal of client-writable/random `compat`, one-time legacy backfill (all rows incl. archived), CompatBar band label, and v1.6.0 release prep |
 | `specs/037-compatibility-insights-panel/` | Compatibility Insights Panel spec package — collapsible CompatibilityModule (score ring, proficiency-coded chips, AI notes lifecycle), `compat_analysis` + `compat_scored_at` columns, staleness cascade via `compat_scored_at`, `llmClient.js` extraction, `compatNotesService.js`, `POST /api/applications/:id/compat-notes` persistence route, `skillProficiency.js`, demo parity, and v1.7.0 release prep |
 | `specs/038-ai-provider-abstraction/` | AI Provider Abstraction spec package — provider contract, OpenRouter provider implementation, central `aiService.js` facade, provider registry, migration away from `llmClient.js`, and v1.7.1 release prep |
+| `specs/044-hosted-startup-performance/` | Hosted Startup Performance spec package — inlined startup loader (hosted-only, stripped for portable/local dev), parallel + optimistic boot handshake, Tracker-boot skeleton, `Calendar`/`Profile`/`ProfileEdit` route-level code-splitting, self-hosted fonts, `metrics.md` before/after measurements, and v1.12.0 release prep |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
 | `docs/features/` | Lightweight feature briefs used as Speckit inputs |
+| `HostedAlice_StartupLoader/design_handoff_startup_loader/` | Design reference for the hosted startup loader (feature 044/WS1) — high-fidelity HTML/CSS prototype + brand sigil SVG; recreated (not copied verbatim) as the inlined loader in `index.html` |
 
 ---
 

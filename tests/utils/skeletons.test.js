@@ -6,6 +6,7 @@ import {
   buildProfileAppsSkeleton,
   buildProfileEditSkeleton,
   buildProfileSkeleton,
+  buildTrackerBootSkeleton,
 } from '../../src/utils/skeletons.js';
 
 const APPLICATION_LIST_SKELETON_HTML = '<div class="loading-skeleton loading-skeleton--applications" aria-busy="true" aria-live="polite" aria-label="Loading applications"><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div></div>';
@@ -56,5 +57,18 @@ describe('loading skeleton builders', () => {
     expect(skeleton.getAttribute('aria-live')).toBe('polite');
     expect(skeleton.getAttribute('aria-label')).toBe('Loading applications');
     expect(skeleton.querySelectorAll('.skeleton-line').length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('builds a Tracker-boot skeleton reusing the application-list card shape with a distinct label (WS3)', () => {
+    const skeleton = buildTrackerBootSkeleton();
+
+    expect(skeleton.className).toBe('loading-skeleton loading-skeleton--applications loading-skeleton--tracker-boot');
+    expect(skeleton.getAttribute('aria-busy')).toBe('true');
+    expect(skeleton.getAttribute('aria-live')).toBe('polite');
+    expect(skeleton.getAttribute('aria-label')).toBe('Loading your applications');
+    expect(skeleton.querySelectorAll('.skeleton-card')).toHaveLength(3);
+    expect(skeleton.querySelectorAll('.skeleton-line').length).toBeGreaterThanOrEqual(9);
+    // No application data — purely presentational, matching data-model.md §3.
+    expect(skeleton.textContent.trim()).toBe('');
   });
 });

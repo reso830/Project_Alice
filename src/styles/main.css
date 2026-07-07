@@ -1,3 +1,16 @@
+/* WS5 (044): self-hosted fonts (@fontsource) instead of a render-blocking
+   fonts.googleapis.com <link> in index.html's <head>. Imported here so Vite
+   bundles the @font-face rules into the same CSS output main.js already
+   loads asynchronously — no new render-blocking request, and the inlined
+   startup loader (which paints before this CSS or main.js load) is
+   unaffected, same as before. */
+@import '@fontsource/sora/400.css';
+@import '@fontsource/sora/500.css';
+@import '@fontsource/sora/600.css';
+@import '@fontsource/sora/700.css';
+@import '@fontsource/dm-mono/400.css';
+@import '@fontsource/dm-mono/500.css';
+
 :root {
   --navy: #1A1A2E;
   --navy-2: #232342;

@@ -7,6 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-07-07
+
+Hosted startup performance — replaces the blank white boot page on hosted cold loads with a branded loader, parallelizes the boot handshake, and trims the initial bundle. Local, portable, and demo boot are unchanged.
+
+### Added
+
+- **Branded startup loader** — an inlined loader (sigil + wordmark + status line, static ambient glow) paints on hosted cold loads before the JS bundle finishes, replacing the blank white page. Responsive across desktop/tablet/mobile; a ~10s boot timeout reveals a "taking longer than expected" message with a Retry (reload) affordance. Delivered exclusively to the hosted runtime — the loader markup is stripped server-side for portable and by a Vite dev-server plugin for `npm run dev`, so local/portable never receive it. (044-hosted-startup-performance)
+- **Tracker-boot skeleton** — the signed-in handoff renders the shell with a dedicated boot skeleton (`buildTrackerBootSkeleton`, added to the existing `src/utils/skeletons.js`) ahead of Tracker's data fetch, distinguishable from the plain in-page reload/retry skeleton; shared for issue #109 to reuse. (044-hosted-startup-performance)
+
+### Changed
+
+- **Parallel + optimistic boot handshake** — `bootstrap()` now runs the health check and session check concurrently instead of sequentially. Signed-in/signed-out visitors on a correctly configured hosted deploy route as soon as the session resolves, without waiting on the serverless cold start; the ambiguous `local-mode` outcome still waits for health, preserving `ConfigError` correctness on a misconfigured deploy (no flash of Welcome/app). (044-hosted-startup-performance)
+- **Route-level code-splitting** — `Calendar`, `Profile`, and `ProfileEdit` are now dynamic-imported on first navigation instead of bundled eagerly; `Tracker` (the landing route) stays eager. Measured: main entry chunk 600.88 kB → 489.27 kB raw (−18.6%), 169.05 kB → 136.68 kB gzip (−19.1%). Navigation is latest-wins safe under rapid clicks, and a failed chunk load (e.g. a stale bundle after a redeploy) shows a reload affordance instead of a broken page. (044-hosted-startup-performance)
+- **Self-hosted fonts** — Sora and DM Mono are now served from the app's own bundle (`@fontsource/sora`, `@fontsource/dm-mono`) instead of a render-blocking `fonts.googleapis.com` request, removing the third-party origin from the critical path entirely. (044-hosted-startup-performance)
+
 ## [1.11.1] — 2026-07-06
 
 Legal docs and footer redesign — native Terms & Conditions and Privacy Policy pages reachable app-wide, and a redesigned global footer with a shorter, cleaner layout.
@@ -1527,7 +1542,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/reso830/Project_Alice/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/reso830/Project_Alice/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0
 [1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8

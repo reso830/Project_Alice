@@ -1,5 +1,6 @@
 import process from 'node:process';
 import { defineConfig } from 'vite';
+import { stripStartupLoaderMarkup } from './shared/startupLoader.js';
 
 const HOSTED_FRONTEND_REQUIRED = [
   'VITE_SUPABASE_URL',
@@ -24,8 +25,18 @@ export function assertHostedFrontendEnv() {
   };
 }
 
+export function stripStartupLoaderInDev() {
+  return {
+    name: 'alice:strip-startup-loader-in-dev',
+    apply: 'serve',
+    transformIndexHtml(html) {
+      return stripStartupLoaderMarkup(html);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [assertHostedFrontendEnv()],
+  plugins: [assertHostedFrontendEnv(), stripStartupLoaderInDev()],
   define: {
     __BUILD_MONTH__: JSON.stringify(
       new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),

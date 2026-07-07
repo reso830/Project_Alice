@@ -1,0 +1,43 @@
+# Metrics: Hosted Startup Performance
+
+**Feature**: `044-hosted-startup-performance`  
+**Scope**: hosted deployment only  
+**Created**: 2026-07-07
+
+This artifact records aggregate performance measurements only. It must not include user data, application records, screenshots of private dashboards, or any other PII.
+
+## Measurement Protocol
+
+Field metrics come from Vercel Speed Insights p75 values for the hosted Project Alice deployment: FCP, LCP, CLS, INP, and TTFB.
+
+Lab metrics come from a cold DevTools Performance trace on the hosted deployment with cache disabled, segmented into TTFB, bundle download, parse/execute, `/api/health`, `supabase.auth.getSession()`, and Tracker fetch. `/api/health` must be measured both cold and warm so the serverless cold-start floor is isolated.
+
+Local dev and portable mode are not valid substitutes for this baseline because they do not reproduce the hosted Vercel + Supabase cold-start behavior.
+
+## Results
+
+| phase | measured_on | field_source | lab_source | fcp_p75_ms | lcp_p75_ms | cls | inp_ms | ttfb_ms | health_cold_ms | health_warm_ms | session_ms | bundle_kb | notes |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| baseline | 2026-07-07 | Feature brief / spec rough Speed Insights report; direct dashboard read still pending | Not captured in this pass | ~8000 | ~13500 | pending | pending | pending | pending | pending | pending | pending | Rough baseline copied from the approved feature brief/spec. Replace pending cells with exact Speed Insights p75 and cold-trace segments before using this row as the quantitative WS0 gate. |
+| WS1 | 2026-07-07 | Pending hosted Speed Insights re-read after Phase 02 deploy | Pending hosted cold trace after Phase 02 deploy | pending | pending | pending | pending | pending | pending | pending | pending | pending | Phase 02 implementation validated locally with unit/integration tests, lint, and production build. Direct hosted FCP/LCP measurement still requires a deployed preview/production URL and dashboard/browser access. Expected movement: FCP improves substantially; LCP roughly unchanged until WS2. |
+| WS2 | 2026-07-07 | Pending hosted Speed Insights re-read after Phase 03 deploy | Pending hosted cold trace after Phase 03 deploy | pending | pending | pending | pending | pending | pending | pending | pending | pending | Phase 03 (parallel + optimistic handshake) implementation validated locally with unit/integration tests (C1–C6) and lint. Direct hosted LCP measurement still requires a deployed preview/production URL and dashboard/browser access. Expected movement: LCP drops for signed-out/signed-in visitors on a correctly configured deploy (no more sequential health-then-session wait); local-mode's own timing is unaffected (still gated on health, exactly as before). |
+| WS3 | 2026-07-07 | Pending hosted Speed Insights re-read after Phase 04 deploy | Pending hosted cold trace after Phase 04 deploy | pending | pending | pending | pending | pending | pending | pending | pending | pending | Phase 04 (Tracker-boot skeleton) implementation validated locally with unit/integration tests and lint. This phase targets signed-in *perceived* LCP/feel (a boot-specific skeleton shown ahead of Tracker's data fetch) rather than a new real-wait reduction — the handoff was already gap-free (Tracker's own toolbar+skeleton render synchronously before any `await`), so no large LCP delta is expected from this phase specifically; the change is primarily semantic (a dedicated, #109-reusable boot skeleton) plus a11y (distinct aria-label). Direct hosted measurement still requires a deployed preview/production URL and dashboard/browser access. |
+| WS4-pre | 2026-07-07 | N/A (build-time bundle size, not a field metric) | Local production build (`vite build`, dummy `VITE_SUPABASE_*` env vars) | — | — | — | — | — | — | — | — | 601 | Pre-split baseline before Phase 05's code-splitting: single JS chunk `dist/assets/index-*.js` = 600.88 kB raw / 169.05 kB gzip. Vite's own build output already warns "Some chunks are larger than 500 kB after minification... Consider using dynamic import() to code-split." Compare against the `WS4` row (post-split) for the per-route chunk sizes and the new initial-bundle size. |
+| WS4 | 2026-07-07 | N/A (build-time bundle size, not a field metric) | Local production build (`vite build`, dummy `VITE_SUPABASE_*` env vars) — same measurement method as `WS4-pre`, directly comparable | — | — | — | — | — | — | — | — | 489 | **Real, measured** (unlike other rows — this is build output, not a hosted field/lab metric, so no deployment access is needed). Main entry chunk: 600.88 kB → **489.27 kB** raw (−111.61 kB, ≈18.6%), 169.05 kB → **136.68 kB** gzip (−32.37 kB, ≈19.1%). New split chunks, fetched only on first navigation to each route: `Calendar` 34.70 kB / 10.77 kB gzip; `Profile` 34.99 kB / 11.46 kB gzip; `ProfileEdit` 44.19 kB / 13.84 kB gzip. `Tracker` confirmed to remain in the main chunk (N5) via `tests/build/code-splitting.test.js`. Hosted FCP/LCP impact from this smaller initial parse/download still requires live Speed Insights/DevTools access (same limitation as other rows), but the bundle-size reduction itself is a directly-measured fact, not an estimate. |
+| WS5 | 2026-07-07 | N/A (build-time asset check, not a field metric) | Local production build (`vite build`, dummy `VITE_SUPABASE_*` env vars) | — | — | — | — | — | — | — | — | 180 | **Structurally verified** (removing a request is provable locally; its FCP effect needs a hosted trace). Removed 3 third-party `<head>` resources entirely: 2× `<link rel=preconnect>` (fonts.googleapis.com/fonts.gstatic.com) + 1 render-blocking `<link rel=stylesheet href="fonts.googleapis.com/...">` — confirmed absent from the built `index.html` via `tests/build/font-loading.test.js`. Self-hosted `@font-face` rules (all `font-display: swap`) now live in the app's own CSS bundle (175.46 kB → 180.06 kB raw, +4.6 kB) which was already loaded asynchronously relative to first paint — so this is a request *eliminated*, not shifted to a new blocking one. Font files (`.woff2`) ship as ordinary hashed assets. Hosted FCP delta from removing the full DNS+TLS+HTTP round-trip to the third-party origin still requires live Speed Insights/DevTools access. |
+
+## Pending WS0 Evidence
+
+- Exact Vercel Speed Insights p75 values: FCP, LCP, CLS, INP, TTFB.
+- Cold hosted DevTools trace segments: TTFB, bundle download, parse/execute, `/api/health`, `getSession`, Tracker fetch.
+- Warm `/api/health` timing for comparison against the cold value.
+- Initial bundle size, if available from the same lab pass or the pre-WS4 build measurement.
+- Post-WS1 hosted Speed Insights and cold-trace values for the `WS1` row.
+- Post-WS2 hosted Speed Insights and cold-trace values for the `WS2` row.
+- Post-WS3 hosted Speed Insights and cold-trace values for the `WS3` row.
+- Post-WS4 hosted Speed Insights and cold-trace values for the `WS4` row (bundle-size cells are already real/measured — only the FCP/LCP/parse-exec segments remain pending).
+- Post-WS5 hosted Speed Insights and cold-trace values for the `WS5` row (the removed-request fact is already real/measured — only the FCP delta itself remains pending).
+
+## Residual Risk
+
+Phase 01 has the metrics artifact shape in place, but the baseline is not fully measured yet. Any later "before vs. after" claim must wait until the pending hosted field and lab cells are replaced with direct measurements.

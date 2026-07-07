@@ -57,6 +57,9 @@ Client/lab-measured aggregate numbers only — **no user or application data, no
 | Field | Example | Notes |
 |---|---|---|
 | `phase` | `baseline`, `WS1`, `WS2`, … | one row per measured phase |
+| `measured_on` | `2026-07-07` | date the row was captured or updated |
+| `field_source` | `Vercel Speed Insights` | provenance for field p75 metrics |
+| `lab_source` | `Chrome DevTools cold trace` | provenance for lab segment timings |
 | `fcp_p75_ms` | 8000 | Speed Insights field p75 |
 | `lcp_p75_ms` | 13500 | Speed Insights field p75 |
 | `cls` / `inp_ms` / `ttfb_ms` | — | Speed Insights field p75 |

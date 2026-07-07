@@ -67,15 +67,16 @@ Switch between views of the same dataset. The destination view's skeleton replac
 
 ## Skeleton vocabulary
 
-Five DOM-factory builders in [`src/utils/skeletons.js`](../../src/utils/skeletons.js). Each returns a ready-to-insert element (or pair) with `aria-busy="true"` on the root.
+Six DOM-factory builders in [`src/utils/skeletons.js`](../../src/utils/skeletons.js). Each returns a ready-to-insert element (or pair) with `aria-busy="true"` on the root.
 
 | Builder | Returns | Surface |
 |---------|---------|---------|
-| `buildApplicationListSkeleton()` | `HTMLDivElement` | Tracker card list |
+| `buildApplicationListSkeleton()` | `HTMLDivElement` | Tracker card list (in-page reload/retry) |
 | `buildProfileSkeleton()` | `HTMLDivElement` | Profile page sections |
 | `buildCalendarSkeleton()` | `{ grid, panel }` | Calendar month grid + Action Panel |
 | `buildProfileEditSkeleton()` | `HTMLDivElement` | ProfileEdit section cards |
 | `buildProfileAppsSkeleton()` | `HTMLDivElement` | Profile applications block |
+| `buildTrackerBootSkeleton()` | `HTMLDivElement` | Tracker signed-in boot handoff (`main.js` → `Tracker.mount()`'s initial pre-load render, distinct from the in-page reload/retry skeleton above; see [specs/044-hosted-startup-performance/data-model.md](../../specs/044-hosted-startup-performance/data-model.md) §3) |
 
 All builders reuse the `.skeleton-line` CSS class, which inherits the existing `prefers-reduced-motion` rule.
 

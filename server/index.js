@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
@@ -11,6 +12,7 @@ import { createApplicationsRouter } from './routes/applications.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createResumeRouter } from './routes/resume.js';
 import { createUpdateRouter } from './routes/update.js';
+import { stripStartupLoaderMarkup } from '../shared/startupLoader.js';
 
 // NOTE: `./auth/seedHostedUser.js` is intentionally NOT statically imported
 // here. That module statically imports `../repositories/supabase/client.js`,
@@ -92,9 +94,18 @@ export function createApp({
   }
 
   if (serveStatic) {
-    app.use(express.static(distDir));
+    let cachedIndexHtml;
+    const getIndexHtml = () => {
+      if (cachedIndexHtml === undefined) {
+        const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+        cachedIndexHtml = appConfig?.isHosted ? html : stripStartupLoaderMarkup(html);
+      }
+      return cachedIndexHtml;
+    };
+
+    app.use(express.static(distDir, { index: false }));
     app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
-      res.sendFile(path.join(distDir, 'index.html'));
+      res.type('html').send(getIndexHtml());
     });
   }
 

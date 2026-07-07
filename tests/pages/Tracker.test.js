@@ -943,7 +943,7 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(toolbarUpdateOptions.at(-1).viewCounts).toEqual({ activeCount: 7, archivedCount: 6 });
   });
 
-  it('shows application skeleton cards while the application list is loading', async () => {
+  it('shows the Tracker-boot skeleton (WS3) on the initial mount, while the application list is loading', async () => {
     const container = document.createElement('main');
     let resolveApplications;
 
@@ -954,7 +954,12 @@ describe('Tracker quick filter toolbar integration', () => {
 
     const mountPromise = Tracker.mount(container);
 
-    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+    const skeleton = container.querySelector('.loading-skeleton--applications');
+    expect(skeleton).not.toBeNull();
+    // WS3 seam: the initial pre-load render uses buildTrackerBootSkeleton,
+    // not the plain reload/retry skeleton — distinct modifier class + label.
+    expect(skeleton.classList.contains('loading-skeleton--tracker-boot')).toBe(true);
+    expect(skeleton.getAttribute('aria-label')).toBe('Loading your applications');
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(3);
     expect(container.querySelector('.loading-skeleton')?.getAttribute('aria-busy')).toBe('true');
 
@@ -994,7 +999,12 @@ describe('Tracker quick filter toolbar integration', () => {
     retryButton.click();
 
     expect(api.getAll).toHaveBeenCalledTimes(4);
-    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+    const retrySkeleton = container.querySelector('.loading-skeleton--applications');
+    expect(retrySkeleton).not.toBeNull();
+    // Retry is not the boot handoff — keeps the plain skeleton (WS3 seam
+    // only swaps the initial mount() render, not later reloads/retries).
+    expect(retrySkeleton.classList.contains('loading-skeleton--tracker-boot')).toBe(false);
+    expect(retrySkeleton.getAttribute('aria-label')).toBe('Loading applications');
 
     resolveRetry([retried]);
     await Promise.resolve();
@@ -1032,7 +1042,10 @@ describe('Tracker quick filter toolbar integration', () => {
     viewSwitchStarted = true;
     const switchPromise = toolbarRenderOptions[0].onViewChange('archived');
 
-    expect(container.querySelector('.loading-skeleton--applications')).not.toBeNull();
+    const switchSkeleton = container.querySelector('.loading-skeleton--applications');
+    expect(switchSkeleton).not.toBeNull();
+    // A view switch is not the boot handoff — plain skeleton, not the boot one.
+    expect(switchSkeleton.classList.contains('loading-skeleton--tracker-boot')).toBe(false);
     expect(container.textContent).not.toContain('Role 1');
     expect(toolbarUpdateOptions.at(-1).viewBusy).toBe(true);
 
