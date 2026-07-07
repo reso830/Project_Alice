@@ -539,6 +539,128 @@ describe('Tracker quick filter toolbar integration', () => {
     ]);
   });
 
+  it('marks the tapped mobile card pending while the modal fetch is in flight', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    let resolveDetails;
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => new Promise((resolve) => {
+      resolveDetails = resolve;
+    }));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    const card = container.querySelector('[data-id="1"]');
+
+    expect(card.classList.contains('card--pending')).toBe(true);
+    expect(card.getAttribute('aria-busy')).toBe('true');
+
+    resolveDetails(first);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  it('clears the pending state once the mobile modal opens', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockResolvedValue(first);
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledWith(first, expect.anything());
+
+    const card = container.querySelector('[data-id="1"]');
+
+    expect(card.classList.contains('card--pending')).toBe(false);
+    expect(card.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('clears the pending state when the mobile modal fetch fails', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockRejectedValue(new Error('network error'));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const card = container.querySelector('[data-id="1"]');
+
+    expect(card.classList.contains('card--pending')).toBe(false);
+    expect(card.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('ignores a tap on a different card while a mobile modal fetch is still pending', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const second = createApplication(2);
+    let resolveDetails;
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => (
+      id === 1
+        ? new Promise((resolve) => { resolveDetails = resolve; })
+        : Promise.resolve(second)
+    ));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    container.querySelector('[data-id="2"]').click();
+    await Promise.resolve();
+
+    expect(api.getById).toHaveBeenCalledTimes(1);
+    expect(api.getById).toHaveBeenCalledWith(1);
+    expect(container.querySelector('[data-id="2"]').classList.contains('card--pending')).toBe(false);
+
+    resolveDetails(first);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  it('does not open the modal if the page unmounts before the mobile fetch resolves', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    let resolveDetails;
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => new Promise((resolve) => {
+      resolveDetails = resolve;
+    }));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    Tracker.unmount();
+    resolveDetails(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
   it('guards dirty pane switches and only changes selection after discard', async () => {
     const container = document.createElement('main');
     const first = createApplication(1);
@@ -1812,5 +1934,29 @@ describe('Tracker stored filter validation', () => {
       workSetups: ['Remote'],
       locations: ['Manila'],
     }));
+  });
+});
+
+describe('Mobile card tap feedback styles', () => {
+  it('positions .card so an absolutely-positioned pending indicator anchors to it', () => {
+    expect(mainCss).toMatch(/\.card\s*\{[^}]*position:\s*relative;/);
+  });
+
+  it('scopes the press feedback to sub-desktop widths and excludes pressed action buttons', () => {
+    expect(mainCss).toMatch(
+      /@media \(max-width:\s*1099px\)\s*\{[\s\S]*?\.card:active:not\(:has\(\.card-btn:active\)\)\s*\{[^}]*transform:/,
+    );
+  });
+
+  it('defines a dimmed + spinner card--pending state', () => {
+    expect(mainCss).toMatch(/\.card--pending\s*\{[^}]*opacity:/);
+    expect(mainCss).toMatch(/\.card--pending::after\s*\{[^}]*animation:\s*pane-loading-spin/);
+  });
+
+  it('disables the press transform and pending spinner under prefers-reduced-motion', () => {
+    expect(mainCss).toMatch(
+      /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*\.card--pending::after[\s\S]*?\}/,
+    );
+    expect(mainCss).toMatch(/\.card:active\s*\{\s*transform:\s*none;\s*\}/);
   });
 });

@@ -50,6 +50,7 @@ let _desktopMql = null;
 let _desktopMqlHandler = null;
 let _selectedId = null;
 let _modalApplicationId = null;
+let _pendingModalApplicationId = null;
 let _suppressPaneClosed = false;
 let _footerMeasureFrame = null;
 let _footerMeasureHandler = null;
@@ -829,6 +830,7 @@ function renderPage({ moveFocus = false } = {}) {
   for (const application of visibleApplications) {
     _cardList.append(Card.render(application, createCallbacks(), {
       selected: application.id === _selectedId,
+      pending: application.id === _pendingModalApplicationId,
     }));
   }
 
@@ -890,13 +892,34 @@ function detailCallbacks(applicationId) {
 
 async function openModalApplication(id) {
   const numericId = coerceId(id);
-  const application = await api.getById(numericId);
 
-  _modalApplicationId = numericId;
-  Modal.open(application, {
-    profile: _profile ?? null,
-    ...detailCallbacks(numericId),
-  });
+  if (_pendingModalApplicationId !== null) {
+    return;
+  }
+
+  _pendingModalApplicationId = numericId;
+  renderPage();
+
+  const mountedContainer = _container;
+
+  try {
+    const application = await api.getById(numericId);
+
+    if (_container !== mountedContainer || _pendingModalApplicationId !== numericId) {
+      return;
+    }
+
+    _modalApplicationId = numericId;
+    Modal.open(application, {
+      profile: _profile ?? null,
+      ...detailCallbacks(numericId),
+    });
+  } finally {
+    if (_pendingModalApplicationId === numericId) {
+      _pendingModalApplicationId = null;
+      renderPage();
+    }
+  }
 }
 
 async function selectApplication(id, { skipGuard = false } = {}) {
@@ -1075,6 +1098,7 @@ export async function mount(container, { navigate } = {}) {
   _profile = null;
   _selectedId = null;
   _modalApplicationId = null;
+  _pendingModalApplicationId = null;
   _suppressPaneClosed = false;
   teardownDesktopQuery();
   setupDesktopQuery();
@@ -1155,6 +1179,7 @@ export function unmount() {
   _profile = null;
   _selectedId = null;
   _modalApplicationId = null;
+  _pendingModalApplicationId = null;
   _suppressPaneClosed = false;
 }
 

@@ -3564,6 +3564,7 @@ button:focus-visible,
 }
 
 .card {
+  position: relative;
   display: grid;
   gap: 10px;
   border: 1px solid var(--border);
@@ -3579,6 +3580,36 @@ button:focus-visible,
   border-color: var(--border-2);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+/* Sub-desktop tap feedback for #120 — desktop relies on .card--selected /
+   .tracker-master hover glow instead, so this stays out of its way. */
+@media (max-width: 1099px) {
+  .card:active:not(:has(.card-btn:active)) {
+    transform: scale(.98);
+  }
+}
+
+.card:active {
+  transition: transform 80ms ease;
+}
+
+.card--pending {
+  opacity: .72;
+  pointer-events: none;
+}
+
+.card--pending::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--indigo);
+  border-radius: 50%;
+  animation: pane-loading-spin 0.8s linear infinite;
 }
 
 .card--corrupt {
@@ -9408,7 +9439,8 @@ button.welcome__footer-link {
   .scene-stack__card,
   .scene-stack__card--entering,
   .scene-profile__donut-segment,
-  .pane-loading__spinner {
+  .pane-loading__spinner,
+  .card--pending::after {
     animation: none !important;
     transition: none !important;
   }
@@ -9417,8 +9449,13 @@ button.welcome__footer-link {
     background: #ECE7DF !important;
   }
 
-  .pane-loading__spinner {
+  .pane-loading__spinner,
+  .card--pending::after {
     border-top-color: var(--border) !important;
+  }
+
+  .card:active {
+    transform: none;
   }
 
   .auth-overlay__panel,
