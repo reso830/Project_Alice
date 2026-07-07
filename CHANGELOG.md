@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.1] — 2026-07-07
+
+Tracker card selection feedback fix — hosted desktop application cards now show a selected state immediately on click instead of waiting on the detail fetch. (#109)
+
+### Changed
+
+- **Immediate card selection feedback** — clicking an application card on the hosted desktop Tracker now marks it selected right away and shows a spinner + "Loading application details…" message in the detail pane, instead of waiting on the detail-pane fetch to resolve; if the fetch fails, the selection clears back to the empty-pane state rather than leaving a stale card highlighted. (#109)
+
 ## [1.12.0] — 2026-07-07
 
 Hosted startup performance — replaces the blank white boot page on hosted cold loads with a branded loader, parallelizes the boot handshake, and trims the initial bundle. Local, portable, and demo boot are unchanged.
@@ -1542,7 +1550,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/reso830/Project_Alice/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/reso830/Project_Alice/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/reso830/Project_Alice/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0

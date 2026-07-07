@@ -4,6 +4,7 @@ import { CreationPicker } from '../components/CreationPicker.js';
 import { EmptyPane } from '../components/EmptyPane.js';
 import { Fab } from '../components/Fab.js';
 import { Modal } from '../components/Modal.js';
+import { PaneLoading } from '../components/PaneLoading.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
@@ -917,7 +918,23 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     }
   }
 
-  const application = await api.getById(numericId);
+  _selectedId = numericId;
+  renderPage();
+  _detailPaneEl?.replaceChildren(PaneLoading.render());
+
+  let application;
+  try {
+    application = await api.getById(numericId);
+  } catch (error) {
+    // The dirty-pane guard above (Modal.requestClose) already destroyed any
+    // previously open pane and rendered the empty state, so reverting to the
+    // previous card here would show it selected in the list with no matching
+    // pane content. Clear the selection instead to keep list/pane consistent.
+    _selectedId = null;
+    renderPage();
+    renderEmptyPane();
+    throw error;
+  }
 
   openApplicationPane(application);
   renderPage();
