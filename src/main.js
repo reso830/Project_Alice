@@ -2,6 +2,7 @@ import './styles/main.css';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { BottomTabBar } from './components/BottomTabBar.js';
 import { Footer } from './components/Footer.js';
+import { LegalModal } from './components/LegalModal.js';
 import { Navbar } from './components/Navbar.js';
 import * as authStore from './data/authStore.js';
 import { store } from './data/store.js';
@@ -30,6 +31,9 @@ let _configErrorMounted = false;
 let _runtimeHealth = null;
 let _unsubscribeUpdateStatus = null;
 let _unsubscribeUpdateController = null;
+let _legalDialog = null; // 'terms' | 'privacy' | null
+let _legalDialogNode = null;
+let _legalTriggerEl = null;
 
 export const SEED_DATA = [
   {
@@ -82,6 +86,27 @@ function clearBody() {
   }
 }
 
+function closeLegalDialog() {
+  _legalDialog = null;
+  _legalDialogNode = null;
+  if (_legalTriggerEl && typeof _legalTriggerEl.focus === 'function') {
+    _legalTriggerEl.focus();
+  }
+  _legalTriggerEl = null;
+}
+
+// Shell-level dialog state (design_handoffs/Alice_Legal): the global Footer's
+// LICENSE links are reachable from every authenticated page, so the state
+// lives here rather than inside Footer.js itself (a stateless renderer).
+function setLegalDialog(type) {
+  if ((type !== 'terms' && type !== 'privacy') || _legalDialog) {
+    return;
+  }
+  _legalTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  _legalDialog = type;
+  _legalDialogNode = LegalModal.render(type, closeLegalDialog);
+}
+
 function mountAppShell() {
   if (_shellMounted) {
     return;
@@ -111,7 +136,7 @@ function mountAppShell() {
   const main = document.createElement('main');
   main.id = 'app';
   const navbar = Navbar.render('tracker');
-  const footer = Footer.render({ runtime: _runtimeHealth?.runtime });
+  const footer = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
   document.body.append(navbar, main, footer, bottomTabBar);
@@ -155,6 +180,12 @@ function unmountAppShell() {
   Navbar.destroy();
   BottomTabBar.destroy();
   UpdateToast.destroy();
+  if (_legalDialogNode) {
+    _legalDialogNode.querySelector('.legal-modal__close')?.click();
+  }
+  _legalDialog = null;
+  _legalDialogNode = null;
+  _legalTriggerEl = null;
   clearBody();
   _shellMounted = false;
 }

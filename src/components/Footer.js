@@ -1,38 +1,13 @@
-/* global __BUILD_MONTH__ */
 import aliceLogo from '../assets/logo/alice-sigil-full.svg';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welcome/shared/appMeta.js';
 
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
+const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const HOSTED_URL = 'https://project-alice-gamma.vercel.app';
-const BUILD_MONTH = typeof __BUILD_MONTH__ !== 'undefined' ? __BUILD_MONTH__ : '';
+const PORTFOLIO_URL = 'https://alvinresoso.com';
 
 function displayVersion(version) {
   return String(version).startsWith('v') ? String(version) : `v${version}`;
-}
-
-function createText(className, text) {
-  const element = document.createElement('p');
-
-  element.className = className;
-  element.textContent = text;
-
-  return element;
-}
-
-function createSection(labelText, values) {
-  const section = document.createElement('section');
-  const label = document.createElement('p');
-
-  section.className = 'footer__section';
-  label.className = 'footer__label';
-  label.textContent = labelText;
-  section.append(label);
-
-  for (const value of values) {
-    section.append(createText('footer__value', value));
-  }
-
-  return section;
 }
 
 function createBrandIcon() {
@@ -49,17 +24,23 @@ function createBrandIcon() {
 function createBrand() {
   const brand = document.createElement('div');
   const text = document.createElement('div');
+  const line1 = document.createElement('div');
   const name = document.createElement('span');
   const tagline = document.createElement('span');
+  const version = document.createElement('span');
 
   brand.className = 'footer__brand';
   text.className = 'footer__brand-text';
+  line1.className = 'footer__brand-line1';
   name.className = 'footer__brand-name';
   tagline.className = 'footer__tagline';
+  version.className = 'footer__version-inline';
   name.textContent = 'Project Alice';
   tagline.textContent = 'Your job search, organized.';
+  version.textContent = displayVersion(APP_VERSION);
 
-  text.append(name, tagline);
+  line1.append(name, tagline);
+  text.append(line1, version);
   brand.append(createBrandIcon(), text);
 
   return brand;
@@ -80,7 +61,7 @@ function createModeControl(runtime) {
     link.className = 'footer__download';
     link.href = RELEASES_URL;
     link.setAttribute('aria-label', `Download Project Alice ${displayVersion(APP_VERSION)}`);
-    label.textContent = 'Download';
+    label.textContent = 'Download Portable Alice';
     version.className = 'footer__download-version';
     version.textContent = displayVersion(APP_VERSION);
     link.append(label, version);
@@ -91,11 +72,11 @@ function createModeControl(runtime) {
   return link;
 }
 
-function createFeedbackLink(text, label) {
+function createFeedbackLink(text, href, label) {
   const link = document.createElement('a');
 
   link.className = 'footer__link';
-  link.href = ISSUE_URL;
+  link.href = href;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.textContent = text;
@@ -104,7 +85,18 @@ function createFeedbackLink(text, label) {
   return link;
 }
 
-function createLicense() {
+function createLegalLink(text, type, onLegalLink) {
+  const link = document.createElement('button');
+
+  link.type = 'button';
+  link.className = 'footer__link';
+  link.textContent = text;
+  link.addEventListener('click', () => onLegalLink?.(type));
+
+  return link;
+}
+
+function createLicense(onLegalLink) {
   const section = document.createElement('section');
   const label = document.createElement('p');
   const link = document.createElement('a');
@@ -119,7 +111,12 @@ function createLicense() {
   link.rel = 'noopener noreferrer';
   link.textContent = LICENSE_NAME;
 
-  section.append(label, link);
+  section.append(
+    label,
+    link,
+    createLegalLink('Terms & Conditions', 'terms', onLegalLink),
+    createLegalLink('Privacy Policy', 'privacy', onLegalLink),
+  );
 
   return section;
 }
@@ -133,45 +130,51 @@ function createFeedback() {
   label.textContent = 'FEEDBACK';
   section.append(
     label,
-    createFeedbackLink('Report an issue', 'Report an issue on GitHub'),
-    createFeedbackLink('Request a feature', 'Request a feature on GitHub'),
+    createFeedbackLink('GitHub', REPOSITORY_URL, 'Open Project Alice repository'),
+    createFeedbackLink('Report an issue', ISSUE_URL, 'Report an issue on GitHub'),
+    createFeedbackLink('Request a feature', ISSUE_URL, 'Request a feature on GitHub'),
   );
 
   return section;
 }
 
-export function render({ runtime = 'hosted' } = {}) {
+function createCopyright() {
+  const p = document.createElement('p');
+  const link = document.createElement('a');
+
+  p.className = 'footer__copyright';
+  link.className = 'footer__link footer__portfolio-link';
+  link.href = PORTFOLIO_URL;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'alvinresoso.com';
+
+  p.append(
+    document.createTextNode('© 2026 Project Alice. All rights reserved.'),
+    document.createElement('br'),
+    document.createTextNode("Part of reso's Project Series."),
+    document.createElement('br'),
+    link,
+  );
+
+  return p;
+}
+
+export function render({ runtime = 'hosted', onLegalLink } = {}) {
   const footer = document.createElement('footer');
   const inner = document.createElement('div');
-  const rule = document.createElement('hr');
-  const versionDetails = [displayVersion(APP_VERSION)];
-
-  if (BUILD_MONTH) {
-    versionDetails.push(`Built ${BUILD_MONTH}`);
-  }
 
   footer.className = 'site-footer';
   inner.className = 'footer__inner';
-  rule.className = 'footer__rule';
 
   const brand = createBrand();
   brand.append(createModeControl(runtime));
 
   inner.append(
     brand,
-    rule,
-    createSection('VERSION', versionDetails),
-    createSection('STACK', [
-      'Vanilla JS \u00b7 Vite',
-      'Vercel \u00b7 Supabase',
-      'Vitest \u00b7 ESLint \u00b7 Speckit',
-    ]),
     createFeedback(),
-    createLicense(),
-    createText(
-      'footer__copyright',
-      "\u00a9 2026 Project Alice. All rights reserved. \u00b7 Part of reso's Project Series.",
-    ),
+    createLicense(onLegalLink),
+    createCopyright(),
   );
   footer.append(inner);
 

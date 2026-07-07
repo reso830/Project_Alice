@@ -79,7 +79,29 @@ function buildHeader() {
   return { header, title, subtitle, closeBtn };
 }
 
-function buildFooter({ onDemo, onSwap }) {
+function buildLegalLink(text, type, onLegalLink) {
+  const link = document.createElement('button');
+  link.type = 'button';
+  link.className = 'auth-overlay__legal-link';
+  link.textContent = text;
+  link.addEventListener('click', () => onLegalLink?.(type));
+  return link;
+}
+
+function buildLegalCopy(onLegalLink) {
+  const legal = el('p', 'auth-overlay__legal');
+  legal.hidden = true;
+  legal.append(
+    document.createTextNode('By creating an account, you agree to the '),
+    buildLegalLink('terms of use', 'terms', onLegalLink),
+    document.createTextNode(' and '),
+    buildLegalLink('privacy policy', 'privacy', onLegalLink),
+    document.createTextNode('.'),
+  );
+  return legal;
+}
+
+function buildFooter({ onDemo, onSwap, onLegalLink }) {
   const footer = el('div', 'auth-overlay__footer');
 
   const divider = el('div', 'auth-overlay__divider');
@@ -107,9 +129,7 @@ function buildFooter({ onDemo, onSwap }) {
     if (target) onSwap?.(target);
   });
 
-  const legal = el('p', 'auth-overlay__legal');
-  legal.hidden = true;
-  legal.textContent = 'By creating an account, you agree to the terms of use and privacy policy.';
+  const legal = buildLegalCopy(onLegalLink);
 
   footer.append(divider, demo, swap, legal);
   return { footer, swap, swapPrompt, swapAction, legal };
@@ -128,7 +148,7 @@ function applySwap({ swap, swapPrompt, swapAction }, view) {
   swapAction.textContent = labels.action;
 }
 
-export function render({ view = 'login', onClose, onSwitch } = {}) {
+export function render({ view = 'login', onClose, onSwitch, onLegalLink } = {}) {
   const initialView = VALID_VIEWS.has(view) ? view : 'login';
   const state = { view: initialView, email: '' };
 
@@ -156,6 +176,7 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
   const footerBuilt = buildFooter({
     onDemo: () => enterDemo(),
     onSwap: (target) => setView(target),
+    onLegalLink,
   });
 
   panel.append(header, body, footerBuilt.footer);
@@ -269,6 +290,11 @@ export function render({ view = 'login', onClose, onSwitch } = {}) {
       return;
     }
     if (event.key === 'Escape') {
+      // A LegalModal stacked on top handles its own Escape; deferring here
+      // keeps the signup form (and its entered email) intact underneath it.
+      if (document.querySelector('.legal-overlay')) {
+        return;
+      }
       event.preventDefault();
       close();
     } else if (event.key === 'Tab') {

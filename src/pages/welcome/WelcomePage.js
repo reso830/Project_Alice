@@ -1,6 +1,7 @@
 import aliceColored from '../../assets/logo/alice-sigil-full.svg';
 import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
+import { LegalModal } from '../../components/LegalModal.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
@@ -40,6 +41,9 @@ let _effective = null;
 let _deps = null;
 let _authView = null;
 let _keyHandler = null;
+let _legalDialog = null; // 'terms' | 'privacy' | null
+let _legalDialogNode = null;
+let _legalTriggerEl = null;
 
 const LAYOUT_CLASSES = ['diagonal', 'split', 'centered', 'hero'];
 const THEME_CLASSES = ['warm', 'white', 'navy'];
@@ -240,6 +244,39 @@ function renderCtaGroup() {
   return group;
 }
 
+function closeLegalDialog() {
+  _legalDialog = null;
+  _legalDialogNode = null;
+  if (_legalTriggerEl && typeof _legalTriggerEl.focus === 'function') {
+    _legalTriggerEl.focus();
+  }
+  _legalTriggerEl = null;
+}
+
+// Shell-level dialog state (design_handoffs/Alice_Legal): only one of
+// terms/privacy can be open at a time, reachable from both the mini-footer
+// and the signup consent copy without either trigger owning the modal.
+function setLegalDialog(type) {
+  if (!_root || (type !== 'terms' && type !== 'privacy') || _legalDialog) {
+    return;
+  }
+  _legalTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  _legalDialog = type;
+  _legalDialogNode = LegalModal.render(type, closeLegalDialog);
+}
+
+function makeLegalLink(text, type, ariaLabel) {
+  const link = document.createElement('button');
+  link.type = 'button';
+  link.className = 'welcome__footer-link';
+  link.textContent = text;
+  if (ariaLabel) {
+    link.setAttribute('aria-label', ariaLabel);
+  }
+  link.addEventListener('click', () => setLegalDialog(type));
+  return link;
+}
+
 function makeExternalLink(text, href, ariaLabel) {
   const a = document.createElement('a');
   a.className = 'welcome__footer-link';
@@ -345,6 +382,8 @@ function renderFooterMeta() {
   wrap.append(
     version,
     makeExternalLink(LICENSE_NAME, LICENSE_URL, `${LICENSE_NAME} license`),
+    makeLegalLink('Terms & Conditions', 'terms', 'View Terms & Conditions'),
+    makeLegalLink('Privacy Policy', 'privacy', 'View Privacy Policy'),
     makeExternalLink('Report issue', ISSUE_URL, 'Report an issue on GitHub'),
     makeExternalLink('Request feature', ISSUE_URL, 'Request a feature on GitHub'),
     makeExternalLink('alvinresoso.com', PORTFOLIO_URL, 'Visit alvinresoso.com'),
@@ -467,6 +506,7 @@ function renderOverlay() {
       view: _authView,
       onClose: () => setAuthView(null),
       onSwitch: (nextView) => handleInternalViewChange(nextView),
+      onLegalLink: (type) => setLegalDialog(type),
     });
     if (node) {
       _overlaySlot.append(node);
@@ -577,6 +617,12 @@ export function mount(container, deps = {}) {
 
 export function unmount() {
   closeMountedOverlay();
+  if (_legalDialogNode) {
+    _legalDialogNode.querySelector('.legal-modal__close')?.click();
+  }
+  _legalDialog = null;
+  _legalDialogNode = null;
+  _legalTriggerEl = null;
   if (_keyHandler) {
     document.removeEventListener('keydown', _keyHandler);
     _keyHandler = null;

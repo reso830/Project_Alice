@@ -5136,16 +5136,21 @@ textarea.modal-inline-control {
 
 /* Footer */
 .site-footer {
-  padding: 28px 20px 24px;
-  background: var(--navy);
+  padding: 22px 24px 24px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(129, 140, 248, 0.38), transparent 52%),
+    radial-gradient(circle at 90% 90%, rgba(129, 140, 248, 0.28), transparent 50%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 40px),
+    var(--navy-deep, var(--navy));
   color: rgba(255, 255, 255, .5);
 }
 
 .footer__inner {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px 32px;
-  max-width: 900px;
+  gap: 3px 32px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -5154,14 +5159,27 @@ textarea.modal-inline-control {
   grid-column: 1 / -1;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding-bottom: 22px;
 }
 
 .footer__brand-text {
   display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.footer__brand-line1 {
+  display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 8px;
+  gap: 3px 10px;
+}
+
+.footer__version-inline {
+  color: rgba(255, 255, 255, .32);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .footer__download,
@@ -5203,10 +5221,18 @@ textarea.modal-inline-control {
   color: rgba(255, 255, 255, .8);
 }
 
-/* Narrow screens: stack name over tagline beside a larger logo (a brand
-   lockup), and drop the mode control to its own line aligned under the text. */
+/* Download / hosted-link control is desktop-only chrome; tablet and mobile
+   drop it entirely rather than reserving space for it. */
+@media (max-width: 1023px) {
+  .footer__download,
+  .footer__hosted-link {
+    display: none;
+  }
+}
+
+/* Narrow screens: stack name over tagline beside a smaller logo. */
 @media (max-width: 480px) {
-  .footer__brand-text {
+  .footer__brand-line1 {
     flex-direction: column;
     align-items: flex-start;
     gap: 1px;
@@ -5215,12 +5241,6 @@ textarea.modal-inline-control {
   .footer__brand-icon {
     width: 40px;
     height: 40px;
-  }
-
-  /* Align the control under the brand text (logo width + brand gap). */
-  .footer__download,
-  .footer__hosted-link {
-    margin-left: 54px;
   }
 }
 
@@ -5276,30 +5296,22 @@ textarea.modal-inline-control {
 }
 
 .footer__brand-icon {
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   object-fit: contain;
 }
 
 .footer__brand-name {
   color: var(--surface);
-  font-size: 13px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: .4px;
 }
 
 .footer__tagline {
   color: rgba(255, 255, 255, .38);
-  font-size: 11px;
-}
-
-.footer__rule {
-  grid-column: 1 / -1;
-  width: 100%;
-  margin: 0;
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, .08);
+  font-size: 12px;
 }
 
 .footer__label {
@@ -5309,14 +5321,6 @@ textarea.modal-inline-control {
   font-weight: 600;
   letter-spacing: .9px;
   text-transform: uppercase;
-}
-
-.footer__value {
-  margin: 0;
-  color: rgba(255, 255, 255, .45);
-  font-family: "DM Mono", monospace;
-  font-size: 10px;
-  line-height: 1.6;
 }
 
 .footer__link {
@@ -5336,13 +5340,24 @@ textarea.modal-inline-control {
   color: rgba(255, 255, 255, .75);
 }
 
+button.footer__link {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+}
+
+.footer__portfolio-link {
+  display: inline;
+  text-decoration: underline;
+}
+
 .footer__copyright {
-  grid-column: 1 / -1;
   margin: 0;
   padding-top: 4px;
   color: rgba(255, 255, 255, .22);
   font-family: "DM Mono", monospace;
   font-size: 9px;
+  line-height: 1.6;
 }
 
 @media (min-width: 1024px) {
@@ -5527,6 +5542,16 @@ textarea.modal-inline-control {
   .footer__brand,
   .footer__copyright {
     grid-column: 1 / -1;
+  }
+
+  .footer__brand {
+    padding-bottom: 10px;
+  }
+
+  /* Reserve room for the fixed bottom tab bar (same clearance as
+     .card-list) so the copyright block isn't hidden behind it. */
+  .site-footer {
+    padding-bottom: 86px;
   }
 
   .month-grid {
@@ -7220,6 +7245,15 @@ button[aria-busy="true"] {
 .welcome__footer-link:hover,
 .welcome__footer-link:focus-visible {
   color: var(--indigo);
+}
+
+button.welcome__footer-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .welcome__footer-download {
@@ -9067,6 +9101,28 @@ button[aria-busy="true"] {
 
 .auth-overlay__legal[hidden] {
   display: none;
+}
+
+.auth-overlay__legal-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--indigo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-overlay__legal-link:hover,
+.auth-overlay__legal-link:focus-visible {
+  color: var(--indigo-hover);
+}
+
+.auth-overlay__legal-link:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .auth-overlay__verification-text {
@@ -12059,7 +12115,6 @@ button[aria-busy="true"] {
     animation: none;
   }
 }
-
 /* =========================================================================
    Feature 042 — In-app LLM processing overlay (Phase 06, T022–T024)
    Contract: specs/042-welcome-brand-refresh/contracts/api.md §3
@@ -12301,4 +12356,245 @@ button[aria-busy="true"] {
 
 .auth-form__field-error:empty {
   display: none;
+}
+
+/* Legal document modal */
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(8, 8, 24, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.legal-modal {
+  width: min(660px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #4b5563;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(26, 26, 46, 0.14), 0 4px 12px rgba(26, 26, 46, 0.06);
+  animation: legal-modal-enter 200ms ease-out;
+}
+
+.legal-modal__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #1a1a2e;
+}
+
+.legal-modal__title {
+  flex: 1;
+  margin: 0;
+  color: #ffffff;
+  font-family: 'Sora', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.legal-modal__close {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.legal-modal__close:hover,
+.legal-modal__close:focus-visible {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.legal-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 30px 28px;
+  background: #ffffff;
+}
+
+.legal-modal__disclaimer {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #e8e3da;
+  border-radius: 8px;
+  color: #4b5563;
+  background: #fafaf8;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.legal-modal__section + .legal-modal__section {
+  margin-top: 14px;
+}
+
+.legal-modal__section-title {
+  margin: 0 0 5px;
+  color: #1a1a2e;
+  font-family: 'Sora', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Numbered subsections (e.g. "8.1") render as <h4>; indent + a lighter
+   weight/color visually nests them under their parent <h3> section,
+   matching the DOM's heading-level distinction. */
+h4.legal-modal__section-title {
+  margin-left: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+h4.legal-modal__section-title + .legal-modal__copy {
+  margin-left: 14px;
+}
+
+.legal-modal__copy {
+  margin: 0;
+  color: #4b5563;
+  font-family: 'Sora', sans-serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.legal-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 30px;
+  border-top: 1px solid #e8e3da;
+  background: #fafaf8;
+}
+
+.legal-modal__meta {
+  color: #999999;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.legal-modal__footer-button {
+  flex: 0 0 auto;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #4f46e5;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.legal-modal__footer-button:hover,
+.legal-modal__footer-button:focus-visible {
+  background: #4338ca;
+}
+
+.legal-modal__close:focus-visible,
+.legal-modal__footer-button:focus-visible {
+  outline: 2px solid #f8d56b;
+  outline-offset: 2px;
+}
+
+@keyframes legal-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 1023px) and (min-width: 640px) {
+  .legal-modal {
+    width: min(480px, 100%);
+    max-height: 86vh;
+  }
+
+  .legal-modal__title {
+    font-size: 15px;
+  }
+
+  .legal-modal__body {
+    padding: 16px 18px 18px;
+  }
+
+  .legal-modal__section-title,
+  .legal-modal__copy {
+    font-size: 12px;
+  }
+
+  .legal-modal__footer {
+    padding: 10px 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .legal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .legal-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 82vh;
+    border-radius: 14px 14px 0 0;
+    animation: legal-sheet-enter 200ms ease-out;
+  }
+
+  .legal-modal__title {
+    font-size: 15px;
+  }
+
+  .legal-modal__body {
+    padding: 16px 18px 18px;
+  }
+
+  .legal-modal__section-title,
+  .legal-modal__copy {
+    font-size: 12px;
+  }
+
+  .legal-modal__footer {
+    padding: 10px 16px;
+  }
+}
+
+@keyframes legal-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
