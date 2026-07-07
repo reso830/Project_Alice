@@ -12400,6 +12400,14 @@ button.welcome__footer-link {
   padding-right: 40px;
 }
 
+/* Suppress browser-native password-reveal & clear controls to prevent overlap with custom toggles */
+.auth-form__input::-ms-reveal,
+.auth-form__input::-ms-clear,
+.edit-field__control::-ms-reveal,
+.edit-field__control::-ms-clear {
+  display: none;
+}
+
 .auth-form__password-toggle {
   position: absolute;
   top: 50%;
