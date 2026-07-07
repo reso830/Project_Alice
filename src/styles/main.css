@@ -12456,6 +12456,19 @@ button.welcome__footer-link {
   line-height: 1.35;
 }
 
+/* Numbered subsections (e.g. "8.1") render as <h4>; indent + a lighter
+   weight/color visually nests them under their parent <h3> section,
+   matching the DOM's heading-level distinction. */
+h4.legal-modal__section-title {
+  margin-left: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+h4.legal-modal__section-title + .legal-modal__copy {
+  margin-left: 14px;
+}
+
 .legal-modal__copy {
   margin: 0;
   color: #4b5563;
