@@ -38,6 +38,7 @@ import * as api from '../../src/services/api.js';
 import { ConfirmDialog } from '../../src/components/ConfirmDialog.js';
 import { CreationPicker } from '../../src/components/CreationPicker.js';
 import { Modal } from '../../src/components/Modal.js';
+import { Toast } from '../../src/components/Toast.js';
 import { Tracker, normalizeStoredFilterState } from '../../src/pages/Tracker.js';
 
 const mainCss = readFileSync(join(cwd(), 'src/styles/main.css'), 'utf8');
@@ -659,6 +660,99 @@ describe('Tracker quick filter toolbar integration', () => {
     await Promise.resolve();
 
     expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale fetch response after unmount+remount to the same container, even for the same application id', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    let resolveStaleFetch;
+    let resolveFreshFetch;
+    let callCount = 0;
+
+    mockDesktopMedia(false);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Promise((resolve) => { resolveStaleFetch = resolve; });
+      }
+      return new Promise((resolve) => { resolveFreshFetch = resolve; });
+    });
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    Tracker.unmount();
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    resolveStaleFetch(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).not.toHaveBeenCalled();
+
+    resolveFreshFetch(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(first, expect.anything());
+  });
+
+  it('drops a mobile fetch that resolves after resizing to desktop instead of popping a centered modal', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    const mediaQueryList = mockDesktopMedia(false);
+    let resolveDetails;
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => new Promise((resolve) => {
+      resolveDetails = resolve;
+    }));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    mediaQueryList.dispatch(true);
+
+    resolveDetails(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not crash or show a failure toast when resizing to mobile mid desktop card-selection fetch', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation(() => {});
+    const toastSpy = vi.spyOn(Toast, 'show');
+    const mediaQueryList = mockDesktopMedia(true);
+    let resolveDetails;
+
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => new Promise((resolve) => {
+      resolveDetails = resolve;
+    }));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    mediaQueryList.dispatch(false);
+
+    resolveDetails(first);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(toastSpy).not.toHaveBeenCalled();
   });
 
   it('guards dirty pane switches and only changes selection after discard', async () => {

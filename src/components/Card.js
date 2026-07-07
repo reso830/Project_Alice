@@ -136,6 +136,14 @@ export function render(application, callbacks = {}, { selected = false, pending 
   if (pending) {
     card.classList.add('card--pending');
     card.setAttribute('aria-busy', 'true');
+    // pointer-events: none (CSS) blocks mouse/touch, but not keyboard
+    // activation of nested buttons — disable them explicitly.
+    editButton.disabled = true;
+    statusButton.disabled = true;
+    copyButton.disabled = true;
+    starButton.disabled = true;
+    archiveButton.disabled = true;
+    unarchiveButton.disabled = true;
   }
 
   rowOne.className = 'card__row card__row--top';

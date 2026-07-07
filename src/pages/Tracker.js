@@ -51,6 +51,7 @@ let _desktopMqlHandler = null;
 let _selectedId = null;
 let _modalApplicationId = null;
 let _pendingModalApplicationId = null;
+let _mountGeneration = 0;
 let _suppressPaneClosed = false;
 let _footerMeasureFrame = null;
 let _footerMeasureHandler = null;
@@ -900,12 +901,12 @@ async function openModalApplication(id) {
   _pendingModalApplicationId = numericId;
   renderPage();
 
-  const mountedContainer = _container;
+  const mountedGeneration = _mountGeneration;
 
   try {
     const application = await api.getById(numericId);
 
-    if (_container !== mountedContainer || _pendingModalApplicationId !== numericId) {
+    if (_mountGeneration !== mountedGeneration || _isDesktop || _pendingModalApplicationId !== numericId) {
       return;
     }
 
@@ -915,7 +916,7 @@ async function openModalApplication(id) {
       ...detailCallbacks(numericId),
     });
   } finally {
-    if (_pendingModalApplicationId === numericId) {
+    if (_mountGeneration === mountedGeneration && _pendingModalApplicationId === numericId) {
       _pendingModalApplicationId = null;
       renderPage();
     }
@@ -957,6 +958,10 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     renderPage();
     renderEmptyPane();
     throw error;
+  }
+
+  if (!_isDesktop) {
+    return;
   }
 
   openApplicationPane(application);
@@ -1074,6 +1079,7 @@ export function refreshCard(id) {
 }
 
 export async function mount(container, { navigate } = {}) {
+  _mountGeneration += 1;
   _container = container;
   _container.replaceChildren();
   _cardList = null;
@@ -1152,6 +1158,7 @@ export async function mount(container, { navigate } = {}) {
 }
 
 export function unmount() {
+  _mountGeneration += 1;
   teardownDesktopQuery();
 
   if (_container) {
