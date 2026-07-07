@@ -30,6 +30,18 @@ describe('LegalModal renderer', () => {
     expect(document.body.style.overflow).toBe('hidden');
   });
 
+  it('renders numbered subsections (e.g. "8.1") as h4, and top-level sections as h3', () => {
+    const overlay = LegalModal.render('terms', vi.fn());
+
+    const topLevel = [...overlay.querySelectorAll('.legal-modal__section-title')]
+      .find((el) => el.textContent === '8. AI Features');
+    const subsection = [...overlay.querySelectorAll('.legal-modal__section-title')]
+      .find((el) => el.textContent === '8.1 Bring Your Own Key (BYOK)');
+
+    expect(topLevel.tagName).toBe('H3');
+    expect(subsection.tagName).toBe('H4');
+  });
+
   it('calls onClose from close button, footer button, backdrop, and Escape', () => {
     const onClose = vi.fn();
     const overlay = LegalModal.render('privacy', onClose);

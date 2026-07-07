@@ -51,7 +51,8 @@ export const LegalModal = {
 
     for (const section of documentContent.sections) {
       const sectionElement = createElement('section', 'legal-modal__section');
-      const sectionTitle = createElement('h3', 'legal-modal__section-title', section.title);
+      const headingTag = section.isSubsection ? 'h4' : 'h3';
+      const sectionTitle = createElement(headingTag, 'legal-modal__section-title', section.title);
       const sectionCopy = createElement('p', 'legal-modal__copy', section.content);
       sectionElement.append(sectionTitle, sectionCopy);
       body.append(sectionElement);

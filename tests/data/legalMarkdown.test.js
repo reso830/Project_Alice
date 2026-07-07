@@ -71,6 +71,26 @@ Version: this line looks like a version tag but is real content.
     );
   });
 
+  it('flags numbered subsections (e.g. "2.1") as isSubsection: true, and top-level sections as false', () => {
+    const result = parseLegalDocument(SAMPLE);
+    expect(result.sections[0].isSubsection).toBe(false); // '1. First Section'
+    expect(result.sections[1].isSubsection).toBe(false); // '2. Second Section'
+    expect(result.sections[2].isSubsection).toBe(true); // '2.1 Nested-looking Heading'
+  });
+
+  it('does not treat a title with two-digit numbers as a subsection', () => {
+    const twoDigit = `# Sample Title
+Version: v1.0 · Effective July 6, 2026
+
+> Notice: This is a disclaimer.
+
+## 20. Contact Information
+Some content.
+`;
+    const result = parseLegalDocument(twoDigit);
+    expect(result.sections[0].isSubsection).toBe(false);
+  });
+
   it('throws when there is no # title line', () => {
     const noTitle = `Version: v1.0 · Effective July 6, 2026
 

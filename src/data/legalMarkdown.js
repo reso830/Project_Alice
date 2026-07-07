@@ -3,7 +3,12 @@
 // consumes. Deliberately not a general markdown-to-HTML parser: every
 // numbered subsection (e.g. "8.1") must be its own top-level `## ` heading,
 // since LegalModal renders each section's content as plain textContent in
-// a single <p> with no nested markup support.
+// a single <p> with no nested markup support. Each section is flagged
+// isSubsection: true when its heading number has a decimal part (e.g.
+// "8.1"), so LegalModal can render it one heading level deeper than a
+// top-level section (e.g. "8") without needing real DOM nesting.
+
+const SUBSECTION_NUMBER = /^\d+\.\d+\s/;
 
 export function parseLegalDocument(rawMarkdown) {
   const lines = rawMarkdown.split('\n');
@@ -37,6 +42,7 @@ export function parseLegalDocument(rawMarkdown) {
         sections.push({
           title: currentSection.title,
           content: currentSection.lines.join(' ').trim(),
+          isSubsection: SUBSECTION_NUMBER.test(currentSection.title),
         });
       }
       currentSection = { title: trimmed.slice(3).trim(), lines: [] };
@@ -62,6 +68,7 @@ export function parseLegalDocument(rawMarkdown) {
     sections.push({
       title: currentSection.title,
       content: currentSection.lines.join(' ').trim(),
+      isSubsection: SUBSECTION_NUMBER.test(currentSection.title),
     });
   }
 
