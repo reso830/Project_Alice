@@ -900,7 +900,6 @@ async function openModalApplication(id) {
 
 async function selectApplication(id, { skipGuard = false } = {}) {
   const numericId = coerceId(id);
-  const previousSelectedId = _selectedId;
 
   if (!_isDesktop) {
     await openModalApplication(numericId);
@@ -925,7 +924,11 @@ async function selectApplication(id, { skipGuard = false } = {}) {
   try {
     application = await api.getById(numericId);
   } catch (error) {
-    _selectedId = previousSelectedId;
+    // The dirty-pane guard above (Modal.requestClose) already destroyed any
+    // previously open pane and rendered the empty state, so reverting to the
+    // previous card here would show it selected in the list with no matching
+    // pane content. Clear the selection instead to keep list/pane consistent.
+    _selectedId = null;
     renderPage();
     throw error;
   }

@@ -403,6 +403,48 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBeNull();
   });
 
+  it('clears the selection instead of reverting to a now-closed pane when switching cards and the new fetch fails', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const second = createApplication(2);
+    let storedOnClosed = null;
+
+    vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      storedOnClosed = options.onClosed ?? null;
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    vi.spyOn(Modal, 'requestClose').mockImplementation(() => {
+      storedOnClosed?.();
+      return Promise.resolve(true);
+    });
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => (
+      id === 1 ? Promise.resolve(first) : Promise.reject(new Error('network error'))
+    ));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(true);
+
+    container.querySelector('[data-id="2"]').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(false);
+    expect(container.querySelector('[data-id="2"]').classList.contains('card--selected')).toBe(false);
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+  });
+
   it('moves focus into the pane after a desktop card selection', async () => {
     const container = document.createElement('main');
     const first = createApplication(1);
