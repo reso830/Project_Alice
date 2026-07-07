@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.2] — 2026-07-07
+
+Mobile/tablet Tracker card tap feedback — extends #109's desktop fix to the mobile/tablet card list, which has no docked pane to highlight. (#120)
+
+### Changed
+
+- **Mobile/tablet card tap feedback** — tapping an application card below the desktop breakpoint now gives immediate visible feedback: a press effect on tap, and a dimmed "pending" state with a small spinner on the tapped card while its detail fetch is in flight, clearing once the modal opens (or on failure, back to normal with a failure toast). A second tap on a different card while one is already pending is ignored rather than racing it, and a fetch that resolves after navigating away no longer pops the modal open on the wrong page. Press feedback and the pending spinner both respect `prefers-reduced-motion`. (#120)
+
 ## [1.12.1] — 2026-07-07
 
 Tracker card selection feedback fix — hosted desktop application cards now show a selected state immediately on click instead of waiting on the detail fetch. (#109)
@@ -1550,7 +1558,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.2...HEAD
+[1.12.2]: https://github.com/reso830/Project_Alice/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/reso830/Project_Alice/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/reso830/Project_Alice/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/reso830/Project_Alice/compare/v1.11.0...v1.11.1

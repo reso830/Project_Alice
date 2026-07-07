@@ -70,7 +70,7 @@ function stopAction(event, callback) {
   return callback();
 }
 
-export function render(application, callbacks = {}, { selected = false } = {}) {
+export function render(application, callbacks = {}, { selected = false, pending = false } = {}) {
   const config = STATUS_CONFIG[application.status] ?? STATUS_CONFIG.wishlisted;
   const card = document.createElement('article');
   const rowOne = document.createElement('div');
@@ -131,6 +131,19 @@ export function render(application, callbacks = {}, { selected = false } = {}) {
   if (selected) {
     card.classList.add('card--selected');
     card.setAttribute('aria-selected', 'true');
+  }
+
+  if (pending) {
+    card.classList.add('card--pending');
+    card.setAttribute('aria-busy', 'true');
+    // pointer-events: none (CSS) blocks mouse/touch, but not keyboard
+    // activation of nested buttons — disable them explicitly.
+    editButton.disabled = true;
+    statusButton.disabled = true;
+    copyButton.disabled = true;
+    starButton.disabled = true;
+    archiveButton.disabled = true;
+    unarchiveButton.disabled = true;
   }
 
   rowOne.className = 'card__row card__row--top';

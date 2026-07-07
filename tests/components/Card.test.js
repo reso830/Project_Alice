@@ -29,3 +29,23 @@ describe('Card selected state', () => {
     expect(plain.hasAttribute('aria-selected')).toBe(false);
   });
 });
+
+describe('Card pending state', () => {
+  it('adds pending class and aria-busy only when pending', () => {
+    const pending = Card.render(application(), {}, { pending: true });
+    const plain = Card.render(application({ id: 2 }), {});
+
+    expect(pending.classList.contains('card--pending')).toBe(true);
+    expect(pending.getAttribute('aria-busy')).toBe('true');
+    expect(plain.classList.contains('card--pending')).toBe(false);
+    expect(plain.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it('disables all action buttons while pending, so keyboard users cannot activate them', () => {
+    const pending = Card.render(application(), {}, { pending: true });
+    const buttons = [...pending.querySelectorAll('.card-btn')];
+
+    expect(buttons.length).toBeGreaterThan(0);
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+  });
+});
