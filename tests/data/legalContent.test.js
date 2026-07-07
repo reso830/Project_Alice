@@ -29,9 +29,16 @@ describe('legalContent', () => {
       expect(eligibility.content).toContain('Office of Foreign Assets Control');
     });
 
-    it('states the liability cap', () => {
+    it('caps liability at the greater of $50 or amount paid in the past 12 months', () => {
       const liability = TERMS_AND_CONDITIONS.sections.find((s) => s.title === '15. Limitation of Liability');
-      expect(liability.content).toContain('fifty United States dollars');
+      expect(liability.content).toContain('the greater of fifty United States dollars');
+      expect(liability.content).toContain('total amount, if any, you paid the Owner for Alice in the twelve months');
+    });
+
+    it('future-proofs the AI provider wording instead of implying OpenRouter is the only option', () => {
+      const byok = TERMS_AND_CONDITIONS.sections.find((s) => s.title === '8.1 Bring Your Own Key (BYOK)');
+      expect(byok.content).toContain('Alice currently supports OpenRouter');
+      expect(byok.content).toContain('additional providers may be supported in future releases');
     });
   });
 
