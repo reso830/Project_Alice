@@ -53,15 +53,36 @@ describe('Navbar — top bar structure (Phase 13)', () => {
 });
 
 describe('Navbar — auth segment', () => {
-  it('does not render the identity cluster contents in local-mode', () => {
+  it('renders "Dev Build" mode marker in local-mode by default', () => {
     authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
     const topbar = Navbar.render('tracker');
 
     const cluster = topbar.querySelector('.topbar-identity');
     expect(cluster).not.toBeNull();
-    expect(cluster.hidden).toBe(true);
+    expect(cluster.hidden).toBe(false);
+
+    const badge = cluster.querySelector('.topbar-demo-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Dev Build');
+    expect(badge.getAttribute('aria-label')).toBe('Dev Build mode active');
+
     expect(topbar.querySelector('.topbar-email')).toBeNull();
     expect(topbar.querySelector('.signout-btn')).toBeNull();
+  });
+
+  it('renders "Portable" mode marker in local-mode when update is supported', () => {
+    authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    const topbar = Navbar.render('tracker');
+    Navbar.setHealth({ updateSupported: true });
+
+    const cluster = topbar.querySelector('.topbar-identity');
+    expect(cluster).not.toBeNull();
+    expect(cluster.hidden).toBe(false);
+
+    const badge = cluster.querySelector('.topbar-demo-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Portable');
+    expect(badge.getAttribute('aria-label')).toBe('Portable mode active');
   });
 
   it('renders the email and sign-out button when authenticated', () => {
@@ -126,6 +147,7 @@ describe('Navbar — auth segment', () => {
   });
 
   it('updates the cluster when auth state transitions to authenticated', () => {
+    authStoreMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
     const topbar = Navbar.render('tracker');
     expect(topbar.querySelector('.topbar-identity').hidden).toBe(true);
 

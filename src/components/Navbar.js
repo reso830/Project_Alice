@@ -14,6 +14,7 @@ let _root = null;
 let _identityCluster = null;
 let _unsubscribe = null;
 let _updateStatus = 'idle';
+let _health = null;
 
 function badgeTone(status) {
   if (status === 'ready-to-restart') return 'ready';
@@ -84,6 +85,13 @@ export function setUpdateStatus(status) {
   profile.append(badge);
 }
 
+export function setHealth(health) {
+  _health = health;
+  if (_root) {
+    renderIdentityCluster(authStore.getAuthState());
+  }
+}
+
 function renderIdentityCluster(state) {
   if (!_identityCluster) {
     return;
@@ -118,6 +126,24 @@ function renderIdentityCluster(state) {
     });
 
     _identityCluster.append(badge, exit);
+    return;
+  }
+
+  // Issue #102: Local-mode mode badges (Dev Build or Portable)
+  if (state?.status === 'local-mode') {
+    _identityCluster.hidden = false;
+
+    const badge = document.createElement('span');
+    badge.className = 'topbar-demo-badge';
+    if (_health?.updateSupported) {
+      badge.textContent = 'Portable';
+      badge.setAttribute('aria-label', 'Portable mode active');
+    } else {
+      badge.textContent = 'Dev Build';
+      badge.setAttribute('aria-label', 'Dev Build mode active');
+    }
+
+    _identityCluster.append(badge);
     return;
   }
 
@@ -210,6 +236,8 @@ export function destroy() {
   _unsubscribe = null;
   _root = null;
   _identityCluster = null;
+  _health = null;
 }
 
-export const Navbar = { render, setActive, setUpdateStatus, destroy };
+export const Navbar = { render, setActive, setUpdateStatus, setHealth, destroy };
+

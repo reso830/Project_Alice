@@ -271,6 +271,7 @@ function mountAppShell() {
   const main = document.createElement('main');
   main.id = 'app';
   const navbar = Navbar.render('tracker');
+  Navbar.setHealth(_runtimeHealth);
   const footer = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
@@ -306,6 +307,7 @@ function mountAppShell() {
 // replaces the Footer element and re-invokes UpdateToast.mount() /
 // subscribeUpdateController() instead.
 function refreshHealthDependentChrome() {
+  Navbar.setHealth(_runtimeHealth);
   const oldFooter = document.querySelector('.site-footer');
   const newFooter = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });
   if (oldFooter) {
