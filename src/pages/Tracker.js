@@ -51,6 +51,7 @@ let _desktopMqlHandler = null;
 let _selectedId = null;
 let _modalApplicationId = null;
 let _pendingModalApplicationId = null;
+let _pendingSelectionId = null;
 let _mountGeneration = 0;
 let _suppressPaneClosed = false;
 let _footerMeasureFrame = null;
@@ -935,6 +936,10 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     return;
   }
 
+  if (_pendingSelectionId !== null) {
+    return;
+  }
+
   if (hasOpenPane() && !skipGuard) {
     const canSwitch = await Modal.requestClose();
     if (!canSwitch) {
@@ -942,11 +947,14 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     }
   }
 
+  _pendingSelectionId = numericId;
   _selectedId = numericId;
   renderPage();
   _detailPaneEl?.replaceChildren(PaneLoading.render());
 
+  const mountedGeneration = _mountGeneration;
   let application;
+
   try {
     application = await api.getById(numericId);
   } catch (error) {
@@ -958,9 +966,13 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     renderPage();
     renderEmptyPane();
     throw error;
+  } finally {
+    if (_mountGeneration === mountedGeneration && _pendingSelectionId === numericId) {
+      _pendingSelectionId = null;
+    }
   }
 
-  if (!_isDesktop) {
+  if (_mountGeneration !== mountedGeneration || !_isDesktop) {
     return;
   }
 
@@ -1105,6 +1117,7 @@ export async function mount(container, { navigate } = {}) {
   _selectedId = null;
   _modalApplicationId = null;
   _pendingModalApplicationId = null;
+  _pendingSelectionId = null;
   _suppressPaneClosed = false;
   teardownDesktopQuery();
   setupDesktopQuery();
@@ -1187,6 +1200,7 @@ export function unmount() {
   _selectedId = null;
   _modalApplicationId = null;
   _pendingModalApplicationId = null;
+  _pendingSelectionId = null;
   _suppressPaneClosed = false;
 }
 

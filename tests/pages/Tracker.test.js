@@ -385,6 +385,90 @@ describe('Tracker quick filter toolbar integration', () => {
     await Promise.resolve();
   });
 
+  it('ignores a tap on a different card while a desktop detail fetch is still pending', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const second = createApplication(2);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    let resolveFirst;
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first, second]);
+    api.getById.mockImplementation((id) => (
+      id === 1
+        ? new Promise((resolve) => { resolveFirst = resolve; })
+        : Promise.resolve(second)
+    ));
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+    container.querySelector('[data-id="2"]').click();
+    await Promise.resolve();
+
+    expect(api.getById).toHaveBeenCalledTimes(1);
+    expect(api.getById).toHaveBeenCalledWith(1);
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-id="2"]').classList.contains('card--selected')).toBe(false);
+
+    resolveFirst(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(first, expect.anything());
+  });
+
+  it('ignores a stale desktop fetch after unmount+remount to the same container, even for the same application id', async () => {
+    const container = document.createElement('main');
+    const first = createApplication(1);
+    const openSpy = vi.spyOn(Modal, 'open').mockImplementation((application, options) => {
+      options.target.replaceChildren(Object.assign(document.createElement('div'), {
+        className: 'modal-panel modal-panel--pane',
+        textContent: application.jobTitle,
+      }));
+    });
+    let resolveStaleFetch;
+    let resolveFreshFetch;
+    let callCount = 0;
+
+    mockDesktopMedia(true);
+    window.scrollTo = vi.fn();
+    api.getAll.mockResolvedValue([first]);
+    api.getById.mockImplementation(() => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Promise((resolve) => { resolveStaleFetch = resolve; });
+      }
+      return new Promise((resolve) => { resolveFreshFetch = resolve; });
+    });
+
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    Tracker.unmount();
+    await Tracker.mount(container);
+    container.querySelector('[data-id="1"]').click();
+
+    resolveStaleFetch(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).not.toHaveBeenCalled();
+
+    resolveFreshFetch(first);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(first, expect.anything());
+  });
+
   it('reverts the optimistic card selection when the detail fetch fails', async () => {
     const container = document.createElement('main');
     const first = createApplication(1);
