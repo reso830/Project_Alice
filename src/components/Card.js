@@ -110,9 +110,12 @@ export function render(application, callbacks = {}, { selected = false, pending 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
-  starButton.setAttribute('aria-label', 'Star application');
   archiveButton.setAttribute('aria-label', 'Archive application permanently from active list');
   unarchiveButton.setAttribute('aria-label', 'Unarchive application');
+  editButton.title = 'Edit';
+  statusButton.title = 'Change status';
+  copyButton.title = 'Copy URL';
+  archiveButton.title = 'Archive';
   unarchiveButton.title = 'Unarchive';
 
   card.className = application.archived === true ? 'card card-archived' : 'card';
@@ -182,6 +185,11 @@ export function render(application, callbacks = {}, { selected = false, pending 
 
   if (application.fav) {
     starButton.classList.add('card-btn--starred');
+    starButton.setAttribute('aria-label', 'Unstar application');
+    starButton.title = 'Unstar';
+  } else {
+    starButton.setAttribute('aria-label', 'Star application');
+    starButton.title = 'Star';
   }
 
   editButton.addEventListener('click', (event) => {

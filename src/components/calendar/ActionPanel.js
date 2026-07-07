@@ -277,20 +277,22 @@ function createEmptyState(kind) {
   return empty;
 }
 
-function createIconButton(className, label, text, onClick) {
+function createIconButton(className, label, text, onClick, title = label) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = className;
   button.setAttribute('aria-label', label);
+  button.title = title;
   button.textContent = text;
   button.addEventListener('click', onClick);
   return button;
 }
 
-function createTextButton(label, onClick) {
+function createTextButton(label, onClick, title = label) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'cal-act-btn';
+  button.title = title;
   button.textContent = label;
   button.addEventListener('click', onClick);
   return button;
@@ -340,6 +342,7 @@ function createActivityRow(row, props, options = {}) {
         `Open application ${padId(row.id)}`,
         '\u2197',
         () => props.onOpenApp?.(row.id),
+        'Open application',
       ));
     }
 
@@ -348,6 +351,7 @@ function createActivityRow(row, props, options = {}) {
       `Dismiss suggestion ${padId(row.id)}`,
       '\u00d7',
       () => props.onDismiss?.(row.id, row.kind),
+      'Dismiss suggestion',
     ));
     wrapper.append(idPill, createRowBody(row.title, createText('cal-row__meta', row.meta ?? '')), actions);
     return wrapper;
@@ -358,6 +362,7 @@ function createActivityRow(row, props, options = {}) {
     `Open application ${padId(row.id)}`,
     '\u2197',
     () => props.onOpenApp?.(row.id),
+    'Open application',
   ));
   wrapper.append(idPill, createRowBody(row.title, createMeta(row.company, row.role)), actions);
   return wrapper;
