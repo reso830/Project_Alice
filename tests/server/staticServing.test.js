@@ -11,16 +11,19 @@ import { makeMemoryDb, wrapAsDispatcher } from './helpers.js';
 const servers = [];
 const tempDirs = [];
 
-async function makeServer({ serveStatic } = {}) {
+const LOADER_BLOCK = '<!-- STARTUP-LOADER:START --><section class="startup-loader">Loading Alice</section><!-- STARTUP-LOADER:END -->';
+
+async function makeServer({ serveStatic, appConfig = { runtime: 'local' } } = {}) {
   const distDir = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-dist-'));
   tempDirs.push(distDir);
-  fs.writeFileSync(path.join(distDir, 'index.html'), '<main>Alice portable shell</main>');
+  fs.writeFileSync(path.join(distDir, 'index.html'), `<div id="app">${LOADER_BLOCK}<main>Alice portable shell</main></div>`);
   fs.writeFileSync(path.join(distDir, 'asset.txt'), 'portable asset');
 
   const repositories = await createSqliteRepositories(makeMemoryDb());
   const app = createApp({
     repositories: wrapAsDispatcher(repositories),
-    config: { runtime: 'local' },
+    config: appConfig,
+    requireAuth: () => (_req, _res, next) => next(),
     serveStatic,
     distDir,
   });
@@ -57,7 +60,7 @@ describe('createApp static serving', () => {
 
     const routeResponse = await globalThis.fetch(`${baseUrl}/some/spa/route`);
     expect(routeResponse.status).toBe(200);
-    expect(await routeResponse.text()).toBe('<main>Alice portable shell</main>');
+    expect(await routeResponse.text()).toBe('<div id="app"><main>Alice portable shell</main></div>');
   });
 
   test('does not shadow api routes or rewrite non-get requests when static serving is enabled', async () => {
@@ -77,6 +80,36 @@ describe('createApp static serving', () => {
     });
     expect(postResponse.status).toBe(404);
     expect(await postResponse.text()).not.toContain('Alice portable shell');
+  });
+
+  test('strips startup-loader markup from non-hosted static HTML responses', async () => {
+    const { baseUrl } = await makeServer({ serveStatic: true });
+
+    const response = await globalThis.fetch(`${baseUrl}/`);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('Alice portable shell');
+    expect(html).not.toContain('STARTUP-LOADER');
+    expect(html).not.toContain('startup-loader');
+  });
+
+  test('keeps startup-loader markup for hosted static HTML responses', async () => {
+    const { baseUrl } = await makeServer({
+      serveStatic: true,
+      appConfig: {
+        runtime: 'hosted',
+        isHosted: true,
+        supabase: { url: 'https://example.supabase.co' },
+      },
+    });
+
+    const response = await globalThis.fetch(`${baseUrl}/`);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('STARTUP-LOADER:START');
+    expect(html).toContain('startup-loader');
   });
 
   test('leaves non-api routes unserved when static serving is not enabled', async () => {

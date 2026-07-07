@@ -165,7 +165,7 @@ Badge shape: `border-radius: 999px`, padding `3px 9px`, font `10px / 500`.
 ```
 
 **Brand cluster (left)**
-- Logo mark: `38×38px` PNG image (`assets/Alice_White.png`), no border or background styling
+- Logo mark: `38×38px` SVG image (`alice-sigil-full-white.svg`), no border or background styling
 - Logo text: "Project Alice", white, 15px / 600, letter-spacing −0.3px
 - Mark and text wrapped together; text-only span is `.topbar-brand-text` (hidden at < 380px)
 

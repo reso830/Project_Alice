@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.11.1 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.11.1');
-    expect(APP_VERSION).toBe('v1.11.1');
+  it('keeps the 1.12.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.12.0');
+    expect(APP_VERSION).toBe('v1.12.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.11.1');
-    expect(lock.packages['']?.version).toBe('1.11.1');
+    expect(lock.version).toBe('1.12.0');
+    expect(lock.packages['']?.version).toBe('1.12.0');
 
-    expect(read('README.md')).toContain('Current version: **1.11.1**');
+    expect(read('README.md')).toContain('Current version: **1.12.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.12.0] — 2026-07-07');
     expect(read('CHANGELOG.md')).toContain('## [1.11.1] — 2026-07-06');
     expect(read('CHANGELOG.md')).toContain('## [1.11.0] — 2026-07-04');
     expect(read('CHANGELOG.md')).toContain('## [1.10.8] — 2026-07-02');
@@ -41,7 +42,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.11.1...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.12.0]: https://github.com/reso830/Project_Alice/compare/v1.11.1...v1.12.0');
     expect(read('CHANGELOG.md')).toContain('[1.11.1]: https://github.com/reso830/Project_Alice/compare/v1.11.0...v1.11.1');
     expect(read('CHANGELOG.md')).toContain('[1.11.0]: https://github.com/reso830/Project_Alice/compare/v1.10.8...v1.11.0');
     expect(read('CHANGELOG.md')).toContain('[1.10.8]: https://github.com/reso830/Project_Alice/compare/v1.10.7...v1.10.8');
@@ -385,6 +387,36 @@ describe('release metadata', () => {
       'server/db/migrations/001-init.js',
       'src/components/UpdateToast.js',
       'tests/unit/update.test.js',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Hosted Startup Performance release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const deployment = read('docs/deployment.md');
+    const repoMap = read('docs/REPO_MAP.md');
+    const changelog = read('CHANGELOG.md');
+
+    expect(readme).toContain('Faster hosted startup');
+    expect(readme).toContain('specs/044-hosted-startup-performance/');
+    expect(deployment).toContain('044-hosted-startup-performance');
+    expect(deployment).toContain('Hosted Startup Performance — no new env vars');
+    expect(changelog).toContain('Hosted startup performance');
+    expect(repoMap).toContain('buildTrackerBootSkeleton');
+    expect(repoMap).toContain('shared/startupLoader.js');
+    expect(repoMap).toContain('code-splitting.test.js');
+    expect(repoMap).toContain('font-loading.test.js');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 044-hosted-startup-performance  ·  shipped v1.12.0');
+
+    for (const path of [
+      'specs/044-hosted-startup-performance',
+      'docs/features/044-hosted-startup-performance.md',
+      'HostedAlice_StartupLoader/design_handoff_startup_loader',
+      'shared/startupLoader.js',
+      'tests/build/code-splitting.test.js',
+      'tests/build/font-loading.test.js',
+      'specs/044-hosted-startup-performance/metrics.md',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

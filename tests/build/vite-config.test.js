@@ -1,6 +1,10 @@
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertHostedFrontendEnv } from '../../vite.config.js';
+import {
+  assertHostedFrontendEnv,
+  stripStartupLoaderInDev,
+} from '../../vite.config.js';
+import { stripStartupLoaderMarkup } from '../../shared/startupLoader.js';
 
 const VARS = [
   'VITE_SUPABASE_URL',
@@ -82,5 +86,31 @@ describe('assertHostedFrontendEnv', () => {
     setAllViteEnv();
 
     expect(() => runConfigHook('production')).not.toThrow();
+  });
+});
+
+describe('stripStartupLoaderInDev', () => {
+  const html = [
+    '<div id="app">',
+    '<!-- STARTUP-LOADER:START -->',
+    '<section class="startup-loader">Loading Alice</section>',
+    '<!-- STARTUP-LOADER:END -->',
+    '<main>Alice app</main>',
+    '</div>',
+  ].join('');
+
+  it('strips the marked startup loader block from an HTML string', () => {
+    const stripped = stripStartupLoaderMarkup(html);
+
+    expect(stripped).toContain('<main>Alice app</main>');
+    expect(stripped).not.toContain('STARTUP-LOADER');
+    expect(stripped).not.toContain('startup-loader');
+  });
+
+  it('exposes a serve-only transformIndexHtml plugin', () => {
+    const plugin = stripStartupLoaderInDev();
+
+    expect(plugin.apply).toBe('serve');
+    expect(plugin.transformIndexHtml(html)).not.toContain('startup-loader');
   });
 });

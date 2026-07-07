@@ -18,7 +18,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## Non-Goals
-- **No change to local / portable / demo boot** — those are local-first and already fast; the loader and parallelization target hosted only.
+- **No change to local / portable / demo boot** — those are local-first and already fast; the loader and handshake parallelization target hosted only. The Tracker skeleton, lazy-loaded routes, and font-loading changes (WS3–WS5) are shared implementation across all runtimes — none of them reintroduce a network wait or otherwise slow local/portable/demo, so they are not scoped hosted-only.
 - Not introducing a client-side URL-path router (continue standard tab/state switching, consistent with 042).
 - Not fixing in-app application-card click latency — that is **issue #109**, a separate interaction-latency concern. This feature only *provides the shared skeleton primitive* #109 will consume.
 - Not migrating hosting tier or database provider. The free-tier serverless cold-start is treated as a floor to design around, not to eliminate.
@@ -27,7 +27,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## User Experience
-- **On hosted open**: an instant branded loader (Alice sigil + "Project Alice" wordmark + status line, over the cream background with a slow ambient purple/gold edge glow) appears immediately, replacing today's blank white page. Respects `prefers-reduced-motion`.
+- **On hosted open**: an instant branded loader (Alice sigil + "Project Alice" wordmark + status line, over the cream background with a **static** ambient purple/gold edge glow — no motion at any breakpoint) appears immediately, replacing today's blank white page. Responsive across desktop/tablet/mobile; `prefers-reduced-motion` governs only the loader→app transition.
 - **Signed out** → loader hands off to the **Welcome page** as soon as the session resolves, without waiting on the health check / cold start.
 - **Signed in** → loader hands off to the **app shell with a Tracker skeleton**; real application data hydrates into the skeleton when it arrives.
 - **Misconfigured hosted deploy** → ConfigError (unchanged behavior), reached without a flash of Welcome/app.
@@ -37,10 +37,10 @@ This feature replaces the blank white boot screen with a branded loader that pai
 
 ## Functional Requirements
 - **Inlined static loader**: loader markup + critical CSS live directly inside `<div id="app">` in `index.html` so first paint does not wait on `main.js`. The sigil is inlined as `<svg>` (or data URI) — no extra network fetch, and not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`.
-- **Parallel + optimistic handshake**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently instead of sequentially, deciding the destination once both resolve. The loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
+- **Parallel + optimistic handshake**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently instead of sequentially. The two `getSession()`-backed outcomes — signed-in and signed-out — route immediately once the session resolves, without waiting on health. The `local-mode` outcome (which resolves synchronously, with no network call) continues to wait for `getHealth()` before mounting, preserving ConfigError safety for a misconfigured hosted deploy. The loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
 - **App-shell skeleton**: signed-in handoff renders the shell + Tracker skeleton before data lands; Tracker data hydrates in. Introduce this skeleton as a **reusable primitive** (#109 dependency).
 - **Boot timeout / error state**: a loader timeout (~8–10s) surfaces a retry/error affordance wired to the existing network-error / ConfigError paths — no infinite spinner.
-- **Hosted-only scoping**: the loader and handshake parallelization apply to the hosted runtime; local/demo boot is unchanged (or fast-pathed past the loader).
+- **Hosted-only scoping**: the loader and handshake parallelization apply to the hosted runtime only. The loader markup is served exclusively over hosted's static CDN path — portable's Express static-serving route strips the loader block server-side, and a Vite dev-server plugin strips it for `npm run dev` (local source-checkout), so neither runtime ever receives it and both boot exactly as they do today (see plan.md "Hosted-only delivery of the loader markup").
 - **(Optional phase) Route-level lazy loading**: dynamic-import `Calendar`, `Profile`, `ProfileEdit` in `navigate()`; keep `Tracker` (landing route) eager. Requires latest-wins race guarding and chunk-load-failure handling.
 - **(Optional phase) Font loading**: self-host or preload Sora so the render-blocking Google Fonts request leaves the critical path.
 
@@ -48,13 +48,14 @@ This feature replaces the blank white boot screen with a branded loader that pai
 
 ## Technical Notes
 - **Boot path today**: `DOMContentLoaded` → `bootstrap()` → `await runtimeHandshake()` (`getHealth`) → `await authStore.init()` (`getSession`) → `render()` → `mountAppShell()` → `navigate('tracker')` → Tracker data fetch. FCP ≈ everything up to `render()`; LCP ≈ + Tracker data.
-- **Proposed phasing** (dependency-ordered; WS1+WS2 are one deliverable in two commits):
-  - **WS0 — Baseline measurement** (prerequisite; re-run after each phase)
-  - **WS1 — Startup loader inlined in `index.html`** (FCP)
-  - **WS2 — Bootstrap rework: parallel + optimistic handshake, handoff to Welcome / shell / ConfigError** (LCP, real wait) — *unlocked by WS1*
-  - **WS3 — App-shell + Tracker skeleton primitive** (signed-in LCP/feel; shared with #109)
-  - **WS4 — Route-level lazy loading** (bundle/parse) — *independent; may split to its own feature if it balloons*
-  - **WS5 — Font loading** (FCP tail) — *optional*
+- **Proposed phasing** (dependency-ordered; WS1+WS2 are one deliverable in two commits). Impact / effort noted per phase:
+  - **WS0 — Baseline measurement** — prerequisite; re-run after each phase.
+  - **WS1 — Startup loader inlined in `index.html`** (FCP, perceived) — *High impact / Low effort*; depends on WS0.
+  - **WS2 — Bootstrap rework: parallel + optimistic handshake, handoff to Welcome / shell / ConfigError** (LCP, real wait — esp. signed-out) — *High / Med*; unlocked by WS1.
+  - **WS3 — App-shell + Tracker skeleton primitive** (signed-in LCP/feel) — *Med-High / Med*; depends on WS2, coordinates with #109.
+  - **WS4 — Route-level lazy loading via async `navigate()`** (bundle/parse) — *Med / Med*; independent; may split to its own feature if it balloons.
+  - **WS5 — Font loading (self-host / preload Sora)** (FCP tail) — *Low / Low*; independent.
+- **Expected per-phase movement** (what WS0 measurement must confirm): WS1 → FCP collapses (~8s → ~1s), LCP roughly unchanged (the loader now covers the same real wait); WS2 → LCP drops, signed-out especially (parallel `max(...)` instead of a sequential sum, and the signed-out path skips the health cold start); WS3 → signed-in LCP/feel improves (skeleton paints before data); WS4 → parse/download tail shrinks.
 - **Measurement**: Speed Insights p75 (FCP/LCP/CLS/INP/TTFB); DevTools Performance trace on a **cold** load, segmenting TTFB / bundle download / parse-exec / `/api/health` / `getSession` / Tracker fetch; **cold vs warm** `/api/health` isolated to separate architecture from the free-tier floor; bundle visualizer before WS4.
 - **Constitution alignment**: no new analytics/tracking (loader is client-only); explicit loading/error states; a11y (`role="status"`, reduced-motion, keyboard/labels intact); local-first preserved (hosted-only runtime change).
 - **LCP hygiene**: keep the loader wordmark modest (26px) so it never becomes a distorting LCP candidate; inline SVG is not a candidate; a large full-screen splash is explicitly avoided.
@@ -65,7 +66,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 - **Cold-start failure or hang** → timeout/retry state; never an infinite spinner.
 - **Deploy mid-session** invalidating hashed chunks (if WS4 ships) → `import()` rejection handled with retry / full-reload fallback.
 - **Rapid navigation races** once `navigate()` is async → latest-wins guard; dirty-check (`ProfileEdit.confirmNavigation`) and `page === _currentPage` early-return must run *before* any `await`.
-- **`prefers-reduced-motion`** → disable the edge-glow spin.
+- **`prefers-reduced-motion`** → loader glow is already static (no motion at any breakpoint); suppress any loader→app crossfade (instant swap).
 - **Handoff branches** → loader must resolve correctly to signed-out (Welcome), signed-in (shell), demo/local (fast path), and config-error, with no flash.
 - **Font swap / FOUT** → loader background + sigil paint independent of Sora; text may swap in.
 - **Very slow / flaky networks** → loader + timeout must degrade gracefully.
@@ -85,6 +86,6 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## Related
-- **Issue #109** (application-card click latency) — separate feature; consumes the WS3 skeleton primitive. Coordinate so only one skeleton system exists.
+- **Issue #109** (application-card click latency) — **stays a separate issue**, not folded into 044: different journey (a warm click, not a cold boot), different latency source (the detail-fetch round-trip on click), and different metric (interaction latency / INP, not FCP/LCP). The *only* real overlap is the **loading-state primitive**: WS3 owns and ships the reusable skeleton; #109 consumes it for the card→detail pending state and should wait for (or explicitly reuse) it, so the two never diverge into separate skeleton systems. Caveat: #109 may turn out lighter than a skeleton — an instant row-highlight + inline spinner — in which case the shared-component link is nice-to-have, not a blocker; if #109 is already mid-flight on its own approach, don't retrofit it onto 044's timeline.
 - **042 Welcome & Brand Refresh** — source of brand assets (sigil, wordmark) used by the loader.
 - Design handoff prototype: `HostedAlice_StartupLoader/design_handoff_startup_loader/` (visuals final; integration guidance superseded by this brief — inline in HTML, not a JS-rendered component).

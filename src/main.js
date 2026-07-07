@@ -8,20 +8,46 @@ import * as authStore from './data/authStore.js';
 import { store } from './data/store.js';
 import { resetUpdateControllerForTesting, subscribeUpdateController } from './data/updateController.js';
 import { resetUpdateStatusForTesting, subscribeUpdateStatus } from './data/updateStatusStore.js';
-import { Calendar } from './pages/Calendar.js';
 import { ConfigError } from './pages/ConfigError.js';
-import { Profile } from './pages/Profile.js';
-import { ProfileEdit } from './pages/ProfileEdit.js';
 import { Tracker } from './pages/Tracker.js';
 import { AuthOverlay } from './pages/welcome/AuthOverlay.js';
 import { WelcomePage } from './pages/welcome/WelcomePage.js';
 import { getHealth } from './services/healthApi.js';
 import { isHostedAuthAvailable } from './services/supabaseClient.js';
+import { renderInlineError } from './utils/asyncUI.js';
 import { toISODate } from './utils/date.js';
+import { buildTrackerBootSkeleton } from './utils/skeletons.js';
 import { Toast } from './components/Toast.js';
 import { UpdateToast } from './components/UpdateToast.js';
 
+// WS4 (044): Calendar/Profile/ProfileEdit are dynamic-imported inside
+// navigate() (N5) — Tracker (the landing route) stays statically imported
+// above so first navigation to it never pays a chunk fetch.
+const DEFAULT_LAZY_PAGE_IMPORTERS = {
+  calendar: () => import('./pages/Calendar.js').then((mod) => mod.Calendar),
+  profile: () => import('./pages/Profile.js').then((mod) => mod.Profile),
+  'profile-edit': () => import('./pages/ProfileEdit.js').then((mod) => mod.ProfileEdit),
+};
+const LAZY_PAGE_IMPORTERS = { ...DEFAULT_LAZY_PAGE_IMPORTERS };
+
+// Test-only seam: real dynamic import() timing/rejection is impractical to
+// control precisely against a `vi.mock`'ed module (ESM module resolution is
+// cached per specifier), so tests needing a deferred or rejecting chunk load
+// (latest-wins races, chunk-failure fallback) swap the importer here instead.
+// Not used by the production entry point.
+export function _setLazyPageImporterForTesting(page, importer) {
+  LAZY_PAGE_IMPORTERS[page] = importer;
+}
+
 const DAY_MS = 86400000;
+const STARTUP_LOADER_SELECTOR = '.startup-loader';
+const STARTUP_LOADER_STATUS_SELECTOR = '.startup-loader__status';
+const STARTUP_LOADER_RETRY_SELECTOR = '.startup-loader__retry';
+const STARTUP_LOADER_EXIT_CLASS = 'startup-loader--exiting';
+const STARTUP_LOADER_ROOT_ID = 'startup-loader-root';
+const STARTUP_LOADER_EXIT_TIMEOUT_MS = 260;
+const BOOT_TIMEOUT_MS = 10000;
+const BOOT_TIMEOUT_MESSAGE = 'Taking longer than expected…';
 
 let _currentPage = null;
 let _currentUnmount = null;
@@ -34,6 +60,20 @@ let _unsubscribeUpdateController = null;
 let _legalDialog = null; // 'terms' | 'privacy' | null
 let _legalDialogNode = null;
 let _legalTriggerEl = null;
+let _startupLoaderTeardownStarted = false;
+let _startupLoaderTeardownTimer = null;
+let _healthSettled = false;
+let _pendingLocalModeState = null;
+let _bootSettled = false;
+let _bootTimeoutTimer = null;
+let _navToken = 0;
+// N2: ProfileEdit.confirmNavigation(page) must run synchronously, before any
+// await — but ProfileEdit is now dynamic-imported (WS4), so there's no
+// static reference to call it on. _currentPage can only be 'profile-edit'
+// after that module has already been imported and mounted once, so caching
+// the resolved module here (set on first successful mount) keeps the guard
+// synchronous without a static import.
+let _profileEditModule = null;
 
 export const SEED_DATA = [
   {
@@ -86,6 +126,101 @@ function clearBody() {
   }
 }
 
+function prefersReducedStartupLoaderMotion() {
+  return Boolean(
+    globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+  );
+}
+
+function removeBodyChildrenExcept(nodeToKeep) {
+  for (const child of Array.from(document.body.children)) {
+    if (child !== nodeToKeep) {
+      child.remove();
+    }
+  }
+}
+
+function clearBootTimeout() {
+  if (_bootTimeoutTimer) {
+    clearTimeout(_bootTimeoutTimer);
+    _bootTimeoutTimer = null;
+  }
+}
+
+function markBootSettled() {
+  _bootSettled = true;
+  clearBootTimeout();
+}
+
+function revealBootTimeoutRetry(reloadPage) {
+  const status = document.querySelector(STARTUP_LOADER_STATUS_SELECTOR);
+  if (status) {
+    status.textContent = BOOT_TIMEOUT_MESSAGE;
+  }
+  const retry = document.querySelector(STARTUP_LOADER_RETRY_SELECTOR);
+  if (retry) {
+    retry.hidden = false;
+    retry.addEventListener('click', () => reloadPage(), { once: true });
+    retry.focus();
+  }
+}
+
+// C6: if nothing has mounted ~10s after boot starts, reveal the loader's
+// Retry affordance instead of leaving an indefinite spinner. Cleared by
+// markBootSettled() the moment any destination (shell/Welcome/ConfigError)
+// actually mounts.
+function startBootTimeout({
+  bootTimeoutMs = BOOT_TIMEOUT_MS,
+  reloadPage = () => globalThis.location?.reload?.(),
+} = {}) {
+  clearBootTimeout();
+  _bootSettled = false;
+  _bootTimeoutTimer = setTimeout(() => {
+    _bootTimeoutTimer = null;
+    if (_bootSettled) {
+      return;
+    }
+    revealBootTimeoutRetry(reloadPage);
+  }, bootTimeoutMs);
+}
+
+function prepareBodyForFirstMount() {
+  markBootSettled();
+
+  const loader = document.querySelector(STARTUP_LOADER_SELECTOR);
+  const loaderRoot = loader?.closest('#app, #startup-loader-root');
+
+  if (!loader || !loaderRoot || _startupLoaderTeardownStarted) {
+    clearBody();
+    return;
+  }
+
+  _startupLoaderTeardownStarted = true;
+
+  if (prefersReducedStartupLoaderMotion()) {
+    clearBody();
+    return;
+  }
+
+  if (loaderRoot.id === 'app') {
+    loaderRoot.id = STARTUP_LOADER_ROOT_ID;
+  }
+  removeBodyChildrenExcept(loaderRoot);
+  loader.classList.add(STARTUP_LOADER_EXIT_CLASS);
+
+  const finish = () => {
+    loader.removeEventListener('transitionend', finish);
+    if (_startupLoaderTeardownTimer) {
+      clearTimeout(_startupLoaderTeardownTimer);
+      _startupLoaderTeardownTimer = null;
+    }
+    loaderRoot.remove();
+  };
+
+  loader.addEventListener('transitionend', finish, { once: true });
+  _startupLoaderTeardownTimer = setTimeout(finish, STARTUP_LOADER_EXIT_TIMEOUT_MS);
+}
+
 function closeLegalDialog() {
   _legalDialog = null;
   _legalDialogNode = null;
@@ -131,7 +266,7 @@ function mountAppShell() {
     }
   }
 
-  clearBody();
+  prepareBodyForFirstMount();
 
   const main = document.createElement('main');
   main.id = 'app';
@@ -162,6 +297,35 @@ function mountAppShell() {
 
   _shellMounted = true;
   navigate('tracker');
+}
+
+// C5: the authenticated fast path mounts the shell before getHealth()
+// resolves (mountAppShell() above already tolerates _runtimeHealth being
+// null). When health arrives afterward, Footer and UpdateToast must pick up
+// the resolved value — neither exposes an in-place patch API, so this
+// replaces the Footer element and re-invokes UpdateToast.mount() /
+// subscribeUpdateController() instead.
+function refreshHealthDependentChrome() {
+  const oldFooter = document.querySelector('.site-footer');
+  const newFooter = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });
+  if (oldFooter) {
+    oldFooter.replaceWith(newFooter);
+  } else {
+    document.body.append(newFooter);
+  }
+
+  _unsubscribeUpdateController?.();
+  _unsubscribeUpdateController = _runtimeHealth?.updateSupported
+    ? subscribeUpdateController()
+    : null;
+
+  UpdateToast.mount({
+    health: _runtimeHealth,
+    onManageInSettings: () => {
+      navigate('profile');
+      scrollToUpdatesSettings();
+    },
+  });
 }
 
 function unmountAppShell() {
@@ -195,7 +359,7 @@ function mountWelcome() {
     return;
   }
   unmountAppShell();
-  clearBody();
+  prepareBodyForFirstMount();
 
   const root = document.createElement('div');
   root.id = 'welcome-root';
@@ -229,7 +393,7 @@ function mountConfigError() {
   }
   unmountAppShell();
   unmountWelcome();
-  clearBody();
+  prepareBodyForFirstMount();
 
   const root = document.createElement('div');
   root.id = 'config-error-root';
@@ -245,6 +409,17 @@ function render(state) {
   if (state.status === 'initializing') {
     unmountAppShell();
     unmountWelcome();
+    return;
+  }
+  // C2: `local-mode` resolves synchronously (no network call) and is the one
+  // outcome ambiguous between "genuine local/portable build" and "hosted
+  // deploy missing its env vars" — it must not mount before getHealth() also
+  // resolves (see bootstrap()'s health handler, which re-renders this
+  // pending state once health settles). `authenticated`/`unauthenticated`
+  // are both reached only via a real getSession() call and are safe to route
+  // immediately (C1).
+  if (state.status === 'local-mode' && !_healthSettled) {
+    _pendingLocalModeState = state;
     return;
   }
   if (
@@ -292,6 +467,18 @@ export function _resetForTesting() {
   _unsubscribeUpdateStatus = null;
   _unsubscribeUpdateController?.();
   _unsubscribeUpdateController = null;
+  _startupLoaderTeardownStarted = false;
+  if (_startupLoaderTeardownTimer) {
+    clearTimeout(_startupLoaderTeardownTimer);
+    _startupLoaderTeardownTimer = null;
+  }
+  _healthSettled = false;
+  _pendingLocalModeState = null;
+  _bootSettled = false;
+  clearBootTimeout();
+  _navToken += 1; // invalidate any in-flight import() from a prior test
+  _profileEditModule = null;
+  Object.assign(LAZY_PAGE_IMPORTERS, DEFAULT_LAZY_PAGE_IMPORTERS);
   resetUpdateStatusForTesting();
   resetUpdateControllerForTesting();
 }
@@ -306,21 +493,52 @@ export async function bootstrap(deps = {}) {
 
   const existingRoot = document.querySelector('#app');
   const existingFooter = document.querySelector('.site-footer');
-  existingRoot?.remove();
+  if (!existingRoot?.querySelector(STARTUP_LOADER_SELECTOR)) {
+    existingRoot?.remove();
+  }
   existingFooter?.remove();
 
-  // Run the runtime handshake BEFORE subscribing to authStore so a hosted
-  // deployment with missing Vite env vars never flashes the welcome page or
-  // app shell before ConfigError takes over (Task 08.3, finding from review).
-  const result = await runtimeHandshake(deps);
-  _runtimeHealth = result.health;
-  if (result.configError) {
-    mountConfigError();
-    return;
-  }
+  startBootTimeout(deps);
+  _healthSettled = false;
+  _pendingLocalModeState = null;
+
+  // WS2: run getHealth() and authStore.init() CONCURRENTLY instead of
+  // sequentially. `authenticated`/`unauthenticated` (both reached only via a
+  // real getSession() call) route in render() as soon as the session
+  // resolves, without waiting on health (C1). `local-mode` — the one outcome
+  // ambiguous between a genuine local build and a misconfigured hosted
+  // deploy — is held by render() until health also resolves (C2), handled
+  // below once this promise settles.
+  const healthPromise = runtimeHandshake(deps).then((result) => {
+    _runtimeHealth = result.health;
+    _healthSettled = true;
+    const pendingState = _pendingLocalModeState;
+    _pendingLocalModeState = null;
+
+    if (result.configError) {
+      // C3/C4: mountConfigError() sets _configErrorMounted, which render()
+      // checks first — this overrides an already-mounted Welcome/shell and
+      // discards any pending local-mode render.
+      mountConfigError();
+      return;
+    }
+
+    if (pendingState) {
+      render(pendingState);
+      return;
+    }
+
+    // C5: the authenticated fast path may have already mounted the shell
+    // with null health; refresh Footer/UpdateToast now that health resolved.
+    if (_shellMounted) {
+      refreshHealthDependentChrome();
+    }
+  });
 
   authStore.subscribe(render);
-  await authStore.init();
+  const authInitPromise = authStore.init();
+
+  await Promise.all([healthPromise, authInitPromise]);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -347,40 +565,93 @@ function scrollToUpdatesSettings() {
   attempt();
 }
 
-function navigate(page, options = {}) {
+export async function navigate(page, options = {}) {
   const appRoot = document.querySelector('#app');
-  let activePage = page;
+  const activePage = page === 'profile-edit' ? 'profile' : page;
 
+  // N1: no-op navigations stay synchronous, before any await.
   if (!appRoot || page === _currentPage) {
     return;
   }
 
-  if (_currentPage === 'profile-edit' && !ProfileEdit.confirmNavigation(page)) {
+  // N2: the dirty-check guard must also run before any await.
+  if (_currentPage === 'profile-edit' && !(_profileEditModule?.confirmNavigation(page) ?? true)) {
     return;
   }
 
+  // N3: latest-wins token, established synchronously — any earlier in-flight
+  // import() that resolves after a newer navigate() call must no-op.
+  const token = ++_navToken;
+
   if (_currentUnmount) {
     _currentUnmount();
+    _currentUnmount = null;
+  }
+
+  appRoot.replaceChildren();
+
+  // N6: nav highlight updates before the import() is awaited, not after.
+  _currentPage = page;
+  Navbar.setActive(activePage);
+  BottomTabBar.setActive(activePage);
+
+  if (page === 'tracker') {
+    // N5: Tracker stays eagerly imported — no chunk fetch on landing.
+    Tracker.mount(appRoot, { navigate });
+    _currentUnmount = Tracker.unmount;
+    return;
+  }
+
+  // N6: show a skeleton in the workspace immediately, before awaiting the
+  // chunk — the target page's own layout doesn't exist yet (its module isn't
+  // loaded), so this reuses the WS3 boot skeleton as a generic placeholder.
+  appRoot.append(buildTrackerBootSkeleton());
+
+  let PageModule;
+  try {
+    PageModule = await LAZY_PAGE_IMPORTERS[page]();
+  } catch {
+    // N4: a stale/failed chunk — no newer navigation to defer to, so revert
+    // the optimistic highlight and offer a reload (a redeploy invalidates
+    // hashed chunks; only a fresh load fetches the current ones). Reverting
+    // to `null` rather than the previous page: that page's DOM was already
+    // torn down above, so pretending we're "back" on it would leave its nav
+    // tab marked active while the workspace shows only this error — and
+    // clicking that tab again would then no-op (N1 sees it as already
+    // current), locking the user out of it. `null` never matches a real
+    // page, so any tab — including the one that was active before — works.
+    if (token !== _navToken) {
+      return;
+    }
+    _currentUnmount = null;
+    _currentPage = null;
+    Navbar.setActive(null);
+    BottomTabBar.setActive(null);
+    renderInlineError({
+      target: appRoot,
+      message: "This page couldn't load. Check your connection or reload the page.",
+      onRetry: () => globalThis.location?.reload?.(),
+      retryLabel: 'Reload',
+    });
+    return;
+  }
+
+  // N3: a newer navigation superseded this one while the chunk was loading.
+  if (token !== _navToken) {
+    return;
   }
 
   appRoot.replaceChildren();
 
   if (page === 'calendar') {
-    Calendar.mount(appRoot);
-    _currentUnmount = Calendar.unmount;
+    PageModule.mount(appRoot);
+    _currentUnmount = PageModule.unmount;
   } else if (page === 'profile') {
-    Profile.mount(appRoot, { navigate, health: _runtimeHealth, ...options });
-    _currentUnmount = Profile.unmount;
+    PageModule.mount(appRoot, { navigate, health: _runtimeHealth, ...options });
+    _currentUnmount = PageModule.unmount;
   } else if (page === 'profile-edit') {
-    ProfileEdit.mount(appRoot, { navigate, ...options });
-    _currentUnmount = ProfileEdit.unmount;
-    activePage = 'profile';
-  } else {
-    Tracker.mount(appRoot, { navigate });
-    _currentUnmount = Tracker.unmount;
+    _profileEditModule = PageModule;
+    PageModule.mount(appRoot, { navigate, ...options });
+    _currentUnmount = PageModule.unmount;
   }
-
-  _currentPage = page;
-  Navbar.setActive(activePage);
-  BottomTabBar.setActive(activePage);
 }

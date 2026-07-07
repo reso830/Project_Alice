@@ -91,7 +91,7 @@ Alice is evolving through four major phases:
 - [x] 041-self-update-support  ·  shipped v1.10.0
 - [x] 042-welcome-brand-refresh  ·  shipped v1.11.0
 - [x] 043-legal-and-footer  ·  shipped v1.11.1
-- [ ] 044-hosted-startup-performance
+- [x] 044-hosted-startup-performance  ·  shipped v1.12.0
 
 ---
 

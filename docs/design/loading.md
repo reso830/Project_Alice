@@ -1,8 +1,21 @@
 # Loading & Async States
 
-Design reference for Alice's loading, busy, and error-recovery conventions. Every surface that issues an async operation (fetch, save, parse, archive) follows one of the six channels defined below. The helpers in `src/utils/asyncUI.js` enforce the lifecycle; the skeletons in `src/utils/skeletons.js` provide the placeholder visuals.
+Design reference for Alice's loading, busy, and error-recovery conventions. Every in-app surface that issues an async operation (fetch, save, parse, archive) follows one of the six channels defined below. The helpers in `src/utils/asyncUI.js` enforce the lifecycle; the skeletons in `src/utils/skeletons.js` provide the placeholder visuals. One additional channel — **startup-boot** — covers the pre-app loading state before any of this JS runs; it's documented separately below since it predates `asyncUI.js`/`skeletons.js` entirely.
 
 ## Channels
+
+### startup-boot
+
+The hosted app's first-paint loading state, shown before `main.js` downloads or executes. Covers the window between navigation and the app shell (or Welcome page) mounting.
+
+| Visual | Mechanism | Surfaces |
+|--------|-----------|----------|
+| Branded loader (sigil + wordmark + status line, static edge glow) | Markup inlined directly in `index.html` (`<div id="app">`), not a JS component | Hosted cold boot only |
+
+- **Lifecycle**: inlined critical CSS paints the loader before the JS bundle finishes; `bootstrap()` keeps it mounted through the `getHealth()`/`getSession()` handshake and tears it down (deferred fade, `prefers-reduced-motion`-aware) at the first destination mount (Welcome, app shell, or ConfigError).
+- **Scope**: hosted only. The loader markup is delimited by HTML comment markers and stripped server-side for local/portable (see [specs/044-hosted-startup-performance/plan.md](../../specs/044-hosted-startup-performance/plan.md) "Hosted-only delivery of the loader markup") — those runtimes never receive it in the response body.
+- **Accessibility**: status line carries `role="status"` / `aria-live="polite"`.
+- Full detail: [specs/044-hosted-startup-performance/spec.md](../../specs/044-hosted-startup-performance/spec.md) (WS1).
 
 ### initial-load
 
@@ -54,15 +67,16 @@ Switch between views of the same dataset. The destination view's skeleton replac
 
 ## Skeleton vocabulary
 
-Five DOM-factory builders in [`src/utils/skeletons.js`](../../src/utils/skeletons.js). Each returns a ready-to-insert element (or pair) with `aria-busy="true"` on the root.
+Six DOM-factory builders in [`src/utils/skeletons.js`](../../src/utils/skeletons.js). Each returns a ready-to-insert element (or pair) with `aria-busy="true"` on the root.
 
 | Builder | Returns | Surface |
 |---------|---------|---------|
-| `buildApplicationListSkeleton()` | `HTMLDivElement` | Tracker card list |
+| `buildApplicationListSkeleton()` | `HTMLDivElement` | Tracker card list (in-page reload/retry) |
 | `buildProfileSkeleton()` | `HTMLDivElement` | Profile page sections |
 | `buildCalendarSkeleton()` | `{ grid, panel }` | Calendar month grid + Action Panel |
 | `buildProfileEditSkeleton()` | `HTMLDivElement` | ProfileEdit section cards |
 | `buildProfileAppsSkeleton()` | `HTMLDivElement` | Profile applications block |
+| `buildTrackerBootSkeleton()` | `HTMLDivElement` | Tracker signed-in boot handoff (`main.js` → `Tracker.mount()`'s initial pre-load render, distinct from the in-page reload/retry skeleton above; see [specs/044-hosted-startup-performance/data-model.md](../../specs/044-hosted-startup-performance/data-model.md) §3) |
 
 All builders reuse the `.skeleton-line` CSS class, which inherits the existing `prefers-reduced-motion` rule.
 

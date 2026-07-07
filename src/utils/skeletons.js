@@ -8,15 +8,8 @@ function skeletonLine(modifier = '', hidden = false) {
   return line;
 }
 
-export function buildApplicationListSkeleton() {
-  const wrap = document.createElement('div');
-
-  wrap.className = 'loading-skeleton loading-skeleton--applications';
-  wrap.setAttribute('aria-busy', 'true');
-  wrap.setAttribute('aria-live', 'polite');
-  wrap.setAttribute('aria-label', 'Loading applications');
-
-  for (let index = 0; index < 3; index += 1) {
+function appendSkeletonCards(wrap, count = 3) {
+  for (let index = 0; index < count; index += 1) {
     const card = document.createElement('div');
 
     card.className = 'skeleton-card';
@@ -28,6 +21,33 @@ export function buildApplicationListSkeleton() {
     );
     wrap.append(card);
   }
+}
+
+export function buildApplicationListSkeleton() {
+  const wrap = document.createElement('div');
+
+  wrap.className = 'loading-skeleton loading-skeleton--applications';
+  wrap.setAttribute('aria-busy', 'true');
+  wrap.setAttribute('aria-live', 'polite');
+  wrap.setAttribute('aria-label', 'Loading applications');
+  appendSkeletonCards(wrap);
+
+  return wrap;
+}
+
+// WS3 (044): the boot-time placeholder shown for the Tracker/signed-in
+// handoff, before main.js's mountAppShell() -> navigate('tracker') data
+// arrives. Same card shape as buildApplicationListSkeleton() (reused, not
+// duplicated) — distinct class/label only, so #109 can tell the two contexts
+// apart if it ever needs to.
+export function buildTrackerBootSkeleton() {
+  const wrap = document.createElement('div');
+
+  wrap.className = 'loading-skeleton loading-skeleton--applications loading-skeleton--tracker-boot';
+  wrap.setAttribute('aria-busy', 'true');
+  wrap.setAttribute('aria-live', 'polite');
+  wrap.setAttribute('aria-label', 'Loading your applications');
+  appendSkeletonCards(wrap);
 
   return wrap;
 }

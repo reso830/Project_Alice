@@ -531,6 +531,12 @@ Feature `042-welcome-brand-refresh` (v1.11.0) refreshes the welcome page layout 
 
 Feature 042 introduces **no new server environment variables**, **no database schema migration**, and **no runtime-mode change**. No deployment action is required.
 
+### Hosted Startup Performance — no new env vars
+
+Feature `044-hosted-startup-performance` (v1.12.0) replaces the blank white page on hosted cold loads with a branded loader, parallelizes the boot handshake (health + session checks run concurrently instead of sequentially), code-splits `Calendar`/`Profile`/`ProfileEdit` into separate chunks, and self-hosts Sora + DM Mono (`@fontsource/sora`, `@fontsource/dm-mono`) instead of loading them from `fonts.googleapis.com`.
+
+All runtime changes are **hosted-only** — the loader markup is stripped server-side for portable (`server/index.js`) and by a Vite dev-server plugin for `npm run dev` (`vite.config.js`), so local/portable boot is unchanged. Feature 044 introduces **no new server environment variables**, **no database schema migration**, and **no runtime-mode change**. No deployment action is required. See [`specs/044-hosted-startup-performance/quickstart.md`](../specs/044-hosted-startup-performance/quickstart.md).
+
 
 ---
 

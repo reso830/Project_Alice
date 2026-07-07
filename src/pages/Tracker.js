@@ -22,7 +22,7 @@ import {
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 import { renderInlineError } from '../utils/asyncUI.js';
-import { buildApplicationListSkeleton } from '../utils/skeletons.js';
+import { buildApplicationListSkeleton, buildTrackerBootSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
 let _workspaceEl = null;
@@ -502,7 +502,11 @@ function clearListDecorations() {
   _paginationEl = null;
 }
 
-function renderApplicationListSkeleton() {
+// WS3 (044) hydrate seam: mount()'s first, pre-load render uses the
+// boot-specific skeleton (buildTrackerBootSkeleton) so the signed-in
+// handoff is distinguishable from a later in-page reload/retry, which keep
+// using the default buildApplicationListSkeleton.
+function renderApplicationListSkeleton(buildSkeleton = buildApplicationListSkeleton) {
   if (!_container) {
     return null;
   }
@@ -512,7 +516,7 @@ function renderApplicationListSkeleton() {
   _cardList?.remove();
   _cardList = null;
   _listStateEl?.remove();
-  _listStateEl = buildApplicationListSkeleton();
+  _listStateEl = buildSkeleton();
   getListHost()?.append(_listStateEl);
   return _listStateEl;
 }
@@ -1082,7 +1086,7 @@ export async function mount(container, { navigate } = {}) {
   setToolbarLoading(true);
   _container.append(...[toolbar, fab].filter(Boolean));
   ensureTrackerLayout();
-  renderApplicationListSkeleton();
+  renderApplicationListSkeleton(buildTrackerBootSkeleton);
 
   try {
     await loadInitialLists();
