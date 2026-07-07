@@ -52,28 +52,6 @@ export function buildTrackerBootSkeleton() {
   return wrap;
 }
 
-// #109: shown in the desktop docked detail pane between an optimistic card
-// selection and the api.getById() response landing (or failing).
-export function buildTrackerPaneSkeleton() {
-  const wrap = document.createElement('div');
-
-  wrap.className = 'loading-skeleton loading-skeleton--tracker-pane';
-  wrap.setAttribute('aria-busy', 'true');
-  wrap.setAttribute('aria-live', 'polite');
-  wrap.setAttribute('aria-label', 'Loading application details');
-  wrap.append(skeletonLine('title', true));
-
-  for (let index = 0; index < 3; index += 1) {
-    const section = document.createElement('div');
-
-    section.className = 'skeleton-section';
-    section.append(skeletonLine('short', true), skeletonLine('', true), skeletonLine('medium', true));
-    wrap.append(section);
-  }
-
-  return wrap;
-}
-
 export function buildProfileSkeleton() {
   const wrap = document.createElement('div');
   const hero = document.createElement('section');

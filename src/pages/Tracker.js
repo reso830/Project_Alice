@@ -4,6 +4,7 @@ import { CreationPicker } from '../components/CreationPicker.js';
 import { EmptyPane } from '../components/EmptyPane.js';
 import { Fab } from '../components/Fab.js';
 import { Modal } from '../components/Modal.js';
+import { PaneLoading } from '../components/PaneLoading.js';
 import { Pagination } from '../components/Pagination.js';
 import { QuickFiltersToolbar } from '../components/QuickFiltersToolbar.js';
 import { Toast } from '../components/Toast.js';
@@ -22,7 +23,7 @@ import {
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 import { renderInlineError } from '../utils/asyncUI.js';
-import { buildApplicationListSkeleton, buildTrackerBootSkeleton, buildTrackerPaneSkeleton } from '../utils/skeletons.js';
+import { buildApplicationListSkeleton, buildTrackerBootSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
 let _workspaceEl = null;
@@ -919,7 +920,7 @@ async function selectApplication(id, { skipGuard = false } = {}) {
 
   _selectedId = numericId;
   renderPage();
-  _detailPaneEl?.replaceChildren(buildTrackerPaneSkeleton());
+  _detailPaneEl?.replaceChildren(PaneLoading.render());
 
   let application;
   try {

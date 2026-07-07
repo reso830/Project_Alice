@@ -377,7 +377,8 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(true);
     expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBe('true');
     expect(container.querySelector('.tracker-detail .empty-pane')).toBeNull();
-    expect(container.querySelector('.tracker-detail [aria-label="Loading application details"]')).not.toBeNull();
+    expect(container.querySelector('.tracker-detail .pane-loading')).not.toBeNull();
+    expect(container.querySelector('.tracker-detail .pane-loading__message').textContent).toBe('Loading application details…');
 
     resolveDetails(first);
     await Promise.resolve();

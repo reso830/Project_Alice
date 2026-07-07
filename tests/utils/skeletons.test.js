@@ -7,7 +7,6 @@ import {
   buildProfileEditSkeleton,
   buildProfileSkeleton,
   buildTrackerBootSkeleton,
-  buildTrackerPaneSkeleton,
 } from '../../src/utils/skeletons.js';
 
 const APPLICATION_LIST_SKELETON_HTML = '<div class="loading-skeleton loading-skeleton--applications" aria-busy="true" aria-live="polite" aria-label="Loading applications"><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div><div class="skeleton-card" aria-hidden="true"><span class="skeleton-line skeleton-line--short"></span><span class="skeleton-line skeleton-line--title"></span><span class="skeleton-line"></span></div></div>';
@@ -70,18 +69,6 @@ describe('loading skeleton builders', () => {
     expect(skeleton.querySelectorAll('.skeleton-card')).toHaveLength(3);
     expect(skeleton.querySelectorAll('.skeleton-line').length).toBeGreaterThanOrEqual(9);
     // No application data — purely presentational, matching data-model.md §3.
-    expect(skeleton.textContent.trim()).toBe('');
-  });
-
-  it('builds a Tracker detail-pane skeleton shown while a card selection is pending (#109)', () => {
-    const skeleton = buildTrackerPaneSkeleton();
-
-    expect(skeleton.className).toBe('loading-skeleton loading-skeleton--tracker-pane');
-    expect(skeleton.getAttribute('aria-busy')).toBe('true');
-    expect(skeleton.getAttribute('aria-live')).toBe('polite');
-    expect(skeleton.getAttribute('aria-label')).toBe('Loading application details');
-    expect(skeleton.querySelectorAll('.skeleton-section')).toHaveLength(3);
-    expect(skeleton.querySelectorAll('.skeleton-line').length).toBeGreaterThanOrEqual(10);
     expect(skeleton.textContent.trim()).toBe('');
   });
 });
