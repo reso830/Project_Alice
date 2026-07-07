@@ -51,13 +51,13 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 ## Phase 02: Inlined Startup Loader (WS1)
 
-**Purpose**: Kill the blank white page — paint a branded loader before `main.js`. Boot handshake stays sequential this phase; only the loader lifecycle changes.
+**Purpose**: Kill the blank white page — paint a branded loader before `main.js`, hosted only. Boot handshake stays sequential this phase; only the loader lifecycle changes. Local dev and portable are scoped out at the serving layer (Vite plugin / Express catch-all respectively): the loader markup never appears in their response body (see T003), so there is nothing to fast-path past in either.
 
-- [ ] T003 Inline the loader markup + critical CSS into `index.html`
-  - **Target**: [index.html](../../index.html) — inside `<div id="app">`
-  - **Expected behavior**: Recreate the `HostedAlice_StartupLoader/` handoff: centered sigil + "Project Alice" wordmark + status line ("Getting things ready…") over `#F4F1ED`, with a **static** two-layer inset `box-shadow` edge glow. Sigil inlined as `<svg>` (from `src/assets/logo/alice-sigil-full.svg`) — no network fetch, not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`. Critical CSS inlined so it paints before the module bundle.
-  - **Constraints**: **no motion on the glow at any breakpoint** (per updated handoff); wordmark stays 26px desktop (LCP hygiene); no large full-screen splash. **Use scoped class names** (e.g. `.startup-loader__edge-glow`, `.startup-loader__edge-glow-base`) — do **not** use the bare `.edge-glow`/`.edge-glow__base` names from the handoff verbatim, since the separate in-app-loader handoff (042) independently prototypes the same literal names for a visually different (rotating) treatment; a global-scope collision is avoidable at zero cost by prefixing.
-  - **Validation/test**: build succeeds; a cold hosted load shows the loader before the bundle finishes (verified in Phase 08). Unit coverage in T007.
+- [ ] T003 Inline the loader markup + critical CSS into `index.html`, delimited for hosted-only delivery
+  - **Target**: [index.html](../../index.html) — inside `<div id="app">`; [server/index.js](../../server/index.js) — the `serveStatic` catch-all (portable); [vite.config.js](../../vite.config.js) — new dev-server plugin (local dev)
+  - **Expected behavior**: Recreate the `HostedAlice_StartupLoader/` handoff: centered sigil + "Project Alice" wordmark + status line ("Getting things ready…") over `#F4F1ED`, with a **static** two-layer inset `box-shadow` edge glow. Sigil inlined as `<svg>` (from `src/assets/logo/alice-sigil-full.svg`) — no network fetch, not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`. Critical CSS inlined so it paints before the module bundle. Wrap the loader block in HTML comment markers (`<!-- STARTUP-LOADER:START -->` / `<!-- STARTUP-LOADER:END -->`). Two separate strip mechanisms, one per non-hosted serving path: (a) change `server/index.js`'s `serveStatic` catch-all (currently a plain `res.sendFile(path.join(distDir, 'index.html'))`) to read the file once (cached in memory), strip the marked block when `!config.isHosted`, and send the stripped HTML — covers portable; (b) add a `stripStartupLoaderInDev` Vite plugin (`apply: 'serve'`) using `transformIndexHtml` to strip the same block — covers `npm run dev`, which serves the source `index.html` directly via Vite and goes through neither Vercel's CDN nor `server/index.js`. Hosted's CDN-served static file (per `vercel.json`, never routed through Express) and the `vite build` output (consumed by both hosted and portable) are both untouched by either mechanism.
+  - **Constraints**: **no motion on the glow at any breakpoint** (per updated handoff); wordmark stays 26px desktop (LCP hygiene); no large full-screen splash. **Use scoped class names** (e.g. `.startup-loader__edge-glow`, `.startup-loader__edge-glow-base`) — do **not** use the bare `.edge-glow`/`.edge-glow__base` names from the handoff verbatim, since the separate in-app-loader handoff (042) independently prototypes the same literal names for a visually different (rotating) treatment; a global-scope collision is avoidable at zero cost by prefixing. Local dev and portable must each receive **zero** loader markup in the response body — not a client-side hide, a server/build-side strip in both.
+  - **Validation/test**: build succeeds; a cold hosted load shows the loader before the bundle finishes (verified in Phase 08); a local dev (`vite dev`) response and a portable request for `/` each contain neither loader marker. Unit coverage in T007.
   - **Out of scope**: bootstrap handshake parallelization (Phase 03); skeleton (Phase 04).
 
 - [ ] T004 Add responsive breakpoint styling for the loader
@@ -79,9 +79,9 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Expected behavior**: Under `prefers-reduced-motion: reduce`, the loader→app fade is disabled (instant swap). The glow is already static, so nothing else to disable.
   - **Validation/test**: T007 asserts no animated transition under the reduced-motion query.
 
-- [ ] T007 [P] Loader render + a11y + lifecycle tests
-  - **Target**: [tests/main.test.js](../../tests/main.test.js) (+ a new loader test if cleaner)
-  - **Expected behavior**: Assert the loader renders with `role="status"`/`aria-live`, the glow layer has no animation, the loader is torn down once on first mount, and reduced-motion disables the crossfade.
+- [ ] T007 [P] Loader render + a11y + lifecycle tests, plus local-dev/portable stripping tests
+  - **Target**: [tests/main.test.js](../../tests/main.test.js) (+ a new loader test if cleaner); a `server/index.js` static-serving test; a `vite.config.js` plugin test
+  - **Expected behavior**: Assert the loader renders with `role="status"`/`aria-live`, the glow layer has no animation, the loader is torn down once on first mount, and reduced-motion disables the crossfade. Separately, assert `createApp({ serveStatic: true, config: { isHosted: false } })`'s served HTML excludes both loader markers entirely, while `{ isHosted: true }` includes them (portable/hosted). Separately, assert `stripStartupLoaderInDev`'s `transformIndexHtml` strips both markers from a sample HTML string (local dev), and that the plugin's `apply: 'serve'` means it does not run during `vite build`.
   - **Validation/test**: `npm run test:run` green.
 
 - [ ] T008 Re-measure after WS1 and record
@@ -260,7 +260,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
   - **Target**: hosted deploy of the merge state
   - **Expected behavior**: Execute each Independent Test in [spec.md](spec.md): US0 baseline recorded; US1 branded loader before bundle **at desktop, tablet-portrait, and mobile-portrait** (centered, scaled, no clipping); US2 signed-out (correctly configured deploy) → Welcome without health wait; US3 signed-in shell + skeleton → data, with Footer/UpdateToast reflecting health even if it resolves late; US4 boot-timeout → Retry (reload); US5 hosted deploy with **env vars removed** → loader stays up through the fast-resolving `local-mode` signal, waits for health, then ConfigError mounts with **no shell/Welcome flash** (this is the plan-review's critical fix — verify explicitly, not just the surface ConfigError outcome); US6 reduced-motion → static glow + instant swap; US7 split chunks / Tracker eager / active-tab highlights immediately while chunk loads / chunk-fail reverts highlight gracefully; US8 no render-blocking font request.
   - **Validation/test**: each story passes in-browser; note results.
-  - **Out of scope**: local/portable/demo boot (unchanged — spot-check only that they still boot).
+  - **Out of scope**: local/portable/demo boot (unchanged — spot-check that they still boot, and confirm no loader markup is present in the served HTML).
 
 - [ ] T034 Confirm the perf gate against baseline
   - **Target**: [metrics.md](metrics.md)

@@ -163,7 +163,7 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 ```
 
 - **Container** — `.mw`: `width: 100%; height: 100%; background: var(--warm); display: flex; flex-direction: column; padding: 96px 28px 56px`. The 96px top padding clears the dynamic island + status bar.
-- **Brand stack** — left-aligned column, `gap: 18px`. Logo 68×68 (`Alice_Colored.png`), wordmark Sora 700 / 32px / `-.6px` tracking.
+- **Brand stack** — left-aligned column, `gap: 18px`. Logo 68×68 (`alice-sigil-full.svg`), wordmark Sora 700 / 32px / `-.6px` tracking.
 - **Headline** — 38px / `-1.2px` tracking / line-height 1.04 / `text-wrap: balance`. "organized." rendered in indigo with the same underline-glow `::after` as desktop.
 - **CTA group** — `margin-top: auto` anchors it to the lower half. Buttons are **full-width**, 12px radius, 16px / 20px padding, 15px font, vertical stack with 10px gap. Pulsing green dot on the ghost "Try the demo" button (`mw-pulse` 1.8s infinite).
 - No slideshow and no prototyping controls at this viewport. The mini footer remains visible. The Auth Modal is still mounted — tapping Sign in / Create account opens it in the same overlay used on desktop.
@@ -175,7 +175,7 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 ## 4. Components
 
 ### 4.1 Brand Block
-- Logo: `assets/Alice_Colored.png` on warm/white themes, `assets/Alice_White.png` on navy theme. `clamp(56px, 6vw, 84px)` square on desktop; 68px on mobile.
+- Logo: `alice-sigil-full.svg` on warm/white themes, `alice-sigil-full-white.svg` on navy theme (042 brand refresh; supersedes the retired `Alice_Colored.png`/`Alice_White.png` rasters). `clamp(56px, 6vw, 84px)` square on desktop; 68px on mobile.
 - Wordmark: Sora 700, `clamp(28px, 3vw, 40px)` on desktop, 32px on mobile, `-.6px` tracking.
 - Gap 14px (desktop) / 18px (mobile, stacked).
 
@@ -222,7 +222,7 @@ An "Illustrative purposes" caption renders at the lower-right of the slideshow w
 - Mid-scene (2700ms), `DONUT_INITIAL → DONUT_AFTER` swap: segments re-allocate, numbers tick up via `AnimatedNumber` (700ms cubic ease-out).
 
 #### Scene 4 — Big logo (`SceneLogo`)
-- `assets/Alice_White.png` floating with a 6s `scene-logo-float` ease-in-out loop.
+- `alice-sigil-full-white.svg` floating with a 6s `scene-logo-float` ease-in-out loop.
 - 4 gold sparkle stars positioned at corners of the logo box, each with a 2.4s `scene-sparkle` scale/fade loop, staggered 0.6s.
 - **No tagline below the logo** — only the mark + sparkles.
 - Sizing:
@@ -284,10 +284,10 @@ Welcome.html?layout=centered&theme=warm&heroScene=stack
 
 | Path                          | Purpose                                          |
 |-------------------------------|--------------------------------------------------|
-| `assets/Alice_Colored.png`    | Brand mark on warm/white themes                  |
-| `assets/Alice_White.png`      | Brand mark on navy theme, scene-4 hero logo      |
+| `alice-sigil-full.svg`        | Brand mark on warm/white themes                  |
+| `alice-sigil-full-white.svg`  | Brand mark on navy theme, scene-4 hero logo      |
 
-No other raster assets are required. Icons (`IconArrow`, `IconClose`, `IconCheck`, `IconBolt`, `IconChart`, `IconBug`, `IconSpark`, `SparkStar`) are inline SVGs defined in `welcome-app.jsx`.
+No raster assets are required — both brand marks are SVGs (042 brand refresh). Icons (`IconArrow`, `IconClose`, `IconCheck`, `IconBolt`, `IconChart`, `IconBug`, `IconSpark`, `SparkStar`) are inline SVGs defined in `welcome-app.jsx`.
 
 ---
 

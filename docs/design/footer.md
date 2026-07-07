@@ -52,7 +52,7 @@ All copy is verbatim from source; version/license values resolve from `appMeta.j
 ### Brand (`.footer__brand`)
 | Element | Class | Content |
 |---------|-------|---------|
-| Logo | `.footer__brand-icon` | `Alice_White.png` (`alt=""`, `aria-hidden="true"`) |
+| Logo | `.footer__brand-icon` | `alice-sigil-full.svg` (`alt=""`, `aria-hidden="true"`) |
 | Name | `.footer__brand-name` | "Project Alice" |
 | Tagline | `.footer__tagline` | "Your job search, organized." |
 

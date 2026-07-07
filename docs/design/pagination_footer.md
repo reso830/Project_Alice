@@ -179,7 +179,7 @@ gap: 8px;
 
 **Brand — icon**
 
-`<img>` tag using `Alice_White.png`, `40×40px`, `object-fit: contain`, `aria-hidden="true"`. `flex-shrink: 0`.
+`<img>` tag using `alice-sigil-full.svg`, `40×40px`, `object-fit: contain`, `aria-hidden="true"`. `flex-shrink: 0`.
 
 ```css
 width: 40px;

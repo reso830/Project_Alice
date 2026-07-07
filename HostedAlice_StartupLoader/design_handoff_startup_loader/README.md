@@ -20,7 +20,7 @@ Full-page loading screen shown when a user visits the hosted (web) version of Pr
    - That's it — no mask, no conic-gradient, no rotation. This was deliberately simplified after testing: a rotating gradient looked good on a landscape desktop viewport but produced hard diagonal seams once masked to portrait tablet/mobile aspect ratios, and a fixed-px glow shrinks to nearly nothing at 4K/high-res displays or renders unevenly on ultrawide monitors. A static, resolution-safe box-shadow sidesteps all of that with negligible visual cost — the icon and copy plus the app's own boot progress carry the "in progress" feeling.
 2. **Sigil icon** (`.splash-icon`) — full-color Alice sigil (gold star + broken ring + purple road, `alice-sigil-full.svg`). Static — no pulse/scale animation. Size: 140×140px desktop, 120×120px tablet, 92×92px mobile.
 3. **Wordmark** — "Project Alice", Sora 700, size: 26px desktop, 22px tablet, 18px mobile. Color `#1A1A2E`.
-4. **Status line** — "Getting things ready…", Sora 400, size: 14px desktop, 13px tablet/mobile. Color `#4B5563`.
+4. **Status line** — "Getting things ready…", Sora 400, size: 14px desktop, 13px tablet/mobile. Color `#4B5563`. Carries `role="status"` and `aria-live="polite"` so screen readers announce boot status.
    - Content/copy is a placeholder; swap for real boot-progress copy if the app has discrete stages.
 
 ### Breakpoint sizing reference
@@ -51,7 +51,7 @@ Full-page loading screen shown when a user visits the hosted (web) version of Pr
 - Text secondary: `#4B5563`
 - Brand purple (glow): `#3D1A8A`
 - Brand gold (glow): `#F4A71F`
-- Font: Sora (400, 700), loaded via Google Fonts `family=Sora:wght@400;700`
+- Font: Sora (400, 700), loaded via Google Fonts `family=Sora:wght@400;700`, with a system fallback stack (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`) so text doesn't fall back to a generic sans-serif and jump when Sora loads.
 
 ## Assets
 - `alice-sigil-full.svg` — full-color Project Alice sigil (gold star, broken ring, purple road). Sourced from the project's existing brand assets — use the app's existing brand-asset copy rather than re-exporting.

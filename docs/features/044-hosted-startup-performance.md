@@ -18,7 +18,7 @@ This feature replaces the blank white boot screen with a branded loader that pai
 ---
 
 ## Non-Goals
-- **No change to local / portable / demo boot** — those are local-first and already fast; the loader and parallelization target hosted only.
+- **No change to local / portable / demo boot** — those are local-first and already fast; the loader and handshake parallelization target hosted only. The Tracker skeleton, lazy-loaded routes, and font-loading changes (WS3–WS5) are shared implementation across all runtimes — none of them reintroduce a network wait or otherwise slow local/portable/demo, so they are not scoped hosted-only.
 - Not introducing a client-side URL-path router (continue standard tab/state switching, consistent with 042).
 - Not fixing in-app application-card click latency — that is **issue #109**, a separate interaction-latency concern. This feature only *provides the shared skeleton primitive* #109 will consume.
 - Not migrating hosting tier or database provider. The free-tier serverless cold-start is treated as a floor to design around, not to eliminate.
@@ -37,10 +37,10 @@ This feature replaces the blank white boot screen with a branded loader that pai
 
 ## Functional Requirements
 - **Inlined static loader**: loader markup + critical CSS live directly inside `<div id="app">` in `index.html` so first paint does not wait on `main.js`. The sigil is inlined as `<svg>` (or data URI) — no extra network fetch, and not an LCP candidate. Status line carries `role="status"` / `aria-live="polite"`.
-- **Parallel + optimistic handshake**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently instead of sequentially, deciding the destination once both resolve. The loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
+- **Parallel + optimistic handshake**: `bootstrap()` runs `getHealth()` and `authStore.init()` concurrently instead of sequentially. The two `getSession()`-backed outcomes — signed-in and signed-out — route immediately once the session resolves, without waiting on health. The `local-mode` outcome (which resolves synchronously, with no network call) continues to wait for `getHealth()` before mounting, preserving ConfigError safety for a misconfigured hosted deploy. The loader covering the window removes the "flash of Welcome before ConfigError" concern that currently forces the sequential ordering (Task 08.3).
 - **App-shell skeleton**: signed-in handoff renders the shell + Tracker skeleton before data lands; Tracker data hydrates in. Introduce this skeleton as a **reusable primitive** (#109 dependency).
 - **Boot timeout / error state**: a loader timeout (~8–10s) surfaces a retry/error affordance wired to the existing network-error / ConfigError paths — no infinite spinner.
-- **Hosted-only scoping**: the loader and handshake parallelization apply to the hosted runtime; local/demo boot is unchanged (or fast-pathed past the loader).
+- **Hosted-only scoping**: the loader and handshake parallelization apply to the hosted runtime only. The loader markup is served exclusively over hosted's static CDN path — portable's Express static-serving route strips the loader block server-side, and a Vite dev-server plugin strips it for `npm run dev` (local source-checkout), so neither runtime ever receives it and both boot exactly as they do today (see plan.md "Hosted-only delivery of the loader markup").
 - **(Optional phase) Route-level lazy loading**: dynamic-import `Calendar`, `Profile`, `ProfileEdit` in `navigate()`; keep `Tracker` (landing route) eager. Requires latest-wins race guarding and chunk-load-failure handling.
 - **(Optional phase) Font loading**: self-host or preload Sora so the render-blocking Google Fonts request leaves the critical path.
 

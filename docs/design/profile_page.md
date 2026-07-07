@@ -90,7 +90,7 @@ Shared across all pages. Sticky, **`52px`** tall, dark navy background (`#1a1a2e
 
 | Element         | Detail                                                       |
 |-----------------|--------------------------------------------------------------|
-| Logo + wordmark | Left-aligned; `Alice_White.png` image (`38×38px`) + "Project Alice" label (15px / 600) |
+| Logo + wordmark | Left-aligned; `alice-sigil-full-white.svg` image (`38×38px`) + "Project Alice" label (15px / 600) |
 | Nav buttons     | Right-aligned; three items: Tracker, Calendar, **Profile**   |
 | Active state    | Filled indigo background (`#4F46E5`), white text             |
 | Inactive state  | Transparent background, white text                           |
