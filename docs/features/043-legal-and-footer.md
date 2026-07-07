@@ -28,7 +28,7 @@ Add native legal documents (Terms of Use and Privacy Policy) to Project Alice, l
 
 ## User Experience
 - **Signup Overlay**: The text *"By creating an account, you agree to the terms of use and privacy policy."* becomes active with underline/accent-colored links that open the respective pages as in-app modal overlays (retaining form state).
-- **Global Footer**: 
+- **Global Footer**:
   - Refreshed with a premium spotlight-grid background and a larger full-color Alice sigil.
   - No longer displays a redundant separate version/stack section.
   - Section **FEEDBACK** features a direct GitHub link (pointing to repo root) followed by Report an issue and Request a feature.

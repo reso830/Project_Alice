@@ -1,6 +1,6 @@
 # Implementation Plan: Legal Docs & Footer
 
-**Branch**: `043-legal-and-footer` | **Date**: 2026-07-04 | **Spec**: [spec.md](file:///D:/Alvin/_CodeProjects/Project_Alice/.antigravity/worktrees/043-legal-and-footer/specs/043-legal-and-footer/spec.md)  
+**Branch**: `043-legal-and-footer` | **Date**: 2026-07-04 | **Spec**: [spec.md](file:///D:/Alvin/_CodeProjects/Project_Alice/.antigravity/worktrees/043-legal-and-footer/specs/043-legal-and-footer/spec.md)\
 **Input**: Feature specification from `/specs/043-legal-and-footer/spec.md`
 
 ---
@@ -9,18 +9,18 @@
 Implement a global `LegalModal` component to render static Terms & Conditions and Privacy Policy documents inside the Vanilla JS application, with layout options matching desktop/tablet modals and mobile bottom sheets. Re-create the application's global footer according to Claude's high-fidelity design specifications (vector brand sigil, 3-column layout, removal of the STACK section, and spotlight-grid CSS background). Connect the legal triggers in both the global footer, signup auth overlay, and welcome page mini-footer, and verify correctness with updated unit tests.
 
 > [!IMPORTANT]
-> **Branch & Merge Sequencing Plan (MAJOR-2):**  
+> **Branch & Merge Sequencing Plan (MAJOR-2):**\
 > Since Feature 043 modifies files with active uncommitted changes in Feature 042 (`Footer.js`, `AuthOverlay.js`, `WelcomePage.js`, `main.css`), implementation of Feature 043 must be held until Feature 042 is merged to the main branch. Once 042 merges, this worktree/branch MUST be rebased onto `main` before starting tasks.
 
 ---
 
 ## Technical Context
-- **Language/Version**: JavaScript (ES6+), Vanilla DOM API  
-- **Primary Dependencies**: Vite, PostCSS/Vanilla CSS  
-- **Storage**: N/A (this feature does not touch the data persistence layer)  
-- **Testing**: Vitest  
-- **Target Platform**: Desktop and Mobile browsers (Chrome, Safari, Firefox, Edge)  
-- **Project Type**: Web application frontend  
+- **Language/Version**: JavaScript (ES6+), Vanilla DOM API
+- **Primary Dependencies**: Vite, PostCSS/Vanilla CSS
+- **Storage**: N/A (this feature does not touch the data persistence layer)
+- **Testing**: Vitest
+- **Target Platform**: Desktop and Mobile browsers (Chrome, Safari, Firefox, Edge)
+- **Project Type**: Web application frontend
 
 ---
 
@@ -159,7 +159,7 @@ tests/
    - *Risk*: The mockup HTML uses `@container` queries pure visualization boxes, which are container-width dependent.
    - *Mitigation*: The production app must translate these container-width queries into standard `@media` viewport queries (e.g. `@media (max-width: 1023px)`, `@media (max-width: 640px)`) to adapt correctly to the actual browser viewport width.
 4. **Version Regression and Bump sequencing (MAJOR-1)**:
-   - *Risk*: Bumping to a hardcoded patch version (e.g. `v1.10.9`) will conflict with Feature 042 which bumps the project to `v1.11.0`. 
+   - *Risk*: Bumping to a hardcoded patch version (e.g. `v1.10.9`) will conflict with Feature 042 which bumps the project to `v1.11.0`.
    - *Mitigation*: Dynamically target the next patch/minor version directly following 042's final release state (e.g. retarget version to `v1.11.1`).
 
 ---

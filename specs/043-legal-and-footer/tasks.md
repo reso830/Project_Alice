@@ -72,7 +72,7 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
   - **Expected behavior**: Implement a stateless modal renderer displaying Terms & Conditions or Privacy Policy:
     - `render(type, onClose)`: Builds and returns the modal wrapper DOM tree (overlay backdrop, centered container or bottom sheet layout depending on viewport width, close button ✕, scrollable container, disclaimer header, and bottom Close button). Configures ARIA attributes, sets `overflow: hidden` on body, binds ESC key, and traps focus.
     - Dismissal calls the `onClose` callback to clear shell state.
-  - **Constraints**: 
+  - **Constraints**:
     - Vanilla DOM createElement APIs, no external packages.
     - Desktop/tablet widths (660px desktop, 480px tablet) and max-height constraints (90vh desktop, 86vh tablet) split at 1024px width.
     - Accessibility ARIA attributes: modal root must have `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` referencing the title node ID.
@@ -185,20 +185,20 @@ Phase dependency: 01 → 02 → 03 → 04 → 05 → 06 → 07
 
 **Purpose**: Walk through each user journey's independent test on a physical browser to verify visual layout and input state stability.
 
-- [ ] T015 Verify AuthOverlay Signup links
+- [x] T015 Verify AuthOverlay Signup links
   - **Expected behavior**: Open welcome page, open Sign Up modal, click legal links, modal displays on top with navy header and white body, trap focus, dismiss, check input text is kept.
   - **Validation/test**: Manual browser walk.
 
-- [ ] T016 Verify global Footer triggers
+- [x] T016 Verify global Footer triggers
   - **Expected behavior**: Log in, view footer, click Terms & Conditions / Privacy Policy, check centered modal overlays correctly (respecting the 660px desktop / 480px tablet / 90vh desktop / 86vh tablet boundaries), close, verify focus returns to link.
   - **Validation/test**: Manual browser walk.
 
-- [ ] T017 Verify Welcome Page mini-footer links
+- [x] T017 Verify Welcome Page mini-footer links
   - **Expected behavior**: Open welcome page, click Terms & Conditions / Privacy Policy in mini-footer, check modal overlays correctly, close.
   - **Validation/test**: Manual browser walk.
 
-- [ ] T018 Verify responsive breakpoints reflow
+- [x] T018 Verify responsive breakpoints reflow
   - **Expected behavior**: Rescale browser window from desktop to mobile (375px). Confirm:
     - Global footer reflows to 2 columns and download buttons hide.
-    - Legal modal displays as a bottom sheet with top rounded corners and drag handle.
+    - Legal modal displays as a bottom sheet with top rounded corners. (Drag handle removed post-smoke-test — real-device testing found it rendered as a broken full-width bar with no backing swipe gesture; see commit c70d2ca.)
   - **Validation/test**: Manual responsive design inspection.

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 043 - Legal Docs & Footer
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-07-04  
+**Created**: 2026-07-04\
 **Feature**: [spec.md](file:///D:/Alvin/_CodeProjects/Project_Alice/.antigravity/worktrees/043-legal-and-footer/specs/043-legal-and-footer/spec.md)
 
 ## Content Quality

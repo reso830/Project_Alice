@@ -1,7 +1,7 @@
 # Plan Review Quality Checklist: Legal Docs & Footer
 
-**Purpose**: Validate technical plan completeness and sound design before starting implementation.  
-**Created**: 2026-07-04  
+**Purpose**: Validate technical plan completeness and sound design before starting implementation.\
+**Created**: 2026-07-04\
 **Feature**: [plan.md](../plan.md)
 
 **Gate result**: PASS (updated 2026-07-05 to address Claude review findings)

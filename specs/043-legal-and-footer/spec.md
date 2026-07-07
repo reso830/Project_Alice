@@ -1,8 +1,8 @@
 # Feature Specification: Legal Docs & Footer
 
-**Feature Branch**: `043-legal-and-footer`  
-**Created**: 2026-07-04  
-**Status**: Draft  
+**Feature Branch**: `043-legal-and-footer`\
+**Created**: 2026-07-04\
+**Status**: Draft\
 **Input**: docs/features/043-legal-and-footer.md
 
 ---
