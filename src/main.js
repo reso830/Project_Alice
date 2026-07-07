@@ -270,8 +270,7 @@ function mountAppShell() {
 
   const main = document.createElement('main');
   main.id = 'app';
-  const navbar = Navbar.render('tracker');
-  Navbar.setHealth(_runtimeHealth);
+  const navbar = Navbar.render('tracker', _runtimeHealth);
   const footer = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });
   const bottomTabBar = BottomTabBar.render({ onSelect: navigate });
   BottomTabBar.setActive('tracker');
@@ -307,6 +306,9 @@ function mountAppShell() {
 // replaces the Footer element and re-invokes UpdateToast.mount() /
 // subscribeUpdateController() instead.
 function refreshHealthDependentChrome() {
+  // refreshHealthDependentChrome runs only on the authenticated hosted fast-path.
+  // In hosted mode, the Navbar renders the email and signout button (never the
+  // local-mode badge), so updating the health payload here is a harmless no-op.
   Navbar.setHealth(_runtimeHealth);
   const oldFooter = document.querySelector('.site-footer');
   const newFooter = Footer.render({ runtime: _runtimeHealth?.runtime, onLegalLink: setLegalDialog });

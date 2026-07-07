@@ -73,6 +73,7 @@ describe('createApp static serving', () => {
       runtime: 'local',
       version: APP_VERSION,
       updateSupported: isPortableUpdateRuntime('local'),
+      portable: false,
     });
 
     const postResponse = await globalThis.fetch(`${baseUrl}/not-api`, {

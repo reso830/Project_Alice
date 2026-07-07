@@ -30,6 +30,7 @@ export function createApp({
   serveStatic = false,
   distDir = path.resolve('dist'),
   portableRuntime = false,
+  portable = false,
 } = {}) {
   if (!repositories) {
     throw new Error('createApp: repositories is required');
@@ -62,7 +63,7 @@ export function createApp({
   const updateSupported = isPortableUpdateRuntime(runtime, { portableRuntime });
 
   app.get('/api/health', (_req, res) => {
-    res.status(200).json(createHealthPayload(runtime, { portableRuntime }));
+    res.status(200).json(createHealthPayload(runtime, { portableRuntime, portable }));
   });
 
   app.use(

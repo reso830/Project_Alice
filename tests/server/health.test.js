@@ -421,6 +421,20 @@ describe('assertHostedSchema', () => {
       process.env.ALICE_UPDATE_CHANNEL = 'portable';
       expect(createHealthPayload('local').updateSupported).toBe(false);
     });
+
+    it('sets portable to true if portableRuntime is true, even on non-Windows', () => {
+      setPlatform('linux');
+      expect(createHealthPayload('local', { portableRuntime: true }).portable).toBe(true);
+    });
+
+    it('sets portable to true if explicit portable flag is passed', () => {
+      expect(createHealthPayload('local', { portable: true }).portable).toBe(true);
+      expect(createHealthPayload('local', { portable: false }).portable).toBe(false);
+    });
+
+    it('defaults portable to false', () => {
+      expect(createHealthPayload('local').portable).toBe(false);
+    });
   });
 
   describe('halt-on-first-fail semantics', () => {

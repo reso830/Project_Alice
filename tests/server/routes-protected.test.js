@@ -63,6 +63,7 @@ function expectedHealth(runtime) {
     runtime,
     version: APP_VERSION,
     updateSupported: isPortableUpdateRuntime(runtime),
+    portable: false,
   };
 }
 
