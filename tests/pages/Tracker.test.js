@@ -376,7 +376,8 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(true);
     expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBe('true');
-    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
+    expect(container.querySelector('.tracker-detail .empty-pane')).toBeNull();
+    expect(container.querySelector('.tracker-detail [aria-label="Loading application details"]')).not.toBeNull();
 
     resolveDetails(first);
     await Promise.resolve();
@@ -401,6 +402,7 @@ describe('Tracker quick filter toolbar integration', () => {
 
     expect(container.querySelector('[data-id="1"]').classList.contains('card--selected')).toBe(false);
     expect(container.querySelector('[data-id="1"]').getAttribute('aria-selected')).toBeNull();
+    expect(container.querySelector('.tracker-detail .empty-pane')).not.toBeNull();
   });
 
   it('clears the selection instead of reverting to a now-closed pane when switching cards and the new fetch fails', async () => {

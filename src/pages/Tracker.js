@@ -22,7 +22,7 @@ import {
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
 import { renderInlineError } from '../utils/asyncUI.js';
-import { buildApplicationListSkeleton, buildTrackerBootSkeleton } from '../utils/skeletons.js';
+import { buildApplicationListSkeleton, buildTrackerBootSkeleton, buildTrackerPaneSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
 let _workspaceEl = null;
@@ -919,6 +919,7 @@ async function selectApplication(id, { skipGuard = false } = {}) {
 
   _selectedId = numericId;
   renderPage();
+  _detailPaneEl?.replaceChildren(buildTrackerPaneSkeleton());
 
   let application;
   try {
@@ -930,6 +931,7 @@ async function selectApplication(id, { skipGuard = false } = {}) {
     // pane content. Clear the selection instead to keep list/pane consistent.
     _selectedId = null;
     renderPage();
+    renderEmptyPane();
     throw error;
   }
 

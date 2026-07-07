@@ -3482,6 +3482,10 @@ button:focus-visible,
   gap: 24px;
 }
 
+.loading-skeleton--tracker-pane {
+  padding: 28px 24px;
+}
+
 .skeleton-card,
 .skeleton-section {
   display: grid;

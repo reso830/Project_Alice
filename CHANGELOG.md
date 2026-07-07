@@ -13,7 +13,7 @@ Tracker card selection feedback fix — hosted desktop application cards now sho
 
 ### Changed
 
-- **Immediate card selection feedback** — clicking an application card on the hosted desktop Tracker now marks it selected right away, before the detail-pane fetch resolves; if the fetch fails, the selection reverts to the previous card. (#109)
+- **Immediate card selection feedback** — clicking an application card on the hosted desktop Tracker now marks it selected right away and shows a loading skeleton in the detail pane, instead of waiting on the detail-pane fetch to resolve; if the fetch fails, the selection clears back to the empty-pane state rather than leaving a stale card highlighted. (#109)
 
 ## [1.12.0] — 2026-07-07
 
