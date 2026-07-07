@@ -7,22 +7,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.12.5] — 2026-07-08
-
-Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons in Microsoft Edge. (#117)
-
-### Fixed
-
-- **Duplicate password-reveal eye icon** — Microsoft Edge renders a native reveal control (`::-ms-reveal`) inside password fields by default, which overlapped the app's custom show/hide toggle button on the Login and Signup forms, as well as the OpenRouter API key field in Profile › Connection. A scoped CSS rule now suppresses these browser-native controls on password inputs that have custom toggles, ensuring only the app's own eye icon is visible. (#117)
-
-## [1.12.4] — 2026-07-07
-
-ConfigError page logo contrast fix — the hosted misconfiguration page now uses the full-color Alice sigil against its warm cream background instead of the low-contrast white variant. (#118)
-
-### Fixed
-
-- **ConfigError sigil contrast** — the ConfigError page (shown on a misconfigured hosted deploy) rendered the white sigil variant on the app's warm cream background, which was very low contrast. It now uses the full-color `alice-sigil-full.svg` variant, matching the Footer and Welcome page convention. (#118)
-
 ## [1.12.3] — 2026-07-07
 
 Navbar mode markers — the local-mode Navbar now shows a gold "Dev Build" or "Portable" badge so it's clear at a glance which runtime you're on. (#102)
@@ -1582,9 +1566,7 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.5...HEAD
-[1.12.5]: https://github.com/reso830/Project_Alice/compare/v1.12.4...v1.12.5
-[1.12.4]: https://github.com/reso830/Project_Alice/compare/v1.12.3...v1.12.4
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.3...HEAD
 [1.12.3]: https://github.com/reso830/Project_Alice/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/reso830/Project_Alice/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/reso830/Project_Alice/compare/v1.12.0...v1.12.1
