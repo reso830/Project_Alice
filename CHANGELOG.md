@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.3] — 2026-07-07
+
+Navbar mode markers — the local-mode Navbar now shows a gold "Dev Build" or "Portable" badge so it's clear at a glance which runtime you're on. (#102)
+
+### Added
+
+- **Dev Build / Portable mode markers** — the Navbar's identity cluster, previously blank in local mode, now renders a "Dev Build" badge (running from a cloned repo) or a "Portable" badge (self-update-capable portable package), matching the existing Demo Mode badge style. The badge updates dynamically once the boot health check settles. (#102)
+
 ## [1.12.2] — 2026-07-07
 
 Mobile/tablet Tracker card tap feedback — extends #109's desktop fix to the mobile/tablet card list, which has no docked pane to highlight. (#120)
@@ -1558,7 +1566,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.2...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.3...HEAD
+[1.12.3]: https://github.com/reso830/Project_Alice/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/reso830/Project_Alice/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/reso830/Project_Alice/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/reso830/Project_Alice/compare/v1.11.1...v1.12.0
