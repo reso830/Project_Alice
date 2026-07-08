@@ -9,6 +9,7 @@ describe('mapErrorToReason', () => {
     expect(mapErrorToReason({ code: 'LLM_TIMEOUT' })).toBe('timeout');
     expect(mapErrorToReason({ name: 'AbortError' })).toBe('timeout');
     expect(mapErrorToReason({ code: 'LLM_NETWORK_ERROR' })).toBe('network');
+    expect(mapErrorToReason({ code: 'NETWORK_ERROR' })).toBe('network');
   });
 
   it('maps recognized HTTP statuses to their reasons', () => {

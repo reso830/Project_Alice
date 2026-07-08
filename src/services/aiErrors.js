@@ -24,7 +24,7 @@ export function mapErrorToReason(errorOrStatus) {
     return 'timeout';
   }
 
-  if (code === 'LLM_NETWORK_ERROR') {
+  if (code === 'LLM_NETWORK_ERROR' || code === 'NETWORK_ERROR') {
     return 'network';
   }
 

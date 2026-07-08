@@ -1358,7 +1358,7 @@ describe('Tracker quick filter toolbar integration', () => {
     expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
   });
 
-  it('shows an inline error with retry when the initial application list fails', async () => {
+  it('shows the error pane with retry when the initial application list fails', async () => {
     const container = document.createElement('main');
     const retried = createApplication(7);
     let resolveRetry;
@@ -1375,12 +1375,19 @@ describe('Tracker quick filter toolbar integration', () => {
 
     await Tracker.mount(container);
 
-    const errorBlock = container.querySelector('.inline-error');
-    const retryButton = container.querySelector('.inline-error__retry');
+    // Replaces the old full-pane `.inline-error` fallback (#81) with a
+    // contained card matching the error-pane visual language.
+    expect(container.querySelector('.inline-error')).toBeNull();
+    const errorBlock = container.querySelector('.error-pane');
+    const retryButton = container.querySelector('.error-pane__retry');
 
     expect(errorBlock).not.toBeNull();
-    expect(errorBlock.querySelector('.inline-error__message')?.textContent)
-      .toBe("Couldn't load your applications. Check your connection or try again.");
+    expect(errorBlock.querySelector('.error-pane__title')?.textContent)
+      .toBe("Couldn't load your applications");
+    expect(errorBlock.querySelector('.error-pane__copy')?.textContent)
+      .toBe('Something went wrong while loading your applications. This is usually temporary — your data is safe and nothing was lost.');
+    expect(errorBlock.querySelector('.error-pane__badge')?.textContent)
+      .toBe('ERROR · LOAD_FAILED');
     expect(retryButton).not.toBeNull();
     expect(document.activeElement).toBe(retryButton);
     expect(document.body.textContent).not.toContain('Applications failed to load');
@@ -1402,7 +1409,7 @@ describe('Tracker quick filter toolbar integration', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(container.querySelector('.inline-error')).toBeNull();
+    expect(container.querySelector('.error-pane')).toBeNull();
     expect(container.querySelector('.loading-skeleton--applications')).toBeNull();
     expect(container.textContent).toContain('Role 7');
   });

@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.10] — 2026-07-08
+
+Error display overhaul — Smart Entry resume parsing correctly shows the polished failure dialog when offline, and the Tracker page's load-error state is now a contained card instead of a full-pane message. (#65, #81)
+
+### Fixed
+
+- **Offline Smart Entry parse showed the wrong overlay (#65)** — `runParser()` only wrapped the LLM call in its error handler, so a network failure during file-text extraction (e.g. parsing while offline) fell through to a generic full-screen "Couldn't parse the resume" overlay instead of the same reason-coded failure dialog used for other AI parsing errors. Extraction failures are now classified through `mapErrorToReason` (which also learns to recognize the resume-extraction service's `NETWORK_ERROR` code) and routed to the existing failure dialog, showing "Couldn't reach the AI service — check your connection." with the usual basic-parser fallback. (#65)
+
+### Changed
+
+- **Tracker load-error is now a contained card (#81)** — the Tracker page's "Couldn't load your applications" error previously rendered as plain centered text inside the large master-list column, reading as a big blocking pane on desktop. It's replaced by a new `ErrorPane` component: a bounded white card with an icon, an "ERROR · LOAD_FAILED" status badge, title, description, and a "Try again" button, matching the rest of the app's card-based visual language. (#81)
+
 ## [1.12.9] — 2026-07-08
 
 Branded 404 page — unknown routes now show an on-brand "page not found" screen instead of a generic platform 404 or a silent fallback to the app shell. (#93)
@@ -1614,7 +1626,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.9...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.10...HEAD
+[1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
 [1.12.9]: https://github.com/reso830/Project_Alice/compare/v1.12.8...v1.12.9
 [1.12.8]: https://github.com/reso830/Project_Alice/compare/v1.12.7...v1.12.8
 [1.12.7]: https://github.com/reso830/Project_Alice/compare/v1.12.6...v1.12.7
