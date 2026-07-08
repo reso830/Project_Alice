@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.8] — 2026-07-08
+
+Edit Profile Save button dirty-check fix — the Save button no longer stays enabled after reverting an edit back to its original value. (#58)
+
+### Fixed
+
+- **Save button not disabling on reverted edits** — `isDirty()` compared the raw form state and initial state with plain `JSON.stringify`, so whitespace-only or formatting differences introduced while typing (then reverted) could leave the two strings unequal even though the normalized profile data was identical, keeping Save enabled with nothing to save. The comparison now runs both states through the same `normaliseProfile` step used for the save payload before comparing, so trivial/whitespace-only edits correctly leave Save disabled. (#58)
+
 ## [1.12.7] — 2026-07-08
 
 One-command local dev launcher — start Alice's backend and frontend from a single terminal (or a double-click) on Windows, with local mode protected from a stray `.env.local`. (#64)
@@ -1598,7 +1606,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.7...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.8...HEAD
+[1.12.8]: https://github.com/reso830/Project_Alice/compare/v1.12.7...v1.12.8
 [1.12.7]: https://github.com/reso830/Project_Alice/compare/v1.12.6...v1.12.7
 [1.12.6]: https://github.com/reso830/Project_Alice/compare/v1.12.5...v1.12.6
 [1.12.5]: https://github.com/reso830/Project_Alice/compare/v1.12.4...v1.12.5

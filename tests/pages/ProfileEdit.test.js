@@ -917,6 +917,24 @@ describe('ProfileEdit page', () => {
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
+  it('keeps save disabled when a skill edit is only whitespace-normalized', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      skills: [{ name: 'React', level: 4 }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+    const nameInput = skills.querySelector('.skill-editor-row input');
+
+    inputValue(nameInput, '  React  ');
+
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getBottomControls(container)).disabled).toBe(true);
+  });
+
   it('shows shared busy state on Save and disables Cancel while save is in progress', async () => {
     const container = createAppShell();
     let resolveSave;

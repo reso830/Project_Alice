@@ -114,8 +114,12 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function comparableProfileState(state) {
+  return normaliseProfile(state ?? {});
+}
+
 function isDirty() {
-  return JSON.stringify(_formState) !== JSON.stringify(_initialState);
+  return JSON.stringify(comparableProfileState(_formState)) !== JSON.stringify(comparableProfileState(_initialState));
 }
 
 function getSkillErrors() {
