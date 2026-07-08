@@ -107,22 +107,48 @@ export function createApp({
     let cachedNotFoundHtml;
     const getNotFoundHtml = () => {
       if (cachedNotFoundHtml === undefined) {
-        cachedNotFoundHtml = fs.readFileSync(path.join(distDir, '404.html'), 'utf8');
+        try {
+          cachedNotFoundHtml = fs.readFileSync(path.join(distDir, '404.html'), 'utf8');
+        } catch (err) {
+          console.warn(`[server] Failed to read 404.html from ${distDir}:`, err.message);
+          cachedNotFoundHtml = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Page Not Found</title></head><body><h1>Page Not Found</h1><p>The requested page could not be found.</p><a href="/">Back to Home</a></body></html>';
+        }
       }
       return cachedNotFoundHtml;
     };
 
     app.use(express.static(distDir, { index: false }));
+    
+    // NOTE: This must remain registered before the catch-all regex route below
+    // because the negative lookahead regex matches '/' itself. Reordering these
+    // will cause root GET requests to fall through to the 404 handler.
     app.get('/', (_req, res) => {
       res.type('html').send(getIndexHtml());
     });
+
     // Unknown non-api GET paths get a real 404 with the branded page, not a
     // silent 200 to the app shell — Alice has no client-side path router, so
     // any path other than "/" is genuinely unmatched.
-    app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+    app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
+      // For unknown paths with file extensions (e.g. missing assets like .js, .css, .png),
+      // return a simple plain-text 404 instead of the heavy branded HTML page.
+      const ext = path.extname(req.path);
+      if (ext && ext !== '.html') {
+        return res.status(404).type('text').send('Not Found');
+      }
       res.status(404).type('html').send(getNotFoundHtml());
     });
   }
+
+  // Catch-all route for unmatched API routes to ensure JSON 404 formatting consistent with API contract
+  app.all('/api/*', (_req, res) => {
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: 'API route not found',
+      },
+    });
+  });
 
   app.use((err, _req, res, _next) => {
     if (err?.status === 400 && err?.type === 'entity.parse.failed') {
