@@ -47,7 +47,7 @@ vi.mock('../../src/services/llmParser.js', () => ({
       fix: 'wait',
     },
   },
-  mapErrorToReason: vi.fn((error) => error?.reason ?? 'rate_limit'),
+  mapErrorToReason: vi.fn((error) => (error?.code === 'NETWORK_ERROR' ? 'network' : error?.reason ?? 'rate_limit')),
   parseWithLlm: vi.fn(),
 }));
 
@@ -211,7 +211,7 @@ describe('ResumeImport — auth-state gating', () => {
     );
   });
 
-  it('renders inline resume parse failure and retries with the same file', async () => {
+  it('renders the failure dialog for a basic-parser failure and retries with the same file', async () => {
     parseResume
       .mockRejectedValueOnce(new Error('parse failed'))
       .mockResolvedValueOnce({ headline: 'Frontend Engineer' });
@@ -222,10 +222,12 @@ describe('ResumeImport — auth-state gating', () => {
     root.querySelector('.profile-btn--primary').click();
     await flushPromises();
 
-    const retry = root.querySelector('.inline-error__retry');
-    expect(root.querySelector('.inline-error__message')?.textContent)
-      .toBe("Couldn't parse the resume. Try again.");
-    expect(retry).not.toBeNull();
+    expect(root.querySelector('.inline-error')).toBeNull();
+    expect(root.querySelector('.resume-import-failure')).not.toBeNull();
+
+    const retry = [...root.querySelectorAll('button')].find((button) => button.textContent === 'Use basic parser');
+
+    expect(retry).not.toBeUndefined();
 
     retry.click();
 
@@ -370,7 +372,7 @@ describe('ResumeImport — auth-state gating', () => {
   it('routes an offline extractText failure to the network failure dialog instead of the generic inline error', async () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
-    extractText.mockRejectedValue({ reason: 'network', code: 'NETWORK_ERROR' });
+    extractText.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Cannot connect to the backend — is the server running?' });
     const root = ResumeImport.create({ smartInput: true, showHeader: true, onDismiss: vi.fn() });
 
     selectFile(root, makeResumeFile('Resume.pdf'));
@@ -381,6 +383,21 @@ describe('ResumeImport — auth-state gating', () => {
     expect(root.querySelector('.resume-import-failure')).not.toBeNull();
     expect(root.querySelector('.resume-import-failure__title')?.textContent)
       .toBe('Smart parsing is unavailable right now');
+    expect(root.querySelector('.resume-import-failure__message')?.textContent)
+      .toBe("Couldn't reach the AI service — check your connection.");
+  });
+
+  it('routes an offline basic-parser failure to the network failure dialog instead of the generic inline error', async () => {
+    parseResume.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Cannot connect to the backend — is the server running?' });
+    const root = ResumeImport.create({ smartInput: true, showHeader: true, onDismiss: vi.fn() });
+
+    selectFile(root, makeResumeFile('Resume.pdf'));
+    root.querySelector('.resume-import__process').click();
+    await flushPromises(4);
+
+    expect(parseResume).toHaveBeenCalled();
+    expect(root.querySelector('.inline-error')).toBeNull();
+    expect(root.querySelector('.resume-import-failure')).not.toBeNull();
     expect(root.querySelector('.resume-import-failure__message')?.textContent)
       .toBe("Couldn't reach the AI service — check your connection.");
   });

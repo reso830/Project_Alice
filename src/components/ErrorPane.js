@@ -9,11 +9,10 @@ export function render({ title, message, onRetry, retryLabel = 'Try again', code
   const badgeLabel = document.createElement('span');
   const titleEl = document.createElement('h2');
   const copy = document.createElement('p');
-  const actions = document.createElement('div');
-  const retryButton = document.createElement('button');
-  const hint = document.createElement('span');
 
   wrapper.className = 'error-pane';
+  wrapper.setAttribute('role', 'alert');
+  wrapper.setAttribute('aria-live', 'polite');
   art.className = 'error-pane__art';
   icon.className = 'error-pane__icon';
   icon.src = errorPaneIcon;
@@ -34,18 +33,25 @@ export function render({ title, message, onRetry, retryLabel = 'Try again', code
   copy.className = 'error-pane__copy';
   copy.textContent = message;
 
-  retryButton.className = 'error-pane__retry';
-  retryButton.type = 'button';
-  retryButton.textContent = retryLabel;
-  retryButton.addEventListener('click', () => onRetry?.());
+  wrapper.append(art, badge, titleEl, copy);
 
-  hint.className = 'error-pane__hint';
-  hint.textContent = 'or check back in a moment';
+  if (typeof onRetry === 'function') {
+    const actions = document.createElement('div');
+    const retryButton = document.createElement('button');
+    const hint = document.createElement('span');
 
-  actions.className = 'error-pane__actions';
-  actions.append(retryButton, hint);
+    actions.className = 'error-pane__actions';
+    retryButton.className = 'error-pane__retry';
+    retryButton.type = 'button';
+    retryButton.textContent = retryLabel;
+    retryButton.addEventListener('click', () => onRetry());
 
-  wrapper.append(art, badge, titleEl, copy, actions);
+    hint.className = 'error-pane__hint';
+    hint.textContent = 'or check back in a moment';
+
+    actions.append(retryButton, hint);
+    wrapper.append(actions);
+  }
 
   return wrapper;
 }

@@ -19,6 +19,13 @@ describe('ErrorPane', () => {
       .toBe('ERROR · LOAD_FAILED');
   });
 
+  it('exposes alert/live-region semantics matching the replaced renderInlineError', () => {
+    const pane = ErrorPane.render({ title: 'Title', message: 'Message' });
+
+    expect(pane.getAttribute('role')).toBe('alert');
+    expect(pane.getAttribute('aria-live')).toBe('polite');
+  });
+
   it('calls onRetry when the retry button is clicked', () => {
     const onRetry = vi.fn();
     const pane = ErrorPane.render({
@@ -35,10 +42,10 @@ describe('ErrorPane', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('does not throw when onRetry is omitted', () => {
+  it('omits the retry button and hint when onRetry is not provided, instead of a silent no-op control', () => {
     const pane = ErrorPane.render({ title: 'Title', message: 'Message' });
-    const retryButton = pane.querySelector('.error-pane__retry');
 
-    expect(() => retryButton.click()).not.toThrow();
+    expect(pane.querySelector('.error-pane__retry')).toBeNull();
+    expect(pane.querySelector('.error-pane__hint')).toBeNull();
   });
 });
