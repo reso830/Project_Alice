@@ -78,6 +78,7 @@ describe('applications API', () => {
         runtime: 'local',
         version: APP_VERSION,
         updateSupported: isPortableUpdateRuntime('local'),
+        portable: false,
       });
     });
   });

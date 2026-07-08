@@ -106,7 +106,7 @@ function renderIdentityCluster(state) {
     _identityCluster.hidden = false;
 
     const badge = document.createElement('span');
-    badge.className = 'topbar-demo-badge';
+    badge.className = 'topbar-mode-badge';
     badge.textContent = 'Demo mode';
     badge.setAttribute('aria-label', 'Demo mode active');
 
@@ -134,8 +134,8 @@ function renderIdentityCluster(state) {
     _identityCluster.hidden = false;
 
     const badge = document.createElement('span');
-    badge.className = 'topbar-demo-badge';
-    if (_health?.updateSupported) {
+    badge.className = 'topbar-mode-badge';
+    if (_health?.portable) {
       badge.textContent = 'Portable';
       badge.setAttribute('aria-label', 'Portable mode active');
     } else {
@@ -177,7 +177,7 @@ function renderIdentityCluster(state) {
   _identityCluster.append(email, signOut);
 }
 
-export function render(activePage) {
+export function render(activePage, health = null) {
   destroy();
 
   const topbar = document.createElement('header');
@@ -221,6 +221,7 @@ export function render(activePage) {
   topbar.append(brand, pageNav, _identityCluster);
   _root = topbar;
 
+  _health = health;
   renderIdentityCluster(authStore.getAuthState());
   _unsubscribe = authStore.subscribe(renderIdentityCluster);
 

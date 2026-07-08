@@ -2707,12 +2707,10 @@ button:focus-visible,
   font-weight: 400;
 }
 
-/* Feature 020 — visible mode indicator for the portfolio demo. Solid
-   gold pill with deep-navy text. Matches the welcome page's warm-fill
-   demo button so the badge reads as a continuation of the click that
-   started the demo. Textual label keeps the indication non-color-only
-   (constitution §IV). */
-.topbar-demo-badge {
+/* Visible mode indicator for demo and local modes. Solid
+   gold pill with deep-navy text. Textual label keeps the
+   indication non-color-only (constitution §IV). */
+.topbar-mode-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;

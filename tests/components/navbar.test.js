@@ -61,7 +61,7 @@ describe('Navbar — auth segment', () => {
     expect(cluster).not.toBeNull();
     expect(cluster.hidden).toBe(false);
 
-    const badge = cluster.querySelector('.topbar-demo-badge');
+    const badge = cluster.querySelector('.topbar-mode-badge');
     expect(badge).not.toBeNull();
     expect(badge.textContent).toBe('Dev Build');
     expect(badge.getAttribute('aria-label')).toBe('Dev Build mode active');
@@ -70,19 +70,48 @@ describe('Navbar — auth segment', () => {
     expect(topbar.querySelector('.signout-btn')).toBeNull();
   });
 
-  it('renders "Portable" mode marker in local-mode when update is supported', () => {
+  it('renders "Portable" mode marker in local-mode when portable is true', () => {
     authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
     const topbar = Navbar.render('tracker');
-    Navbar.setHealth({ updateSupported: true });
+    Navbar.setHealth({ portable: true });
 
     const cluster = topbar.querySelector('.topbar-identity');
     expect(cluster).not.toBeNull();
     expect(cluster.hidden).toBe(false);
 
-    const badge = cluster.querySelector('.topbar-demo-badge');
+    const badge = cluster.querySelector('.topbar-mode-badge');
     expect(badge).not.toBeNull();
     expect(badge.textContent).toBe('Portable');
     expect(badge.getAttribute('aria-label')).toBe('Portable mode active');
+  });
+
+  it('renders "Dev Build" mode marker when portable is explicitly false', () => {
+    authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    const topbar = Navbar.render('tracker');
+    Navbar.setHealth({ portable: false });
+
+    const badge = topbar.querySelector('.topbar-mode-badge');
+    expect(badge.textContent).toBe('Dev Build');
+  });
+
+  it('renders correct mode marker immediately when health is passed to render()', () => {
+    authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    const topbar = Navbar.render('tracker', { portable: true });
+
+    const badge = topbar.querySelector('.topbar-mode-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('Portable');
+  });
+
+  it('does not duplicate the mode badge upon multiple health updates', () => {
+    authStoreMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    const topbar = Navbar.render('tracker');
+    Navbar.setHealth({ portable: true });
+    Navbar.setHealth({ portable: false });
+
+    const badges = topbar.querySelectorAll('.topbar-mode-badge');
+    expect(badges.length).toBe(1);
+    expect(badges[0].textContent).toBe('Dev Build');
   });
 
   it('renders the email and sign-out button when authenticated', () => {

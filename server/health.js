@@ -65,12 +65,13 @@ export function isPortableUpdateRuntime(runtime, { portableRuntime = false } = {
   );
 }
 
-export function createHealthPayload(runtime, { portableRuntime = false } = {}) {
+export function createHealthPayload(runtime, { portableRuntime = false, portable = false } = {}) {
   return {
     status: 'ok',
     runtime,
     version: APP_VERSION,
     updateSupported: isPortableUpdateRuntime(runtime, { portableRuntime }),
+    portable: portable || portableRuntime,
   };
 }
 

@@ -59,7 +59,7 @@ describe('Navbar — demo state', () => {
     expect(identity).not.toBeNull();
     expect(identity.hidden).toBe(false);
 
-    const badge = identity.querySelector('.topbar-demo-badge');
+    const badge = identity.querySelector('.topbar-mode-badge');
     expect(badge).not.toBeNull();
     expect(badge.textContent).toBe('Demo mode');
     expect(badge.getAttribute('aria-label')).toBe('Demo mode active');
@@ -100,7 +100,7 @@ describe('Navbar — demo state', () => {
 
     container.append(Navbar.render('tracker'));
 
-    expect(container.querySelector('.topbar-demo-badge')).toBeNull();
+    expect(container.querySelector('.topbar-mode-badge')).toBeNull();
     // The authenticated branch still renders the email + Sign out button.
     expect(container.querySelector('.topbar-email').textContent).toBe('real@example.com');
     expect(
@@ -119,7 +119,7 @@ describe('Navbar — demo state', () => {
 
     const identity = container.querySelector('.topbar-identity');
     expect(identity.hidden).toBe(true);
-    expect(container.querySelector('.topbar-demo-badge')).toBeNull();
+    expect(container.querySelector('.topbar-mode-badge')).toBeNull();
     expect(container.querySelector('.topbar-email')).toBeNull();
   });
 
@@ -137,13 +137,13 @@ describe('Navbar — demo state', () => {
     });
 
     container.append(Navbar.render('tracker'));
-    expect(container.querySelector('.topbar-demo-badge')).toBeNull();
+    expect(container.querySelector('.topbar-mode-badge')).toBeNull();
     expect(container.querySelector('.topbar-email')).not.toBeNull();
 
     // Simulate authStore notifying with the new demo state.
     subscriber({ status: 'demo', user: null, accessToken: null });
 
-    expect(container.querySelector('.topbar-demo-badge')).not.toBeNull();
+    expect(container.querySelector('.topbar-mode-badge')).not.toBeNull();
     expect(container.querySelector('.topbar-email')).toBeNull();
   });
 });
