@@ -725,6 +725,7 @@ describe('Profile — AI resume parsing settings', () => {
               currentVersion: 'v1.9.0',
               latestVersion: 'v1.10.0',
               progress: 20,
+              secondsRemaining: 12,
             }
             : {
               status: 'ready-to-restart',
@@ -748,7 +749,7 @@ describe('Profile — AI resume parsing settings', () => {
     await flushPromises(6);
 
     expect(container.textContent).toContain('Downloading');
-    expect(container.textContent).toContain('20%');
+    expect(container.textContent).toContain('20% · ~12s');
     const progress = container.querySelector('.update-settings__progress');
 
     expect(progress.getAttribute('role')).toBe('progressbar');

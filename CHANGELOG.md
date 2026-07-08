@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.12] — 2026-07-09
+
+Auto-update audit polish — fixes three low-priority, cosmetic follow-ups from the post-#92 update audit. (#103)
+
+### Fixed
+
+- **Download ETA now consistent between toast and Settings** — `secondsRemaining` is computed once server-side in `publicStatus()` off a single `downloadStartedAt` timestamp and exposed on the shared update status; `UpdateToast.js` and `Profile.js` both render that value instead of each computing their own estimate from a per-surface start time, so the two no longer drift apart. (#103)
+- **Stale `stagedPath` no longer leaks after a reset** — `publicStatus()` only includes `stagedPath` when `status === 'ready-to-restart'`, so a cancelled or aborted download can no longer report a staged-package path that isn't actually staged; the cancel handler also now removes any leftover staging directory when there's no active download in flight. (#103)
+- **Root `VERSION` file now refreshed on self-update** — the portable launcher's `apply_update` step copies the staged `VERSION` file over the root one alongside the `app`/`runtime` mirror, so the file matches the running version after a self-update instead of showing the pre-update version. (#103)
+
 ## [1.12.11] — 2026-07-08
 
 Unified creation-gate cards — the profile setup gate now matches the Add-application gate's visual styling and resolves before navigating away from the Profile page. (#80)
@@ -1638,6 +1648,7 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 [Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.11...HEAD
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
+[1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12
 [1.12.9]: https://github.com/reso830/Project_Alice/compare/v1.12.8...v1.12.9
 [1.12.8]: https://github.com/reso830/Project_Alice/compare/v1.12.7...v1.12.8
 [1.12.7]: https://github.com/reso830/Project_Alice/compare/v1.12.6...v1.12.7

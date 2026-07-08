@@ -572,6 +572,36 @@ describe('update route behavior', () => {
     expect(ready.progress).toBe(100);
   });
 
+  test('reports one shared ETA estimate while downloading', async () => {
+    const root = makeRoot();
+    const zipBuffer = fs.readFileSync(fixtureZip);
+    const assetBaseUrl = await makeUpdateAssetServer({ zipBuffer, chunkDelayMs: 400 });
+    let nowMs = 1_000;
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
+      assets: [
+        { name: 'update-v1.10.0.zip', browser_download_url: `${assetBaseUrl}/update.zip`, size: zipBuffer.length },
+        { name: 'update-v1.10.0.zip.sha256', browser_download_url: `${assetBaseUrl}/update.zip.sha256` },
+      ],
+    });
+    const { baseUrl } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      now: () => new Date(nowMs),
+    });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    nowMs = 2_000;
+    const progress = await waitForStatusMatch(
+      baseUrl,
+      (body) => body.status === 'downloading' && body.progress > 0 && body.progress < 100,
+      'partial download progress with ETA',
+    );
+
+    expect(progress.secondsRemaining).toBeGreaterThanOrEqual(1);
+    expect(progress.secondsRemaining).toBe(
+      Math.ceil((progress.bytesTotal - progress.bytesDownloaded) / (progress.bytesDownloaded / 1)),
+    );
+  });
+
   test('cancels an in-flight download and clears staging', async () => {
     const root = makeRoot();
     const zipBuffer = fs.readFileSync(fixtureZip);
@@ -602,6 +632,33 @@ describe('update route behavior', () => {
       error: null,
     });
     await waitForPathMissing(path.join(dataDir, 'update-staging'));
+    expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
+  });
+
+  test('cancels a ready staged update without leaking stagedPath or staged files', async () => {
+    const root = makeRoot();
+    process.env.ALICE_VERSION_OVERRIDE = '1.9.0';
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const { baseUrl, dataDir } = await makeServer({ dataDir: path.join(root, 'data') });
+
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    const ready = await waitForStatus(baseUrl, 'ready-to-restart');
+
+    expect(ready.stagedPath).toBe(path.join(dataDir, 'update-staging', 'alice'));
+    expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice'))).toBe(true);
+
+    const cancel = await requestJson(baseUrl, '/api/update/cancel', { method: 'POST' });
+    const status = await requestJson(baseUrl, '/api/update/status');
+
+    expect(cancel.response.status).toBe(200);
+    expect(cancel.body).toMatchObject({
+      status: 'available',
+      progress: 0,
+      bytesDownloaded: 0,
+      error: null,
+    });
+    expect(cancel.body).not.toHaveProperty('stagedPath');
+    expect(status.body).not.toHaveProperty('stagedPath');
     expect(fs.existsSync(path.join(dataDir, 'update-staging'))).toBe(false);
   });
 

@@ -383,8 +383,38 @@ function readPendingFailure(dataDir) {
   }
 }
 
-function publicStatus(state) {
-  return { ...state.status };
+function publicStatus(state, now = () => new Date()) {
+  const status = { ...state.status };
+  if (status.status !== READY_STATUS) {
+    delete status.stagedPath;
+  }
+  if (status.status !== 'downloading') {
+    delete status.secondsRemaining;
+    return status;
+  }
+
+  const total = status.bytesTotal;
+  const done = status.bytesDownloaded;
+  const startedAt = state.downloadStartedAt;
+  if (!total || !done || !startedAt) {
+    delete status.secondsRemaining;
+    return status;
+  }
+
+  const elapsed = (now().getTime() - startedAt) / 1000;
+  const rate = elapsed > 0 ? done / elapsed : 0;
+  if (rate <= 0) {
+    delete status.secondsRemaining;
+    return status;
+  }
+
+  const seconds = Math.ceil(Math.max(0, total - done) / rate);
+  if (Number.isFinite(seconds)) {
+    status.secondsRemaining = seconds;
+  } else {
+    delete status.secondsRemaining;
+  }
+  return status;
 }
 
 function setFailure(state, error, status = 'failed') {
@@ -419,9 +449,27 @@ export function createUpdateRouter({
     status: readPendingFailure(dataDir) ?? createInitialStatus(),
     downloadPromise: null,
     downloadController: null,
+    downloadStartedAt: 0,
     cancelRequested: false,
   };
   const router = express.Router();
+
+  function clearStagedUpdate() {
+    fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
+  }
+
+  function resetUpdateStatus(release = state.cache?.payload) {
+    state.downloadStartedAt = 0;
+    state.status = {
+      ...state.status,
+      status: release?.updateAvailable ? 'available' : 'idle',
+      progress: 0,
+      bytesDownloaded: 0,
+      error: null,
+    };
+    delete state.status.stagedPath;
+    delete state.status.secondsRemaining;
+  }
 
   function isCacheFresh() {
     return Boolean(state.cache && now().getTime() - state.cache.checkedAt < CACHE_MS);
@@ -478,6 +526,7 @@ export function createUpdateRouter({
       bytesDownloaded: 0,
       error: null,
     };
+    state.downloadStartedAt = now().getTime();
 
     await downloadToFile(release.packageUrl, zipPath, (bytesDownloaded, bytesTotal) => {
       state.status.bytesDownloaded = bytesDownloaded;
@@ -487,6 +536,7 @@ export function createUpdateRouter({
       }
     }, { signal, timeoutMs: downloadTimeoutMs });
     throwIfAborted(signal);
+    state.downloadStartedAt = 0;
     state.status = {
       ...state.status,
       status: 'verifying',
@@ -538,7 +588,7 @@ export function createUpdateRouter({
 
   router.post('/download', async (_req, res) => {
     if (state.downloadPromise) {
-      res.status(202).json(publicStatus(state));
+      res.status(202).json(publicStatus(state, now));
       return;
     }
 
@@ -551,16 +601,11 @@ export function createUpdateRouter({
       state.downloadController = new AbortController();
       state.cancelRequested = false;
       state.downloadPromise = stageUpdate(release, { signal: state.downloadController.signal }).catch((error) => {
-        fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
+        clearStagedUpdate();
         if (state.cancelRequested || error?.name === 'AbortError') {
-          state.status = {
-            ...state.status,
-            status: release.updateAvailable ? 'available' : 'idle',
-            progress: 0,
-            bytesDownloaded: 0,
-            error: null,
-          };
+          resetUpdateStatus(release);
         } else {
+          state.downloadStartedAt = 0;
           setFailure(state, error);
         }
       }).finally(() => {
@@ -568,7 +613,7 @@ export function createUpdateRouter({
         state.downloadController = null;
         state.cancelRequested = false;
       });
-      res.status(202).json(publicStatus(state));
+      res.status(202).json(publicStatus(state, now));
     } catch (error) {
       setFailure(state, error);
       res.status(502).json({ error: { code: 'UPDATE_DOWNLOAD_FAILED', message: state.status.error } });
@@ -577,31 +622,20 @@ export function createUpdateRouter({
 
   router.post('/cancel', (_req, res) => {
     if (!state.downloadPromise || !state.downloadController) {
-      state.status = {
-        ...state.status,
-        status: state.cache?.payload?.updateAvailable ? 'available' : 'idle',
-        progress: 0,
-        bytesDownloaded: 0,
-        error: null,
-      };
-      res.status(200).json(publicStatus(state));
+      clearStagedUpdate();
+      resetUpdateStatus();
+      res.status(200).json(publicStatus(state, now));
       return;
     }
 
     state.cancelRequested = true;
     state.downloadController.abort();
-    state.status = {
-      ...state.status,
-      status: state.cache?.payload?.updateAvailable ? 'available' : 'idle',
-      progress: 0,
-      bytesDownloaded: 0,
-      error: null,
-    };
-    res.status(202).json(publicStatus(state));
+    resetUpdateStatus();
+    res.status(202).json(publicStatus(state, now));
   });
 
   router.get('/status', (_req, res) => {
-    res.status(200).json(publicStatus(state));
+    res.status(200).json(publicStatus(state, now));
   });
 
   router.post('/restart', (_req, res) => {
