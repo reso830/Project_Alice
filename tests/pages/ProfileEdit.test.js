@@ -144,7 +144,9 @@ function getButton(container, label) {
 }
 
 function getGateCard(kind) {
-  return document.querySelector(`.profile-entry-gate__card--${kind}`);
+  return kind === 'smart'
+    ? document.querySelector('.creation-picker-card--parser')
+    : document.querySelector('.creation-picker-card:not(.creation-picker-card--parser)');
 }
 
 function getSectionProvenance(card) {
@@ -152,7 +154,7 @@ function getSectionProvenance(card) {
 }
 
 function chooseGateCard(kind) {
-  getGateCard(kind).querySelector('.profile-entry-gate__choose').click();
+  getGateCard(kind).querySelector('.creation-picker-card__cta').click();
 }
 
 function expandSmartImport(container) {
@@ -636,11 +638,11 @@ describe('ProfileEdit page', () => {
     expect(gate.textContent).toContain('Smart entry');
     expect(gate.textContent).toContain('Fastest');
     expect(gate.textContent).toContain('Manual entry');
-    expect(getGateCard('smart').querySelector('.profile-entry-gate__icon img')).not.toBeNull();
-    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon img')).toBeNull();
-    expect(getGateCard('manual').querySelector('.profile-entry-gate__icon svg')).not.toBeNull();
+    expect(getGateCard('smart').querySelector('.creation-picker-card__icon img')).not.toBeNull();
+    expect(getGateCard('manual').querySelector('.creation-picker-card__icon img')).toBeNull();
+    expect(getGateCard('manual').querySelector('.creation-picker-card__icon svg')).not.toBeNull();
     expect(getCard(container, 'BASIC INFO')).not.toBeNull();
-    expect(document.activeElement).toBe(getGateCard('smart').querySelector('.profile-entry-gate__choose'));
+    expect(document.activeElement).toBe(getGateCard('smart').querySelector('.creation-picker-card__cta'));
 
     chooseGateCard('manual');
 
@@ -728,11 +730,10 @@ describe('ProfileEdit page', () => {
     const manualCard = getGateCard('manual');
 
     expect(smartCard.classList).toContain('is-disabled');
-    expect(smartCard.querySelector('.profile-entry-gate__choose')).toBeNull();
-    expect(smartCard.querySelector('.profile-entry-gate__settings-link').textContent).toBe('Enable AI in Settings →');
-    expect(manualCard.querySelector('.profile-entry-gate__choose').disabled).toBe(false);
+    expect(smartCard.querySelector('.creation-picker-card__cta').textContent).toBe('Enable AI in Settings →');
+    expect(manualCard.querySelector('.creation-picker-card__cta').disabled).toBe(false);
 
-    smartCard.querySelector('.profile-entry-gate__settings-link').click();
+    smartCard.querySelector('.creation-picker-card__cta').click();
 
     expect(navigate).toHaveBeenCalledWith('profile', { focusSettings: true });
 
