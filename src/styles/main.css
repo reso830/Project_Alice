@@ -385,7 +385,7 @@ textarea.edit-field__control {
   color: #FFFFFF;
 }
 
-.page-controls--subheader .profile-btn--outline:hover {
+.page-controls--subheader .profile-btn--outline:not(:disabled):hover {
   background: rgba(255, 255, 255, .08);
 }
 
@@ -895,12 +895,17 @@ textarea.edit-field__control {
   cursor: pointer;
 }
 
+.profile-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
 .profile-btn--primary {
   background: var(--indigo);
   color: #FFFFFF;
 }
 
-.profile-btn--primary:hover {
+.profile-btn--primary:not(:disabled):hover {
   background: var(--indigo-hover);
 }
 
@@ -909,7 +914,7 @@ textarea.edit-field__control {
   color: #FFFFFF;
 }
 
-.profile-btn--danger:hover {
+.profile-btn--danger:not(:disabled):hover {
   background: #a00e19;
 }
 
