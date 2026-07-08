@@ -80,5 +80,11 @@ describe('Start-Alice-Dev launcher', () => {
     expect(result.stdout).toContain('VITE_SUPABASE_URL=[]');
     expect(result.stdout).not.toContain('should-be-ignored');
     expect(result.stdout).not.toContain('VITE_SUPABASE_URL=[unset]');
+
+    // The self-test also launches npm.cmd through Start-AliceProcess — the
+    // same batch-file (.cmd) path the real backend/frontend commands use.
+    // CreateProcess cannot run a .cmd directly; a regression to invoking it
+    // without the cmd.exe /d /s /c wrapper would fail Process.Start() here.
+    expect(result.stdout).toContain('npm.cmd launch exit code=0');
   });
 });

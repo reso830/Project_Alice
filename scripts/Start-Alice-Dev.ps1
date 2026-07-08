@@ -126,13 +126,34 @@ function Start-AliceProcess {
   )
 
   $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-  $startInfo.FileName = $Command
+
   # Use the .Arguments string, not .ArgumentList: the latter only exists on
   # PowerShell 7 / .NET Core, and this launcher runs under powershell.exe
   # (Windows PowerShell 5.1 / .NET Framework) via Start-Alice-Dev.cmd and
   # `npm run alice`, where .ArgumentList is absent. Every call site passes
-  # whitespace-free tokens (e.g. 'run', 'server:dev'), so a plain join is safe.
-  $startInfo.Arguments = ($Arguments -join ' ')
+  # whitespace-free tokens (e.g. 'run', 'server:dev'), so a plain join is safe
+  # for the *inner* argument list; see the cmd.exe wrapping below for how the
+  # full argument string gets built when $Command is a batch file.
+  $joinedArguments = ($Arguments -join ' ')
+
+  # CreateProcess (which Process.Start uses when UseShellExecute is $false)
+  # cannot directly execute .cmd/.bat batch files — they aren't PE executables,
+  # only cmd.exe knows how to run them. npm on a standard Windows Node.js
+  # install resolves to npm.cmd, so route it through `cmd.exe /d /s /c`. The
+  # `/s` switch, combined with wrapping the whole inner command in one pair of
+  # quotes, preserves the quoted path even when npm.cmd's own path (or the
+  # project directory) contains spaces — the standard robust pattern for
+  # invoking a quoted path via cmd /c.
+  if ($Command -match '\.(cmd|bat)$') {
+    $startInfo.FileName = $env:ComSpec
+    $innerCommand = '"' + $Command + '" ' + $joinedArguments
+    $startInfo.Arguments = '/d /s /c "' + $innerCommand + '"'
+  }
+  else {
+    $startInfo.FileName = $Command
+    $startInfo.Arguments = $joinedArguments
+  }
+
   $startInfo.WorkingDirectory = $WorkingDirectory
   $startInfo.UseShellExecute = $false
   $startInfo.RedirectStandardOutput = $true
@@ -275,6 +296,24 @@ if ($SelfTest) {
     Remove-Item -LiteralPath $probeScript -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $probeOutput -Force -ErrorAction SilentlyContinue
   }
+
+  # Also exercise the real npm.cmd -> cmd.exe launch path (the actual servers
+  # are started this way): CreateProcess cannot run a .cmd batch file directly,
+  # so Start-AliceProcess routes it through cmd.exe. `npm --version` is a fast,
+  # side-effect-free way to prove that route works end to end.
+  $npmSelfTestJob = New-KillOnCloseJob
+  $npmProbe = Start-AliceProcess -Name 'npm-selftest' -Command (Resolve-NpmCommand) -Arguments @('--version') -WorkingDirectory $ProjectRoot -JobHandle $npmSelfTestJob
+  try {
+    $npmProbe.Process.WaitForExit()
+    Write-Host ("SelfTest: npm.cmd launch exit code=" + $npmProbe.Process.ExitCode)
+    if ($npmProbe.Process.ExitCode -ne 0) {
+      throw "SelfTest: npm.cmd launch failed with exit code $($npmProbe.Process.ExitCode)."
+    }
+  }
+  finally {
+    Stop-AliceProcessTree -ProcessEntries @($npmProbe)
+  }
+
   exit 0
 }
 
