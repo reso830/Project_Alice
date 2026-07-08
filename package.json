@@ -1,10 +1,11 @@
 {
   "name": "project-alice",
-  "version": "1.12.6",
+  "version": "1.12.7",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "alice": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Start-Alice-Dev.ps1",
     "build": "vite build",
     "build:portable": "node scripts/build-portable.mjs",
     "preview": "vite preview",

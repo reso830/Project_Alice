@@ -52,7 +52,9 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 
 **Requires Node.js 20.19 or later** (jsdom 29, used for component tests, does not support Node 18).
 
-Two processes are required — the backend API and the frontend dev server:
+For local development on Windows, use the one-command launcher. It starts both
+the backend API and the frontend dev server in one terminal. You can double-click
+`Start-Alice-Dev.cmd` in File Explorer or run it from PowerShell/CMD:
 
 ```bash
 npm install
@@ -60,14 +62,26 @@ npm install
 # 1. Initialize the database (first time only; safe to re-run)
 npm run db:init
 
-# 2. Terminal 1 — backend API (port 3001)
-npm run server:dev
-
-# 3. Terminal 2 — frontend dev server (port 5173)
-npm run dev
+# 2. Start Alice locally
+.\Start-Alice-Dev.cmd
 ```
 
 Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests to the backend automatically.
+
+The launcher protects local mode: if `.env.local` exists, it renames the file to
+`.env.local.disabled-YYYYMMDD-HHMMSS` before starting Alice so hosted deployment
+settings are not accidentally loaded. The file is not restored automatically.
+
+To stop Alice, press Ctrl+C in the launcher terminal or close the window. The
+launcher stops both the backend and frontend processes.
+
+You can still run the two processes manually when you need separate terminals:
+
+```bash
+npm run alice      # npm alias for Start-Alice-Dev.cmd
+npm run server:dev
+npm run dev
+```
 
 ## Run the Portable Package (Windows)
 
@@ -145,6 +159,7 @@ Two independent checks guard against a hosted deployment with missing config:
 | `npm run db:clear` | Delete all application records from the database |
 | `npm run db:seed:profile` | Populate the profile table with demo profile data |
 | `npm run db:clear:profile` | Clear the profile table (resets to no-profile state) |
+| `npm run alice` | Start local Alice dev mode in one terminal (backend + frontend) |
 | `npm run server:dev` | Start backend API in watch mode (nodemon, port 3001) |
 | `npm run server:start` | Start backend API without watch mode |
 | `npm run dev` | Start frontend development server (port 5173) |
@@ -182,8 +197,7 @@ npm run db:clear
 ```bash
 npm run db:init              # first time only
 npm run db:seed:demo         # load demo applications, profile, and scores
-npm run server:dev           # terminal 1
-npm run dev                  # terminal 2 — open http://localhost:5173
+npm run alice                # start backend + frontend — open http://localhost:5173
 # ... demo ...
 npm run db:clear             # reset applications
 npm run db:clear:profile     # reset profile
@@ -253,7 +267,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.12.6** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.12.7** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 
