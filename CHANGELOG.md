@@ -7,21 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.12.6] — 2026-07-08
-
-Quick-action hover tooltips — application cards and the Calendar's Suggested Actions now show native hover tooltips on their icon buttons. (#114)
-
-### Fixed
-
-- **Missing hover tooltips on quick-action buttons** — the icon buttons on application cards (edit, change status, copy URL, star/unstar, archive/unarchive) and on the Calendar's Suggested Actions rows (open application, dismiss suggestion) set `aria-label` for screen readers but had no `title`, so sighted users got no native hover tooltip. Each button now also sets a concise `title` (e.g. "Edit", "Copy URL", "Archive", "Dismiss suggestion"); the star button's label and tooltip now reflect its state ("Star"/"Unstar"). Tooltip copy is kept short and distinct from the longer `aria-label` to avoid duplicate screen-reader announcements. (#114)
-
 ## [1.12.5] — 2026-07-08
 
-Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons on Chromium/Edge. (#117)
+Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons in Microsoft Edge. (#117)
 
 ### Fixed
 
-- **Duplicate password-reveal eye icon** — Chromium/Edge render a native reveal control (`::-ms-reveal` / `::-ms-clear`) inside `<input type="password">` fields, which stacked on top of the app's own custom show/hide toggle on the Login and Signup forms. A CSS rule now suppresses the native controls on `.auth-form__input` (and the `.edit-field__control` password fields in edit-profile), so only the app's own toggle is visible on every browser. (#117)
+- **Duplicate password-reveal eye icon** — Microsoft Edge renders a native reveal control (`::-ms-reveal`) inside password fields by default, which overlapped the app's custom show/hide toggle button on the Login and Signup forms, as well as the OpenRouter API key field in Profile › Connection. A scoped CSS rule now suppresses these browser-native controls on password inputs that have custom toggles, ensuring only the app's own eye icon is visible. (#117)
 
 ## [1.12.4] — 2026-07-07
 
@@ -1590,8 +1582,7 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.6...HEAD
-[1.12.6]: https://github.com/reso830/Project_Alice/compare/v1.12.5...v1.12.6
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.5...HEAD
 [1.12.5]: https://github.com/reso830/Project_Alice/compare/v1.12.4...v1.12.5
 [1.12.4]: https://github.com/reso830/Project_Alice/compare/v1.12.3...v1.12.4
 [1.12.3]: https://github.com/reso830/Project_Alice/compare/v1.12.2...v1.12.3

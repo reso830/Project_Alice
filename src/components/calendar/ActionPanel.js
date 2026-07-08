@@ -288,11 +288,13 @@ function createIconButton(className, label, text, onClick, title = label) {
   return button;
 }
 
-function createTextButton(label, onClick, title = label) {
+function createTextButton(label, onClick, ariaLabel = '') {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'cal-act-btn';
-  button.title = title;
+  if (ariaLabel) {
+    button.setAttribute('aria-label', ariaLabel);
+  }
   button.textContent = label;
   button.addEventListener('click', onClick);
   return button;
@@ -335,7 +337,11 @@ function createActivityRow(row, props, options = {}) {
 
   if (options.suggestion) {
     if (row.primary === 'mark_ghosted') {
-      actions.append(createTextButton('Mark Ghosted', () => props.onMarkGhosted?.(row.id)));
+      actions.append(createTextButton(
+        'Mark Ghosted',
+        () => props.onMarkGhosted?.(row.id),
+        `Mark application ${padId(row.id)} as Ghosted`,
+      ));
     } else {
       actions.append(createIconButton(
         'cal-act-icon',

@@ -69,12 +69,27 @@ describe('Card quick action tooltips', () => {
     expect(starButton.title).toBe('Unstar');
   });
 
+  it('keeps the star tooltip and accessible name in sync after clicking', () => {
+    const card = Card.render(application());
+    const starButton = card.querySelector('.card-btn--star');
+
+    starButton.click();
+    expect(starButton.classList).toContain('card-btn--starred');
+    expect(starButton.getAttribute('aria-label')).toBe('Unstar application');
+    expect(starButton.title).toBe('Unstar');
+
+    starButton.click();
+    expect(starButton.classList).not.toContain('card-btn--starred');
+    expect(starButton.getAttribute('aria-label')).toBe('Star application');
+    expect(starButton.title).toBe('Star');
+  });
+
   it('keeps terminal status title focused on the disabled reason', () => {
     const card = Card.render(application({ status: 'ghosted' }));
     const statusButton = card.querySelector('.card-btn--status');
 
     expect(statusButton.disabled).toBe(true);
-    expect(statusButton.getAttribute('aria-label')).toBe('Change status');
+    expect(statusButton.getAttribute('aria-label')).toBe('Status locked — workflow complete');
     expect(statusButton.title).toBe('Workflow complete');
   });
 });

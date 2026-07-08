@@ -334,7 +334,8 @@ describe('ActionPanel', () => {
     const ghostButton = document.querySelector('.cal-act-btn');
     const dismissButton = document.querySelector('.cal-act-icon--danger');
 
-    expect(ghostButton.title).toBe('Mark Ghosted');
+    expect(ghostButton.getAttribute('aria-label')).toBe('Mark application 006 as Ghosted');
+    expect(ghostButton.title).toBe('');
     expect(dismissButton.title).toBe('Dismiss suggestion');
 
     ghostButton.click();
