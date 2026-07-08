@@ -423,8 +423,8 @@ export function mergeResumeData(currentProfile, parsedData) {
   return mergedProfile;
 }
 
-export function validateProfile(data = {}) {
-  const profile = normaliseProfile(data);
+export function validateProfile(data = {}, isNormalised = false) {
+  const profile = isNormalised ? data : normaliseProfile(data);
   const errors = {};
 
   if (!profile.firstName) {

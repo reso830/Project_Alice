@@ -25,6 +25,7 @@ let _navigate = () => {};
 let _subheader = null;
 let _formState = null;
 let _initialState = null;
+let _normalisedInitialStateString = '';
 let _aiFields = new Set();
 let _saving = false;
 let _basicInfoFields = {};
@@ -114,28 +115,45 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function isDirty() {
-  return JSON.stringify(_formState) !== JSON.stringify(_initialState);
+function setInitialState(state) {
+  _initialState = deepClone(state);
+  _normalisedInitialStateString = JSON.stringify(normaliseProfile(_initialState));
 }
 
-function getSkillErrors() {
+function comparableProfileState(state) {
+  return normaliseProfile(state ?? {});
+}
+
+function isDirty(normalisedForm) {
+  const currentStr = normalisedForm
+    ? JSON.stringify(normalisedForm)
+    : JSON.stringify(comparableProfileState(_formState));
+  return currentStr !== _normalisedInitialStateString;
+}
+
+function getSkillErrors(normalisedForm) {
   if (!_formState) {
     return {};
   }
 
+  const errors = normalisedForm
+    ? validateProfile(normalisedForm, true).errors
+    : validateProfile(_formState).errors;
+
   return Object.fromEntries(
-    Object.entries(validateProfile(_formState).errors)
+    Object.entries(errors)
       .filter(([key]) => key.startsWith('skills')),
   );
 }
 
-function hasSkillErrors() {
-  return Object.keys(getSkillErrors()).length > 0;
+function hasSkillErrors(normalisedForm) {
+  return Object.keys(getSkillErrors(normalisedForm)).length > 0;
 }
 
 function updateControlsState() {
-  const dirty = isDirty();
-  const skillBlocked = hasSkillErrors();
+  const normalisedForm = normaliseProfile(_formState ?? {});
+  const dirty = isDirty(normalisedForm);
+  const skillBlocked = hasSkillErrors(normalisedForm);
 
   for (const button of document.querySelectorAll('.page-controls__save')) {
     button.disabled = !dirty || _saving || skillBlocked;
@@ -1908,7 +1926,7 @@ async function handleSave() {
   removeSectionValidationError();
 
   const payload = normaliseProfile(_formState);
-  const validation = validateProfile(payload);
+  const validation = validateProfile(payload, true);
 
   if (!validation.valid) {
     surfaceValidationErrors(validation.errors);
@@ -1921,7 +1939,7 @@ async function handleSave() {
   try {
     await saveProfile(payload);
     _formState = deepClone(payload);
-    _initialState = deepClone(payload);
+    setInitialState(payload);
     _aiFields.clear();
     _sectionProvenance.clear();
     _flashPaths.clear();
@@ -1972,7 +1990,7 @@ function showDiscardModal(onDiscard) {
   const discard = createButton('Discard', 'profile-btn profile-btn--primary profile-btn--danger', () => {
     const action = _discardAction;
 
-    _initialState = deepClone(_formState);
+    setInitialState(_formState);
     closeDiscardModal(backdrop);
     if (action) {
       action();
@@ -2029,7 +2047,7 @@ export async function mount(container, { navigate, highlightImport = false } = {
 
   _profileExists = Boolean(profile);
   _formState = deepClone(normaliseProfile(profile ?? {}));
-  _initialState = deepClone(_formState);
+  setInitialState(_formState);
   _aiFields = new Set();
   _sectionProvenance = new Map();
   _flashPaths = new Set();
@@ -2072,6 +2090,7 @@ export function unmount() {
   _navigate = () => {};
   _formState = null;
   _initialState = null;
+  _normalisedInitialStateString = '';
   _aiFields = new Set();
   _sectionProvenance = new Map();
   _flashPaths = new Set();

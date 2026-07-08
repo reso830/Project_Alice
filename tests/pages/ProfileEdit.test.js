@@ -917,6 +917,24 @@ describe('ProfileEdit page', () => {
     expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 
+  it('keeps save disabled when a skill edit is only whitespace-normalized', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      skills: [{ name: 'React', level: 4 }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skills = getCard(container, 'SKILLS');
+    const nameInput = skills.querySelector('.skill-editor-row input');
+
+    inputValue(nameInput, '  React  ');
+
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+    expect(getSaveButton(getBottomControls(container)).disabled).toBe(true);
+  });
+
   it('shows shared busy state on Save and disables Cancel while save is in progress', async () => {
     const container = createAppShell();
     let resolveSave;
@@ -2156,5 +2174,34 @@ describe('ProfileEdit page', () => {
 
     expect(document.querySelector('.entry-overlay__header')).not.toBeNull();
     expect(document.querySelector('.entry-overlay__header').classList).not.toContain('subheader');
+  });
+
+  it('keeps save disabled when a skill level is edited and then reverted to its original level', async () => {
+    const container = createAppShell();
+
+    api.getProfile.mockResolvedValue(createProfile({
+      skills: [{ name: 'React', level: 4 }],
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    const skillsCard = getCard(container, 'SKILLS');
+    
+    // 1. Initially, the Save button should be disabled
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
+
+    // 2. Change the level to 5 by clicking the segment 5
+    const segment5 = skillsCard.querySelector('.skill-level-picker__segment[data-level="5"]');
+    segment5.click();
+
+    // The Save button should become enabled
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(false);
+
+    // 3. Revert it back to 4 by clicking segment 4
+    const segment4 = skillsCard.querySelector('.skill-level-picker__segment[data-level="4"]');
+    segment4.click();
+
+    // The Save button should become disabled again
+    expect(getSaveButton(getTopControls(container)).disabled).toBe(true);
   });
 });
