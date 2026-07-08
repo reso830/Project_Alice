@@ -68,9 +68,11 @@ npm run db:init
 
 Open `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests to the backend automatically.
 
-The launcher protects local mode: if `.env.local` exists, it renames the file to
-`.env.local.disabled-YYYYMMDD-HHMMSS` before starting Alice so hosted deployment
-settings are not accidentally loaded. The file is not restored automatically.
+The launcher keeps the frontend in local mode: it starts the Vite dev server with
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` cleared, so a stale `.env.local`
+can't push the UI into hosted-auth mode against your local backend. Your
+`.env.local` is left untouched on disk. To run the full hosted stack locally
+instead, use `npm run server:dev:hosted` alongside `npm run dev`.
 
 To stop Alice, press Ctrl+C in the launcher terminal or close the window. The
 launcher stops both the backend and frontend processes.
