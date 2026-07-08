@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { platform } from 'node:process';
 import { afterEach, describe, expect, test } from 'vitest';
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..');
@@ -23,7 +24,7 @@ afterEach(() => {
 describe('Start-Alice-Dev launcher', () => {
   // The launcher is a PowerShell script; only exercise it on Windows runners.
   // CI (ubuntu-latest) has no powershell.exe, so this is skipped there.
-  test.runIf(process.platform === 'win32')('renames .env.local before starting local Alice', () => {
+  test.runIf(platform === 'win32')('renames .env.local before starting local Alice', () => {
     const tempRoot = createTempProject();
     const envPath = path.join(tempRoot, '.env.local');
     const envContents = 'APP_RUNTIME=hosted\nSUPABASE_URL=https://example.supabase.co\n';
