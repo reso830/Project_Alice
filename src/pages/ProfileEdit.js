@@ -1572,28 +1572,49 @@ function applyImportedResume(parsedData, aiFieldSet = new Set(), meta = {}, gene
   });
 }
 
-function createSmartResumeImport({ generation, showHeader = true } = {}) {
+function createSmartResumeImport({ generation, showHeader = true, navigate, onChooseManual, onImportSuccess, onDismiss } = {}) {
   return ResumeImport.create({
     smartInput: true,
     title: 'Import from your résumé',
     showHeader,
     onSuccess: (parsedData, aiFieldSet = new Set(), meta = {}) => {
-      applyImportedResume(parsedData, aiFieldSet, meta, generation);
+      if (onImportSuccess) {
+        onImportSuccess(parsedData, aiFieldSet, meta);
+      } else {
+        applyImportedResume(parsedData, aiFieldSet, meta, generation);
+      }
     },
     onDismiss: () => {
       if (_profileExists) {
         _importBarExpanded = false;
         renderEditPage(_container);
       } else {
-        _entryGateDismissed = true;
+        if (onDismiss) {
+          onDismiss();
+        } else {
+          _entryGateDismissed = true;
+        }
         closeEntryFlowModal();
       }
     },
     onBack: () => {
       closeEntryFlowModal();
-      showEntryGate();
+      openSetupGate({
+        navigate: navigate || _navigate,
+        onChooseManual: onChooseManual || (() => {
+          _entryGateDismissed = true;
+          closeEntryFlowModal();
+        }),
+        onImportSuccess: onImportSuccess || ((parsedData, aiFieldSet, meta) => {
+          applyImportedResume(parsedData, aiFieldSet, meta, generation);
+        }),
+        onDismiss: onDismiss || (() => {
+          _entryGateDismissed = true;
+          closeEntryFlowModal();
+        })
+      });
     },
-    navigate: _navigate,
+    navigate: navigate || _navigate,
   });
 }
 
@@ -1664,7 +1685,7 @@ function closeEntryFlowModal() {
   document.body.style.overflow = '';
 }
 
-function openSmartInputModal() {
+function openSmartInputModal({ navigate, onChooseManual, onImportSuccess, onDismiss } = {}) {
   closeEntryFlowModal();
 
   const generation = _mountGeneration;
@@ -1675,10 +1696,20 @@ function openSmartInputModal() {
   const title = createElement('h2', 'profile-smart-modal__title', 'Import from your resume');
   const subtitle = createElement('p', 'profile-smart-modal__subtitle', "Upload a file or paste the text — we'll handle the rest.");
   const close = createButton('×', 'profile-smart-modal__close', () => {
-    _entryGateDismissed = true;
+    if (onDismiss) {
+      onDismiss();
+    } else {
+      _entryGateDismissed = true;
+    }
     closeEntryFlowModal();
   }, 'Close smart import');
-  const importArea = createSmartResumeImport({ generation });
+  const importArea = createSmartResumeImport({
+    generation,
+    navigate,
+    onChooseManual,
+    onImportSuccess,
+    onDismiss
+  });
 
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
@@ -1690,13 +1721,21 @@ function openSmartInputModal() {
   backdrop.append(modal);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) {
-      _entryGateDismissed = true;
+      if (onDismiss) {
+        onDismiss();
+      } else {
+        _entryGateDismissed = true;
+      }
       closeEntryFlowModal();
     }
   });
 
   const cleanup = trapModalFocus(backdrop, () => {
-    _entryGateDismissed = true;
+    if (onDismiss) {
+      onDismiss();
+    } else {
+      _entryGateDismissed = true;
+    }
     closeEntryFlowModal();
   });
 
@@ -1706,81 +1745,158 @@ function openSmartInputModal() {
   close.focus();
 }
 
-function dismissEntryGate() {
-  _entryGateDismissed = true;
-  closeEntryFlowModal();
-}
-
-function createEntryGateCard(kind) {
+function createEntryGateCard(kind, { onChooseManual, onSmartChoose, onSettingsClick }) {
   const isSmart = kind === 'smart';
-  const card = createElement('div', `profile-entry-gate__card profile-entry-gate__card--${kind}`);
-  const title = createElement('h3', 'profile-entry-gate__card-title', isSmart ? 'Smart entry' : 'Manual entry');
-  const copy = createElement(
-    'p',
-    'profile-entry-gate__copy',
-    isSmart
-      ? "Upload your résumé and we'll fill in your profile automatically."
-      : 'Type your details into the form, section by section.',
-  );
-  const bullets = createElement('ul', 'profile-entry-gate__bullets');
+  const smartAvailable = isSmartEntryAvailable();
+  const locked = isSmart && !smartAvailable;
 
-  card.append(isSmart ? createSparkleTile('profile-ai-tile profile-entry-gate__icon') : createManualEntryTile());
-  if (isSmart) {
-    card.append(createElement('span', 'profile-entry-gate__badge', 'Fastest'));
+  const card = createElement('div', [
+    'creation-picker-card',
+    `profile-entry-gate__card--${kind}`,
+    isSmart ? 'creation-picker-card--parser' : '',
+    locked ? 'creation-picker-card--locked is-disabled' : ''
+  ].filter(Boolean).join(' '));
+
+  if (locked) {
+    card.setAttribute('aria-disabled', 'true');
   }
+
+  const iconEl = createElement('div', 'creation-picker-card__icon');
+  iconEl.append(isSmart ? createSparkleTile('profile-ai-tile profile-entry-gate__icon') : createManualEntryTile());
+
+  const titleRow = createElement('div', 'creation-picker-card__title-row');
+  const titleEl = createElement('p', 'creation-picker-card__title', isSmart ? 'Smart entry' : 'Manual entry');
+  titleRow.append(titleEl);
+
+  if (isSmart) {
+    const badgeEl = createElement('span', 'creation-picker-card__badge', 'Fastest');
+    titleRow.append(badgeEl);
+  }
+
+  const descEl = createElement('p', 'creation-picker-card__desc', isSmart
+    ? "Upload your résumé and we'll fill in your profile automatically."
+    : 'Type your details into the form, section by section.'
+  );
+
+  const bullets = createElement('ul', 'creation-picker-card__bullets');
   bullets.append(
     createElement('li', '', isSmart ? 'Parses experience, skills & more' : 'Full control over every field'),
-    createElement('li', '', isSmart ? 'Review before saving' : 'No resume needed'),
+    createElement('li', '', isSmart ? 'Review before saving' : 'No resume needed')
   );
-  card.append(title, copy, bullets);
 
-  if (isSmart && !isSmartEntryAvailable()) {
-    card.classList.add('is-disabled');
-    const settings = createButton('Enable AI in Settings →', 'profile-btn profile-btn--outline profile-entry-gate__settings-link', navigateToAiSettings);
+  card.append(iconEl, titleRow, descEl, bullets);
 
-    card.append(settings);
+  let ctaEl;
+  if (locked) {
+    ctaEl = createButton('Enable AI in Settings →', 'creation-picker-card__cta profile-entry-gate__settings-link', (e) => {
+      e.stopPropagation();
+      onSettingsClick();
+    });
   } else {
-    const choose = createButton('Choose →', 'profile-btn profile-btn--primary profile-entry-gate__choose', isSmart ? openSmartInputModal : dismissEntryGate);
-
-    card.append(choose);
+    const action = isSmart ? onSmartChoose : onChooseManual;
+    ctaEl = createButton('Choose →', 'creation-picker-card__cta profile-entry-gate__choose', (e) => {
+      e.stopPropagation();
+      action();
+    });
   }
+  card.append(ctaEl);
+
+  card.addEventListener('click', () => {
+    if (!locked) {
+      if (isSmart) onSmartChoose();
+      else onChooseManual();
+    }
+  });
 
   return card;
 }
 
-function showEntryGate() {
+export function openSetupGate({
+  navigate,
+  onChooseManual = () => {},
+  onSmartChoose,
+  onSettingsClick,
+  onDismiss = () => {},
+  onImportSuccess = () => {}
+} = {}) {
   closeEntryFlowModal();
 
-  const backdrop = createElement('div', 'profile-entry-gate');
-  const dialog = createElement('div', 'profile-entry-gate__dialog');
-  const header = createElement('div', 'profile-entry-gate__header');
-  const copy = createElement('div', 'profile-entry-gate__intro');
-  const title = createElement('h2', 'profile-entry-gate__title', "Let's build your profile.");
-  const subtitle = createElement('p', 'profile-entry-gate__subtitle', 'Start from a résumé, or fill it in yourself. You can edit everything afterward.');
-  const close = createButton('×', 'profile-entry-gate__close', dismissEntryGate, 'Close setup options');
-  const cards = createElement('div', 'profile-entry-gate__cards');
+  const handleSmartChoose = onSmartChoose || (() => {
+    openSmartInputModal({
+      navigate,
+      onChooseManual,
+      onImportSuccess,
+      onDismiss
+    });
+  });
 
+  const handleSettingsClick = onSettingsClick || (() => {
+    closeEntryFlowModal();
+    const nav = navigate || _navigate;
+    nav('profile', { focusSettings: true });
+  });
+
+  const backdrop = createElement('div', 'creation-picker-backdrop profile-entry-gate');
   backdrop.setAttribute('role', 'dialog');
   backdrop.setAttribute('aria-modal', 'true');
   backdrop.setAttribute('aria-labelledby', 'profile-entry-gate-title');
-  title.id = 'profile-entry-gate-title';
-  copy.append(title, subtitle);
-  header.append(copy, close);
-  cards.append(createEntryGateCard('smart'), createEntryGateCard('manual'));
-  dialog.append(header, cards);
-  backdrop.append(dialog);
+
+  const panel = createElement('div', 'creation-picker-panel');
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  panel.setAttribute('aria-labelledby', 'profile-entry-gate-title');
+
+  const header = createElement('div', 'creation-picker-header');
+  const intro = createElement('div', 'creation-picker-intro');
+  const titleEl = createElement('h2', 'creation-picker-title', "Let's build your profile.");
+  titleEl.id = 'profile-entry-gate-title';
+  const subtitleEl = createElement('p', 'creation-picker-subtitle', 'Start from a résumé, or fill it in yourself. You can edit everything afterward.');
+  intro.append(titleEl, subtitleEl);
+
+  const closeBtn = createButton('×', 'creation-picker-close profile-entry-gate__close', () => {
+    onDismiss();
+    closeEntryFlowModal();
+  }, 'Close setup options');
+
+  const content = createElement('div', 'creation-picker-content');
+  const cards = createElement('div', 'creation-picker-cards');
+
+  const smartCard = createEntryGateCard('smart', {
+    onChooseManual,
+    onSmartChoose: handleSmartChoose,
+    onSettingsClick: handleSettingsClick
+  });
+
+  const manualCard = createEntryGateCard('manual', {
+    onChooseManual,
+    onSmartChoose: null,
+    onSettingsClick: null
+  });
+
+  cards.append(smartCard, manualCard);
+  content.append(cards);
+  header.append(intro, closeBtn);
+  panel.append(header, content);
+  backdrop.append(panel);
+
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) {
-      dismissEntryGate();
+      onDismiss();
+      closeEntryFlowModal();
     }
   });
 
-  const cleanup = trapModalFocus(backdrop, dismissEntryGate);
+  const cleanup = trapModalFocus(backdrop, () => {
+    onDismiss();
+    closeEntryFlowModal();
+  });
 
   _entryFlowModal = { backdrop, cleanup };
   document.body.style.overflow = 'hidden';
   document.body.append(backdrop);
-  backdrop.querySelector('.profile-entry-gate__card--smart .profile-entry-gate__choose, .profile-entry-gate__settings-link')?.focus();
+
+  const firstFocusable = smartCard.querySelector('.creation-picker-card__cta') || manualCard.querySelector('.creation-picker-card__cta');
+  firstFocusable?.focus();
 }
 
 function renderImportBar(page) {
@@ -1868,7 +1984,20 @@ function renderEditPage(container) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   if (!_profileExists && !_entryGateDismissed && !_importDone && authStore.getAuthState().status !== 'demo') {
-    showEntryGate();
+    openSetupGate({
+      navigate: _navigate,
+      onChooseManual: () => {
+        _entryGateDismissed = true;
+        closeEntryFlowModal();
+      },
+      onDismiss: () => {
+        _entryGateDismissed = true;
+        closeEntryFlowModal();
+      },
+      onImportSuccess: (parsedData, aiFieldSet, meta) => {
+        applyImportedResume(parsedData, aiFieldSet, meta, _mountGeneration);
+      }
+    });
   }
 }
 
@@ -2028,13 +2157,13 @@ export function confirmNavigation(page) {
   return false;
 }
 
-export async function mount(container, { navigate, highlightImport = false } = {}) {
+export async function mount(container, { navigate, highlightImport = false, prefill, aiFields, meta, entryGateDismissed } = {}) {
   closeEntryFlowModal();
   _container = container;
   _navigate = typeof navigate === 'function' ? navigate : () => {};
   _highlightImport = highlightImport;
-  _importDone = false;
-  _entryGateDismissed = false;
+  _entryGateDismissed = Boolean(entryGateDismissed) || Boolean(prefill);
+  _importDone = Boolean(prefill);
   _importBarExpanded = false;
   _mountGeneration += 1;
   container.replaceChildren(buildProfileEditSkeleton());
@@ -2052,7 +2181,12 @@ export async function mount(container, { navigate, highlightImport = false } = {
   _sectionProvenance = new Map();
   _flashPaths = new Set();
   renderSubheader();
-  renderEditPage(container);
+
+  if (prefill) {
+    applyImportedResume(prefill, aiFields, meta, _mountGeneration);
+  } else {
+    renderEditPage(container);
+  }
 
   _beforeUnloadHandler = (event) => {
     if (isDirty() || _openOverlay?.isDirty?.()) {
@@ -2111,4 +2245,4 @@ export function unmount() {
   _importBarExpanded = false;
 }
 
-export const ProfileEdit = { mount, unmount, confirmNavigation };
+export const ProfileEdit = { mount, unmount, confirmNavigation, openSetupGate };
