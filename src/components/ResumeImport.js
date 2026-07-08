@@ -687,7 +687,15 @@ export const ResumeImport = {
       }
 
       if (!forceRuleBased && canUseAiParser()) {
-        const rawText = pastedText || await extractText(selectedFile);
+        let rawText;
+
+        try {
+          rawText = pastedText || await extractText(selectedFile);
+        } catch (error) {
+          return {
+            reason: mapErrorToReason(error),
+          };
+        }
 
         if (!hasEnoughMachineReadableText(rawText)) {
           return {

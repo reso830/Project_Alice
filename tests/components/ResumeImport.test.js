@@ -41,6 +41,11 @@ vi.mock('../../src/services/llmParser.js', () => ({
       message: 'No machine-readable text found — the file looks scanned or image-only.',
       fix: 'dead-end',
     },
+    network: {
+      code: 'NETWORK',
+      message: "Couldn't reach the AI service — check your connection.",
+      fix: 'wait',
+    },
   },
   mapErrorToReason: vi.fn((error) => error?.reason ?? 'rate_limit'),
   parseWithLlm: vi.fn(),
@@ -343,7 +348,7 @@ describe('ResumeImport — auth-state gating', () => {
     expect(root.querySelector('.resume-import__process').disabled).toBe(true);
   });
 
-  it('shows a recoverable error overlay when smart parsing throws unexpectedly', async () => {
+  it('shows the recoverable failure dialog when extractText throws unexpectedly', async () => {
     aiSettings.hasKey.mockReturnValue(true);
     aiSettings.getKey.mockReturnValue('openrouter-key');
     extractText.mockRejectedValue(new Error('corrupt file'));
@@ -353,14 +358,31 @@ describe('ResumeImport — auth-state gating', () => {
     root.querySelector('.resume-import__process').click();
     await flushPromises(4);
 
-    const inlineError = root.querySelector('.inline-error');
-
-    // Before the fix renderProcessing returned undefined, so renderInlineError threw
-    // and the spinner stayed stuck. The overlay must now host a recoverable error.
-    expect(inlineError).not.toBeNull();
-    expect(inlineError.textContent).toContain("Couldn't parse the resume.");
-    expect([...root.querySelectorAll('button')].some((b) => b.textContent === 'Continue Manually')).toBe(true);
+    // extractText failures are classified (like LLM failures) and routed to the
+    // same recoverable failure dialog, instead of the generic inline-error overlay.
+    // Before the underlying fix, renderProcessing returned undefined, so
+    // renderInlineError threw and the spinner stayed stuck — this must still not happen.
+    expect(root.querySelector('.inline-error')).toBeNull();
+    expect(root.querySelector('.resume-import-failure')).not.toBeNull();
     expect(root.querySelector('.resume-import-processing__spinner')).toBeNull();
+  });
+
+  it('routes an offline extractText failure to the network failure dialog instead of the generic inline error', async () => {
+    aiSettings.hasKey.mockReturnValue(true);
+    aiSettings.getKey.mockReturnValue('openrouter-key');
+    extractText.mockRejectedValue({ reason: 'network', code: 'NETWORK_ERROR' });
+    const root = ResumeImport.create({ smartInput: true, showHeader: true, onDismiss: vi.fn() });
+
+    selectFile(root, makeResumeFile('Resume.pdf'));
+    root.querySelector('.resume-import__process').click();
+    await flushPromises(4);
+
+    expect(root.querySelector('.inline-error')).toBeNull();
+    expect(root.querySelector('.resume-import-failure')).not.toBeNull();
+    expect(root.querySelector('.resume-import-failure__title')?.textContent)
+      .toBe('Smart parsing is unavailable right now');
+    expect(root.querySelector('.resume-import-failure__message')?.textContent)
+      .toBe("Couldn't reach the AI service — check your connection.");
   });
 
   it('routes pasted text through the LLM when AI, CV, and key are enabled', async () => {
