@@ -306,6 +306,11 @@ describe('ActionPanel', () => {
     });
 
     const buttons = document.querySelectorAll('.cal-row .cal-act-icon');
+    expect(buttons[0].getAttribute('aria-label')).toBe('Open application 012');
+    expect(buttons[0].title).toBe('Open application');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Dismiss suggestion 012');
+    expect(buttons[1].title).toBe('Dismiss suggestion');
+
     buttons[0].click();
     buttons[1].click();
 
@@ -326,8 +331,15 @@ describe('ActionPanel', () => {
       onDismiss,
     });
 
-    document.querySelector('.cal-act-btn').click();
-    document.querySelector('.cal-act-icon--danger').click();
+    const ghostButton = document.querySelector('.cal-act-btn');
+    const dismissButton = document.querySelector('.cal-act-icon--danger');
+
+    expect(ghostButton.getAttribute('aria-label')).toBe('Mark application 006 as Ghosted');
+    expect(ghostButton.title).toBe('');
+    expect(dismissButton.title).toBe('Dismiss suggestion');
+
+    ghostButton.click();
+    dismissButton.click();
 
     expect(onMarkGhosted).toHaveBeenCalledWith(6);
     expect(onDismiss).toHaveBeenCalledWith(6, 'ghost');
@@ -357,7 +369,11 @@ describe('ActionPanel', () => {
     expect(labels).toEqual(['Tomorrow · Fri May 22', 'Rest of week · thru Sun May 24']);
     expect(document.querySelectorAll('.cal-section__count')[0].textContent).toBe('3');
 
-    document.querySelector('.upc-group .cal-act-icon').click();
+    const openButton = document.querySelector('.upc-group .cal-act-icon');
+    expect(openButton.getAttribute('aria-label')).toBe('Open application 002');
+    expect(openButton.title).toBe('Open application');
+
+    openButton.click();
     expect(onOpenApp).toHaveBeenCalledWith(2);
   });
 

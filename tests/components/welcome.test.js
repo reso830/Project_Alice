@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/assets/logo/alice-sigil-full.svg', () => ({
@@ -33,6 +34,8 @@ vi.mock('../../src/services/supabaseClient.js', () => ({
 import { AuthOverlay } from '../../src/pages/welcome/AuthOverlay.js';
 import { WelcomePage } from '../../src/pages/welcome/WelcomePage.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
+
+const mainCss = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
 
 let container;
 let heroSlideshowStub;
@@ -176,6 +179,16 @@ describe('WelcomePage — structure', () => {
     tryDemo.click();
 
     expect(demoStubMocks.enterDemo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('WelcomePage — password native controls', () => {
+  it('suppresses native reveal and clear controls only on inputs with custom toggles', () => {
+    expect(mainCss).toContain('.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-reveal');
+    expect(mainCss).toContain('.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-clear');
+    expect(mainCss).toContain('.conn-panel__field .edit-field__control::-ms-reveal');
+    expect(mainCss).toContain('.conn-panel__field .edit-field__control::-ms-clear');
+    expect(mainCss).not.toMatch(/\n\.auth-form__input::-ms-clear,/);
   });
 });
 

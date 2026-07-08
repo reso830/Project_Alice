@@ -12400,8 +12400,8 @@ button.welcome__footer-link {
   padding-right: 40px;
 }
 
-/* Suppress Microsoft Edge native password-reveal controls on inputs with custom toggles */
-.auth-form__input::-ms-reveal,
+/* Suppress browser-native password-reveal controls on inputs with custom toggles */
+.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-reveal,
 .conn-panel__field .edit-field__control::-ms-reveal {
   display: none;
 }

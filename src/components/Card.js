@@ -70,6 +70,12 @@ function stopAction(event, callback) {
   return callback();
 }
 
+function syncStarButton(button, isStarred) {
+  button.classList.toggle('card-btn--starred', isStarred);
+  button.setAttribute('aria-label', isStarred ? 'Unstar application' : 'Star application');
+  button.title = isStarred ? 'Unstar' : 'Star';
+}
+
 export function render(application, callbacks = {}, { selected = false, pending = false } = {}) {
   const config = STATUS_CONFIG[application.status] ?? STATUS_CONFIG.wishlisted;
   const card = document.createElement('article');
@@ -110,9 +116,12 @@ export function render(application, callbacks = {}, { selected = false, pending 
   editButton.setAttribute('aria-label', 'Open application details');
   statusButton.setAttribute('aria-label', 'Change status');
   copyButton.setAttribute('aria-label', 'Copy job URL');
-  starButton.setAttribute('aria-label', 'Star application');
   archiveButton.setAttribute('aria-label', 'Archive application permanently from active list');
   unarchiveButton.setAttribute('aria-label', 'Unarchive application');
+  editButton.title = 'Edit';
+  statusButton.title = 'Change status';
+  copyButton.title = 'Copy URL';
+  archiveButton.title = 'Archive';
   unarchiveButton.title = 'Unarchive';
 
   card.className = application.archived === true ? 'card card-archived' : 'card';
@@ -180,15 +189,14 @@ export function render(application, callbacks = {}, { selected = false, pending 
     rowOneMeta.append(warning);
   }
 
-  if (application.fav) {
-    starButton.classList.add('card-btn--starred');
-  }
+  syncStarButton(starButton, application.fav);
 
   editButton.addEventListener('click', (event) => {
     stopAction(event, () => callbacks.onOpen?.(application.id));
   });
   if (TERMINAL_STATES.has(application.status)) {
     statusButton.disabled = true;
+    statusButton.setAttribute('aria-label', 'Status locked — workflow complete');
     statusButton.title = 'Workflow complete';
   } else {
     statusButton.addEventListener('click', (event) => {
@@ -204,7 +212,7 @@ export function render(application, callbacks = {}, { selected = false, pending 
   });
   starButton.addEventListener('click', (event) => {
     stopAction(event, () => {
-      starButton.classList.toggle('card-btn--starred');
+      syncStarButton(starButton, !starButton.classList.contains('card-btn--starred'));
       callbacks.onFavToggle?.(application.id);
     });
   });
