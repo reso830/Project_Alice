@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.11] — 2026-07-08
+
+Unified creation-gate cards — the profile setup gate now matches the Add-application gate's visual styling and resolves before navigating away from the Profile page. (#80)
+
+### Changed
+
+- **Profile setup gate now resolves on the Profile page** — clicking **Set Up Profile** on the empty-profile state opens the Smart entry / Manual entry choice gate directly on the Profile page (via a new `openSetupGate` export from `ProfileEdit.js`) instead of navigating straight to the Edit Profile page and showing the gate there. Only a resolved choice — Manual entry, a completed Smart entry import, or dismissal — determines what happens next; landing directly on the Edit Profile URL with no profile still shows the same gate locally as a fallback entry point. (#80)
+- **Profile setup gate cards now reuse `.creation-picker-card` styling** — the Smart entry / Manual entry cards in the profile setup gate were rebuilt on the same `.creation-picker-card` markup and classes as the Add-application gate (icon, title row, "Fastest" badge, description, bullets, and a silent `.creation-picker-card__cta`), including the whole-card hover/click target. The two gates now look and behave identically. (#80)
+
 ## [1.12.10] — 2026-07-08
 
 Error display overhaul — Smart Entry resume parsing correctly shows the polished failure dialog when offline, and the Tracker page's load-error state is now a contained card instead of a full-pane message. (#65, #81)
@@ -1626,7 +1635,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.10...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.11...HEAD
+[1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
 [1.12.9]: https://github.com/reso830/Project_Alice/compare/v1.12.8...v1.12.9
 [1.12.8]: https://github.com/reso830/Project_Alice/compare/v1.12.7...v1.12.8

@@ -323,8 +323,8 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(section.textContent).toContain('UPDATES');
     expect(section.textContent).toContain('Current version');
-    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.10');
-    expect(section.textContent).not.toContain('vv1.12.10');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.11');
+    expect(section.textContent).not.toContain('vv1.12.11');
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
