@@ -345,7 +345,22 @@ function renderEmptyProfile(section, navigate) {
   icon.alt = '';
   icon.setAttribute('aria-hidden', 'true');
   actions.append(
-    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
+    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => {
+      import('./ProfileEdit.js').then((module) => {
+        module.openSetupGate({
+          navigate,
+          onChooseManual: () => {
+            navigate('profile-edit', { entryGateDismissed: true });
+          },
+          onImportSuccess: (parsedData, aiFieldSet, meta) => {
+            navigate('profile-edit', { prefill: parsedData, aiFields: aiFieldSet, meta });
+          },
+          onDismiss: () => {
+            // Do nothing, user stays on Profile page
+          }
+        });
+      });
+    }),
   );
   empty.append(
     icon,
