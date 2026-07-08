@@ -327,6 +327,7 @@ Opened by **+ New application** (desktop toolbar) and the **FAB** (mobile). A ce
 
 - Backdrop click / ✕ / `Esc` dismiss the gate — no application is created.
 - **AI provider off:** the Smart card is **locked** (no *Fastest* badge, dimmed sparkle) and shows an **"Enable AI in Settings →"** link in place of its CTA. Manual entry is unaffected.
+- This gate and the **Set up profile** gate ([`edit_profile_page.md`](edit_profile_page.md) § Mode gate — split cards) share the exact same `.creation-picker-card` visual styling — hover state, whole-card click target, and silent (non-solid) CTA — as well as the same behavioral pattern: the gate resolves fully before any navigation or Create-mode state is entered.
 
 ### 13.2 · Smart input — paste a job posting
 

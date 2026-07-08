@@ -141,9 +141,23 @@ the gate out of the way of users who just want to tweak a field.
 
 ### 3.2 Mode gate — split cards
 
+The gate resolves on the **Profile page**, before navigation: clicking **Set Up
+Profile** (empty-state CTA) opens the gate there via `openSetupGate`, and only a
+choice made in the gate — Manual entry, a completed Smart entry import, or
+dismissal — determines the subsequent navigation to Edit Profile (or whether it
+navigates at all). Landing directly on the Edit Profile URL with no profile and
+no prior choice renders the same gate locally, over the empty form, as a
+fallback entry point.
+
 A centered modal over the (empty) form. Backdrop `rgba(26,26,46,.42)` with a
 slight blur; dialog max-width ~660px, `border-radius --r-lg`. Dismiss (X / Esc /
 backdrop click) defaults to **manual** (opens the blank form).
+
+The cards reuse the **`.creation-picker-card`** styles directly (icon, title
+row, badge, description, bullets, and a silent `.creation-picker-card__cta` —
+no separate solid button) — the same markup and hover/click behavior as the
+Add-application gate (§13.1 in [`application_overlay.md`](application_overlay.md)).
+The whole card is clickable, not just the CTA.
 
 Two equal cards, side by side (stack on < 600px):
 
