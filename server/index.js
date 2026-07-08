@@ -104,9 +104,23 @@ export function createApp({
       return cachedIndexHtml;
     };
 
+    let cachedNotFoundHtml;
+    const getNotFoundHtml = () => {
+      if (cachedNotFoundHtml === undefined) {
+        cachedNotFoundHtml = fs.readFileSync(path.join(distDir, '404.html'), 'utf8');
+      }
+      return cachedNotFoundHtml;
+    };
+
     app.use(express.static(distDir, { index: false }));
-    app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+    app.get('/', (_req, res) => {
       res.type('html').send(getIndexHtml());
+    });
+    // Unknown non-api GET paths get a real 404 with the branded page, not a
+    // silent 200 to the app shell — Alice has no client-side path router, so
+    // any path other than "/" is genuinely unmatched.
+    app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+      res.status(404).type('html').send(getNotFoundHtml());
     });
   }
 

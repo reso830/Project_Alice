@@ -183,6 +183,10 @@ variables**, and hosted (Vercel) deployment is unchanged.
   `true`);
 - builds the app with the gated `serveStatic` branch of `createApp`, so one
   Express origin serves the built `dist/` (SPA fallback) **and** `/api/*`;
+  since feature **093** (branded 404 page), only `GET /` falls back to
+  `index.html` — any other unmatched non-`/api` GET path now returns a real
+  `404` status with the branded `dist/404.html` page instead of silently
+  200ing the app shell;
 - binds to **`127.0.0.1` only** (never exposed to the network — local mode has
   no auth, so nothing is reachable from other devices), auto-selecting the next
   free local port if the default is busy;
@@ -455,6 +459,10 @@ vars — feature 018 added no new local-mode requirements.
 4. Deploy. The first deployment runs `npm run build`, publishes the Vite output
    from `dist/`, and exposes `api/index.js` as a serverless function. The
    `vercel.json` rewrite forwards all `/api/*` requests to that function.
+   Since feature **093** (branded 404 page), `public/404.html` ships as
+   `dist/404.html`; Vercel's static-output convention auto-serves it as the
+   not-found response for any unmatched, non-rewritten path — no
+   `vercel.json` change is needed for this.
 
 If `APP_RUNTIME=hosted` is set but any of the three required Supabase variables
 (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are missing
