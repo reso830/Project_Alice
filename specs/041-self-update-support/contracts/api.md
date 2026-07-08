@@ -14,7 +14,8 @@ Updated to expose the version for single-instance checks, updates capability gat
     "status": "ok",
     "runtime": "local",
     "version": "v1.9.0",
-    "updateSupported": true
+    "updateSupported": true,
+    "portable": true
   }
   ```
 
@@ -22,7 +23,8 @@ Updated to expose the version for single-instance checks, updates capability gat
   - `status` (String): Overall status indicator (`"ok"`).
   - `runtime` (String): Runtimes environment mode (`"local"` | `"hosted"`).
   - `version` (String): Current display version of the running application (prefixed with `v`, e.g., `"v1.9.0"`).
-  - `updateSupported` (Boolean): Dynamically computed flag indicating capability support. Evaluates to `true` only if `runtime === 'local'` and `process.platform === 'win32'`. Evaluates to `false` on all other platform/mode configurations.
+  - `updateSupported` (Boolean): Dynamically computed flag indicating capability support. Evaluates to `true` only if `runtime === 'local'` and `process.platform === 'win32'` and launched via the launcher. Evaluates to `false` on all other platform/mode configurations.
+  - `portable` (Boolean): Indicates whether the server is running as the portable package/distribution (evaluates to `true` when launched via `server/portable.js` or with the portable launcher flag, and `false` otherwise).
 
 ---
 
