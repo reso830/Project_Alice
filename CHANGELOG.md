@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.7] — 2026-07-08
+
+One-command local dev launcher — start Alice's backend and frontend from a single terminal (or a double-click) on Windows, with local mode protected from a stray `.env.local`. (#64)
+
+### Added
+
+- **`Start-Alice-Dev` local dev launcher** — a new `Start-Alice-Dev.cmd` (double-clickable in File Explorer) and its `scripts/Start-Alice-Dev.ps1` backing script, plus an `npm run alice` alias, start the backend API (port 3001) and the Vite frontend (port 5173) together in one terminal, interleaving their labelled output. Pressing Ctrl+C or closing the window stops both processes and their whole child tree — teardown is OS-guaranteed via a Win32 job object, so even a hard window close can't orphan `nodemon`/`vite` on the dev ports. To keep the frontend local, the launcher starts the Vite dev server with `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` cleared — an env value already set in the child process wins over Vite's `.env` files — so a stale `.env.local` can't push the UI into hosted-auth mode. Your `.env.local` is left untouched (no files are moved or renamed); to run the full hosted stack locally use `npm run server:dev:hosted` + `npm run dev`. The two processes can still be run manually in separate terminals. (#64)
+
 ## [1.12.6] — 2026-07-08
 
 Quick-action hover tooltips — application cards and the Calendar's Suggested Actions now show native hover tooltips on their icon buttons. (#114)
@@ -1590,7 +1598,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.6...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.7...HEAD
+[1.12.7]: https://github.com/reso830/Project_Alice/compare/v1.12.6...v1.12.7
 [1.12.6]: https://github.com/reso830/Project_Alice/compare/v1.12.5...v1.12.6
 [1.12.5]: https://github.com/reso830/Project_Alice/compare/v1.12.4...v1.12.5
 [1.12.4]: https://github.com/reso830/Project_Alice/compare/v1.12.3...v1.12.4
