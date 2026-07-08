@@ -137,7 +137,7 @@ function getSkillErrors(normalisedForm) {
   }
 
   const errors = normalisedForm
-    ? validateProfile(normalisedForm).errors
+    ? validateProfile(normalisedForm, true).errors
     : validateProfile(_formState).errors;
 
   return Object.fromEntries(
@@ -1926,7 +1926,7 @@ async function handleSave() {
   removeSectionValidationError();
 
   const payload = normaliseProfile(_formState);
-  const validation = validateProfile(payload);
+  const validation = validateProfile(payload, true);
 
   if (!validation.valid) {
     surfaceValidationErrors(validation.errors);
