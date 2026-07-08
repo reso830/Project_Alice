@@ -345,7 +345,30 @@ function renderEmptyProfile(section, navigate) {
   icon.alt = '';
   icon.setAttribute('aria-hidden', 'true');
   actions.append(
-    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => navigate('profile-edit', { highlightImport: true })),
+    createButton('Set Up Profile', 'profile-btn profile-btn--primary', () => {
+      import('./ProfileEdit.js').then((module) => {
+        module.openSetupGate({
+          navigate,
+          onChooseManual: () => {
+            navigate('profile-edit', { entryGateDismissed: true });
+          },
+          onImportSuccess: (parsedData, aiFieldSet, meta) => {
+            navigate('profile-edit', { prefill: parsedData, aiFields: aiFieldSet, meta });
+          },
+          onSettingsClick: () => {
+            module.closeEntryFlowModal();
+            focusSettingsSection(_container?.querySelector('.settings-section'));
+          },
+          onDismiss: () => {
+            // Do nothing, user stays on Profile page
+          }
+        });
+      }).catch(() => {
+        // ProfileEdit chunk failed to fetch (stale deploy, offline) — fall back
+        // to a plain navigation, which has its own chunk-failure/reload handling.
+        navigate('profile-edit', { highlightImport: true });
+      });
+    }),
   );
   empty.append(
     icon,

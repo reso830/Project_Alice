@@ -7,8 +7,14 @@ vi.mock('../../src/services/api.js', () => ({
   getProfile: vi.fn(),
 }));
 
+vi.mock('../../src/pages/ProfileEdit.js', () => ({
+  openSetupGate: vi.fn(),
+  closeEntryFlowModal: vi.fn(),
+}));
+
 import * as api from '../../src/services/api.js';
 import { Profile } from '../../src/pages/Profile.js';
+import { closeEntryFlowModal, openSetupGate } from '../../src/pages/ProfileEdit.js';
 
 afterEach(() => {
   Profile.unmount();
@@ -169,10 +175,50 @@ describe('Profile page', () => {
     expect(getButton(container, 'Build Profile Manually')).toBeUndefined();
 
     getButton(container, 'Go to Tracker').click();
-    getButton(container, 'Set Up Profile').click();
-
     expect(navigate).toHaveBeenCalledWith('tracker');
-    expect(navigate).toHaveBeenCalledWith('profile-edit', { highlightImport: true });
+
+    getButton(container, 'Set Up Profile').click();
+    await vi.waitFor(() => {
+      expect(openSetupGate).toHaveBeenCalled();
+    });
+
+    expect(navigate).not.toHaveBeenCalledWith('profile-edit', expect.any(Object));
+    expect(openSetupGate).toHaveBeenCalledWith(expect.objectContaining({
+      navigate,
+      onChooseManual: expect.any(Function),
+      onImportSuccess: expect.any(Function),
+      onSettingsClick: expect.any(Function),
+      onDismiss: expect.any(Function),
+    }));
+
+    const setupGateOptions = openSetupGate.mock.calls[0][0];
+    setupGateOptions.onChooseManual();
+    expect(navigate).toHaveBeenCalledWith('profile-edit', { entryGateDismissed: true });
+  });
+
+  it('focuses the on-page Settings section instead of no-op navigating when the gate\'s settings link is used', async () => {
+    const container = document.createElement('main');
+    const navigate = vi.fn();
+
+    document.body.append(container);
+
+    api.getProfile.mockResolvedValue(null);
+    api.getAll.mockResolvedValue([createApplication()]);
+
+    await Profile.mount(container, { navigate });
+
+    getButton(container, 'Set Up Profile').click();
+    await vi.waitFor(() => {
+      expect(openSetupGate).toHaveBeenCalled();
+    });
+
+    const setupGateOptions = openSetupGate.mock.calls[0][0];
+
+    setupGateOptions.onSettingsClick();
+
+    expect(closeEntryFlowModal).toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalledWith('profile', expect.any(Object));
+    expect(document.activeElement).toBe(container.querySelector('.settings-section'));
   });
 
   it('fetches archived applications and routes the archived link to the archived tracker view', async () => {
