@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.9] — 2026-07-08
+
+Branded 404 page — unknown routes now show an on-brand "page not found" screen instead of a generic platform 404 or a silent fallback to the app shell. (#93)
+
+### Added
+
+- **Branded 404 page** — a new `public/404.html` (dark navy, animated "disappearing act" intro, self-hosted fonts, `Back to Home` link) replaces the unbranded fallback on both runtimes. Hosted (Vercel) auto-serves it via the platform's `dist/404.html` static-output convention for any unmatched path — no `vercel.json` change needed. Portable/local mode's static-serving fallback in `server/index.js` now returns a real 404 status with this page for any unmatched non-`/api` GET path, instead of always 200ing the SPA shell — `GET /` still serves `index.html` as before. (#93)
+
 ## [1.12.8] — 2026-07-08
 
 Edit Profile Save button dirty-check fix — the Save button no longer stays enabled after reverting an edit back to its original value. (#58)
@@ -1606,7 +1614,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.8...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.9...HEAD
+[1.12.9]: https://github.com/reso830/Project_Alice/compare/v1.12.8...v1.12.9
 [1.12.8]: https://github.com/reso830/Project_Alice/compare/v1.12.7...v1.12.8
 [1.12.7]: https://github.com/reso830/Project_Alice/compare/v1.12.6...v1.12.7
 [1.12.6]: https://github.com/reso830/Project_Alice/compare/v1.12.5...v1.12.6

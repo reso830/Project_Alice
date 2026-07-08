@@ -17,6 +17,7 @@ async function makeServer({ serveStatic, appConfig = { runtime: 'local' } } = {}
   const distDir = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-dist-'));
   tempDirs.push(distDir);
   fs.writeFileSync(path.join(distDir, 'index.html'), `<div id="app">${LOADER_BLOCK}<main>Alice portable shell</main></div>`);
+  fs.writeFileSync(path.join(distDir, '404.html'), '<main role="alert">Alice not-found shell</main>');
   fs.writeFileSync(path.join(distDir, 'asset.txt'), 'portable asset');
 
   const repositories = await createSqliteRepositories(makeMemoryDb());
@@ -51,16 +52,20 @@ afterEach(async () => {
 });
 
 describe('createApp static serving', () => {
-  test('serves built assets and falls back to index for non-api GET requests when enabled', async () => {
+  test('serves built assets, index at the root, and a branded 404 for unknown non-api GET routes', async () => {
     const { baseUrl } = await makeServer({ serveStatic: true });
 
     const assetResponse = await globalThis.fetch(`${baseUrl}/asset.txt`);
     expect(assetResponse.status).toBe(200);
     expect(await assetResponse.text()).toBe('portable asset');
 
+    const rootResponse = await globalThis.fetch(`${baseUrl}/`);
+    expect(rootResponse.status).toBe(200);
+    expect(await rootResponse.text()).toBe('<div id="app"><main>Alice portable shell</main></div>');
+
     const routeResponse = await globalThis.fetch(`${baseUrl}/some/spa/route`);
-    expect(routeResponse.status).toBe(200);
-    expect(await routeResponse.text()).toBe('<div id="app"><main>Alice portable shell</main></div>');
+    expect(routeResponse.status).toBe(404);
+    expect(await routeResponse.text()).toBe('<main role="alert">Alice not-found shell</main>');
   });
 
   test('does not shadow api routes or rewrite non-get requests when static serving is enabled', async () => {
