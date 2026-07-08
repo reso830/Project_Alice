@@ -20,7 +20,7 @@ describe('branded 404 page', () => {
     expect(html).not.toContain('fonts.gstatic.com');
     
     // Accessibility: decorative elements are hidden
-    expect(html).toContain('class="twinkles" aria-hidden="true"');
+    expect(html).toMatch(/class="twinkles"[^>]*aria-hidden="true"/);
     expect(html).toContain('aria-hidden="true"');
   });
 
@@ -36,6 +36,9 @@ describe('branded 404 page', () => {
     
     // Inject page structure into JSDOM
     document.documentElement.innerHTML = html;
+    
+    // Accessibility: verify the twinkles background is hidden
+    expect(document.querySelector('.twinkles')?.getAttribute('aria-hidden')).toBe('true');
     
     const scriptEl = document.querySelector('script');
     expect(scriptEl).not.toBeNull();

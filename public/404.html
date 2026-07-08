@@ -235,15 +235,6 @@ body.anim .btn      { animation: rise .5s ease-out 4.2s both; }
 
 <script>
 (function () {
-  // Dynamically calculate the relative path back to the application root to support hosting under a subpath/reverse proxy.
-  var btn = document.querySelector('.btn');
-  if (btn) {
-    var depth = window.location.pathname.split('/').filter(Boolean).length;
-    if (depth > 0) {
-      btn.href = '../'.repeat(depth);
-    }
-  }
-
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce) return; // show final state immediately, no motion
 
