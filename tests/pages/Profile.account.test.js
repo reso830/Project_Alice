@@ -149,6 +149,6 @@ describe('Profile — Account section', () => {
     expect(api.deleteAccount).toHaveBeenCalledWith({ confirm: 'DELETE' });
     expect(getSection(container, 'SETTINGS').textContent).toContain('UPDATES');
     expect(getSection(container, 'SETTINGS').textContent).toContain('Current version');
-    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.5');
+    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.6');
   });
 });

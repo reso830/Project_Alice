@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.6] — 2026-07-08
+
+Quick-action hover tooltips — application cards and the Calendar's Suggested Actions now show native hover tooltips on their icon buttons. (#114)
+
+### Fixed
+
+- **Missing hover tooltips on quick-action buttons** — the icon buttons on application cards (edit, change status, copy URL, star/unstar, archive) and on the Calendar's Suggested Actions rows (open application, dismiss suggestion) set `aria-label` for screen readers but had no `title`, so sighted users got no native hover tooltip. Each button now also sets a concise `title` (e.g. "Edit", "Copy URL", "Archive", "Dismiss suggestion"), kept short and distinct from the longer `aria-label`. The star button's accessible name and tooltip now stay in sync with its state ("Star"/"Unstar") even after toggling, a terminal-status button surfaces its locked reason in the accessible name, and the Calendar "Mark Ghosted" action gains per-application accessible context. (#114)
+
 ## [1.12.5] — 2026-07-08
 
 Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons in Microsoft Edge. (#117)
@@ -1582,7 +1590,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.5...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.6...HEAD
+[1.12.6]: https://github.com/reso830/Project_Alice/compare/v1.12.5...v1.12.6
 [1.12.5]: https://github.com/reso830/Project_Alice/compare/v1.12.4...v1.12.5
 [1.12.4]: https://github.com/reso830/Project_Alice/compare/v1.12.3...v1.12.4
 [1.12.3]: https://github.com/reso830/Project_Alice/compare/v1.12.2...v1.12.3
