@@ -692,6 +692,38 @@ describe('ProfileEdit page', () => {
     expect(modal.textContent).toContain('Paste text');
   });
 
+  it('drops a first-time smart-import result that resolves after a remount superseded it', async () => {
+    const container = createAppShell();
+    const file = new window.File(['resume'], 'resume.txt', { type: 'text/plain' });
+    let resolveParse;
+
+    api.getProfile.mockResolvedValue(null);
+    parseResume.mockReturnValue(new Promise((resolve) => {
+      resolveParse = resolve;
+    }));
+
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+    chooseGateCard('smart');
+
+    const modal = document.querySelector('.profile-smart-modal');
+    const input = modal.querySelector('.resume-import__input');
+
+    selectResumeFile(input, file);
+    getButton(document, 'Process resume').click();
+    await flushPromises();
+
+    // Simulate navigating away and back (or a fresh landing) before the
+    // in-flight parse above resolves — this bumps the mount generation.
+    await ProfileEdit.mount(container, { navigate: vi.fn() });
+
+    resolveParse({ skills: ['Python'] });
+    await flushPromises();
+
+    const skills = getCard(container, 'SKILLS');
+
+    expect(skills.querySelectorAll('.skill-editor-row')).toHaveLength(0);
+  });
+
   it('shows a collapsed Import Bar for an existing profile and expands inline', async () => {
     const container = createAppShell();
 

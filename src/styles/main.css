@@ -1547,7 +1547,6 @@ textarea.edit-field__control {
   background: rgba(28, 25, 23, .42);
 }
 
-.profile-entry-gate__dialog,
 .profile-smart-modal {
   width: min(100%, 760px);
   max-height: calc(100vh - 40px);
@@ -1568,7 +1567,6 @@ textarea.edit-field__control {
   min-width: 0;
 }
 
-.profile-entry-gate__header,
 .profile-smart-modal__header,
 .profile-import-bar__header {
   display: flex;
@@ -1577,22 +1575,16 @@ textarea.edit-field__control {
   gap: 14px;
 }
 
-.profile-entry-gate__intro,
 .profile-import-bar__copy {
   min-width: 0;
 }
 
-.profile-entry-gate__title,
-.profile-entry-gate__subtitle,
-.profile-entry-gate__card-title,
-.profile-entry-gate__copy,
 .profile-smart-modal__title,
 .profile-import-bar__title,
 .profile-import-bar__subtitle {
   margin: 0;
 }
 
-.profile-entry-gate__title,
 .profile-smart-modal__title {
   color: var(--t1);
   font: 800 24px/1.2 var(--font-ui);
@@ -1604,8 +1596,6 @@ textarea.edit-field__control {
   font: 400 14px/1.4 var(--font-ui);
 }
 
-.profile-entry-gate__subtitle,
-.profile-entry-gate__copy,
 .profile-import-bar__subtitle {
   color: var(--t3);
   font: 13px/1.45 var(--font-ui);
@@ -1636,59 +1626,9 @@ textarea.edit-field__control {
   font-size: 22px;
 }
 
-.profile-entry-gate__cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 20px;
-}
-
-.profile-entry-gate__card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 248px;
-  border: 1px solid var(--border-2);
-  border-radius: var(--r-md);
-  padding: 16px;
-  background: #FFFFFF;
-}
-
 .profile-entry-gate__card--smart {
   border-color: #C7D2FE;
   background: #F8FAFF;
-}
-
-.profile-entry-gate__card.is-disabled {
-  filter: saturate(.72);
-  opacity: .72;
-}
-
-.profile-entry-gate__badge {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #E0E7FF;
-  color: var(--indigo);
-  font: 800 11px/1 var(--font-ui);
-  text-transform: uppercase;
-}
-
-.profile-entry-gate__card-title {
-  color: var(--t1);
-  font: 800 18px/1.2 var(--font-ui);
-}
-
-.profile-entry-gate__bullets {
-  display: grid;
-  gap: 7px;
-  margin: 0 0 auto;
-  padding-left: 18px;
-  color: var(--t2);
-  font: 13px/1.35 var(--font-ui);
 }
 
 .profile-entry-gate__choose,
@@ -2498,18 +2438,9 @@ textarea.edit-field__control {
     overflow: auto;
   }
 
-  .profile-entry-gate__dialog,
   .profile-smart-modal {
     max-height: calc(100vh - 24px);
     padding: 16px;
-  }
-
-  .profile-entry-gate__cards {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-entry-gate__card {
-    min-height: 0;
   }
 
   .profile-import-bar__header {

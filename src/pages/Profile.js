@@ -355,10 +355,18 @@ function renderEmptyProfile(section, navigate) {
           onImportSuccess: (parsedData, aiFieldSet, meta) => {
             navigate('profile-edit', { prefill: parsedData, aiFields: aiFieldSet, meta });
           },
+          onSettingsClick: () => {
+            module.closeEntryFlowModal();
+            focusSettingsSection(_container?.querySelector('.settings-section'));
+          },
           onDismiss: () => {
             // Do nothing, user stays on Profile page
           }
         });
+      }).catch(() => {
+        // ProfileEdit chunk failed to fetch (stale deploy, offline) — fall back
+        // to a plain navigation, which has its own chunk-failure/reload handling.
+        navigate('profile-edit', { highlightImport: true });
       });
     }),
   );

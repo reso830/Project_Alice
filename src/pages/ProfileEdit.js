@@ -1674,7 +1674,7 @@ function trapModalFocus(backdrop, onEscape) {
   return () => document.removeEventListener('keydown', handler);
 }
 
-function closeEntryFlowModal() {
+export function closeEntryFlowModal() {
   if (!_entryFlowModal) {
     return;
   }
@@ -1984,6 +1984,7 @@ function renderEditPage(container) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   if (!_profileExists && !_entryGateDismissed && !_importDone && authStore.getAuthState().status !== 'demo') {
+    const generation = _mountGeneration;
     openSetupGate({
       navigate: _navigate,
       onChooseManual: () => {
@@ -1995,7 +1996,7 @@ function renderEditPage(container) {
         closeEntryFlowModal();
       },
       onImportSuccess: (parsedData, aiFieldSet, meta) => {
-        applyImportedResume(parsedData, aiFieldSet, meta, _mountGeneration);
+        applyImportedResume(parsedData, aiFieldSet, meta, generation);
       }
     });
   }
@@ -2245,4 +2246,4 @@ export function unmount() {
   _importBarExpanded = false;
 }
 
-export const ProfileEdit = { mount, unmount, confirmNavigation, openSetupGate };
+export const ProfileEdit = { mount, unmount, confirmNavigation, openSetupGate, closeEntryFlowModal };
