@@ -9,11 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.12.5] — 2026-07-08
 
-Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons on Chromium/Edge. (#117)
+Duplicate password-reveal icon fix — password fields no longer show two overlapping "eye" icons in Microsoft Edge. (#117)
 
 ### Fixed
 
-- **Duplicate password-reveal eye icon** — Chromium/Edge render a native reveal control (`::-ms-reveal` / `::-ms-clear`) inside `<input type="password">` fields, which stacked on top of the app's own custom show/hide toggle on the Login and Signup forms. A CSS rule now suppresses the native controls on `.auth-form__input` (and the `.edit-field__control` password fields in edit-profile), so only the app's own toggle is visible on every browser. (#117)
+- **Duplicate password-reveal eye icon** — Microsoft Edge renders a native reveal control (`::-ms-reveal`) inside password fields by default, which overlapped the app's custom show/hide toggle button on the Login and Signup forms, as well as the OpenRouter API key field in Profile › Connection. A scoped CSS rule now suppresses these browser-native controls on password inputs that have custom toggles, ensuring only the app's own eye icon is visible. (#117)
 
 ## [1.12.4] — 2026-07-07
 
