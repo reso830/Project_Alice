@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.12.11 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.12.11');
-    expect(APP_VERSION).toBe('v1.12.11');
+  it('keeps the 1.12.12 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.12.12');
+    expect(APP_VERSION).toBe('v1.12.12');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.12.11');
-    expect(lock.packages['']?.version).toBe('1.12.11');
+    expect(lock.version).toBe('1.12.12');
+    expect(lock.packages['']?.version).toBe('1.12.12');
 
-    expect(read('README.md')).toContain('Current version: **1.12.11**');
+    expect(read('README.md')).toContain('Current version: **1.12.12**');
+    expect(read('CHANGELOG.md')).toContain('## [1.12.12] — 2026-07-09');
     expect(read('CHANGELOG.md')).toContain('## [1.12.11] — 2026-07-08');
     expect(read('CHANGELOG.md')).toContain('## [1.12.10] — 2026-07-08');
     expect(read('CHANGELOG.md')).toContain('## [1.12.9] — 2026-07-08');
@@ -53,7 +54,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.11...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.12...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12');
     expect(read('CHANGELOG.md')).toContain('[1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11');
     expect(read('CHANGELOG.md')).toContain('[1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10');
     expect(read('CHANGELOG.md')).toContain('[1.12.9]: https://github.com/reso830/Project_Alice/compare/v1.12.8...v1.12.9');

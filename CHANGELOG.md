@@ -1645,7 +1645,7 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.11...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.12...HEAD
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
 [1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12
