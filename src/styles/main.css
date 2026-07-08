@@ -12400,6 +12400,18 @@ button.welcome__footer-link {
   padding-right: 40px;
 }
 
+/* Suppress Microsoft Edge native password-reveal controls on inputs with custom toggles */
+.auth-form__input::-ms-reveal,
+.conn-panel__field .edit-field__control::-ms-reveal {
+  display: none;
+}
+
+/* Suppress native clear controls defensively on custom toggle inputs */
+.auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-clear,
+.conn-panel__field .edit-field__control::-ms-clear {
+  display: none;
+}
+
 .auth-form__password-toggle {
   position: absolute;
   top: 50%;
