@@ -1,4 +1,4 @@
-import aliceWhite from '../assets/logo/alice-sigil-full-white.svg';
+import aliceSigil from '../assets/logo/alice-sigil-full.svg';
 
 let _container = null;
 
@@ -25,7 +25,7 @@ export function mount(container) {
   const brand = el('div', 'config-error__brand');
   const mark = document.createElement('img');
   mark.className = 'config-error__brand-mark';
-  mark.src = aliceWhite;
+  mark.src = aliceSigil;
   mark.alt = '';
   const wordmark = el('span', 'config-error__brand-text', 'Project Alice');
   brand.append(mark, wordmark);

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/assets/logo/alice-sigil-full-white.svg', () => ({
-  default: '/alice-sigil-full-white.svg',
+vi.mock('../../src/assets/logo/alice-sigil-full.svg', () => ({
+  default: '/alice-sigil-full.svg',
 }));
 
 import { ConfigError } from '../../src/pages/ConfigError.js';
@@ -37,7 +37,9 @@ describe('ConfigError', () => {
   it('renders the Project Alice brand block', () => {
     ConfigError.mount(container);
 
-    expect(container.querySelector('.config-error__brand-mark')).not.toBeNull();
+    const brandMark = container.querySelector('.config-error__brand-mark');
+    expect(brandMark).not.toBeNull();
+    expect(brandMark.src).toContain('alice-sigil-full.svg');
     expect(container.querySelector('.config-error__brand-text')?.textContent).toBe('Project Alice');
   });
 
