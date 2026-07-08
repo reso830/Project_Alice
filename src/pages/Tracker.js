@@ -2,6 +2,7 @@ import { Card } from '../components/Card.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { CreationPicker } from '../components/CreationPicker.js';
 import { EmptyPane } from '../components/EmptyPane.js';
+import { ErrorPane } from '../components/ErrorPane.js';
 import { Fab } from '../components/Fab.js';
 import { Modal } from '../components/Modal.js';
 import { PaneLoading } from '../components/PaneLoading.js';
@@ -22,7 +23,6 @@ import {
   syncDynamicSelections,
 } from '../utils/filterSort.js';
 import { PAGE_SIZE, getPaginationModel } from '../utils/pagination.js';
-import { renderInlineError } from '../utils/asyncUI.js';
 import { buildApplicationListSkeleton, buildTrackerBootSkeleton } from '../utils/skeletons.js';
 
 let _container = null;
@@ -58,7 +58,8 @@ let _footerMeasureFrame = null;
 let _footerMeasureHandler = null;
 
 const FILTER_STORAGE_KEY = 'apptracker_filters';
-const APPLICATIONS_LOAD_ERROR_MESSAGE = "Couldn't load your applications. Check your connection or try again.";
+const APPLICATIONS_LOAD_ERROR_TITLE = "Couldn't load your applications";
+const APPLICATIONS_LOAD_ERROR_MESSAGE = 'Something went wrong while loading your applications. This is usually temporary — your data is safe and nothing was lost.';
 const DESKTOP_WORKSPACE_QUERY = '(min-width: 1100px)';
 
 function coerceId(id) {
@@ -543,11 +544,16 @@ function showApplicationLoadError(onRetry) {
     getListHost()?.append(target);
   }
   _listStateEl = target;
-  renderInlineError({
-    target,
+  const pane = ErrorPane.render({
+    title: APPLICATIONS_LOAD_ERROR_TITLE,
     message: APPLICATIONS_LOAD_ERROR_MESSAGE,
+    code: 'LOAD_FAILED',
     onRetry,
   });
+
+  target.replaceChildren(pane);
+  target.removeAttribute('aria-busy');
+  pane.querySelector('.error-pane__retry')?.focus();
 }
 
 function focusCardList() {

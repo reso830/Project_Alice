@@ -55,7 +55,7 @@ describe('WS4 route-level code splitting', () => {
       const calendarSource = fs.readFileSync(path.join(assetsDir, calendarChunk), 'utf8');
       const profileSource = fs.readFileSync(path.join(assetsDir, profileChunk), 'utf8');
       const profileEditSource = fs.readFileSync(path.join(assetsDir, profileEditChunk), 'utf8');
-      const trackerMarker = "Couldn't load your applications. Check your connection or try again.";
+      const trackerMarker = 'Something went wrong while loading your applications. This is usually temporary — your data is safe and nothing was lost.';
 
       expect(mainSource).toContain(trackerMarker);
       expect(calendarSource).not.toContain(trackerMarker);

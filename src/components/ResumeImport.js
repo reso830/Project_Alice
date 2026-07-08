@@ -687,7 +687,15 @@ export const ResumeImport = {
       }
 
       if (!forceRuleBased && canUseAiParser()) {
-        const rawText = pastedText || await extractText(selectedFile);
+        let rawText;
+
+        try {
+          rawText = pastedText || await extractText(selectedFile);
+        } catch (error) {
+          return {
+            reason: mapErrorToReason(error),
+          };
+        }
 
         if (!hasEnoughMachineReadableText(rawText)) {
           return {
@@ -715,10 +723,16 @@ export const ResumeImport = {
         }
       }
 
-      return {
-        ...await runRuleBasedParser(),
-        source: 'basic',
-      };
+      try {
+        return {
+          ...await runRuleBasedParser(),
+          source: 'basic',
+        };
+      } catch (error) {
+        return {
+          reason: mapErrorToReason(error),
+        };
+      }
     }
 
     async function processSelectedInput({ forceRuleBased = false } = {}) {
@@ -739,9 +753,18 @@ export const ResumeImport = {
       const status = renderProcessing();
 
       try {
-        const result = forceRuleBased
-          ? { ...await runRuleBasedParser(pendingBasicText), source: 'basic' }
-          : await runParser({ forceRuleBased });
+        let result;
+
+        if (forceRuleBased) {
+          try {
+            result = { ...await runRuleBasedParser(pendingBasicText), source: 'basic' };
+          } catch (error) {
+            result = { reason: mapErrorToReason(error) };
+          }
+        } else {
+          result = await runParser({ forceRuleBased });
+        }
+
         clearProcessingTimer();
         if (!result) {
           return null;
