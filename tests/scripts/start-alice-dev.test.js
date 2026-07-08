@@ -21,7 +21,9 @@ afterEach(() => {
 });
 
 describe('Start-Alice-Dev launcher', () => {
-  test('renames .env.local before starting local Alice', () => {
+  // The launcher is a PowerShell script; only exercise it on Windows runners.
+  // CI (ubuntu-latest) has no powershell.exe, so this is skipped there.
+  test.runIf(process.platform === 'win32')('renames .env.local before starting local Alice', () => {
     const tempRoot = createTempProject();
     const envPath = path.join(tempRoot, '.env.local');
     const envContents = 'APP_RUNTIME=hosted\nSUPABASE_URL=https://example.supabase.co\n';
