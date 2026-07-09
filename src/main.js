@@ -1,5 +1,4 @@
 import './styles/main.css';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import { BottomTabBar } from './components/BottomTabBar.js';
 import { Footer } from './components/Footer.js';
 import { LegalModal } from './components/LegalModal.js';
@@ -17,6 +16,7 @@ import { isHostedAuthAvailable } from './services/supabaseClient.js';
 import { renderInlineError } from './utils/asyncUI.js';
 import { toISODate } from './utils/date.js';
 import { buildTrackerBootSkeleton } from './utils/skeletons.js';
+import { reportPageview, reportVercelObservability, _resetForTesting as _resetVercelObservabilityForTesting } from './utils/vercelObservability.js';
 import { Toast } from './components/Toast.js';
 import { UpdateToast } from './components/UpdateToast.js';
 
@@ -485,16 +485,10 @@ export function _resetForTesting() {
   Object.assign(LAZY_PAGE_IMPORTERS, DEFAULT_LAZY_PAGE_IMPORTERS);
   resetUpdateStatusForTesting();
   resetUpdateControllerForTesting();
+  _resetVercelObservabilityForTesting();
 }
 
 export async function bootstrap(deps = {}) {
-  // Report Core Web Vitals to Vercel Speed Insights. The package only sends
-  // data from the production Vercel deployment; in local/dev (e.g. a GitHub
-  // checkout) it no-ops and logs to the console, preserving the local-first
-  // principle. It measures page-level performance only — never application
-  // data — and was explicitly enabled per the constitution's privacy clause.
-  injectSpeedInsights();
-
   const existingRoot = document.querySelector('#app');
   const existingFooter = document.querySelector('.site-footer');
   if (!existingRoot?.querySelector(STARTUP_LOADER_SELECTOR)) {
@@ -518,6 +512,14 @@ export async function bootstrap(deps = {}) {
     _healthSettled = true;
     const pendingState = _pendingLocalModeState;
     _pendingLocalModeState = null;
+
+    // Gate Vercel observability on the resolved runtime rather than each
+    // package's own dev/prod detection (see src/utils/vercelObservability.js).
+    // health and authStore.init() run concurrently (WS2), so this is not a
+    // guarantee that the auth-callback URL has already been scrubbed by the
+    // time this fires — vercelObservability's beforeSend redacts it
+    // regardless of that race.
+    reportVercelObservability({ runtime: result.health?.runtime });
 
     if (result.configError) {
       // C3/C4: mountConfigError() sets _configErrorMounted, which render()
@@ -595,9 +597,17 @@ export async function navigate(page, options = {}) {
   appRoot.replaceChildren();
 
   // N6: nav highlight updates before the import() is awaited, not after.
+  // Web Analytics' own auto-track only ever sees this app's very first load
+  // (this router never touches the History API — see reportPageview's own
+  // comment), so the first navigate() call is left to auto-track and every
+  // later one is reported manually here, to avoid double-counting the first.
+  const isFirstNavigation = _currentPage === null;
   _currentPage = page;
   Navbar.setActive(activePage);
   BottomTabBar.setActive(activePage);
+  if (!isFirstNavigation) {
+    reportPageview(page);
+  }
 
   if (page === 'tracker') {
     // N5: Tracker stays eagerly imported — no chunk fetch on landing.

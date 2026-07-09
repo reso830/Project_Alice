@@ -660,26 +660,56 @@ boot path and the repository implementation differ.
 
 ---
 
-## Observability — Speed Insights
+## Observability — Speed Insights & Web Analytics
 
-The hosted Vercel deployment reports **Core Web Vitals** (LCP, CLS, INP,
-and related real-user performance metrics) to **Vercel Speed Insights**
-via the `@vercel/speed-insights` package, injected once on app bootstrap
-in [`src/main.js`](../src/main.js).
+The hosted Vercel deployment reports to two Vercel tools, both gated by a
+single module, [`src/utils/vercelObservability.js`](../src/utils/vercelObservability.js),
+called once from app bootstrap in [`src/main.js`](../src/main.js):
 
-- **Production-only.** The package only sends data from the production
-  Vercel deployment. In local mode (e.g. a GitHub checkout) and dev it
-  no-ops and logs to the console — no metrics leave the machine. This
-  preserves the constitution's local-first principle.
-- **Page performance only.** It measures page-level timings, never
-  application data. No cookies, no `localStorage`, no PII.
-- **Enable in the dashboard.** Collection requires turning on the
-  **Speed Insights** tab for the project in the Vercel dashboard. Until
-  that toggle is on, the injected script reports nothing. No environment
-  variables are required.
+- **Vercel Speed Insights** (`@vercel/speed-insights`) — **Core Web Vitals**
+  (LCP, CLS, INP, and related real-user performance metrics). Page-level
+  timings only, never application data. No cookies, no `localStorage`,
+  no PII.
+- **Vercel Web Analytics** (`@vercel/analytics`) — anonymized
+  **visitor/traffic stats** (page views, visitor counts, referrer sources,
+  country-level geography). Cookieless by design; never sees application
+  data, passwords, or PII (job titles, companies, salary info, resume
+  content).
+
+Both share the same guarantees, enforced in code rather than left to
+either vendor package's own dev/prod detection:
+
+- **Hosted-only, by an app-level gate.** `vercelObservability.js` only
+  injects either script once the boot-time health check confirms
+  `runtime === 'hosted'` — not merely a production build, which a
+  local/portable `vite build` also is. Local mode and the Portable
+  Package never load either script at all, so no request to a Vercel
+  domain happens there, preserving the constitution's local-first
+  principle. (`npm run dev` previously still loaded an external debug
+  script from Vercel's CDN despite being "local" — this gate fixes that.)
+- **Suppressed during Demo Mode.** A shared `beforeSend` drops every event
+  for the lifetime of any session that becomes Demo Mode (feature 020),
+  re-checked per event — Demo Mode runs on the same hosted production
+  bundle as authenticated Hosted Mode, so without this, anonymous demo
+  visitors would be tracked identically to signed-in users.
+- **Auth-callback URLs are redacted.** The same `beforeSend` strips
+  Supabase auth-callback artifacts (`#access_token=...`, `?auth=callback`)
+  from any URL before it is reported, as defense-in-depth alongside the
+  app's own callback cleanup in `WelcomePage`.
+- **Enable in the dashboard.** Collection additionally requires turning on
+  the **Speed Insights** and **Web Analytics** tabs for the project in the
+  Vercel dashboard — independently of the code gate above, both must be on
+  for data to flow. No environment variables are required.
+- **Redeploy after enabling.** Toggling a tab on adds its data-collection
+  route (e.g. `/_vercel/insights/*`) to the *next* deployment, not
+  retroactively to the one currently running. If you enable a tab after
+  the app is already deployed, trigger a new deployment before data
+  starts flowing — otherwise the injected script keeps failing silently
+  against a route that doesn't exist yet on the live deployment.
 - **Governance.** This is an explicit, scoped exception to the
   constitution's "third-party data sharing absent by default" clause,
-  recorded in [`.specify/memory/constitution.md`](../.specify/memory/constitution.md).
+  recorded in [`.specify/memory/constitution.md`](../.specify/memory/constitution.md)
+  (Amendments 1.5.0, 1.7.0, 1.7.1).
 
 ---
 

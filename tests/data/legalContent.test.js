@@ -45,7 +45,7 @@ describe('legalContent', () => {
   describe('Privacy Policy', () => {
     it('has the real title, version, and disclaimer', () => {
       expect(PRIVACY_POLICY.title).toBe('Privacy Policy');
-      expect(PRIVACY_POLICY.version).toBe('v1.0 · Effective July 6, 2026');
+      expect(PRIVACY_POLICY.version).toBe('v1.2 · Effective July 9, 2026');
       expect(PRIVACY_POLICY.disclaimer).toContain('Notice:');
     });
 

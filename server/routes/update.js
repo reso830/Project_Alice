@@ -5,7 +5,7 @@ import process from 'node:process';
 import zlib from 'node:zlib';
 import express from 'express';
 
-import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
+import { APP_VERSION } from '../appVersion.js';
 import { readUpdateSettings, writeUpdateSettings } from '../portable/settings.js';
 
 const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/reso830/Project_Alice/releases/latest';

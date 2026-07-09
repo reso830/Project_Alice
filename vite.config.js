@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { defineConfig } from 'vite';
 import { stripStartupLoaderMarkup } from './shared/startupLoader.js';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
 
 const HOSTED_FRONTEND_REQUIRED = [
   'VITE_SUPABASE_URL',
@@ -41,6 +44,7 @@ export default defineConfig({
     __BUILD_MONTH__: JSON.stringify(
       new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
     ),
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
     proxy: {

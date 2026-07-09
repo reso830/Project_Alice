@@ -1,6 +1,6 @@
 {
   "name": "project-alice",
-  "version": "1.12.12",
+  "version": "1.13.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -39,6 +39,7 @@
     "@fontsource/sora": "^5.2.8",
     "@napi-rs/canvas": "0.1.80",
     "@supabase/supabase-js": "^2.45.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "better-sqlite3": "^12.9.0",
     "express": "^4.22.2",

@@ -7,6 +7,20 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-07-09
+
+Vercel Web Analytics — hosted deployments now report anonymized visitor/traffic stats alongside the existing Speed Insights performance metrics, both gated by a single app-level module instead of vendor-package defaults. (#132)
+
+### Added
+
+- **Vercel Web Analytics** — the hosted Vercel deployment now reports anonymized visitor/traffic stats (page views, visitor counts, referrer sources, country-level geography) to Vercel Web Analytics via `@vercel/analytics`. Cookieless by design and never sees application data, passwords, or PII (job titles, companies, salary info, resume content). Explicitly enabled per the constitution's privacy clause, recorded as Amendments 1.7.0/1.7.1 in `constitution.md`. Requires enabling the Web Analytics tab in the Vercel dashboard (and a fresh deploy if enabled after the fact) to collect data. (#132)
+- **`src/utils/vercelObservability.js`** — both Speed Insights and Web Analytics now inject through this one shared module instead of two separate, near-duplicated bootstrap calls. It gates on the boot-time health check (`runtime === 'hosted'`) rather than each vendor package's own dev/prod detection, which only reflected the Vite build mode and could still fire in `npm run dev`; suppresses every event for the lifetime of any session that becomes Demo Mode (feature 020), since Demo Mode runs on the same hosted bundle as authenticated Hosted Mode and neither package has any notion of it; and redacts Supabase auth-callback URL artifacts (`#access_token=...`, `?auth=callback`) from any reported URL as defense-in-depth. Also adds manual `pageview()` tracking to in-app navigation (`navigate()` in `src/main.js`), since this app's router never changes the URL and Web Analytics' automatic tracking only sees History API changes — without this, only the very first page load was being counted. (#132)
+
+### Changed
+
+- **Privacy Policy updated to v1.2** — `legal/privacy.md` §4.6 (Technical Information) now describes the actual code-level gate (hosted-only, Demo Mode suppressed) instead of relying on vendor-package "no-op" behavior, and discloses Vercel Web Analytics alongside the existing Speed Insights disclosure. (#132)
+- **`APP_VERSION` is now derived from `package.json` at build/test time** via a new Vite `define` (`__APP_VERSION__`), instead of being hand-maintained separately in `src/pages/welcome/shared/appMeta.js`. Future release bumps only need to touch `package.json`/`package-lock.json`. (#132)
+
 ## [1.12.12] — 2026-07-09
 
 Auto-update audit polish — fixes three low-priority, cosmetic follow-ups from the post-#92 update audit. (#103)
@@ -1645,7 +1659,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.12...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
 [1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12

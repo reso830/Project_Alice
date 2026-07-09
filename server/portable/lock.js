@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
+import { APP_VERSION } from '../appVersion.js';
 
 const LOCK_FILE = 'alice.lock';
 const PENDING_WAIT_MS = 5000;
