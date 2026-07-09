@@ -576,7 +576,9 @@ describe('update route behavior', () => {
     const root = makeRoot();
     const zipBuffer = fs.readFileSync(fixtureZip);
     const assetBaseUrl = await makeUpdateAssetServer({ zipBuffer, chunkDelayMs: 400 });
-    let nowMs = 1_000;
+    const downloadStartMs = 1_000;
+    const downloadCheckMs = 2_000;
+    let nowMs = downloadStartMs;
     process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root, {
       assets: [
         { name: 'update-v1.10.0.zip', browser_download_url: `${assetBaseUrl}/update.zip`, size: zipBuffer.length },
@@ -589,16 +591,17 @@ describe('update route behavior', () => {
     });
 
     await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
-    nowMs = 2_000;
+    nowMs = downloadCheckMs;
     const progress = await waitForStatusMatch(
       baseUrl,
       (body) => body.status === 'downloading' && body.progress > 0 && body.progress < 100,
       'partial download progress with ETA',
     );
 
+    const elapsedSeconds = (downloadCheckMs - downloadStartMs) / 1000;
     expect(progress.secondsRemaining).toBeGreaterThanOrEqual(1);
     expect(progress.secondsRemaining).toBe(
-      Math.ceil((progress.bytesTotal - progress.bytesDownloaded) / (progress.bytesDownloaded / 1)),
+      Math.ceil((progress.bytesTotal - progress.bytesDownloaded) / (progress.bytesDownloaded / elapsedSeconds)),
     );
   });
 
@@ -723,6 +726,29 @@ describe('update route behavior', () => {
       latestVersion: '1.10.0',
     });
     expect(onShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  test('rejects cancel once a restart has been requested, preserving the staged update', async () => {
+    const root = makeRoot();
+    const onShutdown = vi.fn();
+    process.env.ALICE_UPDATE_SOURCE_OVERRIDE = writeRelease(root);
+    const { baseUrl, dataDir } = await makeServer({
+      dataDir: path.join(root, 'data'),
+      onShutdown,
+    });
+    await requestJson(baseUrl, '/api/update/download', { method: 'POST' });
+    await waitForStatus(baseUrl, 'ready-to-restart');
+    await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+
+    const cancel = await requestJson(baseUrl, '/api/update/cancel', { method: 'POST' });
+
+    expect(cancel.response.status).toBe(409);
+    expect(cancel.body.error.code).toBe('UPDATE_ALREADY_INSTALLING');
+    expect(fs.existsSync(path.join(dataDir, 'update-staging', 'alice'))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, 'update-pending.json'))).toBe(true);
+
+    const status = await requestJson(baseUrl, '/api/update/status');
+    expect(status.body.status).toBe('installing');
   });
 
   test('background checks do not clobber a staged update that is ready to restart', async () => {

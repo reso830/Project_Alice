@@ -383,7 +383,7 @@ function readPendingFailure(dataDir) {
   }
 }
 
-function publicStatus(state, now = () => new Date()) {
+function publicStatus(state, now) {
   const status = { ...state.status };
   if (status.status !== READY_STATUS) {
     delete status.stagedPath;
@@ -621,6 +621,16 @@ export function createUpdateRouter({
   });
 
   router.post('/cancel', (_req, res) => {
+    if (state.status.status === 'installing') {
+      res.status(409).json({
+        error: {
+          code: 'UPDATE_ALREADY_INSTALLING',
+          message: 'Alice is already restarting to apply the update.',
+        },
+      });
+      return;
+    }
+
     if (!state.downloadPromise || !state.downloadController) {
       clearStagedUpdate();
       resetUpdateStatus();
