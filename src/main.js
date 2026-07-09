@@ -514,9 +514,11 @@ export async function bootstrap(deps = {}) {
     _pendingLocalModeState = null;
 
     // Gate Vercel observability on the resolved runtime rather than each
-    // package's own dev/prod detection (see src/utils/vercelObservability.js)
-    // — deferring to here also means injection only happens after authStore's
-    // getSession() has had its chance to consume the auth-callback URL.
+    // package's own dev/prod detection (see src/utils/vercelObservability.js).
+    // health and authStore.init() run concurrently (WS2), so this is not a
+    // guarantee that the auth-callback URL has already been scrubbed by the
+    // time this fires — vercelObservability's beforeSend redacts it
+    // regardless of that race.
     reportVercelObservability({ runtime: result.health?.runtime });
 
     if (result.configError) {
