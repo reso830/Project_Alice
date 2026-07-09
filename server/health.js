@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-import { APP_VERSION } from '../src/pages/welcome/shared/appMeta.js';
+import { APP_VERSION } from './appVersion.js';
 
 // PostgREST error codes that mean "migration not applied":
 const UNDEFINED_COLUMN = '42703';

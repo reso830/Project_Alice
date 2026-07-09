@@ -1,20 +1,43 @@
 <!--
+Sync Impact Report (1.7.1 — 2026-07-09)
+Version change: 1.7.0 -> 1.7.1
+Reason: Amendment 1.7.1 (PATCH, clarification only) — corrects the Amendment
+1.5.0 and 1.7.0 exception paragraphs, which described the Speed Insights /
+Web Analytics exception as bounded by each vendor package's own dev/prod
+detection. That was inaccurate in two ways caught in review of the Web
+Analytics PR: `npm run dev` still loaded an external Vercel script (not a
+true no-op), and Demo Mode visitors on the real hosted deployment were
+tracked exactly like authenticated users. Both tools are now called from a
+single app-level gate (`src/utils/vercelObservability.js`) keyed off the
+resolved runtime and auth state instead of the packages' own detection. No
+principle is redefined and no new exception is created — see the full
+Amendment 1.7.1 entry below for detail.
+Modified principles: none redefined.
+Modified sections:
+- Privacy, Accessibility, and Extensibility Constraints — 1.5.0/1.7.0
+  exception paragraphs corrected to describe the actual app-level gate.
+Templates requiring updates: none.
+Follow-up TODOs: none.
+
+---
+
 Sync Impact Report (1.7.0 — 2026-07-09)
 Version change: 1.6.0 -> 1.7.0
-Reason: Amendment 1.7.0 — records a second explicit, scoped exception to
-the privacy clause's "Analytics, tracking, and third-party data sharing
-MUST be absent by default" rule. Vercel Web Analytics is enabled on the
-hosted deployment to report anonymized visitor/traffic stats (page views,
-visitor counts, referrer sources, and country-level geography) so operators
-can monitor usage, debug issues, and prioritize improvements for hosted
-Alice (issue #132). Amendment 1.5.0 explicitly named Web Analytics as still
-prohibited absent its own amendment; this is that record. The exception is
-broader in kind than 1.5.0's performance-only Speed Insights exception — it
-covers visitor behavior, not just page timing — but stays narrow: no
-application data, no cookies, no PII (job titles, companies, salary, resume
-content) is ever collected, matching Vercel Web Analytics' cookieless-by-
-default design. Local mode is unaffected — the @vercel/analytics package
-no-ops outside the production Vercel deployment, so local-first is preserved.
+Reason: Amendment 1.7.0 — extends the Amendment 1.5.0 exception (see that
+entry for the full rationale) to a second Vercel tool. Vercel Web Analytics
+is enabled on the hosted deployment to report anonymized visitor/traffic
+stats (page views, visitor counts, referrer sources, country-level
+geography) so operators can monitor usage, debug issues, and prioritize
+improvements for hosted Alice (issue #132). 1.5.0 had explicitly named Web
+Analytics as still prohibited absent its own amendment; this is that record.
+Unlike 1.5.0, enforcement is not left to the vendor packages' own dev/prod
+detection (which only reflects Vite's build mode, not whether this is
+genuinely the hosted deployment, and has no concept of Demo Mode): both
+tools are gated by `src/utils/vercelObservability.js`, which only injects
+either script once the boot-time health check confirms `runtime === 'hosted'`,
+and drops every event for the lifetime of any session that becomes Demo
+Mode. See Amendment 1.7.1 for the follow-up that documents this mechanism
+against 1.5.0 as well.
 Modified principles: none redefined.
 Modified sections:
 - Privacy, Accessibility, and Extensibility Constraints — privacy clause
@@ -243,24 +266,50 @@ Templates updated: .specify/templates/plan-template.md (Visual-Fidelity Mode),
 Follow-up TODOs: none
 
 Amendment 1.7.0 — 2026-07-09
-Reason: Enabled Vercel Web Analytics on the hosted deployment to report
-anonymized visitor/traffic stats (page views, visitor counts, referrer
-sources, and country-level geography). Hosted operators had no visibility
-into traffic volume or usage patterns — Speed Insights (Amendment 1.5.0)
-reports only page-level performance, not who is visiting or how much. This
-was requested to support quality-of-service monitoring, debugging, and
-improvement prioritization for hosted Alice (issue #132). Amendment 1.5.0
-had explicitly named Web Analytics as still prohibited absent its own
-amendment; this is that explicit record. The exception stays narrow: Vercel
-Web Analytics is cookieless by design and reports only aggregated,
-anonymized visitor metrics — never application data, passwords, or PII (job
-titles, companies, salary info, resume content). Local mode is unaffected —
-the @vercel/analytics package no-ops outside the production Vercel
-deployment, so local-first is preserved.
+Reason: Extends the Amendment 1.5.0 exception to Vercel Web Analytics, which
+1.5.0 had explicitly left prohibited absent its own amendment; this is that
+record (issue #132). Hosted operators had no visibility into traffic volume
+or usage patterns — Speed Insights reports only page-level performance, not
+who is visiting or how much. Web Analytics is cookieless by design and
+reports only aggregated, anonymized visitor metrics (page views, visitor
+counts, referrer sources, country-level geography) — never application
+data, passwords, or PII. See Amendment 1.7.1 for how this exception, and
+1.5.0's, are actually enforced in code.
 Modified principles: none redefined.
 Modified sections:
 - Privacy, Accessibility, and Extensibility Constraints — privacy clause
   annotated with the Web Analytics exception.
+Templates updated: none.
+Follow-up TODOs: none.
+
+Amendment 1.7.1 — 2026-07-09
+Reason: Corrects how Amendments 1.5.0 and 1.7.0 are actually enforced.
+Both prior entries described the exception as bounded by each vendor
+package's own "no-ops outside the production Vercel deployment" behavior.
+That was inaccurate: @vercel/speed-insights and @vercel/analytics detect
+"production" from `process.env.NODE_ENV`, which only reflects the Vite
+build mode — a portable/local `vite build` is also a "production" build —
+and neither package has any concept of this app's Demo Mode (a client-side
+auth state, not a build or deployment). In practice this meant `npm run dev`
+loaded an external Vercel debug script (a real third-party network call),
+and Demo Mode visitors on the real hosted deployment were tracked exactly
+like authenticated users, contradicting both this constitution's local-first
+principle and the Privacy Policy's Demo Mode disclosure. Both packages are
+now called from a single gate, `src/utils/vercelObservability.js`: injection
+only happens once the boot-time health check confirms `runtime === 'hosted'`
+(not merely a production build), and a shared `beforeSend` drops every event
+for the lifetime of any session that becomes Demo Mode, re-checked per
+event. The same `beforeSend` also redacts Supabase auth-callback URL
+artifacts (`#access_token=...`, `?auth=callback`) from any URL before it is
+reported, as defense-in-depth alongside the app's existing callback cleanup
+in WelcomePage. This is a clarifying, non-semantic correction — the scope of
+what may be collected is unchanged; only the description of how the
+exception is bounded is corrected — hence a PATCH version bump.
+Modified principles: none redefined.
+Modified sections:
+- Privacy, Accessibility, and Extensibility Constraints — the Amendment
+  1.5.0 and 1.7.0 exception paragraphs now describe the actual app-level
+  gate instead of the vendor packages' own environment detection.
 Templates updated: none.
 Follow-up TODOs: none.
 -->
@@ -381,27 +430,28 @@ expose application data, sensitive notes, or usage details to external services
 unless a later specification explicitly requires it. Analytics, tracking, and
 third-party data sharing MUST be absent by default.
 
-**Scoped exception (Amendment 1.5.0):** Vercel Speed Insights is enabled on
-the hosted Vercel deployment to report anonymized Core Web Vitals (page-level
-performance metrics only — never application data, no cookies, no PII). This
-is the explicit record required by the clause above. The exception is narrow:
-it covers performance telemetry only, and the `@vercel/speed-insights` package
-no-ops outside the production Vercel deployment, so local mode reports nothing
-and the local-first principle is preserved.
+**Scoped exceptions (Amendments 1.5.0, 1.7.0, 1.7.1):** Vercel Speed Insights
+and Vercel Web Analytics are enabled on the hosted Vercel deployment — Speed
+Insights reports anonymized Core Web Vitals (page-level performance only);
+Web Analytics reports anonymized visitor/traffic stats (page views, visitor
+counts, referrer sources, country-level geography). This is the explicit
+record required by the clause above. Both exceptions are narrow: neither
+tool ever sees application data, passwords, or PII (job titles, companies,
+salary info, resume content), and Web Analytics is cookieless by design.
 
-**Scoped exception (Amendment 1.7.0):** Vercel Web Analytics is enabled on
-the hosted Vercel deployment to report anonymized visitor/traffic stats (page
-views, visitor counts, referrer sources, and country-level geography), so
-operators can monitor usage, debug issues, and prioritize improvements. This
-is the explicit record required by the clause above, and by Amendment 1.5.0,
-which had named Web Analytics as prohibited absent this amendment. The
-exception is narrow: Vercel Web Analytics is cookieless by design and reports
-only aggregated, anonymized visitor metrics — never application data,
-passwords, or PII (job titles, companies, salary info, resume content). The
-`@vercel/analytics` package no-ops outside the production Vercel deployment,
-so local mode reports nothing and the local-first principle is preserved. Any
-analytics or tracking beyond these two named, scoped exceptions remains
-prohibited absent its own explicit amendment.
+Enforcement is an app-level gate, not the vendor packages' own dev/prod
+detection (Amendment 1.7.1): `src/utils/vercelObservability.js` only injects
+either script once the boot-time health check confirms `runtime === 'hosted'`
+— not merely a production build, which a local/portable `vite build` also
+is — and a shared `beforeSend` drops every event for the lifetime of any
+session that becomes Demo Mode, checked fresh per event, and redacts
+Supabase auth-callback URL artifacts before anything is reported. Local
+mode, the portable package, and Demo Mode report nothing; `tests/utils/vercelObservability.test.js`
+enforces this gate, and `tests/build/vercel-observability-callsites.test.js`
+enforces that `@vercel/analytics`/`@vercel/speed-insights` are only ever
+imported from that one module. Any analytics or tracking beyond these two
+named, scoped exceptions remains prohibited absent its own explicit
+amendment.
 
 The app MUST be usable on desktop and mobile browsers. Forms MUST have labels and
 clear validation messages. Keyboard navigation MUST work for core workflows.
@@ -452,4 +502,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.7.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-07-09
+**Version**: 1.7.1 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-07-09

@@ -21,6 +21,8 @@ export default [
         TextEncoder: 'readonly',
         URL: 'readonly',
         __dirname: 'readonly',
+        __APP_VERSION__: 'readonly',
+        __BUILD_MONTH__: 'readonly',
         afterEach: 'readonly',
         beforeEach: 'readonly',
         describe: 'readonly',

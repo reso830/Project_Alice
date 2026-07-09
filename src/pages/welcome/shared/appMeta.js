@@ -1,8 +1,9 @@
 // Centralized app-level metadata for chrome (footer + welcome mini footer).
-// Release bumps touch this file, package.json, and package-lock.json. Keep app
-// chrome constants here rather than re-introducing per-component versions.
+// APP_VERSION is derived from package.json at build/test time via Vite's
+// `define` (see vite.config.js) — release bumps only need to touch
+// package.json and package-lock.json now, not this file too.
 
-export const APP_VERSION = 'v1.13.0';
+export const APP_VERSION = `v${__APP_VERSION__}`;
 
 export const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 
