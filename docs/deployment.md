@@ -683,6 +683,32 @@ in [`src/main.js`](../src/main.js).
 
 ---
 
+## Observability — Web Analytics
+
+The hosted Vercel deployment reports anonymized **visitor/traffic stats**
+(page views, visitor counts, referrer sources, and country-level geography)
+to **Vercel Web Analytics** via the `@vercel/analytics` package, injected
+once on app bootstrap in [`src/main.js`](../src/main.js), alongside Speed
+Insights above.
+
+- **Production-only.** The package only sends data from the production
+  Vercel deployment. In local mode (e.g. a GitHub checkout) and dev it
+  no-ops — no metrics leave the machine. This preserves the constitution's
+  local-first principle.
+- **Aggregated visitor stats only.** Vercel Web Analytics is cookieless by
+  design. It never sees application data, passwords, or PII (job titles,
+  companies, salary info, resume content).
+- **Enable in the dashboard.** Collection requires turning on the **Web
+  Analytics** tab for the project in the Vercel dashboard. Until that
+  toggle is on, the injected script reports nothing. No environment
+  variables are required.
+- **Governance.** This is a second, explicit, scoped exception to the
+  constitution's "third-party data sharing absent by default" clause,
+  recorded in [`.specify/memory/constitution.md`](../.specify/memory/constitution.md)
+  (Amendment 1.7.0).
+
+---
+
 ## Demo & Free-Tier Notes
 
 Project Alice's hosted deploy is shaped for free-tier hosting (Vercel

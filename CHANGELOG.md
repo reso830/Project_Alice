@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-07-09
+
+Vercel Web Analytics — hosted deployments now report anonymized visitor/traffic stats alongside the existing Speed Insights performance metrics. (#132)
+
+### Added
+
+- **Vercel Web Analytics** — the hosted Vercel deployment now reports anonymized visitor/traffic stats (page views, visitor counts, referrer sources, country-level geography) to Vercel Web Analytics via `@vercel/analytics`, injected once on app bootstrap alongside `@vercel/speed-insights`. The package only sends data from the production Vercel deployment; in local/dev (e.g. a GitHub checkout) it no-ops, so the local-first principle is preserved. Vercel Web Analytics is cookieless by design and never sees application data, passwords, or PII (job titles, companies, salary info, resume content). Explicitly enabled per the constitution's privacy clause, recorded as Amendment 1.7.0 in `constitution.md`. Requires enabling the Web Analytics tab in the Vercel dashboard to collect data. (#132)
+
+### Changed
+
+- **Privacy Policy updated to v1.1** — `legal/privacy.md` §4.6 (Technical Information) and §8 (Third-Party Services) now disclose Vercel Web Analytics alongside the existing Speed Insights disclosure. (#132)
+
 ## [1.12.12] — 2026-07-09
 
 Auto-update audit polish — fixes three low-priority, cosmetic follow-ups from the post-#92 update audit. (#103)
@@ -1645,7 +1657,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.12.12...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10
 [1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12

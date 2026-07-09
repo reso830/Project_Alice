@@ -2,7 +2,7 @@
 // Release bumps touch this file, package.json, and package-lock.json. Keep app
 // chrome constants here rather than re-introducing per-component versions.
 
-export const APP_VERSION = 'v1.12.12';
+export const APP_VERSION = 'v1.13.0';
 
 export const ISSUE_URL = 'https://github.com/reso830/Project_Alice/issues/new';
 

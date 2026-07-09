@@ -1,4 +1,30 @@
 <!--
+Sync Impact Report (1.7.0 — 2026-07-09)
+Version change: 1.6.0 -> 1.7.0
+Reason: Amendment 1.7.0 — records a second explicit, scoped exception to
+the privacy clause's "Analytics, tracking, and third-party data sharing
+MUST be absent by default" rule. Vercel Web Analytics is enabled on the
+hosted deployment to report anonymized visitor/traffic stats (page views,
+visitor counts, referrer sources, and country-level geography) so operators
+can monitor usage, debug issues, and prioritize improvements for hosted
+Alice (issue #132). Amendment 1.5.0 explicitly named Web Analytics as still
+prohibited absent its own amendment; this is that record. The exception is
+broader in kind than 1.5.0's performance-only Speed Insights exception — it
+covers visitor behavior, not just page timing — but stays narrow: no
+application data, no cookies, no PII (job titles, companies, salary, resume
+content) is ever collected, matching Vercel Web Analytics' cookieless-by-
+default design. Local mode is unaffected — the @vercel/analytics package
+no-ops outside the production Vercel deployment, so local-first is preserved.
+Modified principles: none redefined.
+Modified sections:
+- Privacy, Accessibility, and Extensibility Constraints — privacy clause
+  annotated with the Web Analytics exception, alongside the existing Speed
+  Insights exception.
+Templates requiring updates: none.
+Follow-up TODOs: none.
+
+---
+
 Sync Impact Report (1.6.0 — 2026-07-06)
 Version change: 1.5.0 -> 1.6.0
 Reason: Amendment 1.6.0 — adds a Design Fidelity gate for visual-fidelity
@@ -215,6 +241,28 @@ Templates updated: .specify/templates/plan-template.md (Visual-Fidelity Mode),
 .specify/templates/tasks-template.md (visual-task pattern + Tier-1 harness task
 + conditional artifacts), .specify/templates/checklist-fidelity-template.md (new)
 Follow-up TODOs: none
+
+Amendment 1.7.0 — 2026-07-09
+Reason: Enabled Vercel Web Analytics on the hosted deployment to report
+anonymized visitor/traffic stats (page views, visitor counts, referrer
+sources, and country-level geography). Hosted operators had no visibility
+into traffic volume or usage patterns — Speed Insights (Amendment 1.5.0)
+reports only page-level performance, not who is visiting or how much. This
+was requested to support quality-of-service monitoring, debugging, and
+improvement prioritization for hosted Alice (issue #132). Amendment 1.5.0
+had explicitly named Web Analytics as still prohibited absent its own
+amendment; this is that explicit record. The exception stays narrow: Vercel
+Web Analytics is cookieless by design and reports only aggregated,
+anonymized visitor metrics — never application data, passwords, or PII (job
+titles, companies, salary info, resume content). Local mode is unaffected —
+the @vercel/analytics package no-ops outside the production Vercel
+deployment, so local-first is preserved.
+Modified principles: none redefined.
+Modified sections:
+- Privacy, Accessibility, and Extensibility Constraints — privacy clause
+  annotated with the Web Analytics exception.
+Templates updated: none.
+Follow-up TODOs: none.
 -->
 
 # Application Tracker Constitution
@@ -339,9 +387,21 @@ performance metrics only — never application data, no cookies, no PII). This
 is the explicit record required by the clause above. The exception is narrow:
 it covers performance telemetry only, and the `@vercel/speed-insights` package
 no-ops outside the production Vercel deployment, so local mode reports nothing
-and the local-first principle is preserved. Any broader analytics or
-visitor-tracking (e.g. Vercel Web Analytics) remains prohibited absent its own
-explicit amendment.
+and the local-first principle is preserved.
+
+**Scoped exception (Amendment 1.7.0):** Vercel Web Analytics is enabled on
+the hosted Vercel deployment to report anonymized visitor/traffic stats (page
+views, visitor counts, referrer sources, and country-level geography), so
+operators can monitor usage, debug issues, and prioritize improvements. This
+is the explicit record required by the clause above, and by Amendment 1.5.0,
+which had named Web Analytics as prohibited absent this amendment. The
+exception is narrow: Vercel Web Analytics is cookieless by design and reports
+only aggregated, anonymized visitor metrics — never application data,
+passwords, or PII (job titles, companies, salary info, resume content). The
+`@vercel/analytics` package no-ops outside the production Vercel deployment,
+so local mode reports nothing and the local-first principle is preserved. Any
+analytics or tracking beyond these two named, scoped exceptions remains
+prohibited absent its own explicit amendment.
 
 The app MUST be usable on desktop and mobile browsers. Forms MUST have labels and
 clear validation messages. Keyboard navigation MUST work for core workflows.
@@ -392,4 +452,4 @@ to clarifications and non-semantic wording changes.
 Compliance review is required during specification, planning, task generation,
 implementation review, and final verification.
 
-**Version**: 1.6.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-07-06
+**Version**: 1.7.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-07-09

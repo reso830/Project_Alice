@@ -1,4 +1,5 @@
 import './styles/main.css';
+import { inject as injectWebAnalytics } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { BottomTabBar } from './components/BottomTabBar.js';
 import { Footer } from './components/Footer.js';
@@ -494,6 +495,11 @@ export async function bootstrap(deps = {}) {
   // principle. It measures page-level performance only — never application
   // data — and was explicitly enabled per the constitution's privacy clause.
   injectSpeedInsights();
+
+  // Report anonymized visitor/traffic stats (page views, referrers, country)
+  // to Vercel Web Analytics. Same production-only, no-PII, no-op-in-local
+  // guarantee as Speed Insights above — see Amendment 1.7.0.
+  injectWebAnalytics();
 
   const existingRoot = document.querySelector('#app');
   const existingFooter = document.querySelector('.site-footer');
