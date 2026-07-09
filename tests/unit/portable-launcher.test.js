@@ -67,6 +67,18 @@ describe('portable launcher update swap', () => {
     expect(deleteNextLauncher).toBeGreaterThan(overwriteLauncher);
   });
 
+  test('refreshes the root VERSION file from staged update metadata', () => {
+    const copyVersion = launcher.indexOf('copy /y "%STAGING%\\VERSION" "%ROOT%VERSION"');
+    const copyToNext = launcher.indexOf(
+      'copy /y "%STAGING%\\Start-Alice.cmd" "%NEXT_LAUNCHER%"',
+    );
+    const removeStaging = launcher.indexOf('rmdir /s /q "%ROOT%data\\update-staging"');
+
+    expect(copyVersion).toBeGreaterThan(-1);
+    expect(copyVersion).toBeLessThan(copyToNext);
+    expect(copyVersion).toBeLessThan(removeStaging);
+  });
+
   test('renames active directories to backups before mirroring staged files', () => {
     const applyUpdate = launcher.indexOf(':apply_update');
     const firstDelay = launcher.indexOf('ping -n 2 127.0.0.1 >nul', applyUpdate);

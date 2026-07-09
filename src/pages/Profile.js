@@ -1074,7 +1074,6 @@ function renderUpdateSettingsGroup({ health } = {}) {
     status: 'loading',
     release: null,
     error: null,
-    downloadStartedAt: 0,
   };
   let unsubscribeStatus = null;
   let unsubscribeController = null;
@@ -1104,14 +1103,10 @@ function renderUpdateSettingsGroup({ health } = {}) {
       progress: status.progress ?? state.release?.progress,
       bytesTotal: status.bytesTotal ?? state.release?.bytesTotal,
       bytesDownloaded: status.bytesDownloaded ?? state.release?.bytesDownloaded,
+      secondsRemaining: status.secondsRemaining,
       restartDelayed: status.restartDelayed ?? state.release?.restartDelayed,
       updateAvailable: status.status === 'available',
     };
-    if (state.status === 'downloading' && !state.downloadStartedAt) {
-      state.downloadStartedAt = Date.now();
-    } else if (state.status !== 'downloading') {
-      state.downloadStartedAt = 0;
-    }
   }
 
   function saveSettings(nextSettings) {
@@ -1152,7 +1147,6 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   async function installNow() {
-    state.downloadStartedAt = Date.now();
     await downloadUpdate();
     render();
   }
@@ -1179,17 +1173,7 @@ function renderUpdateSettingsGroup({ health } = {}) {
   }
 
   function etaSuffix() {
-    const total = state.release?.bytesTotal;
-    const done = state.release?.bytesDownloaded;
-    if (!total || !done || !state.downloadStartedAt) {
-      return '';
-    }
-    const elapsed = (Date.now() - state.downloadStartedAt) / 1000;
-    const rate = elapsed > 0 ? done / elapsed : 0;
-    if (rate <= 0) {
-      return '';
-    }
-    const seconds = Math.ceil(Math.max(0, total - done) / rate);
+    const seconds = Number(state.release?.secondsRemaining);
     return Number.isFinite(seconds) ? ` · ~${seconds}s` : '';
   }
 

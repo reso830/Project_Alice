@@ -100,6 +100,7 @@ if exist "%STAGING%\runtime\" (
   )
 )
 
+if exist "%STAGING%\VERSION" copy /y "%STAGING%\VERSION" "%ROOT%VERSION" >nul
 if exist "%STAGING%\Start-Alice.cmd" copy /y "%STAGING%\Start-Alice.cmd" "%NEXT_LAUNCHER%" >nul
 if exist "%PENDING_UPDATE%" del /f /q "%PENDING_UPDATE%" >nul
 rmdir /s /q "%ROOT%data\update-staging"

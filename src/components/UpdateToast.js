@@ -27,7 +27,6 @@ let _onManage = () => {};
 let _reloadPage = () => globalThis.location?.reload?.();
 let _unsubscribeStatus = null;
 let _unsubscribeController = null;
-let _downloadStartedAt = 0;
 let _updateMode = 'ask';
 
 function el(tag, className) {
@@ -88,17 +87,7 @@ function releasedText(publishedAt) {
 }
 
 function etaText(status) {
-  const total = status.bytesTotal;
-  const done = status.bytesDownloaded;
-  if (!total || !done || !_downloadStartedAt) {
-    return '';
-  }
-  const elapsed = (Date.now() - _downloadStartedAt) / 1000;
-  const rate = elapsed > 0 ? done / elapsed : 0;
-  if (rate <= 0) {
-    return '';
-  }
-  const seconds = Math.ceil(Math.max(0, total - done) / rate);
+  const seconds = Number(status.secondsRemaining);
   return Number.isFinite(seconds) ? `~${seconds}s left` : '';
 }
 
@@ -346,13 +335,7 @@ function renderStatus() {
 }
 
 function applyStatus(nextStatus) {
-  const wasDownloading = _status.status === 'downloading';
   _status = { ..._status, ...nextStatus };
-  if (_status.status === 'downloading' && !wasDownloading) {
-    _downloadStartedAt = Date.now();
-  } else if (_status.status !== 'downloading') {
-    _downloadStartedAt = 0;
-  }
   if (Object.hasOwn(_status, 'updateMode')) {
     _updateMode = _status.updateMode === 'notify' ? 'notify' : 'ask';
   }
@@ -361,7 +344,6 @@ function applyStatus(nextStatus) {
 }
 
 async function download() {
-  _downloadStartedAt = Date.now();
   await downloadUpdate();
 }
 
@@ -416,7 +398,6 @@ export function destroy() {
   _unsubscribeController?.();
   _unsubscribeStatus = null;
   _unsubscribeController = null;
-  _downloadStartedAt = 0;
   _updateMode = 'ask';
   _root?.remove();
   _root = null;

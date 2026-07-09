@@ -323,8 +323,8 @@ describe('Profile — AI resume parsing settings', () => {
 
     expect(section.textContent).toContain('UPDATES');
     expect(section.textContent).toContain('Current version');
-    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.11');
-    expect(section.textContent).not.toContain('vv1.12.11');
+    expect(section.querySelector('.update-settings__version-chip')?.textContent).toBe('v1.12.12');
+    expect(section.textContent).not.toContain('vv1.12.12');
     const modeSummary = section.querySelector('.update-mode__summary');
     modeSummary.click();
     expect(section.querySelector('.update-mode__summary').getAttribute('aria-expanded')).toBe('true');
@@ -725,6 +725,7 @@ describe('Profile — AI resume parsing settings', () => {
               currentVersion: 'v1.9.0',
               latestVersion: 'v1.10.0',
               progress: 20,
+              secondsRemaining: 12,
             }
             : {
               status: 'ready-to-restart',
@@ -748,7 +749,7 @@ describe('Profile — AI resume parsing settings', () => {
     await flushPromises(6);
 
     expect(container.textContent).toContain('Downloading');
-    expect(container.textContent).toContain('20%');
+    expect(container.textContent).toContain('20% · ~12s');
     const progress = container.querySelector('.update-settings__progress');
 
     expect(progress.getAttribute('role')).toBe('progressbar');

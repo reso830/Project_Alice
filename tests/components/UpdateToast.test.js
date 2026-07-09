@@ -389,6 +389,31 @@ describe('UpdateToast', () => {
     expect(document.querySelector('.update-toast').hidden).toBe(true);
   });
 
+  it('renders the shared download ETA from update status', async () => {
+    vi.stubGlobal('fetch', vi.fn((route) => {
+      if (route === '/api/update/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ autoCheckUpdates: false, updateMode: 'ask' }),
+        });
+      }
+      throw new Error(`Unexpected fetch ${route}`);
+    }));
+
+    UpdateToast.mount({ health: { updateSupported: true } });
+    await flush();
+    setUpdateStatus({
+      status: 'downloading',
+      progress: 42,
+      latestVersion: '1.10.0',
+      secondsRemaining: 12,
+    });
+    await flush();
+
+    expect(document.querySelector('.update-toast')?.textContent).toContain('42%');
+    expect(document.querySelector('.update-toast')?.textContent).toContain('~12s left');
+  });
+
   it('does not offer a second restart action after restart is accepted', async () => {
     const fetchMock = vi.fn((route, options = {}) => {
       if (route === '/api/update/settings') {
