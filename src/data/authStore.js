@@ -28,6 +28,48 @@ export const DEMO_STATUS = 'demo';
 // see research.md D4) share this one definition instead of duplicating the
 // literal string and risking drift.
 export const RECOVERY_URL_MARKER = 'type=recovery';
+
+// Feature 045, live-verification finding (2026-07-10, Browser Smoke Test):
+// Supabase's *success*-path redirect carries `type=recovery`, but its
+// *failure*-path redirect for an expired/invalid/already-used recovery
+// token does not — it goes straight to `#error=...&error_code=otp_expired
+// &error_description=...` with no recovery marker at all. RECOVERY_URL_
+// MARKER alone therefore cannot detect a failed recovery attempt: neither
+// this guard nor WelcomePage.js's verification-banner check could tell it
+// apart from an ordinary page load, so the app fell through to a plain
+// `unauthenticated` boot and wrongly showed the signup-verification "Email
+// verified" banner instead of a dedicated expired-link state.
+//
+// Fixed by having ForgotPasswordForm.js's `resetPasswordForEmail` call
+// append this marker to its own `redirectTo` (via `withRecoveryFlowMarker`
+// below) — Supabase preserves whatever base URL it's given as `redirect_to`
+// on *both* success and failure (it only appends its own tokens/`type=
+// recovery`, or `error=...`, on top), so this marker survives regardless of
+// outcome. Deliberately a distinct query param (not reusing `type`) so it
+// can't collide with any current or future Supabase-native parameter, and
+// deliberately scoped to the recovery flow only — SignupForm.js's plain,
+// unmarked `emailRedirectUrl` is unaffected, so an expired *signup*-
+// verification link can never be misclassified as an expired *password-
+// reset* link.
+export const RECOVERY_FLOW_MARKER = 'flow=recovery';
+const [RECOVERY_FLOW_PARAM, RECOVERY_FLOW_VALUE] = RECOVERY_FLOW_MARKER.split('=');
+
+/**
+ * Appends RECOVERY_FLOW_MARKER to a redirect URL. Used by ForgotPasswordForm.js
+ * when calling `resetPasswordForEmail`; falls back to the raw input
+ * unmodified if it isn't a parseable absolute URL (defensive only — the
+ * documented `VITE_AUTH_EMAIL_REDIRECT_URL` value is always absolute).
+ */
+export function withRecoveryFlowMarker(redirectUrl) {
+  try {
+    const url = new URL(redirectUrl);
+    url.searchParams.set(RECOVERY_FLOW_PARAM, RECOVERY_FLOW_VALUE);
+    return url.toString();
+  } catch {
+    return redirectUrl;
+  }
+}
+
 const RECOVERY_GUARD_TIMEOUT_MS = 8000;
 
 let state = { status: 'initializing', user: null, accessToken: null };
@@ -52,18 +94,36 @@ function applySession(session) {
   notify();
 }
 
-// Reads the recovery marker synchronously, before any `await` in `init()`,
-// so the guard below is armed (or not) deterministically rather than racing
-// `getSession()`/`onAuthStateChange`. Mirrors WelcomePage.js's existing
-// defensive `typeof globalThis.location === 'undefined'` handling — the
-// default Vitest environment for this module's tests is `node`, where
-// `location` does not exist at all.
-function hasRecoveryUrlMarker() {
+// Mirrors WelcomePage.js's existing defensive `typeof globalThis.location
+// === 'undefined'` handling — the default Vitest environment for this
+// module's tests is `node`, where `location` does not exist at all.
+function currentUrlIncludes(marker) {
   if (typeof globalThis.location === 'undefined') {
     return false;
   }
   const { hash = '', search = '' } = globalThis.location;
-  return hash.includes(RECOVERY_URL_MARKER) || search.includes(RECOVERY_URL_MARKER);
+  return hash.includes(marker) || search.includes(marker);
+}
+
+// Reads the recovery marker synchronously, before any `await` in `init()`,
+// so the guard below is armed (or not) deterministically rather than racing
+// `getSession()`/`onAuthStateChange`. True for either marker — Supabase's
+// own success-path `type=recovery`, or our own failure-surviving `flow=
+// recovery` (see RECOVERY_FLOW_MARKER above).
+function hasRecoveryUrlMarker() {
+  return currentUrlIncludes(RECOVERY_URL_MARKER) || currentUrlIncludes(RECOVERY_FLOW_MARKER);
+}
+
+// True when the current URL is both a recovery attempt (per the above) and
+// carries a Supabase-reported failure (`error=...`/`error_code=...`) — i.e.
+// an expired/invalid/already-used recovery link, confirmed by Supabase
+// itself rather than merely inferred from a timeout. Deliberately gated on
+// hasRecoveryUrlMarker() first: a bare `error=...` with neither recovery
+// marker present (e.g. a failed *signup*-verification link, which shares
+// the same redirect URL but never carries flow=recovery) must not be
+// treated as an expired password-reset link.
+function hasRecoveryErrorMarker() {
+  return hasRecoveryUrlMarker() && (currentUrlIncludes('error=') || currentUrlIncludes('error_code='));
 }
 
 export function getAuthState() {
@@ -86,10 +146,13 @@ export async function init() {
     return;
   }
 
-  // Feature 045: armed only when the URL carries Supabase's recovery marker.
-  // While armed, a bare SIGNED_IN is held (not resolved to `authenticated`);
-  // only a confirmed PASSWORD_RECOVERY event — or the timeout, for a dead/
-  // malformed/already-consumed link — resolves the state. See research.md D1.
+  // Feature 045: armed only when the URL carries a recovery marker (either
+  // Supabase's own success-path `type=recovery`, or our own failure-
+  // surviving `flow=recovery` — see RECOVERY_FLOW_MARKER above). While
+  // armed, a bare SIGNED_IN is held (not resolved to `authenticated`); only
+  // a confirmed PASSWORD_RECOVERY event, an explicit Supabase-reported
+  // failure, or the timeout (for a dead/malformed link with no explicit
+  // error) resolves the state. See research.md D1.
   // `guardWasArmed` is immutable (captured once, for the getSession() check
   // below); `guardArmed` is mutable and tracks "still waiting to resolve".
   const guardWasArmed = hasRecoveryUrlMarker();
@@ -119,7 +182,16 @@ export async function init() {
   }
 
   if (guardArmed) {
-    guardTimer = setTimeout(resolveRecoveryExpired, RECOVERY_GUARD_TIMEOUT_MS);
+    if (hasRecoveryErrorMarker()) {
+      // Supabase has already told us this attempt failed (expired/invalid/
+      // already-used token) — resolve immediately rather than waiting out
+      // the full guard timeout for a PASSWORD_RECOVERY event a failed
+      // attempt will never produce (which would otherwise leave the app
+      // rendering nothing — still `initializing` — for up to 8s).
+      resolveRecoveryExpired();
+    } else {
+      guardTimer = setTimeout(resolveRecoveryExpired, RECOVERY_GUARD_TIMEOUT_MS);
+    }
   }
 
   // Registered before awaiting getSession() (previously the reverse) so a

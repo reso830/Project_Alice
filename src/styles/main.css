@@ -9503,7 +9503,7 @@ button.welcome__footer-link {
 }
 
 .auth-overlay__center .auth-overlay__verification-text {
-  margin-bottom: 4px;
+  margin-bottom: 16px;
 }
 
 /* Sized to match the established icon-badge pattern (PasswordChangeModal's
@@ -12761,13 +12761,15 @@ button.welcome__footer-link {
 
 /* Suppress browser-native password-reveal controls on inputs with custom toggles */
 .auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-reveal,
-.conn-panel__field .edit-field__control::-ms-reveal {
+.conn-panel__field .edit-field__control::-ms-reveal,
+.pcf-input-wrap .pcf-input::-ms-reveal {
   display: none;
 }
 
 /* Suppress native clear controls defensively on custom toggle inputs */
 .auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-clear,
-.conn-panel__field .edit-field__control::-ms-clear {
+.conn-panel__field .edit-field__control::-ms-clear,
+.pcf-input-wrap .pcf-input::-ms-clear {
   display: none;
 }
 

@@ -111,7 +111,7 @@ describe('mountForgotPasswordForm', () => {
     await flush();
 
     expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledWith('jane@example.com', {
-      redirectTo: 'https://example.com/?auth=callback',
+      redirectTo: 'https://example.com/?auth=callback&flow=recovery',
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });

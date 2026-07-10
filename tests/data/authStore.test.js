@@ -380,5 +380,110 @@ describe('authStore', () => {
       // overwritten it with recovery-expired.
       expect(store.getAuthState().status).toBe('password-recovery');
     });
+
+    // Live-verification finding (2026-07-10, Browser Smoke Test): a real
+    // expired/invalid recovery link's Supabase redirect carries NO `type=
+    // recovery` at all — only `#error=access_denied&error_code=otp_expired
+    // &error_description=...`. RECOVERY_URL_MARKER alone missed this
+    // entirely (guard never armed, app fell through to a plain
+    // `unauthenticated` boot, and WelcomePage.js wrongly showed the signup-
+    // verification "Email verified" banner). Fixed via RECOVERY_FLOW_MARKER
+    // (`flow=recovery`), which ForgotPasswordForm.js appends to its own
+    // `redirectTo` and which Supabase preserves on both success and
+    // failure.
+    describe('RECOVERY_FLOW_MARKER (live-verification fix, 2026-07-10)', () => {
+      it('withRecoveryFlowMarker appends flow=recovery to an absolute redirect URL', async () => {
+        const store = await import('../../src/data/authStore.js');
+        expect(store.withRecoveryFlowMarker('http://localhost:5173/?auth=callback'))
+          .toBe('http://localhost:5173/?auth=callback&flow=recovery');
+        expect(store.withRecoveryFlowMarker('http://localhost:5173/'))
+          .toBe('http://localhost:5173/?flow=recovery');
+      });
+
+      it('withRecoveryFlowMarker falls back to the raw input for an unparseable URL', async () => {
+        const store = await import('../../src/data/authStore.js');
+        expect(store.withRecoveryFlowMarker('not-a-url')).toBe('not-a-url');
+      });
+
+      it('a URL carrying only flow=recovery (no type=recovery) still arms the guard', async () => {
+        vi.stubGlobal('location', { hash: '', search: '?flow=recovery' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        supabaseMock.fire('PASSWORD_RECOVERY', {
+          user: { id: 'user-9', email: 'flow-marker@example.com' },
+          access_token: 'tok-9',
+        });
+
+        expect(store.getAuthState().status).toBe('password-recovery');
+      });
+
+      it('flow=recovery + an explicit Supabase error resolves recovery-expired IMMEDIATELY, without waiting for the guard timeout', async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal('location', {
+          hash: '#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired',
+          search: '?auth=callback&flow=recovery',
+        });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        // Resolved already — no vi.advanceTimersByTimeAsync() call at all.
+        // If this were relying on the 8s timeout instead, status would
+        // still be the pre-resolution default here.
+        expect(store.getAuthState()).toEqual({
+          status: 'recovery-expired',
+          user: null,
+          accessToken: null,
+        });
+      });
+
+      it('an error with NEITHER recovery marker (e.g. a failed signup-verification link) does not arm the guard or resolve recovery-expired', async () => {
+        vi.stubGlobal('location', {
+          hash: '#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired',
+          search: '?auth=callback',
+        });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        expect(store.getAuthState().status).toBe('unauthenticated');
+
+        // Guard never armed — a later SIGNED_IN resolves authenticated
+        // immediately, exactly like the no-recovery-URL case above.
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-10', email: 'signup-fail@example.com' },
+          access_token: 'tok-10',
+        });
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+
+      it('after an immediate error-based recovery-expired resolution, a later real sign-in still resolves normally (guard properly disarmed)', async () => {
+        vi.stubGlobal('location', {
+          hash: '#error=access_denied&error_code=otp_expired',
+          search: '?auth=callback&flow=recovery',
+        });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+        expect(store.getAuthState().status).toBe('recovery-expired');
+
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-11', email: 'later-sign-in@example.com' },
+          access_token: 'tok-11',
+        });
+
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+    });
   });
 });

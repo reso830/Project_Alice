@@ -3,7 +3,7 @@ import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
 import { LegalModal } from '../../components/LegalModal.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
-import { RECOVERY_URL_MARKER } from '../../data/authStore.js';
+import { RECOVERY_FLOW_MARKER, RECOVERY_URL_MARKER } from '../../data/authStore.js';
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
@@ -436,13 +436,20 @@ function handleVerificationCallback(root) {
 
   // Feature 045: a password-recovery link reuses this same redirect URL
   // (VITE_AUTH_EMAIL_REDIRECT_URL — research.md D4), so it carries
-  // `?auth=callback` alongside Supabase's own recovery marker in the hash.
-  // That combination is a recovery visit, not a signup-verification one —
-  // showing "Email verified" here would be wrong. Recovery routing itself
-  // is authStore's job (its own guard already reads this same marker,
-  // independently, before this ever runs); this only suppresses the wrong
-  // banner. `?auth=callback` is still stripped below either way.
-  const isRecoveryLink = url.hash.includes(RECOVERY_URL_MARKER) || url.search.includes(RECOVERY_URL_MARKER);
+  // `?auth=callback` alongside a recovery marker — either Supabase's own
+  // `type=recovery` on a successful link, or Alice's own `flow=recovery`
+  // (RECOVERY_FLOW_MARKER, authStore.js) on a failed/expired one, which
+  // Supabase's error redirect doesn't carry `type=recovery` for at all
+  // (live-verification finding, 2026-07-10 — see RECOVERY_FLOW_MARKER's
+  // comment). Either marker means a recovery visit, not a signup-
+  // verification one — showing "Email verified" here would be wrong.
+  // Recovery routing itself is authStore's job (its own guard already reads
+  // these same markers, independently, before this ever runs); this only
+  // suppresses the wrong banner. `?auth=callback` is still stripped below
+  // either way.
+  const isRecoveryLink =
+    url.hash.includes(RECOVERY_URL_MARKER) || url.search.includes(RECOVERY_URL_MARKER)
+    || url.hash.includes(RECOVERY_FLOW_MARKER) || url.search.includes(RECOVERY_FLOW_MARKER);
   if (!isRecoveryLink) {
     root.prepend(renderVerificationBanner());
   }

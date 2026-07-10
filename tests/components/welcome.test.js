@@ -199,6 +199,15 @@ describe('WelcomePage — password native controls', () => {
     expect(mainCss).toContain('.conn-panel__field .edit-field__control::-ms-clear');
     expect(mainCss).not.toMatch(/\n\.auth-form__input::-ms-clear,/);
   });
+
+  // Regression: PasswordChangeModal.js's `.pcf-input` fields use a different
+  // class namespace than the shared `.auth-form__*` pattern above, so the
+  // Edge-native-reveal-control suppression (v1.12.5) didn't cover them —
+  // a duplicate eye icon on Change Password's password fields in Edge.
+  it('also suppresses native reveal and clear controls on PasswordChangeModal\'s .pcf-input fields', () => {
+    expect(mainCss).toContain('.pcf-input-wrap .pcf-input::-ms-reveal');
+    expect(mainCss).toContain('.pcf-input-wrap .pcf-input::-ms-clear');
+  });
 });
 
 describe('WelcomePage — auth overlay state machine', () => {
@@ -345,6 +354,25 @@ describe('WelcomePage — ?auth=callback handling', () => {
     expect(container.querySelector('.welcome__verification-banner')).toBeNull();
     // ?auth=callback is still stripped either way.
     expect(window.location.search).toBe('');
+  });
+
+  // Live-verification finding (2026-07-10, Browser Smoke Test): a real
+  // expired/invalid recovery link's Supabase redirect carries NO `type=
+  // recovery` — only `#error=access_denied&error_code=otp_expired&...`.
+  // Before RECOVERY_FLOW_MARKER existed, this exact URL shape wrongly
+  // showed "Email verified. You can sign in now." for a failed password
+  // reset. ForgotPasswordForm.js now appends `flow=recovery` (which
+  // Supabase preserves on both success and failure), so this must also
+  // suppress the banner.
+  it('does not render the banner for a failed recovery link (flow=recovery + a Supabase error, no type=recovery at all)', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/?auth=callback&flow=recovery#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired',
+    );
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(container.querySelector('.welcome__verification-banner')).toBeNull();
   });
 });
 
@@ -1243,7 +1271,7 @@ describe('AuthOverlay — Forgot Password (feature 045)', () => {
     await flushMicrotasks();
 
     expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledWith('jane@example.com', {
-      redirectTo: 'https://example.com/?auth=callback',
+      redirectTo: 'https://example.com/?auth=callback&flow=recovery',
     });
     const submitBtn = form.querySelector('.auth-form__submit');
     expect(submitBtn.disabled).toBe(true);
@@ -1289,7 +1317,7 @@ describe('AuthOverlay — Forgot Password (feature 045)', () => {
     const overlay = container.querySelector('.auth-overlay');
     expect(overlay.getAttribute('data-view')).toBe('forgot_sent');
     expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledWith('unregistered@example.com', {
-      redirectTo: 'https://example.com/?auth=callback',
+      redirectTo: 'https://example.com/?auth=callback&flow=recovery',
     });
     const message = overlay.querySelector('.auth-overlay__verification-text');
     expect(message.textContent).toContain('If an account exists for');

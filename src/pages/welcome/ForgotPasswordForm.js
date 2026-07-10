@@ -5,8 +5,17 @@
 // this component — see design_handoff_password_reset_modal/wr-auth.jsx
 // (ForgotPasswordModal's form phase) and README.md §"Step 1a — Email entry".
 import { emailRedirectUrl, supabase } from '../../services/supabaseClient.js';
+import { withRecoveryFlowMarker } from '../../data/authStore.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Feature 045, live-verification finding (2026-07-10): a failed/expired
+// recovery link's Supabase redirect carries none of Supabase's own success
+// markers, so this flow needs its own — see authStore.js's
+// RECOVERY_FLOW_MARKER/withRecoveryFlowMarker for the full explanation.
+// Computed once at module load (the base URL never changes at runtime), not
+// per submit.
+const recoveryRedirectUrl = withRecoveryFlowMarker(emailRedirectUrl);
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -138,7 +147,7 @@ export function mountForgotPasswordForm(container, { email = '', onEmailChange, 
     // way, not surfaced as a distinct error state.
     try {
       await supabase.auth.resetPasswordForEmail(emailField.input.value, {
-        redirectTo: emailRedirectUrl,
+        redirectTo: recoveryRedirectUrl,
       });
     } catch {
       // intentionally ignored — see comment above.
