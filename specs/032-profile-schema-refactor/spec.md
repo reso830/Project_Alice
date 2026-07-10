@@ -3,7 +3,7 @@
 **Feature Branch**: `032-profile-schema-refactor`  
 **Created**: 2026-06-02  
 **Status**: Draft  
-**Input**: Feature brief `docs/features/032-profile-schema-refactor.md`. Builds directly on feature 031 (Skill Proficiency System) and the dual-mode persistence layer (features 018–022).
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/032-profile-schema-refactor.md`. Builds directly on feature 031 (Skill Proficiency System) and the dual-mode persistence layer (features 018–022).
 
 ## Problem Statement
 

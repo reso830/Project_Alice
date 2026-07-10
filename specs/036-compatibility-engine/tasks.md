@@ -201,7 +201,7 @@ Phase dependency: 01 → 02 → 03 → 04/05 (parallel) → 06 → 07 → 08 →
 
 Authoritative design: [research.md](research.md) D10/D11, [data-model.md §7](data-model.md), reader-facing math in [`docs/compatibility_scoring.md`](../../docs/compatibility_scoring.md). Pure-computation change only — no schema, persistence, or architecture change.
 
-> **Status (2026-06-16):** T022–T024 implemented and review-passed — full suite **1482 green**, lint clean, no stray `PREFERRED_FACTOR`, CHANGELOG/REPO_MAP/`docs/compatibility_scoring.md` aligned to `43/25/12/10/10` + pooled coverage. T025 automated re-verify green; manual re-smoke marked complete. (Side note for a later revisit, captured in [`docs/features/037-compatibility-insights-panel.md`](../../docs/features/037-compatibility-insights-panel.md): the stricter model skews scores conservative — 037 should make low scores *actionable* rather than discouraging.)
+> **Status (2026-06-16):** T022–T024 implemented and review-passed — full suite **1482 green**, lint clean, no stray `PREFERRED_FACTOR`, CHANGELOG/REPO_MAP/`docs/compatibility_scoring.md` aligned to `43/25/12/10/10` + pooled coverage. T025 automated re-verify green; manual re-smoke marked complete. (Side note for a later revisit, captured in [`docs/features/2.0.0-smart-intake-ai-assistance/037-compatibility-insights-panel.md`](../../docs/features/2.0.0-smart-intake-ai-assistance/037-compatibility-insights-panel.md): the stricter model skews scores conservative — 037 should make low scores *actionable* rather than discouraging.)
 
 ### T022 `[x]` — Skills: pooled weighted coverage
 - **Target**: `src/models/compatibility.js` (the skills scorer), `tests/models/compatibility.test.js`

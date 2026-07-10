@@ -3,7 +3,7 @@
 **Feature Branch**: `043-legal-and-footer`\
 **Created**: 2026-07-04\
 **Status**: Draft\
-**Input**: docs/features/043-legal-and-footer.md
+**Input**: docs/features/2.0.0-smart-intake-ai-assistance/043-legal-and-footer.md
 
 ---
 

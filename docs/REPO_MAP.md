@@ -293,7 +293,7 @@ Run: `npm test` (watch) · `npm run test:run` (CI)
 | `specs/038-ai-provider-abstraction/` | AI Provider Abstraction spec package — provider contract, OpenRouter provider implementation, central `aiService.js` facade, provider registry, migration away from `llmClient.js`, and v1.7.1 release prep |
 | `specs/044-hosted-startup-performance/` | Hosted Startup Performance spec package — inlined startup loader (hosted-only, stripped for portable/local dev), parallel + optimistic boot handshake, Tracker-boot skeleton, `Calendar`/`Profile`/`ProfileEdit` route-level code-splitting, self-hosted fonts, `metrics.md` before/after measurements, and v1.12.0 release prep |
 | `docs/design/` | Visual specifications and screen-level interaction notes |
-| `docs/features/` | Lightweight feature briefs used as Speckit inputs |
+| `docs/features/` | Lightweight feature briefs used as Speckit inputs; organized into subfolders by `docs/feature_roadmap.md` phase (`1.0.0-operational-core/`, `2.0.0-smart-intake-ai-assistance/`, `3.0.0-preference-insight-engine/`); `_template-feature-brief.md` is the brief skeleton, not a real feature |
 | `HostedAlice_StartupLoader/design_handoff_startup_loader/` | Design reference for the hosted startup loader (feature 044/WS1) — high-fidelity HTML/CSS prototype + brand sigil SVG; recreated (not copied verbatim) as the inlined loader in `index.html` |
 
 ---

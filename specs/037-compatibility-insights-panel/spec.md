@@ -3,7 +3,7 @@
 **Feature Branch**: `037-compatibility-insights-panel`
 **Created**: 2026-06-17
 **Status**: Draft
-**Input**: Feature brief `docs/features/037-compatibility-insights-panel.md`. Design reference `docs/design/application_overlay.md` §14. Consumes compatibility scores from Feature 036. Depends on skill proficiency data from Feature 032 and structured JD data from Feature 035.
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/037-compatibility-insights-panel.md`. Design reference `docs/design/application_overlay.md` §14. Consumes compatibility scores from Feature 036. Depends on skill proficiency data from Feature 032 and structured JD data from Feature 035.
 
 ---
 

@@ -7,6 +7,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.1] — 2026-07-10
+
+README trimmed from 309 to 180 lines and `docs/features/` reorganized by roadmap phase, with detail relocated rather than deleted. (#100)
+
+### Changed
+
+- **README condensed** — the Features list, Hosted Mode env var/allowlist/defense-in-depth detail, Portable Package and Demo Data walkthroughs, and the Project Structure tree are all shortened to scannable summaries pointing at `docs/deployment.md`, `docs/REPO_MAP.md`, and the relevant `specs/###-…/` packages instead of restating them inline. The "Local AI Orchestration" section is removed entirely (see Fixed). (#100)
+- **`docs/features/` reorganized into roadmap-phase subfolders** — `1.0.0-operational-core/`, `2.0.0-smart-intake-ai-assistance/`, and `3.0.0-preference-insight-engine/`, matching `docs/feature_roadmap.md`; the template brief is renamed to `_template-feature-brief.md` at the top level. All `specs/###-…/` references and `docs/REPO_MAP.md` are updated to the new paths. (#100)
+- **`docs/deployment.md`** gains the "Defense in depth — build + runtime handshake" explanation (the `/api/health` + `ConfigError` runtime check) that previously only lived in the README, so removing it from the README doesn't lose the detail. (#100)
+
+### Fixed
+
+- **Stale feature-brief numbering** — `docs/features/045-ats-resume-quality-checks.md` still carried the number `045`, which `docs/feature_roadmap.md` had since reassigned to `045-auth-password-reset`; renamed to `047-ats-resume-quality-checks.md` to match its current roadmap number. (#100)
+
+### Removed
+
+- **"Local AI Orchestration" section removed from the README** — the `scripts/ai-flow.ps1` two-agent pipeline has failed in practice and is not in active use. `docs/AI_WORKFLOW_GUIDE.md` now carries a "Currently non-functional" banner instead of being linked from the README as a working feature. (#100)
+
 ## [1.13.0] — 2026-07-09
 
 Vercel Web Analytics — hosted deployments now report anonymized visitor/traffic stats alongside the existing Speed Insights performance metrics, both gated by a single app-level module instead of vendor-package defaults. (#132)
@@ -1659,7 +1677,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.1...HEAD
+[1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11
 [1.12.10]: https://github.com/reso830/Project_Alice/compare/v1.12.9...v1.12.10

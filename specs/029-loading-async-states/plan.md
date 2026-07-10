@@ -1,7 +1,7 @@
 # Implementation Plan: Loading & Async States
 
 **Branch**: `029-loading-async-states` | **Date**: 2026-05-27 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from [spec.md](spec.md), feature brief at [docs/features/029-loading-async-states.md](../../docs/features/029-loading-async-states.md). No new visual design doc yet — this plan introduces one at [docs/design/loading.md](../../docs/design/loading.md) as part of Phase A.
+**Input**: Feature specification from [spec.md](spec.md), feature brief at [docs/features/1.0.0-operational-core/029-loading-async-states.md](../../docs/features/1.0.0-operational-core/029-loading-async-states.md). No new visual design doc yet — this plan introduces one at [docs/design/loading.md](../../docs/design/loading.md) as part of Phase A.
 
 **Supporting artifacts** (per [Plan supporting artifacts](../../../../C:/Users/acres/.claude/projects/d--Alvin--CodeProjects-Project-Alice/memory/feedback_plan_artifacts.md) memory):
 

@@ -3,7 +3,7 @@
 **Feature Branch**: `041-self-update-support`  
 **Created**: 2026-06-26  
 **Status**: Draft  
-**Input**: docs/features/041-self-update-support.md
+**Input**: docs/features/2.0.0-smart-intake-ai-assistance/041-self-update-support.md
 
 ---
 

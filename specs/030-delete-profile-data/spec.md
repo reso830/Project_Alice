@@ -3,7 +3,7 @@
 **Feature Branch**: `030-delete-profile-data`
 **Created**: 2026-05-28
 **Status**: Draft
-**Input**: [`docs/features/030-delete-profile-data.md`](../../docs/features/030-delete-profile-data.md) (feature brief; no design document exists for this feature)
+**Input**: [`docs/features/1.0.0-operational-core/030-delete-profile-data.md`](../../docs/features/1.0.0-operational-core/030-delete-profile-data.md) (feature brief; no design document exists for this feature)
 **Depends on**: [`007-profile-page`](../007-profile-page/spec.md) (Profile page sections — the new control is a Profile section), [`017-hosted-foundation`](../017-hosted-foundation/spec.md) (runtime modes, lazy-import discipline), [`018-auth-user-access`](../018-auth-user-access/spec.md) (Supabase email+password auth, JWT `requireAuth`, client `signOut`), [`019-supabase-persistence`](../019-supabase-persistence/spec.md) (hosted schema, RLS, `ON DELETE CASCADE` foreign keys to `auth.users`, service-role key), [`020-portfolio-demo-mode`](../020-portfolio-demo-mode/spec.md) (demo runtime is auth-less and ephemeral)
 
 ---

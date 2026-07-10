@@ -1,7 +1,7 @@
 # Implementation Plan: Archive Applications View
 
 **Branch**: `028-archive-applications-view` | **Date**: 2026-05-26 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from [spec.md](spec.md), feature brief at [docs/features/028-archive-applications-view.md](../../docs/features/028-archive-applications-view.md), design refs at [docs/design/tracker.md](../../docs/design/tracker.md) (View switcher + Archived card variant) and [docs/design/application_overlay.md](../../docs/design/application_overlay.md) (§12 Archived mode).
+**Input**: Feature specification from [spec.md](spec.md), feature brief at [docs/features/1.0.0-operational-core/028-archive-applications-view.md](../../docs/features/1.0.0-operational-core/028-archive-applications-view.md), design refs at [docs/design/tracker.md](../../docs/design/tracker.md) (View switcher + Archived card variant) and [docs/design/application_overlay.md](../../docs/design/application_overlay.md) (§12 Archived mode).
 
 **Supporting artifacts** (per [Plan supporting artifacts](../../../../C:/Users/acres/.claude/projects/d--Alvin--CodeProjects-Project-Alice/memory/feedback_plan_artifacts.md) memory):
 

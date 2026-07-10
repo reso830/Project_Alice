@@ -2,7 +2,7 @@
 
 **Branch**: `025-application-timeline` | **Date**: 2026-05-21
 **Spec**: [spec.md](spec.md)
-**Inputs**: [docs/features/025-application-timeline.md](../../docs/features/025-application-timeline.md),
+**Inputs**: [docs/features/1.0.0-operational-core/025-application-timeline.md](../../docs/features/1.0.0-operational-core/025-application-timeline.md),
 [docs/design/application_timeline.md](../../docs/design/application_timeline.md)
 **Depends on**: [019-supabase-persistence](../019-supabase-persistence/spec.md)
 (per-request Supabase adapter, `claim_and_seed_starter` RPC),

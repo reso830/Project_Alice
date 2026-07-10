@@ -3,7 +3,7 @@
 **Feature Branch**: `034-profile-page-refresh`
 **Created**: 2026-06-05
 **Status**: Draft
-**Input**: Feature brief: `docs/features/034-profile-page-refresh.md`
+**Input**: Feature brief: `docs/features/2.0.0-smart-intake-ai-assistance/034-profile-page-refresh.md`
 **Design references**: `docs/design/profile_page.md` (read-only Profile page), `docs/design/edit_profile_page.md` (Edit / Setup Profile page)
 
 ---

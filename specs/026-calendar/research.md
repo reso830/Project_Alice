@@ -113,7 +113,7 @@ Application data model.
 
 **Sources requiring this rule** (predate the deferral; treat the
 references below as superseded by this decision):
-- [docs/features/026-calendar.md line 300](../../docs/features/026-calendar.md)
+- [docs/features/1.0.0-operational-core/026-calendar.md line 300](../../docs/features/1.0.0-operational-core/026-calendar.md)
   — feature brief lists "Technical Assessment due today or tomorrow"
   as one of the suggestion rules.
 - [docs/design/calendar.md §7 (line 510)](../../docs/design/calendar.md)

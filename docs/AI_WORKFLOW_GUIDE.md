@@ -1,5 +1,7 @@
 # Local AI Workflow Guide
 
+> ⚠️ **Currently non-functional.** This orchestration pipeline has failed in practice and is not in active use. This guide is kept as a reference for the intended design; do not rely on `scripts/ai-flow.ps1` until this notice is removed.
+
 A two-agent pipeline where Claude owns specification and review, and Codex owns requirements validation and implementation. The orchestrator script (`scripts/ai-flow.ps1`) wires them together with hard gates that block forward progress until each stage passes.
 
 ---

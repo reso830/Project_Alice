@@ -3,7 +3,7 @@
 **Feature Branch**: `028-archive-applications-view`
 **Created**: 2026-05-26
 **Status**: Draft
-**Input**: [`docs/features/028-archive-applications-view.md`](../../docs/features/028-archive-applications-view.md), [`docs/design/tracker.md`](../../docs/design/tracker.md), [`docs/design/application_overlay.md`](../../docs/design/application_overlay.md)
+**Input**: [`docs/features/1.0.0-operational-core/028-archive-applications-view.md`](../../docs/features/1.0.0-operational-core/028-archive-applications-view.md), [`docs/design/tracker.md`](../../docs/design/tracker.md), [`docs/design/application_overlay.md`](../../docs/design/application_overlay.md)
 **Depends on**: [`001-app-tracker-ui`](../001-app-tracker-ui/spec.md) (Tracker chrome, card, filters), [`007-profile-page`](../007-profile-page/spec.md) (Profile stat tiles), [`012-inline-edit-overlay`](../012-inline-edit-overlay/spec.md) (Application Overlay modes), [`019-supabase-persistence`](../019-supabase-persistence/spec.md) (hosted persistence parity), [`020-portfolio-demo-mode`](../020-portfolio-demo-mode/spec.md) (demo-mode persistence rules — FR-033 references its FR-004), [`026-calendar`](../026-calendar/spec.md) (Calendar suggestion rules + Action Panel sections — FR-024…FR-026 reference them by name)
 
 ---

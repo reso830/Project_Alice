@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.13.0 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.13.0');
-    expect(APP_VERSION).toBe('v1.13.0');
+  it('keeps the 1.13.1 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.13.1');
+    expect(APP_VERSION).toBe('v1.13.1');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.13.0');
-    expect(lock.packages['']?.version).toBe('1.13.0');
+    expect(lock.version).toBe('1.13.1');
+    expect(lock.packages['']?.version).toBe('1.13.1');
 
-    expect(read('README.md')).toContain('Current version: **1.13.0**');
+    expect(read('README.md')).toContain('Current version: **1.13.1**');
+    expect(read('CHANGELOG.md')).toContain('## [1.13.1] — 2026-07-10');
     expect(read('CHANGELOG.md')).toContain('## [1.13.0] — 2026-07-09');
     expect(read('CHANGELOG.md')).toContain('## [1.12.12] — 2026-07-09');
     expect(read('CHANGELOG.md')).toContain('## [1.12.11] — 2026-07-08');
@@ -55,7 +56,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.1...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1');
     expect(read('CHANGELOG.md')).toContain('[1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0');
     expect(read('CHANGELOG.md')).toContain('[1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12');
     expect(read('CHANGELOG.md')).toContain('[1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11');
@@ -105,8 +107,8 @@ describe('release metadata', () => {
     const deployment = read('docs/deployment.md');
     const repoMap = read('docs/REPO_MAP.md');
 
-    expect(readme).toContain('unified Settings');
-    expect(readme).toContain('guided Setup and Import flow');
+    expect(readme).toContain('graded skill-proficiency meters');
+    expect(readme).toContain('guided Setup/Import flow');
     expect(deployment).toContain('034-profile-page-refresh');
     expect(deployment).toContain('No deployment action is required');
     expect(repoMap).toContain('browser-only AI Settings');
@@ -116,7 +118,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/034-profile-page-refresh',
-      'docs/features/034-profile-page-refresh.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/034-profile-page-refresh.md',
       'docs/design/profile_page.md',
       'docs/design/edit_profile_page.md',
     ]) {
@@ -129,8 +131,7 @@ describe('release metadata', () => {
     const deployment = read('docs/deployment.md');
     const repoMap = read('docs/REPO_MAP.md');
 
-    expect(readme).toContain('AI job-description parsing (BYOK)');
-    expect(readme).toContain('specs/035-llm-jd-parser/quickstart.md');
+    expect(readme).toContain('AI resume & job-description parsing (BYOK)');
     expect(deployment).toContain('035-llm-jd-parser');
     expect(deployment).toContain('required for feature 035');
     expect(repoMap).toContain('src/components/JobPostingImport.js');
@@ -140,7 +141,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/035-llm-jd-parser',
-      'docs/features/035-llm-jd-parser.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/035-llm-jd-parser.md',
       'src/components/JobPostingImport.js',
       'tests/components/JobPostingImport.test.js',
     ]) {
@@ -164,7 +165,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/036-compatibility-engine',
-      'docs/features/036-compatibility-engine.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/036-compatibility-engine.md',
       'src/models/compatibility.js',
       'server/services/compatibility.js',
       'tests/models/compatibility.test.js',
@@ -204,7 +205,7 @@ describe('release metadata', () => {
     const deployment = read('docs/deployment.md');
     const repoMap = read('docs/REPO_MAP.md');
 
-    expect(readme).toContain('Calendar page');
+    expect(readme).toContain('Application Timeline & Calendar');
     expect(readme).toContain('docs/design/calendar.md');
     expect(deployment).toContain('docs/db/claim_and_seed_starter.md');
     expect(repoMap).toContain('src/components/calendar/ActionPanel.js');
@@ -231,7 +232,7 @@ describe('release metadata', () => {
     const deployment = read('docs/deployment.md');
     const repoMap = read('docs/REPO_MAP.md');
 
-    expect(readme).toContain('Archive Applications view');
+    expect(readme).toContain('Archive view');
     expect(deployment).toContain('specs/028-archive-applications-view/data-model.md');
     expect(deployment).toContain('specs/028-archive-applications-view/quickstart.md');
     expect(repoMap).toContain('specs/028-archive-applications-view/');
@@ -255,7 +256,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Compatibility Insights Panel');
-    expect(readme).toContain('specs/037-compatibility-insights-panel/');
     expect(deployment).toContain('037-compatibility-insights-panel');
     expect(deployment).toContain('compat_analysis');
     expect(deployment).toContain('compat_scored_at');
@@ -292,7 +292,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/038-ai-provider-abstraction',
-      'docs/features/038-ai-provider-abstraction.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/038-ai-provider-abstraction.md',
       'src/services/aiErrors.js',
       'src/services/aiProvider.js',
       'src/services/aiService.js',
@@ -310,7 +310,6 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
 
     expect(readme).toContain('Delete Profile');
-    expect(readme).toContain('specs/030-delete-profile-data/');
     expect(deployment).toContain('specs/030-delete-profile-data/');
     expect(repoMap).toContain('server/routes/account.js');
     expect(repoMap).toContain('server/repositories/supabase/adminClient.js');
@@ -342,7 +341,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/039-desktop-workspace-refresh',
-      'docs/features/039-desktop-workspace-refresh.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/039-desktop-workspace-refresh.md',
       'src/components/OPanel.js',
       'src/components/EmptyPane.js',
       'src/utils/clampText.js',
@@ -374,7 +373,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/040-portable-distribution-package',
-      'docs/features/040-portable-distribution-package.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/040-portable-distribution-package.md',
       'server/portable.js',
       'server/portable/settings.js',
       'server/portable/listen.js',
@@ -394,8 +393,7 @@ describe('release metadata', () => {
     const repoMap = read('docs/REPO_MAP.md');
     const changelog = read('CHANGELOG.md');
 
-    expect(readme).toContain('Self-update (portable, Windows)');
-    expect(readme).toContain('specs/041-self-update-support/quickstart.md');
+    expect(readme).toContain('self-updates in place');
     expect(changelog).toContain('Self-Update Support');
     expect(repoMap).toContain('server/routes/update.js');
     expect(repoMap).toContain('server/portable/lock.js');
@@ -406,7 +404,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/041-self-update-support',
-      'docs/features/041-self-update-support.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/041-self-update-support.md',
       'server/routes/update.js',
       'server/portable/lock.js',
       'server/db/migration.js',
@@ -419,13 +417,10 @@ describe('release metadata', () => {
   });
 
   it('documents the Hosted Startup Performance release surfaces with resolvable links', () => {
-    const readme = read('README.md');
     const deployment = read('docs/deployment.md');
     const repoMap = read('docs/REPO_MAP.md');
     const changelog = read('CHANGELOG.md');
 
-    expect(readme).toContain('Faster hosted startup');
-    expect(readme).toContain('specs/044-hosted-startup-performance/');
     expect(deployment).toContain('044-hosted-startup-performance');
     expect(deployment).toContain('Hosted Startup Performance — no new env vars');
     expect(changelog).toContain('Hosted startup performance');
@@ -437,7 +432,7 @@ describe('release metadata', () => {
 
     for (const path of [
       'specs/044-hosted-startup-performance',
-      'docs/features/044-hosted-startup-performance.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/044-hosted-startup-performance.md',
       'HostedAlice_StartupLoader/design_handoff_startup_loader',
       'shared/startupLoader.js',
       'tests/build/code-splitting.test.js',

@@ -1,7 +1,7 @@
 Create a Spec Kit specification for this feature.
 
 Instructions:
-- Read the feature brief (`docs/features/###-name.md`) and design reference before writing.
+- Read the feature brief (`docs/features/<roadmap-phase>/###-name.md`, per `docs/feature_roadmap.md`) and design reference before writing.
 - Base the spec only on provided files and existing project context.
 - Do not assume missing information.
 - Do not implement code.
@@ -10,7 +10,7 @@ Write or update:
 - `spec.md` in the feature directory (`specs/###-name/`)
 
 Use this standard skeleton (match the structure of recent specs in `specs/`):
-- Header block: `Feature Branch`, `Created`, `Status`, `Input: docs/features/###-name.md`
+- Header block: `Feature Branch`, `Created`, `Status`, `Input: docs/features/<roadmap-phase>/###-name.md`
 - `## Clarifications` — before finalizing the spec, actively scan the brief for
   ambiguities (scope boundaries, data shape, behavior on edge cases, runtime modes,
   non-goals). Ask the user up to 5 targeted, high-impact questions — never guess to
