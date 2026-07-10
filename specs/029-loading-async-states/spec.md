@@ -3,7 +3,7 @@
 **Feature Branch**: `029-loading-async-states`
 **Created**: 2026-05-27
 **Status**: Draft
-**Input**: [`docs/features/029-loading-async-states.md`](../../docs/features/029-loading-async-states.md)
+**Input**: [`docs/features/1.0.0-operational-core/029-loading-async-states.md`](../../docs/features/1.0.0-operational-core/029-loading-async-states.md)
 **Depends on**: [`001-app-tracker-ui`](../001-app-tracker-ui/spec.md) (Tracker list rendering), [`007-profile-page`](../007-profile-page/spec.md) (Profile sections), [`012-inline-edit-overlay`](../012-inline-edit-overlay/spec.md) (Application Overlay save lifecycle), [`013-application-smart-parser`](../013-application-smart-parser/spec.md) (CreationPicker parsing flow), [`014-resume-parser-profile`](../014-resume-parser-profile/spec.md) (Resume import parsing), [`019-supabase-persistence`](../019-supabase-persistence/spec.md) (hosted runtime latency surface), [`020-portfolio-demo-mode`](../020-portfolio-demo-mode/spec.md) (demo-mode async parity), [`026-calendar`](../026-calendar/spec.md) (Calendar grid + Action Panel async loads), [`028-archive-applications-view`](../028-archive-applications-view/spec.md) (Archived list + unarchive action)
 
 ---

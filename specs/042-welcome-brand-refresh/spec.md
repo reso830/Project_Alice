@@ -3,7 +3,7 @@
 **Feature Branch**: `042-welcome-brand-refresh`  
 **Created**: 2026-07-04  
 **Status**: Draft  
-**Input**: docs/features/042-welcome-brand-refresh.md
+**Input**: docs/features/2.0.0-smart-intake-ai-assistance/042-welcome-brand-refresh.md
 
 ---
 

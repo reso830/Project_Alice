@@ -182,7 +182,7 @@ the right work in the penultimate phase)
       `claim_and_seed_starter` follow-up. Task 10.4.
 - [x] `docs/db/claim_and_seed_starter.md` (canonical RPC doc, owned
       since 025) update planned. Task 09.3.
-- [x] No edits to `docs/features/026-calendar.md` (the brief is input,
+- [x] No edits to `docs/features/1.0.0-operational-core/026-calendar.md` (the brief is input,
       not output). Confirmed in Task 09.3 + research.md §2a.
 
 ## Browser Smoke Test coverage (preview)

@@ -3,7 +3,7 @@
 **Feature Branch**: `039-desktop-workspace-refresh`
 **Created**: 2026-06-20
 **Status**: Draft
-**Input**: Feature brief `docs/features/039-desktop-workspace-refresh.md`. Design references `docs/design/tracker.md` § *Desktop Detail Pane* and `docs/design/application_overlay.md` §3 (render variants), §4 / §15 (panelled body). UX-only refresh — no changes to compatibility scoring (036/037), timeline (025), application data model, or backend.
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/039-desktop-workspace-refresh.md`. Design references `docs/design/tracker.md` § *Desktop Detail Pane* and `docs/design/application_overlay.md` §3 (render variants), §4 / §15 (panelled body). UX-only refresh — no changes to compatibility scoring (036/037), timeline (025), application data model, or backend.
 
 ---
 

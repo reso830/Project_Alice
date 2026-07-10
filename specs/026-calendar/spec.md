@@ -3,7 +3,7 @@
 **Feature Branch**: `026-calendar`
 **Created**: 2026-05-21
 **Status**: Draft
-**Input**: [`docs/features/026-calendar.md`](../../docs/features/026-calendar.md), [`docs/design/calendar.md`](../../docs/design/calendar.md)
+**Input**: [`docs/features/1.0.0-operational-core/026-calendar.md`](../../docs/features/1.0.0-operational-core/026-calendar.md), [`docs/design/calendar.md`](../../docs/design/calendar.md)
 **Depends on**: [`025-application-timeline`](../025-application-timeline/spec.md) (canonical Timeline data)
 
 ---
@@ -191,7 +191,7 @@ When invoked from a ghost suggestion:
 
 - Technical-assessment due-date suggestion (deferred; needs a deadline
   data field this codebase does not have). The original brief
-  ([docs/features/026-calendar.md line 300](../../docs/features/026-calendar.md))
+  ([docs/features/1.0.0-operational-core/026-calendar.md line 300](../../docs/features/1.0.0-operational-core/026-calendar.md))
   and design ([docs/design/calendar.md §7 line 510](../../docs/design/calendar.md))
   both include this rule; the deferral was decided at
   `/speckit.clarify` (Q2) and is recorded as an explicit accepted

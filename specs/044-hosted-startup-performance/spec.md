@@ -3,7 +3,7 @@
 **Feature Branch**: `044-hosted-startup-performance`  
 **Created**: 2026-07-04  
 **Status**: Draft  
-**Input**: docs/features/044-hosted-startup-performance.md
+**Input**: docs/features/2.0.0-smart-intake-ai-assistance/044-hosted-startup-performance.md
 
 ---
 
@@ -159,7 +159,7 @@ Each story has an **Independent Test** exercised in the final Browser Smoke Test
 
 ## Related
 
-- **docs/features/044-hosted-startup-performance.md** — feature brief (source of this spec).
+- **docs/features/2.0.0-smart-intake-ai-assistance/044-hosted-startup-performance.md** — feature brief (source of this spec).
 - **Design reference**: `HostedAlice_StartupLoader/design_handoff_startup_loader/` (startup loader — WS1) and `design_handoffs/Alice_InAppLoader/` (in-app loader pattern, informs the WS3 skeleton feel). Visuals are final; integration guidance is superseded by this spec (inline in HTML, not a JS-rendered component).
 - **042 Welcome & Brand Refresh** — source of the brand sigil + Sora.
 - **Issue #109** — application-card click latency (separate; consumes the WS3 skeleton builder from `src/utils/skeletons.js`).

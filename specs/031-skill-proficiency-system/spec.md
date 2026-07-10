@@ -3,7 +3,7 @@
 **Feature Branch**: `031-skill-proficiency-system`  
 **Created**: 2026-05-31  
 **Status**: Draft  
-**Input**: Feature brief `docs/features/031-skill-proficiency-system.md` + design reference `docs/design/profile_page.md` (§4.4 Skills, §5 Skills editor, §7 Data Model)
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/031-skill-proficiency-system.md` + design reference `docs/design/profile_page.md` (§4.4 Skills, §5 Skills editor, §7 Data Model)
 
 ## Problem Statement
 

@@ -3,7 +3,7 @@
 **Feature Branch**: `036-compatibility-engine`  
 **Created**: 2026-06-08  
 **Status**: Draft  
-**Input**: Feature brief `docs/features/036-compatibility-engine.md`. Builds on the structured skill proficiency data (031), the first-class skill store (032), and the LLM JD parser (035). Consumed later by the Compatibility Insights Panel (037).
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/036-compatibility-engine.md`. Builds on the structured skill proficiency data (031), the first-class skill store (032), and the LLM JD parser (035). Consumed later by the Compatibility Insights Panel (037).
 
 ## Problem Statement
 

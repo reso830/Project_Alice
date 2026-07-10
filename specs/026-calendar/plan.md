@@ -2,7 +2,7 @@
 
 **Branch**: `026-calendar` | **Date**: 2026-05-21
 **Spec**: [spec.md](spec.md)
-**Inputs**: [docs/features/026-calendar.md](../../docs/features/026-calendar.md),
+**Inputs**: [docs/features/1.0.0-operational-core/026-calendar.md](../../docs/features/1.0.0-operational-core/026-calendar.md),
 [docs/design/calendar.md](../../docs/design/calendar.md)
 **Depends on**: [025-application-timeline](../025-application-timeline/spec.md)
 (canonical Timeline data, `timeline` field on every application, demo seed
@@ -516,7 +516,7 @@ to-be-merged state:
   CHANGELOG entry, README updates if any, `docs/REPO_MAP.md` entries
   for every new component / util / test file, `docs/deployment.md`
   appended with the hosted `claim_and_seed_starter` follow-up SQL,
-  `docs/features/026-calendar.md` left as-is (brief is input, not
+  `docs/features/1.0.0-operational-core/026-calendar.md` left as-is (brief is input, not
   output).
 - **Browser Smoke Test** (final phase): ordered AFTER Release Prep
   so the smoke test exercises the merge state per Amendment 1.3.0.

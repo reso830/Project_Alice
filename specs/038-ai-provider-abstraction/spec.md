@@ -3,7 +3,7 @@
 **Feature Branch**: `038-ai-provider-abstraction`
 **Created**: 2026-06-19
 **Status**: Draft
-**Input**: Feature brief `docs/features/038-ai-provider-abstraction.md`
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/038-ai-provider-abstraction.md`
 
 ---
 

@@ -389,6 +389,14 @@ service-role key is server-only and **must never** be prefixed with
 `VITE_`. The `vite.config.js` plugin `assertHostedFrontendEnv` fails the
 build closed if any of the three `VITE_*` vars is missing in production.
 
+**Defense in depth — build + runtime handshake.** Two independent checks
+guard against a hosted deployment with missing config: (1) the build-time
+`assertHostedFrontendEnv` check above, and (2) a runtime check — on boot,
+the frontend calls `/api/health`; if the API reports `runtime: 'hosted'`
+but the bundle has `isHostedAuthAvailable === false`, the app mounts
+`ConfigError` instead of the welcome page or app shell. A misconfigured
+deploy fails loud rather than silently broken.
+
 Access tokens are verified server-side via Supabase's JWKS endpoint
 (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) using `jose`, accepting
 `ES256` and `RS256` — Supabase's modern asymmetric signing modes for

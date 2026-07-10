@@ -3,7 +3,7 @@
 **Feature Branch**: `025-application-timeline`
 **Created**: 2026-05-21
 **Status**: Draft
-**Input**: [`docs/features/025-application-timeline.md`](../../docs/features/025-application-timeline.md), [`docs/design/application_timeline.md`](../../docs/design/application_timeline.md)
+**Input**: [`docs/features/1.0.0-operational-core/025-application-timeline.md`](../../docs/features/1.0.0-operational-core/025-application-timeline.md), [`docs/design/application_timeline.md`](../../docs/design/application_timeline.md)
 
 ---
 

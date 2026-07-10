@@ -3,7 +3,7 @@
 **Feature Branch**: `035-llm-jd-parser`
 **Created**: 2026-06-08
 **Status**: Draft
-**Input**: Feature brief: `docs/features/035-llm-jd-parser.md` (the brief's heading reads "034" — a typo; this is feature **035**)
+**Input**: Feature brief: `docs/features/2.0.0-smart-intake-ai-assistance/035-llm-jd-parser.md` (the brief's heading reads "034" — a typo; this is feature **035**)
 **Design references**: `docs/design/application_overlay.md` §13 (Entry & smart fill), `docs/design/tracker.md` (Detail Modal / Add-application gate)
 
 ---

@@ -2,7 +2,7 @@
 
 **Branch**: `032-profile-schema-refactor` | **Spec**: [spec.md](spec.md)  
 **Created**: 2026-06-02  
-**Input**: Feature brief `docs/features/032-profile-schema-refactor.md` + [spec.md](spec.md)  
+**Input**: Feature brief `docs/features/2.0.0-smart-intake-ai-assistance/032-profile-schema-refactor.md` + [spec.md](spec.md)  
 **Supporting artifacts**: [research.md](research.md) · [data-model.md](data-model.md) · [contracts/api.md](contracts/api.md) · [quickstart.md](quickstart.md) · [checklists/plan-review.md](checklists/plan-review.md)
 
 ## Summary

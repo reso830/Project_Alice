@@ -3,7 +3,7 @@
 **Feature Branch**: `033-llm-resume-cv-parser`
 **Created**: 2026-06-02
 **Status**: Draft
-**Input**: Feature brief: `docs/features/033-llm-resume-cv-parser.md`
+**Input**: Feature brief: `docs/features/2.0.0-smart-intake-ai-assistance/033-llm-resume-cv-parser.md`
 
 ---
 
