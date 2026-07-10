@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let supabaseMock = null;
 let isHostedAuthAvailableMock = false;
@@ -234,6 +234,151 @@ describe('authStore', () => {
       await store.init();
 
       await expect(store.handleAuthFailure()).resolves.toBeUndefined();
+    });
+  });
+
+  // Feature 045: verified directly against @supabase/auth-js@2.105.4 source
+  // (research.md D1) — a freshly-registered onAuthStateChange callback
+  // receives an INITIAL_SESSION event (carrying the just-saved recovery
+  // session) before the macrotask-deferred PASSWORD_RECOVERY event fires.
+  // Unguarded, that early event would transiently resolve `authenticated`.
+  // The guard holds ANY event that isn't literally PASSWORD_RECOVERY, by
+  // design — these tests cover both the real INITIAL_SESSION case and a
+  // SIGNED_IN case (e.g. a stray cross-tab event) to demonstrate the guard
+  // doesn't hardcode a single "expected other event" name.
+  describe('password-recovery guard (feature 045)', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    });
+
+    it('with no recovery URL marker, SIGNED_IN still resolves authenticated immediately (unaffected by the guard)', async () => {
+      vi.stubGlobal('location', { hash: '', search: '' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      expect(store.getAuthState().status).toBe('unauthenticated');
+
+      supabaseMock.fire('SIGNED_IN', {
+        user: { id: 'user-4', email: 'no-recovery@example.com' },
+        access_token: 'tok-4',
+      });
+
+      expect(store.getAuthState().status).toBe('authenticated');
+    });
+
+    it('recovery URL + INITIAL_SESSION (carrying the recovery session) then PASSWORD_RECOVERY resolves password-recovery, never transiently authenticated', async () => {
+      // This is the real auth-js@2.105.4 sequence (see research.md D1):
+      // onAuthStateChange's own INITIAL_SESSION replay fires before the
+      // setTimeout(0)-deferred PASSWORD_RECOVERY event.
+      vi.stubGlobal('location', { hash: '#access_token=abc&type=recovery', search: '' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      const listener = vi.fn();
+      const initPromise = store.init();
+      store.subscribe(listener);
+
+      const recoverySession = {
+        user: { id: 'user-5', email: 'recover@example.com' },
+        access_token: 'tok-recovery',
+      };
+      supabaseMock.fire('INITIAL_SESSION', recoverySession);
+      // The held INITIAL_SESSION must not have resolved `authenticated`.
+      expect(store.getAuthState().status).not.toBe('authenticated');
+      expect(listener).not.toHaveBeenCalled();
+
+      supabaseMock.fire('PASSWORD_RECOVERY', recoverySession);
+      await initPromise;
+
+      expect(store.getAuthState()).toEqual({
+        status: 'password-recovery',
+        user: { id: 'user-5', email: 'recover@example.com' },
+        accessToken: 'tok-recovery',
+      });
+    });
+
+    it('recovery URL detected via the query string (not just the hash) also arms the guard', async () => {
+      vi.stubGlobal('location', { hash: '', search: '?type=recovery&code=abc' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      supabaseMock.fire('PASSWORD_RECOVERY', {
+        user: { id: 'user-6', email: 'pkce@example.com' },
+        access_token: 'tok-pkce',
+      });
+
+      expect(store.getAuthState().status).toBe('password-recovery');
+    });
+
+    it('recovery URL + neither event arrives resolves recovery-expired after the guard timeout', async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+      expect(store.getAuthState().status).not.toBe('recovery-expired');
+
+      await vi.advanceTimersByTimeAsync(10000);
+
+      expect(store.getAuthState()).toEqual({
+        status: 'recovery-expired',
+        user: null,
+        accessToken: null,
+      });
+    });
+
+    it('recovery URL + a non-recovery event only (e.g. SIGNED_IN, no PASSWORD_RECOVERY ever) resolves recovery-expired, not stuck on authenticated', async () => {
+      // Uses SIGNED_IN here deliberately (rather than INITIAL_SESSION) to
+      // demonstrate the guard's allow-list is generic — it doesn't matter
+      // which other event arrives, only PASSWORD_RECOVERY ever resolves it.
+      vi.useFakeTimers();
+      vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      supabaseMock.fire('SIGNED_IN', {
+        user: { id: 'user-7', email: 'dead-link@example.com' },
+        access_token: 'tok-7',
+      });
+      expect(store.getAuthState().status).not.toBe('authenticated');
+
+      await vi.advanceTimersByTimeAsync(10000);
+
+      expect(store.getAuthState().status).toBe('recovery-expired');
+    });
+
+    it('a confirmed PASSWORD_RECOVERY disarms the guard so the timeout never fires afterward', async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+      supabaseMock = makeAuthMock({ session: null });
+      isHostedAuthAvailableMock = true;
+
+      const store = await import('../../src/data/authStore.js');
+      await store.init();
+
+      supabaseMock.fire('PASSWORD_RECOVERY', {
+        user: { id: 'user-8', email: 'confirmed@example.com' },
+        access_token: 'tok-8',
+      });
+      expect(store.getAuthState().status).toBe('password-recovery');
+
+      await vi.advanceTimersByTimeAsync(10000);
+
+      // Still password-recovery — the timeout must not have fired and
+      // overwritten it with recovery-expired.
+      expect(store.getAuthState().status).toBe('password-recovery');
     });
   });
 });

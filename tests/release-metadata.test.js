@@ -9,15 +9,16 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const pkg = JSON.parse(read('package.json'));
 
 describe('release metadata', () => {
-  it('keeps the 1.13.1 release version in sync across package, app chrome, and docs', () => {
-    expect(pkg.version).toBe('1.13.1');
-    expect(APP_VERSION).toBe('v1.13.1');
+  it('keeps the 1.14.0 release version in sync across package, app chrome, and docs', () => {
+    expect(pkg.version).toBe('1.14.0');
+    expect(APP_VERSION).toBe('v1.14.0');
 
     const lock = JSON.parse(read('package-lock.json'));
-    expect(lock.version).toBe('1.13.1');
-    expect(lock.packages['']?.version).toBe('1.13.1');
+    expect(lock.version).toBe('1.14.0');
+    expect(lock.packages['']?.version).toBe('1.14.0');
 
-    expect(read('README.md')).toContain('Current version: **1.13.1**');
+    expect(read('README.md')).toContain('Current version: **1.14.0**');
+    expect(read('CHANGELOG.md')).toContain('## [1.14.0] — 2026-07-10');
     expect(read('CHANGELOG.md')).toContain('## [1.13.1] — 2026-07-10');
     expect(read('CHANGELOG.md')).toContain('## [1.13.0] — 2026-07-09');
     expect(read('CHANGELOG.md')).toContain('## [1.12.12] — 2026-07-09');
@@ -56,7 +57,8 @@ describe('release metadata', () => {
     expect(read('CHANGELOG.md')).toContain('## [1.1.0] — 2026-06-01');
     expect(read('CHANGELOG.md')).toContain('## [1.0.0] — 2026-05-29');
     expect(read('CHANGELOG.md')).toContain('## [0.15.0] — 2026-05-28');
-    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.1...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.14.0...HEAD');
+    expect(read('CHANGELOG.md')).toContain('[1.14.0]: https://github.com/reso830/Project_Alice/compare/v1.13.1...v1.14.0');
     expect(read('CHANGELOG.md')).toContain('[1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1');
     expect(read('CHANGELOG.md')).toContain('[1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0');
     expect(read('CHANGELOG.md')).toContain('[1.12.12]: https://github.com/reso830/Project_Alice/compare/v1.12.11...v1.12.12');
@@ -433,11 +435,40 @@ describe('release metadata', () => {
     for (const path of [
       'specs/044-hosted-startup-performance',
       'docs/features/2.0.0-smart-intake-ai-assistance/044-hosted-startup-performance.md',
-      'HostedAlice_StartupLoader/design_handoff_startup_loader',
       'shared/startupLoader.js',
       'tests/build/code-splitting.test.js',
       'tests/build/font-loading.test.js',
       'specs/044-hosted-startup-performance/metrics.md',
+    ]) {
+      expect(existsSync(join(root, path))).toBe(true);
+    }
+  });
+
+  it('documents the Hosted Password Management release surfaces with resolvable links', () => {
+    const readme = read('README.md');
+    const repoMap = read('docs/REPO_MAP.md');
+    const changelog = read('CHANGELOG.md');
+
+    expect(readme).toContain('Hosted password management');
+    expect(changelog).toContain('Hosted Password Management');
+    expect(repoMap).toContain('src/components/PasswordChangeModal.js');
+    expect(repoMap).toContain('src/pages/welcome/ForgotPasswordForm.js');
+    expect(repoMap).toContain('src/pages/welcome/ResetPasswordForm.js');
+    expect(repoMap).toContain('PATCH /password');
+    expect(repoMap).toContain('specs/045-auth-password-reset/');
+    expect(read('docs/feature_roadmap.md')).toContain('[x] 045-auth-password-reset  ·  shipped v1.14.0');
+
+    for (const path of [
+      'specs/045-auth-password-reset',
+      'specs/045-auth-password-reset/spec.md',
+      'specs/045-auth-password-reset/contracts/api.md',
+      'docs/features/2.0.0-smart-intake-ai-assistance/045-hosted-password-management.md',
+      'src/components/PasswordChangeModal.js',
+      'src/pages/welcome/ForgotPasswordForm.js',
+      'src/pages/welcome/ResetPasswordForm.js',
+      'tests/components/PasswordChangeModal.test.js',
+      'tests/pages/welcome/ForgotPasswordForm.test.js',
+      'tests/pages/welcome/ResetPasswordForm.test.js',
     ]) {
       expect(existsSync(join(root, path))).toBe(true);
     }

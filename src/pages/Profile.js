@@ -1,4 +1,4 @@
-import { deleteAccount, getAll, getProfile } from '../services/api.js';
+import { changePassword, deleteAccount, getAll, getProfile } from '../services/api.js';
 import {
   computeAppCounts,
   computeStats,
@@ -12,6 +12,7 @@ import {
 import { calculateSegments, DonutChart } from '../components/DonutChart.js';
 import { StackedBar } from '../components/StackedBar.js';
 import { DeleteAccountModal } from '../components/DeleteAccountModal.js';
+import { PasswordChangeModal } from '../components/PasswordChangeModal.js';
 import { Toast } from '../components/Toast.js';
 import * as aiSettings from '../data/aiSettings.js';
 import * as authStore from '../data/authStore.js';
@@ -900,6 +901,42 @@ function createSetGroup(label, body) {
   return group;
 }
 
+// Change Password entry point (feature 045, US-1). Gated identically to
+// Delete Account below — reuses resolveAccountMode()'s three-way gate —
+// but is only ever appended for 'hosted' (Change Password has no meaning
+// for a local-only or demo session; renderAccountGroup's demo branch
+// returns early before this could render, and the 'local' branch never
+// calls it either).
+function renderPasswordRow() {
+  const row = createElement('div', 'master-row');
+  const copy = createElement('div', 'master-row__copy');
+  copy.append(
+    createElement('div', 'master-row__title', 'Password'),
+    createElement('p', 'master-row__desc', 'Update the password for your account.'),
+  );
+
+  const button = createButton('Change password', 'profile-btn profile-btn--outline account-section__password-btn', () => {
+    PasswordChangeModal.open({
+      onConfirm: async ({ currentPassword, newPassword }) => {
+        try {
+          await changePassword({ currentPassword, newPassword });
+        } catch (error) {
+          if (error?.code === 'INVALID_PASSWORD') {
+            throw error;
+          }
+          Toast.show('Could not update your password. Please try again.', 'error');
+          throw error;
+        }
+
+        Toast.show('Password updated.', 'success');
+      },
+    });
+  });
+
+  row.append(copy, button);
+  return row;
+}
+
 function renderAccountGroup({ navigate, container, health } = {}) {
   const mode = resolveAccountMode();
   const body = createElement('div', 'account-section');
@@ -912,6 +949,10 @@ function renderAccountGroup({ navigate, container, health } = {}) {
     );
 
     return createSetGroup('ACCOUNT', body);
+  }
+
+  if (mode === 'hosted') {
+    body.append(renderPasswordRow());
   }
 
   const description = createElement('p', 'account-section__desc', ACCOUNT_COPY[mode]);

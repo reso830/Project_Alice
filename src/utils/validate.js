@@ -2,6 +2,7 @@ const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
 const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
+export const PASSWORD_MIN = 8;
 
 function asString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -69,4 +70,16 @@ export function validateEmail(value) {
   }
 
   return EMAIL_PATTERN.test(trimmed) ? null : 'Email must be a valid email address.';
+}
+
+// Deliberately does NOT trim (unlike asString/other validators here): a
+// password's raw length is the pre-existing LoginForm/SignupForm behavior
+// this consolidates, and trimming would silently change what qualifies
+// (e.g. an all-whitespace password) rather than just relocating the rule.
+export function validatePassword(value) {
+  const raw = typeof value === 'string' ? value : '';
+
+  return raw.length >= PASSWORD_MIN
+    ? null
+    : `Password must be at least ${PASSWORD_MIN} characters.`;
 }

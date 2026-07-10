@@ -36,8 +36,15 @@ vi.mock('../src/data/authStore.js', () => ({
   },
 }));
 
+const welcomePageMocks = vi.hoisted(() => ({
+  mount: vi.fn(),
+  unmount: vi.fn(),
+  setAuthView: vi.fn(),
+  getAuthView: vi.fn(() => null),
+}));
+
 vi.mock('../src/pages/welcome/WelcomePage.js', () => ({
-  WelcomePage: { mount: vi.fn(), unmount: vi.fn() },
+  WelcomePage: welcomePageMocks,
 }));
 vi.mock('../src/pages/welcome/AuthOverlay.js', () => ({ AuthOverlay: {} }));
 
@@ -140,6 +147,10 @@ beforeEach(() => {
   updateControllerMocks.resetUpdateControllerForTesting.mockReset();
   updateControllerMocks.subscribeUpdateController.mockClear();
   updateControllerMocks.subscribeUpdateController.mockReturnValue(updateControllerMocks.unsubscribe);
+  welcomePageMocks.mount.mockClear();
+  welcomePageMocks.unmount.mockClear();
+  welcomePageMocks.setAuthView.mockClear();
+  welcomePageMocks.getAuthView.mockReset().mockReturnValue(null);
   while (document.body.firstChild) {
     document.body.firstChild.remove();
   }
@@ -355,6 +366,106 @@ describe('bootstrap — ConfigError handshake wiring', () => {
 
     expect(document.querySelector('#welcome-root')).not.toBeNull();
     expect(document.querySelector('.toast')).toBeNull();
+  });
+});
+
+describe('bootstrap — password recovery routing (feature 045)', () => {
+  function emitAuthState(state) {
+    authMocks.state = state;
+    for (const fn of authMocks.subscribers) {
+      fn(state);
+    }
+  }
+
+  it('mounts Welcome with the reset-password view for a password-recovery status', async () => {
+    authMocks.state = { status: 'password-recovery', user: { id: 'u1' }, accessToken: 'tok' };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    expect(document.querySelector('#welcome-root')).not.toBeNull();
+    expect(welcomePageMocks.mount).toHaveBeenCalledTimes(1);
+    expect(welcomePageMocks.mount.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ initialAuthView: 'reset-password' }),
+    );
+  });
+
+  it('mounts Welcome with the recovery-expired view for a recovery-expired status', async () => {
+    authMocks.state = { status: 'recovery-expired', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+
+    await bootstrap();
+
+    expect(document.querySelector('#welcome-root')).not.toBeNull();
+    expect(welcomePageMocks.mount.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ initialAuthView: 'recovery-expired' }),
+    );
+  });
+
+  it('routes an ended reset-password session back to login without remounting Welcome, and surfaces the staged notice', async () => {
+    authMocks.state = { status: 'password-recovery', user: { id: 'u1' }, accessToken: 'tok' };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+    welcomePageMocks.getAuthView.mockReturnValue('reset-password');
+
+    await bootstrap();
+    expect(welcomePageMocks.mount).toHaveBeenCalledTimes(1);
+
+    authMocks.notice = { message: 'Password updated. Sign in with your new password.', type: 'success' };
+    emitAuthState({ status: 'unauthenticated', user: null, accessToken: null });
+
+    expect(welcomePageMocks.setAuthView).toHaveBeenCalledWith('login');
+    // The SIGNED_OUT-driven reroute reuses the already-mounted Welcome — it
+    // must not tear down and remount it (that would also lose the overlay's
+    // own DOM/focus state for no reason).
+    expect(welcomePageMocks.mount).toHaveBeenCalledTimes(1);
+    const toast = document.querySelector('.toast');
+    expect(toast?.textContent).toContain('Password updated');
+  });
+
+  it('routes an abandoned recovery-expired view back to login (no notice staged)', async () => {
+    authMocks.state = { status: 'recovery-expired', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+    welcomePageMocks.getAuthView.mockReturnValue('recovery-expired');
+
+    await bootstrap();
+    emitAuthState({ status: 'unauthenticated', user: null, accessToken: null });
+
+    expect(welcomePageMocks.setAuthView).toHaveBeenCalledWith('login');
+    expect(welcomePageMocks.mount).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.toast')).toBeNull();
+  });
+
+  it('does not call setAuthView when Welcome is already mounted showing an unrelated view (e.g. login)', async () => {
+    authMocks.state = { status: 'unauthenticated', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = true;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'hosted' });
+    welcomePageMocks.getAuthView.mockReturnValue('login');
+
+    await bootstrap();
+    welcomePageMocks.setAuthView.mockClear();
+
+    emitAuthState({ status: 'unauthenticated', user: null, accessToken: null });
+
+    expect(welcomePageMocks.setAuthView).not.toHaveBeenCalled();
+    expect(welcomePageMocks.mount).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('bootstrap — Local Mode isolation (feature 045, T023)', () => {
+  it('never mounts Welcome for local-mode — Forgot/Reset Password (Welcome-only surfaces) stay unreachable', async () => {
+    authMocks.state = { status: 'local-mode', user: null, accessToken: null };
+    supabaseClientState.isHostedAuthAvailable = false;
+    healthMocks.getHealth.mockResolvedValue({ status: 'ok', runtime: 'local' });
+
+    await bootstrap();
+
+    expect(document.querySelector('.topbar')).not.toBeNull();
+    expect(document.querySelector('#welcome-root')).toBeNull();
+    expect(welcomePageMocks.mount).not.toHaveBeenCalled();
   });
 });
 

@@ -1,9 +1,9 @@
 import { emailRedirectUrl, supabase } from '../../services/supabaseClient.js';
 import { createSvgIcon } from '../../utils/icons.js';
+import { validatePassword } from '../../utils/validate.js';
 
 const NEUTRAL_ERROR = 'This email cannot sign up right now.';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN = 8;
 const EYE_PATHS = [
   'M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z',
   'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
@@ -119,8 +119,9 @@ export function mountSignupForm(container, { email = '', onEmailChange, onSucces
       setFieldError(emailField, 'Enter a valid email address.');
       valid = false;
     }
-    if (passwordField.input.value.length < PASSWORD_MIN) {
-      setFieldError(passwordField, `Password must be at least ${PASSWORD_MIN} characters.`);
+    const passwordError = validatePassword(passwordField.input.value);
+    if (passwordError) {
+      setFieldError(passwordField, passwordError);
       valid = false;
     }
     return valid;
@@ -134,12 +135,7 @@ export function mountSignupForm(container, { email = '', onEmailChange, onSucces
       );
     }
     if (touched.password) {
-      setFieldError(
-        passwordField,
-        passwordField.input.value.length >= PASSWORD_MIN
-          ? ''
-          : `Password must be at least ${PASSWORD_MIN} characters.`,
-      );
+      setFieldError(passwordField, validatePassword(passwordField.input.value) ?? '');
     }
   }
 

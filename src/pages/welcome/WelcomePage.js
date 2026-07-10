@@ -3,6 +3,7 @@ import { HeroSlideshow as DefaultHeroSlideshow } from './HeroSlideshow.js';
 import { enterDemo } from './demoStub.js';
 import { LegalModal } from '../../components/LegalModal.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
+import { RECOVERY_URL_MARKER } from '../../data/authStore.js';
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
@@ -23,7 +24,9 @@ const DEFAULT_WELCOME_CONFIG = Object.freeze({
   heroScene: 'auto',
 });
 
-const VALID_AUTH_VIEWS = new Set([null, 'login', 'signup', 'verification_sent']);
+const VALID_AUTH_VIEWS = new Set([
+  null, 'login', 'signup', 'verification_sent', 'forgot', 'forgot_sent', 'reset-password', 'recovery-expired',
+]);
 
 let _container = null;
 let _root = null;
@@ -431,7 +434,18 @@ function handleVerificationCallback(root) {
     return;
   }
 
-  root.prepend(renderVerificationBanner());
+  // Feature 045: a password-recovery link reuses this same redirect URL
+  // (VITE_AUTH_EMAIL_REDIRECT_URL — research.md D4), so it carries
+  // `?auth=callback` alongside Supabase's own recovery marker in the hash.
+  // That combination is a recovery visit, not a signup-verification one —
+  // showing "Email verified" here would be wrong. Recovery routing itself
+  // is authStore's job (its own guard already reads this same marker,
+  // independently, before this ever runs); this only suppresses the wrong
+  // banner. `?auth=callback` is still stripped below either way.
+  const isRecoveryLink = url.hash.includes(RECOVERY_URL_MARKER) || url.search.includes(RECOVERY_URL_MARKER);
+  if (!isRecoveryLink) {
+    root.prepend(renderVerificationBanner());
+  }
 
   url.searchParams.delete('auth');
   const search = url.searchParams.toString();
@@ -552,7 +566,7 @@ export function mount(container, deps = {}) {
 
   _container = container;
   _deps = deps;
-  _authView = null;
+  _authView = VALID_AUTH_VIEWS.has(deps.initialAuthView) ? deps.initialAuthView : null;
 
   _effective = computeEffective(DEFAULT_WELCOME_CONFIG);
   _isMobile = mobileMatches();
@@ -613,6 +627,10 @@ export function mount(container, deps = {}) {
   }
 
   handleVerificationCallback(_root);
+
+  if (_authView !== null) {
+    renderOverlay();
+  }
 }
 
 export function unmount() {

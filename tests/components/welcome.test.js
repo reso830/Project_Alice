@@ -18,6 +18,9 @@ vi.mock('../../src/pages/welcome/demoStub.js', () => demoStubMocks);
 const supabaseMocks = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
+  updateUser: vi.fn(),
+  signOut: vi.fn(),
 }));
 
 vi.mock('../../src/services/supabaseClient.js', () => ({
@@ -25,6 +28,9 @@ vi.mock('../../src/services/supabaseClient.js', () => ({
     auth: {
       signInWithPassword: supabaseMocks.signInWithPassword,
       signUp: supabaseMocks.signUp,
+      resetPasswordForEmail: supabaseMocks.resetPasswordForEmail,
+      updateUser: supabaseMocks.updateUser,
+      signOut: supabaseMocks.signOut,
     },
   },
   emailRedirectUrl: 'https://example.com/?auth=callback',
@@ -58,6 +64,9 @@ beforeEach(() => {
   });
   supabaseMocks.signInWithPassword.mockReset();
   supabaseMocks.signUp.mockReset();
+  supabaseMocks.resetPasswordForEmail.mockReset();
+  supabaseMocks.updateUser.mockReset();
+  supabaseMocks.signOut.mockReset().mockResolvedValue({ error: null });
   demoStubMocks.enterDemo.mockReset();
 });
 
@@ -323,6 +332,19 @@ describe('WelcomePage — ?auth=callback handling', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     expect(container.querySelector('.welcome__verification-banner')).toBeNull();
+  });
+
+  // Feature 045 / research.md D4: a password-recovery link reuses this same
+  // redirect URL, so it also carries ?auth=callback alongside Supabase's own
+  // #...type=recovery marker. That combination must NOT show "Email
+  // verified" — it's a recovery visit, not a signup-verification one.
+  it('does not render the banner when the URL also carries a recovery marker', () => {
+    window.history.replaceState({}, '', '/?auth=callback#access_token=abc&type=recovery');
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(container.querySelector('.welcome__verification-banner')).toBeNull();
+    // ?auth=callback is still stripped either way.
+    expect(window.location.search).toBe('');
   });
 });
 
@@ -897,12 +919,15 @@ describe('Phase 17 — Auth modal chrome', () => {
     expect(panel.getAttribute('aria-labelledby')).toBe('auth-overlay-title');
   });
 
-  it('does not render a Forgot-password link in signin mode (spec: no custom in-app reset UI)', () => {
+  // Feature 045 reverses the prior "no custom in-app reset UI" decision
+  // (feature 018) this test used to encode — see spec.md Problem Statement.
+  it('renders a "Forgot password?" link in signin mode', () => {
     mountWelcomeWithOverlay();
     container.querySelector('[data-auth-view="login"]').click();
 
-    const overlay = container.querySelector('.auth-overlay');
-    expect(overlay.textContent.toLowerCase()).not.toContain('forgot');
+    const link = container.querySelector('.auth-form--login .auth-form__forgot-link');
+    expect(link).not.toBeNull();
+    expect(link.textContent).toBe('Forgot password?');
   });
 
   it('does not render a Forgot-password link in signup mode', () => {
@@ -1150,5 +1175,495 @@ describe('Feature 042 — Mobile branch (≤620px)', () => {
     media.setMobile(true);
 
     expect(mark.src).toContain('alice-sigil-full.svg');
+  });
+});
+
+// Feature 045, Phase 03 — Forgot Password (Welcome, request). US-2.
+describe('AuthOverlay — Forgot Password (feature 045)', () => {
+  function openForgot() {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    container.querySelector('.auth-form__forgot-link').click();
+  }
+
+  // Sets the email input's value AND fires `input` so AuthOverlay's
+  // onEmailChange wiring updates state.email — required for anything that
+  // reads the confirmation message's embedded email (forgot_sent), not just
+  // the form's own submit handler (which reads the input directly).
+  function fillForgotEmail(form, email) {
+    const input = form.querySelector('input[name="email"]');
+    input.value = email;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  it('clicking "Forgot password?" opens the forgot view with the email form', () => {
+    openForgot();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('forgot');
+    expect(overlay.querySelector('.auth-overlay__title').textContent).toBe('Forgot your password?');
+    expect(overlay.querySelector('.auth-overlay__subtitle').textContent).toBe(
+      "We'll email you a link to reset it.",
+    );
+    const form = container.querySelector('.auth-form--forgot');
+    expect(form).not.toBeNull();
+    expect(form.querySelector('input[name="email"]')).not.toBeNull();
+    // No current/new password fields — this is the "forgot" step, not "reset".
+    expect(form.querySelector('input[type="password"]')).toBeNull();
+  });
+
+  it('hides the footer chrome (demo/swap/legal) in the forgot view', () => {
+    openForgot();
+
+    expect(container.querySelector('.auth-overlay__footer').hidden).toBe(true);
+  });
+
+  it('malformed email shows an inline error and never calls resetPasswordForEmail', () => {
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    form.querySelector('input[name="email"]').value = 'not-an-email';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(form.querySelector('.auth-form__field-error').textContent).toContain('valid email');
+    expect(supabaseMocks.resetPasswordForEmail).not.toHaveBeenCalled();
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('forgot');
+  });
+
+  it('a valid email calls resetPasswordForEmail with the redirect URL and shows a loading state', async () => {
+    let resolveReset;
+    supabaseMocks.resetPasswordForEmail.mockReturnValue(
+      new Promise((resolve) => { resolveReset = resolve; }),
+    );
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    form.querySelector('input[name="email"]').value = 'jane@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledWith('jane@example.com', {
+      redirectTo: 'https://example.com/?auth=callback',
+    });
+    const submitBtn = form.querySelector('.auth-form__submit');
+    expect(submitBtn.disabled).toBe(true);
+    expect(submitBtn.textContent).toBe('Sending…');
+
+    resolveReset({ data: {}, error: null });
+    await flushMicrotasks();
+    await flushMicrotasks();
+  });
+
+  it('a registered email (success response) transitions to forgot_sent with non-enumerating copy', async () => {
+    supabaseMocks.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    fillForgotEmail(form, 'registered@example.com');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('forgot_sent');
+    expect(overlay.querySelector('.auth-overlay__title').textContent).toBe('Check your inbox');
+    const message = overlay.querySelector('.auth-overlay__verification-text');
+    expect(message.textContent).toContain('If an account exists for');
+    expect(message.textContent).toContain('registered@example.com');
+    expect(message.textContent).toContain("we've sent a password reset link");
+  });
+
+  it('an unregistered email (error response) reaches the SAME forgot_sent copy — non-enumeration (FR-8/AC-5)', async () => {
+    supabaseMocks.resetPasswordForEmail.mockResolvedValue({
+      data: null,
+      error: { message: 'User not found' },
+    });
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    fillForgotEmail(form, 'unregistered@example.com');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('forgot_sent');
+    expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledWith('unregistered@example.com', {
+      redirectTo: 'https://example.com/?auth=callback',
+    });
+    const message = overlay.querySelector('.auth-overlay__verification-text');
+    expect(message.textContent).toContain('If an account exists for');
+    expect(message.textContent).toContain('unregistered@example.com');
+  });
+
+  it('a thrown/rejected resetPasswordForEmail call also reaches forgot_sent, not a distinct error state', async () => {
+    supabaseMocks.resetPasswordForEmail.mockRejectedValue(new TypeError('network down'));
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    form.querySelector('input[name="email"]').value = 'jane@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('forgot_sent');
+  });
+
+  it('success and error provider responses produce byte-identical forgot_sent messages for the same email', async () => {
+    supabaseMocks.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+    openForgot();
+    let form = container.querySelector('.auth-form--forgot');
+    fillForgotEmail(form, 'same@example.com');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+    const html1 = container.querySelector('.auth-overlay__verification-text').outerHTML;
+
+    container.querySelector('.auth-overlay__back-link').click();
+    container.querySelector('.auth-form__forgot-link').click();
+    supabaseMocks.resetPasswordForEmail.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'user not found' },
+    });
+    form = container.querySelector('.auth-form--forgot');
+    fillForgotEmail(form, 'same@example.com');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+    const html2 = container.querySelector('.auth-overlay__verification-text').outerHTML;
+
+    expect(html1).toBe(html2);
+  });
+
+  it('"Back to sign in" on the forgot form returns to the login view', () => {
+    openForgot();
+
+    container.querySelector('.auth-overlay__back-link').click();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('login');
+    expect(container.querySelector('.auth-form--login')).not.toBeNull();
+  });
+
+  it('"Back to sign in" on forgot_sent returns to the login view', async () => {
+    supabaseMocks.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+    openForgot();
+    const form = container.querySelector('.auth-form--forgot');
+    form.querySelector('input[name="email"]').value = 'jane@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('forgot_sent');
+
+    container.querySelector('.auth-overlay__back-link').click();
+
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('login');
+  });
+
+  it('prevents double-submit while a request is in flight', async () => {
+    let resolveReset;
+    supabaseMocks.resetPasswordForEmail.mockReturnValue(
+      new Promise((resolve) => { resolveReset = resolve; }),
+    );
+    openForgot();
+
+    const form = container.querySelector('.auth-form--forgot');
+    form.querySelector('input[name="email"]').value = 'jane@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+
+    expect(supabaseMocks.resetPasswordForEmail).toHaveBeenCalledTimes(1);
+
+    resolveReset({ data: {}, error: null });
+    await flushMicrotasks();
+    await flushMicrotasks();
+  });
+
+  it('email typed in the login form persists when switching to forgot', () => {
+    mountWelcomeWithOverlay();
+    container.querySelector('[data-auth-view="login"]').click();
+    const loginEmail = container.querySelector('.auth-form--login input[name="email"]');
+    loginEmail.value = 'persisted@example.com';
+    loginEmail.dispatchEvent(new Event('input'));
+
+    container.querySelector('.auth-form__forgot-link').click();
+
+    const forgotEmail = container.querySelector('.auth-form--forgot input[name="email"]');
+    expect(forgotEmail.value).toBe('persisted@example.com');
+  });
+});
+
+describe('AuthOverlay — Reset Password + expired-link state (feature 045, Phase 04)', () => {
+  // reset-password/recovery-expired are reachable ONLY via main.js's
+  // initial-view threading (never a click) — main.test.js covers that
+  // threading + the post-session "return to login" reroute wiring. This
+  // suite covers what WelcomePage.mount({ initialAuthView }) + AuthOverlay
+  // do once already in one of these two views: chrome, the expired-session
+  // transition, and the abandon-path sign-out — mirroring how ForgotPassword
+  // above exercises AuthOverlay's mechanics directly.
+  function mountIntoReset() {
+    WelcomePage.mount(container, {
+      heroSlideshow: heroSlideshowStub,
+      authOverlay: AuthOverlay,
+      initialAuthView: 'reset-password',
+    });
+  }
+
+  function mountIntoRecoveryExpired() {
+    WelcomePage.mount(container, {
+      heroSlideshow: heroSlideshowStub,
+      authOverlay: AuthOverlay,
+      initialAuthView: 'recovery-expired',
+    });
+  }
+
+  it('WelcomePage.mount({ initialAuthView: "reset-password" }) opens straight into the reset-password view', () => {
+    mountIntoReset();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay).not.toBeNull();
+    expect(overlay.getAttribute('data-view')).toBe('reset-password');
+    expect(overlay.querySelector('.auth-overlay__title').textContent).toBe('Set a new password');
+    const form = container.querySelector('.auth-form--reset');
+    expect(form).not.toBeNull();
+    expect(form.querySelectorAll('input[type="password"]')).toHaveLength(2);
+  });
+
+  it('hides the footer chrome (demo/swap/legal) in the reset-password view', () => {
+    mountIntoReset();
+
+    expect(container.querySelector('.auth-overlay__footer').hidden).toBe(true);
+  });
+
+  it('WelcomePage.mount({ initialAuthView: "recovery-expired" }) opens straight into the recovery-expired view', () => {
+    mountIntoRecoveryExpired();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay).not.toBeNull();
+    expect(overlay.getAttribute('data-view')).toBe('recovery-expired');
+    expect(overlay.querySelector('.auth-overlay__title').textContent).toBe('This reset link has expired');
+    // No form — recovery-expired is message + link only.
+    expect(container.querySelector('.auth-form--reset')).toBeNull();
+  });
+
+  it('a valid password submit calls updateUser then signs out (ends the recovery session)', async () => {
+    supabaseMocks.updateUser.mockResolvedValue({ data: {}, error: null });
+    mountIntoReset();
+
+    const form = container.querySelector('.auth-form--reset');
+    const [newInput, confirmInput] = form.querySelectorAll('input[type="password"]');
+    newInput.value = 'LongEnough1';
+    newInput.dispatchEvent(new Event('input'));
+    confirmInput.value = 'LongEnough1';
+    confirmInput.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(supabaseMocks.updateUser).toHaveBeenCalledWith({ password: 'LongEnough1' });
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('an expired/invalid session error on submit transitions to the recovery-expired view instead of a generic error', async () => {
+    supabaseMocks.updateUser.mockResolvedValue({ data: null, error: { code: 'session_expired' } });
+    mountIntoReset();
+
+    const form = container.querySelector('.auth-form--reset');
+    const [newInput, confirmInput] = form.querySelectorAll('input[type="password"]');
+    newInput.value = 'LongEnough1';
+    newInput.dispatchEvent(new Event('input'));
+    confirmInput.value = 'LongEnough1';
+    confirmInput.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('recovery-expired');
+    expect(supabaseMocks.signOut).not.toHaveBeenCalled();
+  });
+
+  it('a non-expired updateUser failure shows an inline error and stays on reset-password', async () => {
+    supabaseMocks.updateUser.mockResolvedValue({ data: null, error: { message: 'network blip' } });
+    mountIntoReset();
+
+    const form = container.querySelector('.auth-form--reset');
+    const [newInput, confirmInput] = form.querySelectorAll('input[type="password"]');
+    newInput.value = 'LongEnough1';
+    newInput.dispatchEvent(new Event('input'));
+    confirmInput.value = 'LongEnough1';
+    confirmInput.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('reset-password');
+    expect(form.querySelector('.auth-form__error').textContent).toContain("Couldn't update");
+    expect(supabaseMocks.signOut).not.toHaveBeenCalled();
+  });
+
+  it('"Request a new link" on recovery-expired goes to forgot, not login (still can\'t sign in without a working password)', () => {
+    mountIntoRecoveryExpired();
+
+    container.querySelector('.auth-overlay__back-link').click();
+
+    const overlay = container.querySelector('.auth-overlay');
+    expect(overlay.getAttribute('data-view')).toBe('forgot');
+  });
+
+  it.each([
+    ['the × close button', (overlay) => overlay.querySelector('.auth-overlay__close').click()],
+    ['the form\'s own "Back to sign in"', (overlay) => overlay.querySelector('.auth-overlay__back-link').click()],
+    ['a backdrop click', (overlay) => overlay.querySelector('.auth-overlay__backdrop').dispatchEvent(new MouseEvent('click', { bubbles: true }))],
+  ])('abandoning reset-password via %s waits for signOut() to settle, then ends the recovery session and closes the overlay', async (_label, act) => {
+    mountIntoReset();
+    const overlay = container.querySelector('.auth-overlay');
+
+    act(overlay);
+
+    // Not immediate — close() now confirms the sign-out attempt settled
+    // before tearing the overlay down (see close()'s comment), rather than
+    // firing signOut() and closing optimistically in the same tick.
+    expect(container.querySelector('.auth-overlay')).not.toBeNull();
+    expect(overlay.querySelector('.auth-overlay__close').disabled).toBe(true);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  it('abandoning reset-password via Escape also ends the recovery session', async () => {
+    mountIntoReset();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  it('a rejected signOut() on the abandon path still finishes closing the overlay (no permanently stuck modal)', async () => {
+    supabaseMocks.signOut.mockRejectedValue(new Error('network down'));
+    mountIntoReset();
+
+    container.querySelector('.auth-overlay__close').click();
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  it('a second close attempt while the abandon-path signOut() is still settling is a no-op (no duplicate signOut calls)', async () => {
+    let resolveSignOut;
+    supabaseMocks.signOut.mockReturnValue(new Promise((resolve) => { resolveSignOut = resolve; }));
+    mountIntoReset();
+    const overlay = container.querySelector('.auth-overlay');
+
+    overlay.querySelector('.auth-overlay__close').click();
+    overlay.querySelector('.auth-overlay__close').click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flushMicrotasks();
+
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+
+    resolveSignOut({ error: null });
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  it('abandoning recovery-expired (no active session) does NOT call signOut, and closes immediately (no signOut to wait for)', () => {
+    mountIntoRecoveryExpired();
+    const overlay = container.querySelector('.auth-overlay');
+
+    overlay.querySelector('.auth-overlay__close').click();
+
+    expect(supabaseMocks.signOut).not.toHaveBeenCalled();
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  it('if signOut() rejects after a successful password update, the × button is re-enabled instead of staying stuck', async () => {
+    supabaseMocks.updateUser.mockResolvedValue({ data: {}, error: null });
+    supabaseMocks.signOut.mockRejectedValue(new Error('network down'));
+    mountIntoReset();
+    const closeBtn = container.querySelector('.auth-overlay__close');
+
+    submitValidReset(container.querySelector('.auth-form--reset'));
+    await flushMicrotasks();
+    expect(closeBtn.disabled).toBe(true);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    // The update already succeeded and its own signOut() attempt failed —
+    // the overlay is still showing reset-password (no reroute happened),
+    // but the user is no longer stuck: close is usable again, and retries
+    // the sign-out via the abandon path.
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('reset-password');
+    expect(closeBtn.disabled).toBe(false);
+
+    supabaseMocks.signOut.mockResolvedValue({ error: null });
+    closeBtn.click();
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(container.querySelector('.auth-overlay')).toBeNull();
+  });
+
+  function submitValidReset(form) {
+    const [newInput, confirmInput] = form.querySelectorAll('input[type="password"]');
+    newInput.value = 'LongEnough1';
+    newInput.dispatchEvent(new Event('input'));
+    confirmInput.value = 'LongEnough1';
+    confirmInput.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+
+  it.each([
+    ['the × close button', (overlay) => overlay.querySelector('.auth-overlay__close').click()],
+    ['the form\'s own "Back to sign in"', (overlay) => overlay.querySelector('.auth-overlay__back-link').click()],
+    ['a backdrop click', (overlay) => overlay.querySelector('.auth-overlay__backdrop').dispatchEvent(new MouseEvent('click', { bubbles: true }))],
+    ['Escape', () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))],
+  ])('T021: abandoning reset-password via %s while a submit is in flight is a no-op (matches DeleteAccountModal.js\'s loading-disables-close convention)', async (_label, act) => {
+    let resolveUpdate;
+    supabaseMocks.updateUser.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    mountIntoReset();
+    const form = container.querySelector('.auth-form--reset');
+    submitValidReset(form);
+    await flushMicrotasks();
+
+    act(container.querySelector('.auth-overlay'));
+
+    expect(container.querySelector('.auth-overlay').getAttribute('data-view')).toBe('reset-password');
+    expect(supabaseMocks.signOut).not.toHaveBeenCalled();
+
+    // The in-flight submit itself still completes normally afterward — the
+    // gate only blocks the abandon path, not the pending request.
+    resolveUpdate({ data: {}, error: null });
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(supabaseMocks.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('the × close button is visually disabled while a reset-password submit is in flight, and re-enabled once it settles', async () => {
+    let resolveUpdate;
+    supabaseMocks.updateUser.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    mountIntoReset();
+    const closeBtn = container.querySelector('.auth-overlay__close');
+    expect(closeBtn.disabled).toBe(false);
+
+    submitValidReset(container.querySelector('.auth-form--reset'));
+    await flushMicrotasks();
+    expect(closeBtn.disabled).toBe(true);
+
+    resolveUpdate({ data: null, error: { message: 'network blip' } });
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(closeBtn.disabled).toBe(false);
   });
 });

@@ -66,4 +66,25 @@ describe('createSqliteAccountRepository', () => {
     expect(result).toEqual({ cleared: true });
     db.close();
   });
+
+  // Feature 045 — Local Mode has no hosted account, so Change Password is
+  // unconditionally unsupported here (contracts/api.md §1). The UI never
+  // calls this (Change Password is gated out client-side), but the route
+  // handler must not crash on a stray/direct request.
+  it('changePassword always throws NOT_SUPPORTED, regardless of body', () => {
+    const db = makeMemoryDb();
+    const account = createSqliteAccountRepository(db);
+
+    for (const body of [undefined, {}, { currentPassword: 'old-pw', newPassword: 'new-password' }]) {
+      let thrown;
+      try {
+        account.changePassword(body);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toMatchObject({ code: 'NOT_SUPPORTED', status: 501 });
+    }
+
+    db.close();
+  });
 });

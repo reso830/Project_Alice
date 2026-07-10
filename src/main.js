@@ -358,7 +358,22 @@ function unmountAppShell() {
   _shellMounted = false;
 }
 
-function mountWelcome() {
+// Surface a one-shot notice after a sign-out reroute (feature 030): the
+// involuntary deleted-account message (FR-011a), the voluntary
+// account-deletion success confirmation (FR-013), or (feature 045) the
+// password-updated confirmation after a reset session ends. Called both from
+// a fresh Welcome mount (reroute cleared document.body, so a toast staged
+// before sign-out survives) and from the already-mounted-Welcome recovery
+// teardown path below (render()'s `unauthenticated` branch), which clears no
+// DOM but still needs to surface the same staged notice.
+function surfacePendingNotice() {
+  const notice = authStore.consumeAuthNotice();
+  if (notice) {
+    Toast.show(notice.message, notice.type);
+  }
+}
+
+function mountWelcome({ initialAuthView } = {}) {
   if (_welcomeMounted) {
     return;
   }
@@ -369,17 +384,10 @@ function mountWelcome() {
   root.id = 'welcome-root';
   document.body.append(root);
 
-  WelcomePage.mount(root, { authOverlay: AuthOverlay });
+  WelcomePage.mount(root, { authOverlay: AuthOverlay, initialAuthView });
   _welcomeMounted = true;
 
-  // Surface a one-shot notice after a sign-out reroute (feature 030): the
-  // involuntary deleted-account message (FR-011a) or the voluntary
-  // account-deletion success confirmation (FR-013). Shown here because the
-  // reroute cleared document.body, so a toast staged before sign-out survives.
-  const notice = authStore.consumeAuthNotice();
-  if (notice) {
-    Toast.show(notice.message, notice.type);
-  }
+  surfacePendingNotice();
 }
 
 function unmountWelcome() {
@@ -435,7 +443,31 @@ function render(state) {
     return;
   }
   if (state.status === 'unauthenticated') {
+    // Feature 045: a recovery session that just ended (password-update
+    // success, T020; or an abandoned reset/expired-link view, T021) reroutes
+    // here via authStore's SIGNED_OUT-driven status flip, but Welcome is
+    // already mounted (still showing the reset-password/recovery-expired
+    // overlay) — mountWelcome()'s own `if (_welcomeMounted) return;` guard
+    // would otherwise silently no-op and leave that stale view on screen.
+    // Detect that specific case and return the overlay to `login` instead of
+    // a fresh Welcome mount.
+    if (_welcomeMounted) {
+      const currentView = WelcomePage.getAuthView();
+      if (currentView === 'reset-password' || currentView === 'recovery-expired') {
+        WelcomePage.setAuthView('login');
+        surfacePendingNotice();
+      }
+      return;
+    }
     mountWelcome();
+    return;
+  }
+  if (state.status === 'password-recovery') {
+    mountWelcome({ initialAuthView: 'reset-password' });
+    return;
+  }
+  if (state.status === 'recovery-expired') {
+    mountWelcome({ initialAuthView: 'recovery-expired' });
   }
 }
 

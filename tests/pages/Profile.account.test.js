@@ -14,6 +14,7 @@ vi.mock('../../src/services/api.js', () => ({
   getAll: vi.fn().mockResolvedValue([]),
   getProfile: vi.fn().mockResolvedValue(null),
   deleteAccount: vi.fn(),
+  changePassword: vi.fn(),
 }));
 
 import * as api from '../../src/services/api.js';
@@ -31,6 +32,10 @@ afterEach(() => {
 
 function accountButton(container) {
   return container.querySelector('.account-section__btn');
+}
+
+function passwordButton(container) {
+  return container.querySelector('.account-section__password-btn');
 }
 
 function getSection(container, label) {
@@ -109,6 +114,108 @@ describe('Profile — Account section', () => {
     expect(document.querySelector('.toast')).toBeNull();
   });
 
+  // Feature 045 — Change Password entry point (US-1, US-6, AC-13).
+  it('hosted: renders an enabled "Change password" button', async () => {
+    const container = await mountProfile('authenticated');
+    const btn = passwordButton(container);
+
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe('Change password');
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('local: does not render a "Change password" button', async () => {
+    const container = await mountProfile('local-mode');
+
+    expect(passwordButton(container)).toBeNull();
+  });
+
+  it('demo: does not render a "Change password" button, and shows the same explanatory copy as account deletion (T024 — not just absent)', async () => {
+    const container = await mountProfile('demo');
+    const settings = getSection(container, 'SETTINGS');
+
+    expect(passwordButton(container)).toBeNull();
+    expect(settings.textContent).toContain("Account management isn't available in the demo.");
+    expect(api.changePassword).not.toHaveBeenCalled();
+  });
+
+  it('hosted: clicking "Change password" opens the PasswordChangeModal', async () => {
+    const container = await mountProfile('authenticated');
+    passwordButton(container).click();
+
+    const scrim = document.querySelector('.pcf-scrim');
+    expect(scrim).not.toBeNull();
+    expect(document.getElementById('pcf-title').textContent).toBe('Change password');
+
+    document.querySelector('.pcf-x').click();
+  });
+
+  it('hosted: a successful change calls changePassword and shows a success toast; the modal shows its own Done card rather than auto-closing', async () => {
+    api.changePassword.mockResolvedValue({ updated: true });
+    const container = await mountProfile('authenticated');
+    passwordButton(container).click();
+
+    document.getElementById('pcf-cur').value = 'old-pw';
+    document.getElementById('pcf-cur').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-new').value = 'new-password';
+    document.getElementById('pcf-new').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-confirm').value = 'new-password';
+    document.getElementById('pcf-confirm').dispatchEvent(new Event('input'));
+    document.querySelector('.pcf-btn-primary[type="submit"]').click();
+    await flush();
+
+    expect(api.changePassword).toHaveBeenCalledWith({
+      currentPassword: 'old-pw',
+      newPassword: 'new-password',
+    });
+    expect(document.querySelector('.toast')?.textContent).toContain('Password updated.');
+    // Still open, showing the in-modal success card — the design handoff's
+    // Done button (not an immediate auto-close) is what dismisses it.
+    expect(document.querySelector('.pcf-scrim')).not.toBeNull();
+    expect(document.querySelector('.pcf-center')).not.toBeNull();
+
+    document.querySelector('.pcf-center .pcf-btn-primary').click();
+  });
+
+  it('hosted: an incorrect current password keeps the modal open with an inline error and no toast', async () => {
+    api.changePassword.mockRejectedValue({ code: 'INVALID_PASSWORD', message: 'Incorrect password.' });
+    const container = await mountProfile('authenticated');
+    passwordButton(container).click();
+
+    document.getElementById('pcf-cur').value = 'wrong';
+    document.getElementById('pcf-cur').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-new').value = 'new-password';
+    document.getElementById('pcf-new').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-confirm').value = 'new-password';
+    document.getElementById('pcf-confirm').dispatchEvent(new Event('input'));
+    document.querySelector('.pcf-btn-primary[type="submit"]').click();
+    await flush();
+
+    expect(document.querySelector('.pcf-scrim')).not.toBeNull();
+    expect(document.querySelector('.pcf-err-msg').textContent).toContain('Incorrect password.');
+    expect(document.querySelector('.toast')).toBeNull();
+
+    document.querySelector('.pcf-x').click();
+  });
+
+  it('hosted: a non-INVALID_PASSWORD failure shows an error toast and closes the modal', async () => {
+    api.changePassword.mockRejectedValue({ code: 'INTERNAL_ERROR' });
+    const container = await mountProfile('authenticated');
+    passwordButton(container).click();
+
+    document.getElementById('pcf-cur').value = 'old-pw';
+    document.getElementById('pcf-cur').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-new').value = 'new-password';
+    document.getElementById('pcf-new').dispatchEvent(new Event('input'));
+    document.getElementById('pcf-confirm').value = 'new-password';
+    document.getElementById('pcf-confirm').dispatchEvent(new Event('input'));
+    document.querySelector('.pcf-btn-primary[type="submit"]').click();
+    await flush();
+
+    expect(document.querySelector('.pcf-scrim')).toBeNull();
+    expect(document.querySelector('.toast')?.textContent).toContain('Could not update your password');
+  });
+
   it('local: clear all data remount keeps supported update controls visible', async () => {
     api.deleteAccount.mockResolvedValue({ deleted: true });
     vi.stubGlobal('fetch', vi.fn(async (url) => {
@@ -149,6 +256,6 @@ describe('Profile — Account section', () => {
     expect(api.deleteAccount).toHaveBeenCalledWith({ confirm: 'DELETE' });
     expect(getSection(container, 'SETTINGS').textContent).toContain('UPDATES');
     expect(getSection(container, 'SETTINGS').textContent).toContain('Current version');
-    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.13.1');
+    expect(getSection(container, 'SETTINGS').querySelector('.update-settings__version-chip')?.textContent).toBe('v1.14.0');
   });
 });

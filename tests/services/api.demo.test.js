@@ -147,6 +147,18 @@ describe('services/api.js — demo mode delegates to demoStore, no fetch', () =>
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  // Feature 045. Defense-in-depth: Profile.js already hides the Change
+  // Password control in demo mode (this is unreached through the UI), but
+  // the service export itself must still honor the same no-fetch-in-demo
+  // seam this whole test file guards.
+  it('changePassword(payload) rejects with DEMO_UNAVAILABLE and does not call fetch', async () => {
+    const api = await import('../../src/services/api.js');
+    await expect(
+      api.changePassword({ currentPassword: 'old-pw', newPassword: 'new-password' }),
+    ).rejects.toMatchObject({ code: 'DEMO_UNAVAILABLE' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('rejects with the demoStore-thrown error shape (no wrapping) when create throws', async () => {
     demoStoreMock.create.mockImplementationOnce(() => {
       throw { code: 'VALIDATION_ERROR', message: 'Validation failed', fields: {} };

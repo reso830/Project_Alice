@@ -27,6 +27,16 @@
 
 ---
 
+## Re-review 2026-07-10 (Phase 01 implementation — event-ordering correction)
+
+**Not a plan-review finding** (raised during implementation, not by a reviewer) — recorded here because it corrects a claim item 40 below relied on when it was originally checked off.
+
+Line 40 below evidenced the `SIGNED_IN`-before-`PASSWORD_RECOVERY` architectural risk against "a web search of Supabase's documented behavior." During Phase 01 implementation (2026-07-10), that web-search-based hypothesis was checked against the actual installed/pinned `@supabase/auth-js@2.105.4` source (`node_modules/@supabase/auth-js/dist/main/GoTrueClient.js` — see research.md D1 for exact lines) and found to be **factually wrong about the specific event name**: the real sequence is `INITIAL_SESSION` (not `SIGNED_IN`) then `PASSWORD_RECOVERY`. The guard's actual *code* was unaffected — it was written to hold any event that isn't literally `PASSWORD_RECOVERY`, an allow-list design that turned out correct regardless of which other event arrives first — so no implementation change was required, only the comments and test suite (which had modeled the wrong event name) and this planning package's documentation (plan.md, data-model.md, contracts/api.md, quickstart.md, research.md).
+
+Item 40's checkmark is **not revised** — it accurately reflects what was evidenced *at the time of that review* (a web search was the best available evidence pre-implementation), and the risk it identified (an early event could flash `authenticated`) and the mitigation it approved (a guard) were both correct in substance. The correction is to the *specific event name* cited as evidence, not to the soundness of the architecture it was reviewing.
+
+---
+
 ## Spec/Plan Alignment
 
 - [x] Plan covers all six spec user stories (US-1 through US-6), each mapped to a phase (US-1→WS2, US-2→WS3, US-3/US-4→WS4, US-5/US-6→cross-cutting gating in WS2/WS3/WS4).

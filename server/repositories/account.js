@@ -11,7 +11,10 @@
  * (FR-005 / research.md R-6).
  *
  * @param {import('better-sqlite3').Database} db
- * @returns {{ delete: (body: { confirm?: string }) => { cleared: true } }}
+ * @returns {{
+ *   delete: (body: { confirm?: string }) => { cleared: true },
+ *   changePassword: () => never,
+ * }}
  */
 export function createSqliteAccountRepository(db) {
   function deleteAccount(body) {
@@ -31,5 +34,17 @@ export function createSqliteAccountRepository(db) {
     return { cleared: true };
   }
 
-  return { delete: deleteAccount };
+  // Feature 045: Local Mode has no hosted account, so there is no password
+  // to change. The Settings UI never renders the control here (gated on
+  // `resolveAccountMode()`), so this is defense-in-depth for a stray/direct
+  // request on a local or portable deployment, not a real user path — see
+  // specs/045-auth-password-reset/contracts/api.md §1.
+  function changePassword() {
+    throw Object.assign(new Error('Password change is not available in this mode.'), {
+      code: 'NOT_SUPPORTED',
+      status: 501,
+    });
+  }
+
+  return { delete: deleteAccount, changePassword };
 }

@@ -51,6 +51,16 @@ async function del(baseUrl, body) {
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
+async function patchPassword(baseUrl, body) {
+  const response = await globalThis.fetch(`${baseUrl}/api/account/password`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  return { status: response.status, body: text ? JSON.parse(text) : null };
+}
+
 describe('DELETE /api/account — hosted', () => {
   it('returns 200 and the adapter result on success; calls delete once with the body', async () => {
     const account = { delete: vi.fn().mockResolvedValue({ deleted: true }) };
@@ -168,6 +178,121 @@ describe('DELETE /api/account — local', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+});
+
+// Feature 045 — Change Password. Route wiring + requireAuth gating only;
+// the adapters' own logic (re-verify, admin update, local NOT_SUPPORTED
+// stub) is covered in tests/server/repositories/{supabase/,}account.test.js.
+describe('PATCH /api/account/password — hosted', () => {
+  it('returns 200 and the adapter result on success; calls changePassword once with the body', async () => {
+    const account = { changePassword: vi.fn().mockResolvedValue({ updated: true }) };
+
+    await withApp({ account, config: hostedConfig(), requireAuth: stubPass }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'new-password' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ data: { updated: true } });
+      expect(account.changePassword).toHaveBeenCalledTimes(1);
+      expect(account.changePassword).toHaveBeenCalledWith({
+        currentPassword: 'old-pw',
+        newPassword: 'new-password',
+      });
+    });
+  });
+
+  it('returns 401 UNAUTHORIZED and never calls changePassword when auth rejects', async () => {
+    const account = { changePassword: vi.fn() };
+
+    await withApp({ account, config: hostedConfig(), requireAuth: stubReject }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'new-password' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(account.changePassword).not.toHaveBeenCalled();
+    });
+  });
+
+  it('maps a typed INVALID_PASSWORD adapter error to 401', async () => {
+    const account = {
+      changePassword: vi.fn().mockRejectedValue(
+        Object.assign(new Error('Incorrect password.'), {
+          code: 'INVALID_PASSWORD',
+          status: 401,
+        }),
+      ),
+    };
+
+    await withApp({ account, config: hostedConfig(), requireAuth: stubPass }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'wrong', newPassword: 'new-password' });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({
+        error: { code: 'INVALID_PASSWORD', message: 'Incorrect password.' },
+      });
+    });
+  });
+
+  it('maps a typed VALIDATION_ERROR adapter error (missing/weak password) to 400', async () => {
+    const account = {
+      changePassword: vi.fn().mockRejectedValue(
+        Object.assign(new Error('Password must be at least 8 characters.'), {
+          code: 'VALIDATION_ERROR',
+          status: 400,
+        }),
+      ),
+    };
+
+    await withApp({ account, config: hostedConfig(), requireAuth: stubPass }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'short' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  it('forwards an untyped adapter error to the global handler as 500', async () => {
+    const account = { changePassword: vi.fn().mockRejectedValue(new Error('admin boom')) };
+
+    await withApp({ account, config: hostedConfig(), requireAuth: stubPass }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'new-password' });
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.code).toBe('INTERNAL_ERROR');
+    });
+  });
+
+  it('does NOT invoke seed middleware on the change-password path', async () => {
+    const account = { changePassword: vi.fn().mockResolvedValue({ updated: true }) };
+    const seed = vi.fn((_req, _res, next) => next());
+
+    await withApp(
+      { account, config: hostedConfig(), requireAuth: stubPass, seedHostedUserIfNeeded: seed },
+      async (baseUrl) => {
+        await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'new-password' });
+        expect(seed).not.toHaveBeenCalled();
+      },
+    );
+  });
+});
+
+describe('PATCH /api/account/password — local', () => {
+  it('maps the local adapter stub (typed NOT_SUPPORTED) to 501', async () => {
+    const account = {
+      changePassword: vi.fn().mockRejectedValue(
+        Object.assign(new Error('Password change is not available in this mode.'), {
+          code: 'NOT_SUPPORTED',
+          status: 501,
+        }),
+      ),
+    };
+
+    await withApp({ account }, async (baseUrl) => {
+      const res = await patchPassword(baseUrl, { currentPassword: 'old-pw', newPassword: 'new-password' });
+
+      expect(res.status).toBe(501);
+      expect(res.body.error.code).toBe('NOT_SUPPORTED');
     });
   });
 });

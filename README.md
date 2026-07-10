@@ -17,6 +17,7 @@ A local-first job application tracker built with vanilla JavaScript, Vite, and a
 - **Loading & async states** — every fetch/mutation shows explicit busy, error, and empty states with accessible messaging
 - **Local / hosted / demo runtime modes** — local-first by default (SQLite via Express); optional hosted multi-user mode (Supabase, Row Level Security); a no-signup demo mode with seeded, in-memory-only data
 - **Delete Profile & User Data** — hosted users can permanently delete their account; local users can clear all stored data behind a typed-`DELETE` gate
+- **Hosted password management** — change your password from Settings, or reset a forgotten one via an emailed recovery link (non-enumerating "Forgot password?" request, dedicated expired-link state)
 
 See [`docs/REPO_MAP.md`](docs/REPO_MAP.md#spec-packages) for the full per-feature spec index.
 
@@ -161,7 +162,7 @@ This project follows [Semantic Versioning](https://semver.org) (`MAJOR.MINOR.PAT
 
 The authoritative version is in [package.json](package.json). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
-Current version: **1.13.1** — see [CHANGELOG.md](CHANGELOG.md)
+Current version: **1.14.0** — see [CHANGELOG.md](CHANGELOG.md)
 
 ## Development Workflow
 

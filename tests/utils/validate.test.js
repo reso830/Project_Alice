@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   validateEmail,
   validateMonthYear,
+  validatePassword,
   validateRequired,
   validateUrl,
   validateYear,
@@ -39,5 +40,23 @@ describe('validate utilities', () => {
     expect(validateEmail('ana@example.com')).toBeNull();
     expect(validateEmail('not-an-email')).toBe('Email must be a valid email address.');
     expect(validateEmail('')).toBeNull();
+  });
+
+  it('validates password minimum length', () => {
+    expect(validatePassword('12345678')).toBeNull();
+    expect(validatePassword('1234567890')).toBeNull();
+    expect(validatePassword('1234567')).toBe('Password must be at least 8 characters.');
+    expect(validatePassword('')).toBe('Password must be at least 8 characters.');
+    expect(validatePassword('       ')).toBe('Password must be at least 8 characters.');
+  });
+
+  it('does not trim passwords (raw length only, matching pre-existing form behavior)', () => {
+    // 8 spaces: raw length is 8, so this must pass — trimming would silently
+    // change what qualifies as valid, which is not a policy change this
+    // consolidation is allowed to make.
+    expect(validatePassword('        ')).toBeNull();
+    // Leading/trailing whitespace around a short password must not be
+    // trimmed away to "help" it pass either.
+    expect(validatePassword(' 1234 ')).toBe('Password must be at least 8 characters.');
   });
 });

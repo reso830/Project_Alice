@@ -48,7 +48,7 @@ The rework MUST preserve these guarantees:
 | # | Guarantee | Rationale |
 |---|---|---|
 | R1 | A recovery-shaped URL (Supabase's `type=recovery` marker) is checked **synchronously**, before any `await`, so the guard is armed before `getSession()`/`onAuthStateChange` can race it | deterministic — no dependency on async timing to know whether a guard is needed at all |
-| R2 | While the guard is armed, a bare `SIGNED_IN` event does **not** resolve `authStore` to `authenticated` | prevents `main.js` from mounting the real app shell for a frame before `PASSWORD_RECOVERY` arrives (research.md D1) |
+| R2 | While the guard is armed, **any event other than `PASSWORD_RECOVERY`** (in practice `INITIAL_SESSION` — research.md D1's source-verified finding; the guard's allow-list design doesn't depend on the exact event name) does **not** resolve `authStore` to `authenticated` | prevents `main.js` from mounting the real app shell for a frame before `PASSWORD_RECOVERY` arrives (research.md D1) |
 | R3 | A `PASSWORD_RECOVERY` event while the guard is armed resolves to `password-recovery`, disarming the guard | the actual "we're in a recovery flow" signal |
 | R4 | If neither event arrives within the guard timeout, resolve to `recovery-expired`, disarming the guard | covers a dead/malformed/already-consumed link — also the mechanism behind AC-7 |
 | R5 | The guard is armed **at most once per page load** (a recovery link is a one-shot entry point) — it never re-arms during normal in-app use | prevents a false-positive guard on, e.g., a coincidental URL parameter during normal navigation |
