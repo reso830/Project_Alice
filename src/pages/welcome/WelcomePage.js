@@ -400,8 +400,8 @@ function renderFooterMeta() {
     makeExternalLink(LICENSE_NAME, LICENSE_URL, `${LICENSE_NAME} license`),
     makeLegalLink('Terms & Conditions', 'terms', 'View Terms & Conditions'),
     makeLegalLink('Privacy Policy', 'privacy', 'View Privacy Policy'),
-    makeExternalLink('Report issue', ISSUE_URL, 'Report an issue on GitHub'),
-    makeExternalLink('Request feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('Report issue', ISSUE_URL, 'Report issue on GitHub'),
+    makeExternalLink('Request feature', ISSUE_URL, 'Request feature on GitHub'),
     makeExternalLink('alvinresoso.com', PORTFOLIO_URL, 'Visit alvinresoso.com'),
   );
 

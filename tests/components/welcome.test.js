@@ -160,6 +160,10 @@ describe('WelcomePage — structure', () => {
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[1].getAttribute('rel')).toBe('noopener noreferrer');
+    // WCAG 2.5.3 (issue #139 Lighthouse audit): accessible name must contain
+    // the visible text verbatim, or voice-control users saying "click Report
+    // issue" can't target it.
+    expect(links[1].getAttribute('aria-label')).toContain('Report issue');
 
     // [2] request-feature link → ISSUE_URL
     expect(links[2].textContent).toBe('Request feature');
@@ -167,6 +171,7 @@ describe('WelcomePage — structure', () => {
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links[2].getAttribute('aria-label')).toContain('Request feature');
 
     // [3] portfolio link (part of the base 5 items, not desktop-only)
     expect(links[3].textContent).toBe('alvinresoso.com');
@@ -279,6 +284,19 @@ describe('shouldMarquee (issue #139)', () => {
   it('is false when either element is missing', () => {
     expect(shouldMarquee(null, { clientWidth: 300 })).toBe(false);
     expect(shouldMarquee({ scrollWidth: 500 }, null)).toBe(false);
+  });
+
+  it('keeps the marquee viewport clipped during animation (Lighthouse audit regression)', () => {
+    // An earlier version set `overflow: visible` on
+    // `.welcome__limitations-banner--marquee .welcome__limitations-viewport`,
+    // which let the untruncated white-on-navy text spill out over the
+    // page's own (light) background during the scroll — a Lighthouse a11y
+    // audit caught it as a near-zero color-contrast violation. The viewport
+    // must stay `overflow: hidden` in every state; only the track's
+    // `transform` should move.
+    expect(mainCss).not.toMatch(
+      /\.welcome__limitations-banner--marquee\s+\.welcome__limitations-viewport\s*\{[^}]*overflow:\s*visible/,
+    );
   });
 });
 

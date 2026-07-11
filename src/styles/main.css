@@ -7539,10 +7539,16 @@ button[aria-busy="true"] {
 
 /* Applied via JS only once the track is measured to actually overflow its
    viewport (`shouldMarquee` in WelcomePage.js) — never guessed from a
-   breakpoint, since it depends on real text metrics at the current width. */
-.welcome__limitations-banner--marquee .welcome__limitations-viewport {
-  overflow: visible;
-}
+   breakpoint, since it depends on real text metrics at the current width.
+   The viewport's `overflow: hidden` above stays in effect throughout — a
+   `transform: translateX()` on the track doesn't need `overflow: visible`
+   on its ancestor to animate; the ancestor still correctly clips whatever
+   the transform moves outside its bounds, which is exactly the ticker
+   "window" effect. An earlier version set `overflow: visible` here,
+   which let the untruncated track spill out over the surrounding page
+   during the animation — caught by a Lighthouse a11y audit flagging
+   near-zero contrast where the white text sat over the page's light
+   background instead of the banner's navy one (issue #139 audit). */
 .welcome__limitations-banner--marquee .welcome__limitations-track {
   animation: welcome-limitations-marquee 16s linear infinite;
 }
@@ -7557,9 +7563,6 @@ button[aria-busy="true"] {
    screen readers always get the complete text regardless of the visual
    ellipsis. */
 @media (prefers-reduced-motion: reduce) {
-  .welcome__limitations-banner--marquee .welcome__limitations-viewport {
-    overflow: hidden;
-  }
   .welcome__limitations-banner--marquee .welcome__limitations-track {
     animation: none;
     text-overflow: ellipsis;

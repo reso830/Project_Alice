@@ -380,7 +380,12 @@ function mountWelcome({ initialAuthView } = {}) {
   unmountAppShell();
   prepareBodyForFirstMount();
 
-  const root = document.createElement('div');
+  // Issue #139 (Lighthouse audit): a real <main> landmark, not a plain
+  // <div> — matches the pattern mountAppShell() already uses for its own
+  // root (this app rebuilds page roots fresh under <body> on every
+  // mount/unmount rather than reusing the static index.html shell, so each
+  // one needs its own landmark).
+  const root = document.createElement('main');
   root.id = 'welcome-root';
   document.body.append(root);
 
@@ -407,7 +412,7 @@ function mountConfigError() {
   unmountWelcome();
   prepareBodyForFirstMount();
 
-  const root = document.createElement('div');
+  const root = document.createElement('main');
   root.id = 'config-error-root';
   document.body.append(root);
   ConfigError.mount(root);
