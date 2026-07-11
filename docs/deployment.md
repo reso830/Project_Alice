@@ -721,6 +721,64 @@ either vendor package's own dev/prod detection:
 
 ---
 
+## Security Headers (issue #139)
+
+`vercel.json`'s `headers` block applies a Content-Security-Policy and
+related security headers to the hosted Vercel deployment. **This is
+hosted-only** — `vercel.json` is read by the Vercel platform alone, so
+local dev (`npm run dev`), the portable Windows package, and the local
+Express server (`server/index.js`) are completely unaffected.
+
+`connect-src` allows exactly the external hosts the browser bundle
+actually calls (audited by grepping every `fetch()` call site in `src/`):
+
+- `https://*.supabase.co` — the hosted Supabase project's auth endpoints
+  only (`supabase.auth.*`). The browser client never calls `.from()`,
+  `.storage`, `.channel()`, or `.rpc()` directly — all application data
+  goes through this app's own `/api/*` routes (same-origin, covered by
+  `'self'`), which use the service-role key server-side.
+- `https://openrouter.ai` — the BYOK AI provider
+  ([`src/services/providers/openrouter.js`](../src/services/providers/openrouter.js),
+  feature 038). The user's own OpenRouter key is used for direct
+  browser-to-OpenRouter calls; this app's own backend is never in that
+  path.
+
+Vercel Speed Insights and Web Analytics need no extra allowance — both
+load their script and report events via same-origin `/_vercel/...` paths
+proxied by the platform, already covered by `'self'`.
+
+`style-src 'self' 'unsafe-inline'` is a deliberate, scoped exception: the
+startup loader's CSS is inlined directly in `index.html` (feature 044/WS5)
+specifically to avoid a render-blocking external stylesheet request before
+first paint. Everything else in the app sets styles via the CSSOM
+(`element.style.foo = ...`), which CSP's `style-src` does not restrict —
+only `<style>` elements, `<link rel="stylesheet">`, and inline `style="..."`
+HTML attributes are gated by it. `script-src` has no such exception: the
+built output has exactly one `<script type="module" src="...">`, no inline
+scripts.
+
+`frame-ancestors 'none'` (plus the legacy `X-Frame-Options: DENY` for
+older browsers) blocks this app from ever being embedded in another
+site's iframe — there's no legitimate reason for that. `Referrer-Policy:
+strict-origin-when-cross-origin` and a restrictive `Permissions-Policy`
+(camera/microphone/geolocation/payment/usb all denied — none are used)
+round out the pass; `X-Content-Type-Options: nosniff` was added as a
+zero-risk, zero-compatibility-impact addition beyond the issue's original
+list, since it directly helps the Lighthouse best-practices score that
+issue #139 also calls for.
+
+**Demo Mode compatibility.** Demo Mode (feature 020) makes no network
+calls at all — it's an in-memory client-side seed — so it is unaffected
+by any of the above regardless of how strict the policy is.
+
+If a future feature calls a new external host from the browser (a new AI
+provider, a new vendor script, etc.), `connect-src`/`script-src` in
+`vercel.json` must be updated in the same change, or that feature will be
+silently blocked by CSP on the hosted deployment only (local/portable will
+work fine, which can make this easy to miss in testing).
+
+---
+
 ## Demo & Free-Tier Notes
 
 Project Alice's hosted deploy is shaped for free-tier hosting (Vercel
