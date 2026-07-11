@@ -59,7 +59,7 @@ let _legalTriggerEl = null;
 let _limitationsBannerEl = null;
 let _limitationsViewportEl = null;
 let _limitationsTrackEl = null;
-let _limitationsResizeListener = null;
+let _limitationsResizeObserver = null;
 
 const LAYOUT_CLASSES = ['diagonal', 'split', 'centered', 'hero'];
 const THEME_CLASSES = ['warm', 'white', 'navy'];
@@ -434,12 +434,23 @@ export function shouldMarquee(trackEl, viewportEl) {
   return trackEl.scrollWidth > viewportEl.clientWidth + 1;
 }
 
+// Issue #139 review (Antigravity): re-measures on a real layout change
+// (ResizeObserver) rather than only on window `resize` — the self-hosted
+// @fontsource fonts load asynchronously, and a font swap changes the
+// track's rendered width (and therefore whether it overflows) without
+// firing a `resize` event at all, which could leave the marquee stuck in
+// the wrong state. Also sets `--marquee-distance` to the exact overflow
+// in pixels so the CSS animation slides by precisely that amount instead
+// of the track's full `-100%` width, which used to leave a blank gap
+// (track fully exited) right before the loop reset.
 function updateLimitationsMarquee() {
   if (!_limitationsBannerEl || !_limitationsTrackEl || !_limitationsViewportEl) return;
-  _limitationsBannerEl.classList.toggle(
-    'welcome__limitations-banner--marquee',
-    shouldMarquee(_limitationsTrackEl, _limitationsViewportEl),
-  );
+  const overflowing = shouldMarquee(_limitationsTrackEl, _limitationsViewportEl);
+  if (overflowing) {
+    const distance = _limitationsTrackEl.scrollWidth - _limitationsViewportEl.clientWidth;
+    _limitationsTrackEl.style.setProperty('--marquee-distance', `${distance}px`);
+  }
+  _limitationsBannerEl.classList.toggle('welcome__limitations-banner--marquee', overflowing);
 }
 
 function renderLimitationsBanner() {
@@ -641,15 +652,22 @@ export function mount(container, deps = {}) {
   _root.append(renderStarfield(), left, footerMeta, _overlaySlot);
 
   // Issue #139: rendered as a sibling above `.welcome`, not a child of it —
-  // keeps it out of the desktop grid and the mobile fixed-viewport flex box
-  // entirely; `.welcome--has-banner` (set above) subtracts its height back
-  // out of both so the page still fits one viewport.
+  // it's `position: fixed` (zero layout footprint), so `.welcome--has-banner`
+  // (set above) only needs to redistribute existing top padding on the
+  // narrow-viewport hard-height layouts, never subtract from a height.
   if (isHostedAuthAvailable) {
     container.replaceChildren(renderLimitationsBanner(), _root);
-    updateLimitationsMarquee();
-    if (typeof globalThis.addEventListener === 'function') {
-      _limitationsResizeListener = () => updateLimitationsMarquee();
-      globalThis.addEventListener('resize', _limitationsResizeListener);
+    // No synchronous measurement here — ResizeObserver's own initial
+    // callback (fired asynchronously, before the next paint) covers first
+    // mount, so this never forces a layout reflow immediately after
+    // `replaceChildren()`. It also re-fires on any later box-size change to
+    // either element, which a plain `resize` listener wouldn't catch when
+    // the self-hosted @fontsource fonts finish loading asynchronously and
+    // change the track's rendered width with no `resize` event at all.
+    if (typeof globalThis.ResizeObserver === 'function') {
+      _limitationsResizeObserver = new globalThis.ResizeObserver(() => updateLimitationsMarquee());
+      _limitationsResizeObserver.observe(_limitationsTrackEl);
+      _limitationsResizeObserver.observe(_limitationsViewportEl);
     }
   } else {
     container.replaceChildren(_root);
@@ -724,10 +742,10 @@ export function unmount() {
   _mobileMql = null;
   _mobileListener = null;
   _isMobile = false;
-  if (_limitationsResizeListener && typeof globalThis.removeEventListener === 'function') {
-    try { globalThis.removeEventListener('resize', _limitationsResizeListener); } catch { /* best-effort */ }
+  if (_limitationsResizeObserver) {
+    try { _limitationsResizeObserver.disconnect(); } catch { /* best-effort */ }
   }
-  _limitationsResizeListener = null;
+  _limitationsResizeObserver = null;
   _limitationsBannerEl = null;
   _limitationsViewportEl = null;
   _limitationsTrackEl = null;

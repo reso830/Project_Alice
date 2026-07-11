@@ -7553,9 +7553,15 @@ button[aria-busy="true"] {
   animation: welcome-limitations-marquee 16s linear infinite;
 }
 
+/* `--marquee-distance` is set by JS (updateLimitationsMarquee) to the exact
+   overflow in px (scrollWidth - clientWidth). Issue #139 review: an earlier
+   version animated to `translateX(-100%)` — the track's own full width —
+   which overshoots the actual overflow, leaving the banner blank for an
+   instant right before the loop resets. `100%` stays as a fallback only;
+   JS always sets the real distance whenever the marquee class is applied. */
 @keyframes welcome-limitations-marquee {
   0%, 8% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+  100% { transform: translateX(calc(-1 * var(--marquee-distance, 100%))); }
 }
 
 /* Reduced-motion fallback: no scrolling — a single static (possibly

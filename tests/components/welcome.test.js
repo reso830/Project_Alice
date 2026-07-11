@@ -57,6 +57,38 @@ function makeHeroStub() {
   };
 }
 
+// jsdom (this project's test env) has no native ResizeObserver — this mock
+// mirrors the real API just enough for WelcomePage.js's marquee detection:
+// construct with a callback, `observe()` records the target, and tests
+// trigger a re-measure by calling `triggerResizeObservers()` directly
+// instead of dispatching a real layout event.
+class MockResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+    this.observed = [];
+    MockResizeObserver.instances.push(this);
+  }
+
+  observe(el) {
+    this.observed.push(el);
+  }
+
+  unobserve(el) {
+    this.observed = this.observed.filter((observed) => observed !== el);
+  }
+
+  disconnect() {
+    this.disconnected = true;
+  }
+}
+MockResizeObserver.instances = [];
+
+function triggerResizeObservers() {
+  for (const instance of MockResizeObserver.instances) {
+    instance.callback([]);
+  }
+}
+
 beforeEach(() => {
   container = document.createElement('div');
   document.body.append(container);
@@ -66,6 +98,8 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
+  MockResizeObserver.instances = [];
+  globalThis.ResizeObserver = MockResizeObserver;
   supabaseMocks.signInWithPassword.mockReset();
   supabaseMocks.signUp.mockReset();
   supabaseMocks.resetPasswordForEmail.mockReset();
@@ -233,38 +267,50 @@ describe('WelcomePage — limitations banner (issue #139)', () => {
     expect(container.querySelector('.welcome').classList.contains('welcome--has-banner')).toBe(false);
   });
 
-  it('removes the resize listener on unmount', () => {
-    const addSpy = vi.spyOn(globalThis, 'addEventListener');
-    const removeSpy = vi.spyOn(globalThis, 'removeEventListener');
+  it('observes the track and viewport via ResizeObserver, and disconnects it on unmount', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
-    expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function));
-    const [, listener] = addSpy.mock.calls.find(([event]) => event === 'resize');
+    expect(MockResizeObserver.instances.length).toBe(1);
+    const observer = MockResizeObserver.instances[0];
+    expect(observer.observed).toContain(container.querySelector('.welcome__limitations-track'));
+    expect(observer.observed).toContain(container.querySelector('.welcome__limitations-viewport'));
 
     WelcomePage.unmount();
 
-    expect(removeSpy).toHaveBeenCalledWith('resize', listener);
-    addSpy.mockRestore();
-    removeSpy.mockRestore();
+    expect(observer.disconnected).toBe(true);
   });
 
-  it('re-measures overflow and toggles the marquee class on resize', () => {
+  it('re-measures overflow via ResizeObserver — never synchronously on mount, so no forced reflow right after replaceChildren()', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const banner = container.querySelector('.welcome__limitations-banner');
     const viewport = container.querySelector('.welcome__limitations-viewport');
     const track = container.querySelector('.welcome__limitations-track');
 
+    // No measurement has happened yet — mount() never calls
+    // updateLimitationsMarquee() itself, only ResizeObserver does.
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(false);
+
     Object.defineProperty(track, 'scrollWidth', { value: 800, configurable: true });
     Object.defineProperty(viewport, 'clientWidth', { value: 320, configurable: true });
-    window.dispatchEvent(new Event('resize'));
+    triggerResizeObservers();
 
     expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(true);
+    // Distance (not the track's full width) is what the CSS animates by —
+    // see the "jump-cut" fix in main.css.
+    expect(track.style.getPropertyValue('--marquee-distance')).toBe('480px');
 
     Object.defineProperty(track, 'scrollWidth', { value: 300, configurable: true });
-    window.dispatchEvent(new Event('resize'));
+    triggerResizeObservers();
 
     expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(false);
+  });
+
+  it('does not set up a ResizeObserver in local mode (no banner to measure)', () => {
+    supabaseClientState.isHostedAuthAvailable = false;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(MockResizeObserver.instances.length).toBe(0);
   });
 });
 
