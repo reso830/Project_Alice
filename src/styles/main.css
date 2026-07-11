@@ -7900,12 +7900,18 @@ button.welcome__footer-link {
    left on the blanket `display: none` above with no re-enable — reported
    missing on iPad mini. Bring both back here too, reusing the same
    centred-layout positioning mobile uses (tablet is also
-   `.welcome--layout-centered`, not the desktop diagonal split). */
+   `.welcome--layout-centered`, not the desktop diagonal split).
+
+   `.welcome--layout-centered` is added as a second qualifier purely to win
+   specificity — `.welcome::before`/`.welcome::after` (single class) get
+   re-hidden at <=900px much further down this file (the mobile/CTA
+   section), and a single-class selector here would tie with that rule and
+   lose on source order, same bug as the first attempt at this fix. */
 @media (min-width: 621px) and (max-width: 900px) {
   .welcome__starfield {
     display: block;
   }
-  .welcome--theme-navy::before {
+  .welcome--theme-navy.welcome--layout-centered::before {
     display: block;
     background-image:
       linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
@@ -7913,7 +7919,7 @@ button.welcome__footer-link {
     -webkit-mask-image: none;
             mask-image: none;
   }
-  .welcome--theme-navy::after {
+  .welcome--theme-navy.welcome--layout-centered::after {
     display: block;
     top: 38%;
     left: 50%;
