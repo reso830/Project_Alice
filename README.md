@@ -37,7 +37,7 @@ See [`docs/REPO_MAP.md`](docs/REPO_MAP.md#spec-packages) for the full per-featur
 
 ## Getting Started
 
-**Requires Node.js 20.19 or later** (jsdom 29, used for component tests, does not support Node 18).
+**Requires Node.js 24.x** (pinned via `engines.node` in `package.json`).
 
 For local development on Windows, use the one-command launcher. It starts both
 the backend API and the frontend dev server in one terminal. You can double-click
@@ -139,7 +139,7 @@ npm run db:clear:profile     # reset profile
 
 ## Continuous Integration
 
-GitHub Actions runs Node.js CI on every push to `main` and every pull request targeting `main`. The workflow tests Node.js 20.x and 22.x, running install, lint, build, and `npm run test:ci` (which writes JUnit output to `test-results/vitest/results.xml`, uploaded as an artifact for each matrix job).
+GitHub Actions runs Node.js CI on every push to `main` and every pull request targeting `main`. The workflow tests Node.js 22.x and 24.x, running install, lint, build, and `npm run test:ci` (which writes JUnit output to `test-results/vitest/results.xml`, uploaded as an artifact for each matrix job).
 
 Local runtime logs and generated test reports belong under ignored output folders: `logs/`, `test-results/`.
 

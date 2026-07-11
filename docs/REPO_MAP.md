@@ -158,7 +158,7 @@ Job application tracker. Vanilla JS frontend (Vite), Express backend, SQLite per
 | `scripts/portable/Start-Alice.cmd` | Portable launcher template (feature 040) — checks `runtime\node.exe` exists, runs `app\server\portable.js --alice-launcher` so the server can safely advertise self-update only under the swap-capable launcher loop, keeps the console window open ("close to stop"), and surfaces a clear error + `pause` on a missing runtime or non-zero `errorlevel`. Feature 041: a `:run` loop applies a staged update on launch (or after the node process exits) — if `data\update-staging\alice` exists, mirrors `app\` + `runtime\` via robocopy, swaps the launcher itself last, and reboots the new version |
 | `config/settings.default.json` | Default portable launch settings (feature 040) — `{ "port": 3001, "openBrowser": true }`; copied to `config/settings.json` in the package |
 | `.github/workflows/release-portable.yml` | Release workflow (feature 040) — `windows-latest`; `npm ci` → `npm run build:portable` → attaches the ZIP + `.sha256` to the GitHub Release. Triggers **only** on a `v*` tag or `workflow_dispatch` (never on per-feature pushes/PRs) |
-| `.github/workflows/node-ci.yml` | CI — lint, build (stub Supabase env), and `test:ci` on Node 20.x/22.x for pushes/PRs to `main` |
+| `.github/workflows/node-ci.yml` | CI — lint, build (stub Supabase env), and `test:ci` on Node 22.x/24.x for pushes/PRs to `main` |
 
 ---
 
