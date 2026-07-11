@@ -30,8 +30,8 @@ The weights are **defaults**, not laws — they are configurable, and any catego
 
 Throughout, let:
 
-- $C$ — the set of skills in your profile, each with a proficiency level $\ell \in \{1,2,3,4,5\}$.
-- A matched skill contributes its **proficiency fraction** $\dfrac{\ell}{5}\in\{0.2,\dots,1.0\}$ — an expert (5) counts fully, a beginner (1) counts a fifth.
+- $C$ — the set of skills in your profile, each with a proficiency level $\ell \in \\{1,2,3,4,5\\}$.
+- A matched skill contributes its **proficiency fraction** $\dfrac{\ell}{5}\in\\{0.2,\dots,1.0\\}$ — an expert (5) counts fully, a beginner (1) counts a fifth.
 - For any piece of text, its **significant words** are its words lowercased, with spacing normalised, with very common filler words removed, and duplicates collapsed. $|X|$ is the number of items in a set $X$.
 
 ---
@@ -49,23 +49,23 @@ chosen so that *a preferred skill at proficiency 4 carries about the same as a r
 The skills sub-score is a single **pooled, weighted coverage** fraction. Skills you have contribute their proficiency fraction; skills you lack contribute nothing but still count against you in the denominator:
 
 $$
-\text{skills} \;=\;
-\frac{\displaystyle\sum_{s\,\in\,R\cap C}\frac{\ell_s}{5}\;+\;w\sum_{s\,\in\,P\cap C}\frac{\ell_s}{5}}
-{\,|R|\;+\;w\,|P|\,}
+\text{skills}=
+\frac{\displaystyle\sum_{s \in R\cap C}\frac{\ell_s}{5}+w\sum_{s \in P\cap C}\frac{\ell_s}{5}}
+{|R|+w|P|}
 $$
 
 Two guards complete it:
 
 - **No required skills matched.** If the job lists required skills but you match *none* of them, the sub-score is capped:
-$$\text{skills}\;=\;\min\!\big(0.35,\ \text{skills}\big)$$
+$$\text{skills}=\min\big(0.35, \text{skills}\big)$$
 so strong nice-to-haves can never disguise the fact that you fail the actual requirements.
 
-- **A posting with no required skills.** If the job lists only preferred skills, the $w$ in numerator and denominator cancels and the formula naturally becomes plain coverage of the preferred list — which can reach $100\%$ if you have them all. If the job lists no skills at all, the category is dropped (§7).
+- **A posting with no required skills.** If the job lists only preferred skills, the $w$ in numerator and denominator cancels and the formula naturally becomes plain coverage of the preferred list — which can reach 100% if you have them all. If the job lists no skills at all, the category is dropped (§7).
 
 ### Why it behaves well
 
 - **A required match always counts at least as much as the same skill listed as preferred.** Because required carries the full weight and preferred only $0.69$, moving a skill from preferred to required can only help — there is no way for a "nice to have" to out-score a true requirement.
-- **Misses always count.** A skill you lack stays in the denominator, so matching five of six strong requirements lands near $\tfrac{5}{6}$, not $100\%$. Only a *complete and expert* match reaches the top.
+- **Misses always count.** A skill you lack stays in the denominator, so matching five of six strong requirements lands near $\tfrac{5}{6}$, not 100%. Only a *complete and expert* match reaches the top.
 
 ### Worked example
 
@@ -84,7 +84,7 @@ Two things hold you under $1.0$: the one requirement you miss (it stays in the d
 Let $T$ be the significant words of the **job title**, and $G$ the significant words of your **past role titles together with your summary**. The sub-score is how much of the title your background echoes:
 
 $$
-\text{role}=\frac{|\,T\cap G\,|}{|\,T\,|}
+\text{role}=\frac{|T\cap G|}{|T|}
 $$
 
 If the job has no title, or your profile offers no roles or summary, the category is dropped.
@@ -96,7 +96,7 @@ If the job has no title, or your profile offers no roles or summary, the categor
 A job may state a **minimum number of years**, $y_{\text{req}}$ (the "Min Years" field; most postings leave it blank). Your **years of experience** $y_{\text{cand}}$ are added up from your work history — for each job, the time from its start to its end, using *today* for a job you still hold:
 
 $$
-y_{\text{cand}}=\sum_{\text{jobs}}\big(\text{end date}-\text{start date}\big)\ \text{in years}
+y_{\text{cand}}=\sum_{\text{jobs}}\big(\text{end date}-\text{start date}\big)\text{ in years}
 $$
 
 When a minimum is stated, experience is graded by how close you come, and meeting it is enough (there is no bonus for being wildly over-qualified):
@@ -104,8 +104,8 @@ When a minimum is stated, experience is graded by how close you come, and meetin
 $$
 \text{experience}=
 \begin{cases}
-1 & y_{\text{cand}}\ \ge\ y_{\text{req}}\\[4pt]
-\dfrac{y_{\text{cand}}}{y_{\text{req}}} & y_{\text{cand}}\ <\ y_{\text{req}}
+1 & y_{\text{cand}}\ge y_{\text{req}}\\\\[4pt]
+\dfrac{y_{\text{cand}}}{y_{\text{req}}} & y_{\text{cand}}<y_{\text{req}}
 \end{cases}
 $$
 
@@ -127,15 +127,15 @@ If the job states no minimum at all (the common case), experience is dropped reg
 **Keywords** is a coarse vocabulary overlap. Let $J$ be the significant words of the posting (its responsibilities, title, and listed skills) and $F$ the significant words of your profile (summary, the descriptions of your past work, and your skill names):
 
 $$
-\text{keywords}=\frac{|\,J\cap F\,|}{|\,J\,|}
+\text{keywords}=\frac{|J\cap F|}{|J|}
 $$
 
 It is bounded between $0$ and $1$ by construction, so a long, keyword-stuffed posting cannot dominate.
 
-**Certifications.** Each of your certifications is reduced to its significant words. A certification is considered "mentioned" if most of its words (at least $60\%$) appear in the posting's text. The sub-score is the share of your certifications that are mentioned:
+**Certifications.** Each of your certifications is reduced to its significant words. A certification is considered "mentioned" if most of its words (at least 60%) appear in the posting's text. The sub-score is the share of your certifications that are mentioned:
 
 $$
-\text{certifications}=\frac{\#\{\text{your certifications mentioned in the posting}\}}{\#\{\text{your certifications}\}}
+\text{certifications}=\frac{\text{certifications mentioned in the posting}}{\text{your certifications}}
 $$
 
 If you list no certifications, or the posting has no text, the category is dropped.
@@ -147,7 +147,7 @@ If you list no certifications, or the posting has no text, the category is dropp
 Only categories that have something to compare on **both** sides are "active." The final score is the weighted average of the active categories' sub-scores, with the active weights **rebalanced to add up to the whole** — so a dropped category never silently drags the result up or down:
 
 $$
-S = 100 \times \frac{\displaystyle\sum_{c\,\in\,\text{active}} \omega_c\cdot \text{score}_c}{\displaystyle\sum_{c\,\in\,\text{active}} \omega_c}
+S = 100 \times \frac{\displaystyle\sum_{c \in \text{active}} \omega_c\cdot \text{score}_c}{\displaystyle\sum_{c \in \text{active}} \omega_c}
 $$
 
 where $\omega_c$ is the weight of category $c$. If no category is active, the score is $0$.
