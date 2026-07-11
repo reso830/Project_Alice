@@ -141,8 +141,8 @@ describe('WelcomePage — structure', () => {
 
     const headline = container.querySelector('.welcome__headline');
     expect(headline).not.toBeNull();
-    expect(headline.textContent).toContain('Your job search,');
-    expect(headline.textContent).toContain('organized.');
+    expect(headline.textContent).toContain('Your');
+    expect(headline.textContent).toContain('Career OS.');
     expect(headline.querySelector('br')).not.toBeNull();
   });
 
@@ -160,12 +160,12 @@ describe('WelcomePage — structure', () => {
     expect(ctas[2].disabled).toBe(false);
   });
 
-  it('headline accents "organized." with an indigo em element', () => {
+  it('headline accents "Career OS." with an indigo em element', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const accent = container.querySelector('.welcome__headline em.welcome__headline-accent');
     expect(accent).not.toBeNull();
-    expect(accent.textContent).toBe('organized.');
+    expect(accent.textContent).toBe('Career OS.');
   });
 
   it('renders the mini footer with version, issue links, repo link, and download chip sourced from appMeta', () => {

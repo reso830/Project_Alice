@@ -36,7 +36,7 @@ function createBrand() {
   tagline.className = 'footer__tagline';
   version.className = 'footer__version-inline';
   name.textContent = 'Project Alice';
-  tagline.textContent = 'Your job search, organized.';
+  tagline.textContent = 'Your Career OS.';
   version.textContent = displayVersion(APP_VERSION);
 
   line1.append(name, tagline);

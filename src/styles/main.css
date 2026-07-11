@@ -7454,7 +7454,7 @@ button[aria-busy="true"] {
   margin: 0;
 }
 
-/* Phase 14: indigo "organized." accent with a soft underline-glow. */
+/* Phase 14: indigo accent word with a soft underline-glow. */
 .welcome__headline-accent {
   position: relative;
   color: var(--indigo);

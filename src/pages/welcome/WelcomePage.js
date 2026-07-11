@@ -218,11 +218,11 @@ function renderBrand({ theme = 'warm' } = {}) {
 function renderHeadline() {
   const headline = document.createElement('h1');
   headline.className = 'welcome__headline';
-  headline.append(document.createTextNode('Your job search,'));
+  headline.append(document.createTextNode('Your'));
   headline.append(document.createElement('br'));
   const accent = document.createElement('em');
   accent.className = 'welcome__headline-accent';
-  accent.textContent = 'organized.';
+  accent.textContent = 'Career OS.';
   headline.append(accent);
   return headline;
 }
@@ -231,7 +231,7 @@ function renderSupportingCopy() {
   return el(
     'p',
     'welcome__supporting',
-    'Track every application and surface the right next move — from first apply to signed offer.',
+    'Track applications, tailor resumes and cover letters, and prep for interviews — all in one place, on your terms.',
   );
 }
 
