@@ -6,7 +6,7 @@ describe('SEO meta (issue #139)', () => {
   const html = readFileSync('index.html', 'utf8');
 
   it('has a description and canonical link', () => {
-    expect(html).toContain('<meta name="description" content="Your Career OS — track applications, tailor resumes and cover letters, and prep for interviews, all in one place.">');
+    expect(html).toContain('<meta name="description" content="Your Career OS — track every application and see how you match, all in one place.">');
     expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"\s*>/);
   });
 

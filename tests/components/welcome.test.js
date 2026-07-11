@@ -136,14 +136,13 @@ describe('WelcomePage — structure', () => {
     expect(text?.textContent).toBe('Project Alice');
   });
 
-  it('renders the headline with the fixed line break', () => {
+  it('renders the headline as a single flowing line, no forced break', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const headline = container.querySelector('.welcome__headline');
     expect(headline).not.toBeNull();
-    expect(headline.textContent).toContain('Your');
-    expect(headline.textContent).toContain('Career OS.');
-    expect(headline.querySelector('br')).not.toBeNull();
+    expect(headline.textContent).toBe('Your Career OS.');
+    expect(headline.querySelector('br')).toBeNull();
   });
 
   it('renders the three CTAs in order (Sign In, Create Account, Try the demo)', () => {

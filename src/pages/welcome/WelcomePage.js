@@ -218,8 +218,7 @@ function renderBrand({ theme = 'warm' } = {}) {
 function renderHeadline() {
   const headline = document.createElement('h1');
   headline.className = 'welcome__headline';
-  headline.append(document.createTextNode('Your'));
-  headline.append(document.createElement('br'));
+  headline.append(document.createTextNode('Your '));
   const accent = document.createElement('em');
   accent.className = 'welcome__headline-accent';
   accent.textContent = 'Career OS.';
@@ -231,7 +230,7 @@ function renderSupportingCopy() {
   return el(
     'p',
     'welcome__supporting',
-    'Track applications, tailor resumes and cover letters, and prep for interviews — all in one place, on your terms.',
+    'Track every application and see how you match — all in one place, on your terms.',
   );
 }
 

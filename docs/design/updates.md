@@ -69,7 +69,7 @@ copyright line) — see [`footer.md`](footer.md) for the full footer spec.
 
 ### Hosted — Download button
 ```
-[Alice logo] Project Alice  Your job search, organized.        [ ↓ Download  v1.8.0 ]
+[Alice logo] Project Alice  Your Career OS.                    [ ↓ Download  v1.8.0 ]
 ```
 - Element: `<a class="fdl-btn">`, OS-agnostic — points to the **latest GitHub
   release** (`https://github.com/reso830/Project_Alice/releases/latest`).
@@ -85,7 +85,7 @@ copyright line) — see [`footer.md`](footer.md) for the full footer spec.
 
 ### Local — hosted link
 ```
-[Alice logo] Project Alice  Your job search, organized.        Open hosted version ↗
+[Alice logo] Project Alice  Your Career OS.                    Open hosted version ↗
 ```
 - Element: `<a class="fhosted">` — mono, muted (`rgba(255,255,255,.5)`), external
   arrow glyph; **hover → white**. No button chrome.
