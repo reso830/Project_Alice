@@ -25,7 +25,7 @@ import { mountSignupForm } from './SignupForm.js';
 import { mountForgotPasswordForm } from './ForgotPasswordForm.js';
 import { mountResetPasswordForm } from './ResetPasswordForm.js';
 import { enterDemo } from './demoStub.js';
-import { signOut } from '../../data/authStore.js';
+import { clearRecoveryGuard, signOut } from '../../data/authStore.js';
 
 const VALID_VIEWS = new Set([
   'login', 'signup', 'verification_sent', 'forgot', 'forgot_sent', 'reset-password', 'recovery-expired',
@@ -387,6 +387,14 @@ export function render({ view = 'login', onClose, onSwitch, onLegalLink } = {}) 
     if (!VALID_VIEWS.has(nextView) || state.view === nextView) {
       return;
     }
+    // Code-review finding (2026-07-11): leaving `recovery-expired` any way
+    // other than close() (here, specifically "Request a new link" ->
+    // `forgot`) must also release authStore's recovery guard — see
+    // clearRecoveryGuard()'s own comment for why it would otherwise latch
+    // permanently and silently swallow the user's next sign-in.
+    if (state.view === 'recovery-expired') {
+      clearRecoveryGuard();
+    }
     state.view = nextView;
     onSwitch?.(nextView);
     paint();
@@ -433,6 +441,15 @@ export function render({ view = 'login', onClose, onSwitch, onLegalLink } = {}) 
           finishClose();
         });
       return;
+    }
+    // Code-review finding (2026-07-11): closing `recovery-expired` (×,
+    // Escape, or backdrop) never signs anyone out — there was never a
+    // session — so it must release authStore's recovery guard directly,
+    // the same as setView()'s "Request a new link" path does. See
+    // clearRecoveryGuard()'s own comment for the failure mode this
+    // prevents.
+    if (state.view === 'recovery-expired') {
+      clearRecoveryGuard();
     }
     finishClose();
   }

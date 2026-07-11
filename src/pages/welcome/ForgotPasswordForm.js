@@ -8,6 +8,32 @@ import { emailRedirectUrl, supabase } from '../../services/supabaseClient.js';
 import { withRecoveryFlowMarker } from '../../data/authStore.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DELIVERY_ERROR_MESSAGE = "Couldn't send the reset link. Please try again.";
+
+// Code-review finding (2026-07-11): non-enumeration (FR-8/AC-5) requires
+// masking anything that could reveal whether an account exists, but it does
+// NOT require masking a genuine transport/provider failure — the spec's own
+// edge cases call for a retryable inline error there instead (contracts/
+// api.md). This is a deliberate allow-list, not a deny-list: only the two
+// documented rate-limit codes (node_modules/@supabase/auth-js/dist/main/
+// lib/error-codes.d.ts's ErrorCode union — `over_email_send_rate_limit`/
+// `over_request_rate_limit`) and auth-js's own `AuthRetryableFetchError`
+// (its exported, documented signal for "the fetch itself failed, this is
+// retryable" — thrown, not returned in `{error}`, for network-level
+// failures) count as a genuine failure. Everything else — including
+// whatever Supabase actually returns for an unregistered email, whatever
+// its exact shape turns out to be — still proceeds to the same generic
+// confirmation, erring toward non-enumeration safety by default rather than
+// trying to enumerate every "safe to mask" error shape.
+function isGenuineDeliveryFailure(err) {
+  if (!err) {
+    return false;
+  }
+  if (err.name === 'AuthRetryableFetchError') {
+    return true;
+  }
+  return err.code === 'over_email_send_rate_limit' || err.code === 'over_request_rate_limit';
+}
 
 // Feature 045, live-verification finding (2026-07-10): a failed/expired
 // recovery link's Supabase redirect carries none of Supabase's own success
@@ -142,18 +168,28 @@ export function mountForgotPasswordForm(container, { email = '', onEmailChange, 
     // Non-enumeration (FR-8/AC-5, contracts/api.md F1): request the recovery
     // email for every syntactically-valid address, and proceed to the sent
     // confirmation regardless of whether Supabase reports success or an
-    // error (e.g. "user not found") — the two must be indistinguishable to
-    // the visitor. A genuine network/provider failure is swallowed the same
-    // way, not surfaced as a distinct error state.
+    // account-existence-shaped error — the two must be indistinguishable to
+    // the visitor. A genuine transport/provider failure (rate-limited,
+    // network down) is a different case — see isGenuineDeliveryFailure's own
+    // comment — and gets a retryable inline error instead, per this spec's
+    // own edge cases.
+    let deliveryError = null;
     try {
-      await supabase.auth.resetPasswordForEmail(emailField.input.value, {
+      const result = await supabase.auth.resetPasswordForEmail(emailField.input.value, {
         redirectTo: recoveryRedirectUrl,
       });
-    } catch {
-      // intentionally ignored — see comment above.
+      deliveryError = result?.error ?? null;
+    } catch (err) {
+      deliveryError = err;
     }
 
     setPending(false);
+
+    if (isGenuineDeliveryFailure(deliveryError)) {
+      errorRegion.textContent = DELIVERY_ERROR_MESSAGE;
+      return;
+    }
+
     onSuccess?.();
   }
 

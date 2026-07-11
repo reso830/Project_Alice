@@ -185,6 +185,44 @@ describe('mountResetPasswordForm', () => {
     expect(authStoreMocks.signOut).not.toHaveBeenCalled();
   });
 
+  // Code-review finding (2026-07-11, Gemini reviewer): a genuine password-
+  // policy rejection from Supabase (too weak, same as the old one) was
+  // discarded in favor of the generic message, leaving the user to guess
+  // and repeat the same invalid input. Fixed by surfacing `updateError.
+  // message` for these two specific, documented GoTrue codes only — not a
+  // blanket "always show the provider's message", which would risk leaking
+  // an unexpected/internal message for anything else.
+  describe('password-policy errors (code-review fix, 2026-07-11)', () => {
+    it.each([
+      ['weak_password'],
+      ['same_password'],
+    ])('shows the real policy message for a %s error, instead of the generic one', async (code) => {
+      supabaseMocks.updateUser.mockResolvedValue({
+        data: null,
+        error: { code, message: 'Password should contain at least one number.' },
+      });
+      unmount = mountResetPasswordForm(container);
+
+      fillFields('LongEnough1', 'LongEnough1');
+      submit();
+      await flush();
+
+      expect(container.querySelector('.auth-form__error').textContent)
+        .toBe('Password should contain at least one number.');
+    });
+
+    it('falls back to the generic message when a policy-coded error has no message', async () => {
+      supabaseMocks.updateUser.mockResolvedValue({ data: null, error: { code: 'weak_password' } });
+      unmount = mountResetPasswordForm(container);
+
+      fillFields('LongEnough1', 'LongEnough1');
+      submit();
+      await flush();
+
+      expect(container.querySelector('.auth-form__error').textContent).toContain("Couldn't update");
+    });
+  });
+
   it.each([
     ['session_not_found'],
     ['session_expired'],

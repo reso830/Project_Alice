@@ -74,6 +74,11 @@ const RECOVERY_GUARD_TIMEOUT_MS = 8000;
 
 let state = { status: 'initializing', user: null, accessToken: null };
 const subscribers = new Set();
+// Module-level (not local to init()) so `clearRecoveryGuard()` below can
+// release it from outside init()'s own closure — see that function's own
+// comment for why an external release path is needed at all. Reset at the
+// top of every init() call (matches every other per-boot guard variable).
+let recoveryGuardResolved = false;
 
 function notify() {
   for (const fn of subscribers) {
@@ -176,15 +181,20 @@ export async function init() {
   // the user off the expired-link screen onto the login view before they
   // could see it.
   //
-  // `recoveryGuardResolved` closes both gaps: once EITHER outcome is
-  // reached, only an explicit SIGNED_OUT (the real success/abandon paths'
-  // own `signOut()` call — recovery-expired's own paths never fire one, so
-  // it simply never unlocks from that state, which is correct: neither of
-  // its legitimate actions — "Request a new link" or closing the overlay —
-  // needs authStore's status to change) is allowed through; every other
-  // event is ignored for the rest of this page load, regardless of what
-  // session it carries.
-  let recoveryGuardResolved = false;
+  // `recoveryGuardResolved` (module-level — see its own declaration) closes
+  // both gaps: once EITHER outcome is reached, only an explicit SIGNED_OUT
+  // (the real success/abandon paths' own `signOut()` call) or an explicit
+  // `clearRecoveryGuard()` call is allowed through; every other event is
+  // held for the rest of this page load, regardless of what session it
+  // carries. `recovery-expired`'s own legitimate actions ("Request a new
+  // link", closing the overlay) never fire a SIGNED_OUT — there was never a
+  // session to sign out of — so without `clearRecoveryGuard()`, the guard
+  // would latch permanently and silently swallow the user's next ordinary
+  // sign-in for the rest of the page load (code-review finding, 2026-07-11
+  // — see that function's own comment). AuthOverlay.js calls it when
+  // leaving the `recovery-expired` view for any reason other than a real
+  // sign-out.
+  recoveryGuardResolved = false;
 
   function disarmGuard() {
     guardArmed = false;
@@ -275,6 +285,23 @@ export async function signOut() {
   if (supabase) {
     await supabase.auth.signOut();
   }
+}
+
+/**
+ * Releases a latched recovery guard without a real sign-out. Code-review
+ * finding (2026-07-11): `recovery-expired` sets the same
+ * `recoveryGuardResolved` latch `password-recovery` does, but never
+ * establishes a session in the first place — its own legitimate exits
+ * ("Request a new link", closing the overlay) have nothing to sign out of,
+ * so they never fire the `SIGNED_OUT` event that's the only other thing
+ * that clears it. Left uncleared, the guard would hold every subsequent
+ * auth event — including the user's next ordinary, successful sign-in —
+ * for the rest of the page load, forcing a hard refresh to log in.
+ * AuthOverlay.js calls this when leaving the `recovery-expired` view any
+ * other way. Idempotent / safe to call when nothing is latched.
+ */
+export function clearRecoveryGuard() {
+  recoveryGuardResolved = false;
 }
 
 // One-shot message surfaced after a sign-out reroute to Welcome (feature 030).

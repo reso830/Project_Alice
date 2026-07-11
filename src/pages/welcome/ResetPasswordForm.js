@@ -44,6 +44,25 @@ function isExpiredSessionError(err) {
   return EXPIRED_SESSION_ERROR_CODES.has(err.code);
 }
 
+// Code-review finding (2026-07-11): a non-expired-session updateUser()
+// failure was always shown as the generic ERROR_MESSAGE, even when
+// Supabase's own password-policy check rejected the new password (e.g. too
+// weak, or identical to the old one) — actionable, user-facing feedback the
+// generic message threw away, leaving the user to guess and repeat the same
+// invalid input. Deliberately a narrow allow-list of GoTrue's own
+// documented codes for password-content policy specifically (error-
+// codes.d.ts's ErrorCode union) — not every error code, which would risk
+// surfacing a genuinely internal/unexpected message and violating FR-13's
+// "no provider internals exposed" for the actually-unexpected cases.
+const PASSWORD_POLICY_ERROR_CODES = new Set(['weak_password', 'same_password']);
+
+function policyErrorMessage(err) {
+  if (err && PASSWORD_POLICY_ERROR_CODES.has(err.code) && err.message) {
+    return err.message;
+  }
+  return null;
+}
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) {
@@ -240,7 +259,7 @@ export function mountResetPasswordForm(container, { onExpired, onClose, onPendin
       onExpired?.();
       return;
     }
-    errorRegion.textContent = ERROR_MESSAGE;
+    errorRegion.textContent = policyErrorMessage(updateError) ?? ERROR_MESSAGE;
   }
 
   form.addEventListener('submit', handleSubmit);

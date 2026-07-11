@@ -134,6 +134,26 @@ describe('createSupabaseAccountRepository', () => {
       expect(updateUserById).not.toHaveBeenCalled();
     });
 
+    // Code-review finding (2026-07-11, Gemini reviewer): the presence check
+    // above passes for any truthy value, not just strings — a non-string
+    // body could sail through it and the `.length` check below, reaching
+    // the Supabase admin call in an inconsistent shape. This is public API
+    // surface; it should reject malformed types itself.
+    it.each([
+      ['newPassword', { currentPassword: 'old-pw', newPassword: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }],
+      ['newPassword', { currentPassword: 'old-pw', newPassword: { length: 20 } }],
+      ['currentPassword', { currentPassword: ['old-pw'], newPassword: 'new-password' }],
+    ])('rejects with VALIDATION_ERROR when %s is not a string — no clients built', async (_field, body) => {
+      const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
+
+      await expect(repo.changePassword(body)).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        status: 400,
+      });
+      expect(signInWithPassword).not.toHaveBeenCalled();
+      expect(updateUserById).not.toHaveBeenCalled();
+    });
+
     it('rejects with VALIDATION_ERROR when newPassword is below the 8-char policy floor — no re-verify attempted', async () => {
       const repo = createSupabaseAccountRepository({ userId: USER_ID, email: EMAIL });
 

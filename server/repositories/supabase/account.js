@@ -82,6 +82,20 @@ export function createSupabaseAccountRepository({ userId, email } = {}) {
         status: 400,
       });
     }
+    // Code-review finding (2026-07-11): the presence check above passes for
+    // any truthy value, not just strings — an array or object body (e.g.
+    // `{ newPassword: { length: 20 } }`) would sail through it and the
+    // `.length` check below, then reach the Supabase admin call in an
+    // inconsistent shape, turning what should be a deterministic 400 here
+    // into provider-defined behavior. This is public API surface (the
+    // change-password route); reject malformed types itself rather than
+    // deferring to whatever Supabase happens to do with them.
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      throw Object.assign(new Error('Current and new password must be strings.'), {
+        code: 'VALIDATION_ERROR',
+        status: 400,
+      });
+    }
     if (newPassword.length < PASSWORD_MIN) {
       throw Object.assign(
         new Error(`Password must be at least ${PASSWORD_MIN} characters.`),

@@ -613,5 +613,80 @@ describe('authStore', () => {
         expect(store.getAuthState().status).toBe('authenticated');
       });
     });
+
+    // Code-review finding (2026-07-11, both a PR review and an automated
+    // consolidated comment, independently): `recovery-expired`'s own
+    // legitimate exits ("Request a new link", closing the overlay) never
+    // fire SIGNED_OUT — there was never a session — so without an explicit
+    // release, the sticky guard latched permanently: a user who opened an
+    // expired link and then tried an *ordinary* successful sign-in would
+    // have that SIGNED_IN event silently held forever, forcing a hard
+    // refresh to log in. clearRecoveryGuard() is AuthOverlay.js's fix —
+    // called when leaving `recovery-expired` any way other than SIGNED_OUT.
+    describe('clearRecoveryGuard() (code-review fix, 2026-07-11)', () => {
+      it('releases a latched recovery-expired guard, letting a subsequent ordinary sign-in resolve normally without a page refresh', async () => {
+        vi.stubGlobal('location', {
+          hash: '#error=access_denied&error_code=otp_expired',
+          search: '?auth=callback&flow=recovery',
+        });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+        expect(store.getAuthState().status).toBe('recovery-expired');
+
+        // Reproduces the exact reported scenario: the user closes the
+        // expired-link screen (no SIGNED_OUT — nothing to sign out of) and
+        // later successfully logs in normally.
+        store.clearRecoveryGuard();
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-18', email: 'after-expired-link@example.com' },
+          access_token: 'tok-18',
+        });
+
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+
+      it('also releases a latched password-recovery guard (not just recovery-expired)', async () => {
+        vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+        supabaseMock.fire('PASSWORD_RECOVERY', {
+          user: { id: 'user-19', email: 'mid-reset@example.com' },
+          access_token: 'tok-19',
+        });
+        expect(store.getAuthState().status).toBe('password-recovery');
+
+        store.clearRecoveryGuard();
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-20', email: 'after-mid-reset@example.com' },
+          access_token: 'tok-20',
+        });
+
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+
+      it('is a safe no-op when nothing is latched (no recovery flow, or before one resolves)', async () => {
+        vi.stubGlobal('location', { hash: '', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+        expect(store.getAuthState().status).toBe('unauthenticated');
+
+        expect(() => store.clearRecoveryGuard()).not.toThrow();
+
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-21', email: 'unaffected@example.com' },
+          access_token: 'tok-21',
+        });
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+    });
   });
 });

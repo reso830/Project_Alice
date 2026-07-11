@@ -132,7 +132,7 @@ describe('mountForgotPasswordForm', () => {
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSuccess even when resetPasswordForEmail rejects (non-enumeration)', async () => {
+  it('calls onSuccess even when resetPasswordForEmail rejects with an unrecognized error (non-enumeration)', async () => {
     supabaseMocks.resetPasswordForEmail.mockRejectedValue(new TypeError('network down'));
     const onSuccess = vi.fn();
     unmount = mountForgotPasswordForm(container, { onSuccess });
@@ -143,6 +143,80 @@ describe('mountForgotPasswordForm', () => {
     await flush();
 
     expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  // Code-review finding (2026-07-11, three independent reviewers): every
+  // failure — including genuine transport/provider outages — was being
+  // masked into a fake "check your inbox" success, contradicting the
+  // spec's own edge case (network/provider failure → retryable inline
+  // error). Fixed via a narrow allow-list (isGenuineDeliveryFailure) of
+  // auth-js's own documented signals for "this actually failed to send",
+  // not account-existence ambiguity.
+  describe('genuine delivery failures (code-review fix, 2026-07-11)', () => {
+    it('does NOT call onSuccess, and shows a retryable inline error, when resetPasswordForEmail throws AuthRetryableFetchError', async () => {
+      const err = new Error('fetch failed');
+      err.name = 'AuthRetryableFetchError';
+      supabaseMocks.resetPasswordForEmail.mockRejectedValue(err);
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(container.querySelector('.auth-form__error').textContent).toContain("Couldn't send");
+    });
+
+    it.each([
+      ['over_email_send_rate_limit'],
+      ['over_request_rate_limit'],
+    ])('does NOT call onSuccess when resetPasswordForEmail resolves with error code %s', async (code) => {
+      supabaseMocks.resetPasswordForEmail.mockResolvedValue({ data: null, error: { code, message: 'rate limited' } });
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(container.querySelector('.auth-form__error').textContent).toContain("Couldn't send");
+    });
+
+    it('the submit button re-enables after a genuine delivery failure, so the user can retry', async () => {
+      const err = new Error('fetch failed');
+      err.name = 'AuthRetryableFetchError';
+      supabaseMocks.resetPasswordForEmail.mockRejectedValue(err);
+      unmount = mountForgotPasswordForm(container);
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      const submitBtn = form.querySelector('.auth-form__submit');
+      expect(submitBtn.disabled).toBe(false);
+      expect(submitBtn.textContent).toBe('Send reset link');
+    });
+
+    it('still calls onSuccess for a returned error with an unrecognized code (non-enumeration default)', async () => {
+      supabaseMocks.resetPasswordForEmail.mockResolvedValue({
+        data: null,
+        error: { code: 'user_not_found', message: 'no user' },
+      });
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('disables the submit button and shows the pending label while in flight', async () => {
