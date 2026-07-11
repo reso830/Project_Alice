@@ -9235,18 +9235,25 @@ button.welcome__footer-link {
   line-height: 1.45;
 }
 
+/* Issue #139 (banner-review follow-up): Sign In + Create Account share a
+   row to reclaim vertical space for the new banner; "Try the demo" gets
+   `flex: 1 1 100%` below (forces it onto its own line via wrap) so it
+   stays full-width on its own row. Verified fitting down to the Z Fold 5
+   cover-screen width (~344px), the narrowest device tested. */
 .welcome--mobile .welcome__cta-group {
   margin-top: 0;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 8px;
   width: 100%;
 }
 
 .welcome--mobile .welcome__cta {
-  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 12px 12px;
   font-size: 12.5px;
 }
 
@@ -9254,6 +9261,7 @@ button.welcome__footer-link {
    the left edge (that leaves a big gap). Make the dot an inline flex item so
    the [dot · label] pair stays centred together. */
 .welcome--mobile .welcome__cta--ghost {
+  flex: 1 1 100%;
   display: flex;
   align-items: center;
   justify-content: center;
