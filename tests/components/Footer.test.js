@@ -129,8 +129,7 @@ describe('Footer', () => {
 
     expect(link).not.toBeNull();
     expect(link.href).toBe('https://github.com/reso830/Project_Alice/releases/latest');
-    expect(link.textContent).toContain('Download Portable Alice');
-    expect(link.textContent).toContain(APP_VERSION);
+    expect(link.textContent).toBe('Download Portable Alice');
   });
 
   it('renders the hosted-version link for local runtime', () => {

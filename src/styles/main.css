@@ -5323,10 +5323,6 @@ textarea.modal-inline-control {
   content: "↓";
 }
 
-.footer__download-version {
-  color: rgba(255, 255, 255, .55);
-}
-
 .footer__download:hover,
 .footer__download:focus-visible,
 .footer__hosted-link:hover,
@@ -5334,11 +5330,6 @@ textarea.modal-inline-control {
   border-color: var(--indigo);
   background: var(--indigo);
   color: #FFFFFF;
-}
-
-.footer__download:hover .footer__download-version,
-.footer__download:focus-visible .footer__download-version {
-  color: rgba(255, 255, 255, .8);
 }
 
 /* Download / hosted-link control is desktop-only chrome; tablet and mobile

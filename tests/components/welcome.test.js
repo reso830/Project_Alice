@@ -217,7 +217,7 @@ describe('WelcomePage — structure', () => {
     expect(links[4].classList.contains('welcome__footer-desktop-only')).toBe(true);
 
     // [5] download chip (desktop-only)
-    expect(links[5].textContent).toBe(`Download Alice Portable ${APP_VERSION}`);
+    expect(links[5].textContent).toBe('Download Alice Portable');
     expect(links[5].getAttribute('href')).toBe(
       'https://github.com/reso830/Project_Alice/releases/latest',
     );

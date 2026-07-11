@@ -408,9 +408,9 @@ function renderFooterMeta() {
   repo.classList.add('welcome__footer-desktop-only');
 
   const download = makeExternalLink(
-    `Download Alice Portable ${APP_VERSION}`,
+    'Download Alice Portable',
     RELEASES_URL,
-    `Download Alice Portable ${APP_VERSION}`,
+    'Download Alice Portable',
   );
   download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
   download.prepend(createDownloadIcon());
