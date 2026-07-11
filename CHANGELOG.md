@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-07-11
+
+Production readiness pass — a hosted-mode limitations banner on the Welcome page, SEO/social meta, security headers, and a Lighthouse accessibility/best-practices/performance baseline audit. (#139)
+
+### Added
+
+- **Welcome page limitations banner (hosted mode only)** — a persistent, non-dismissible slim bar at the top of the Welcome page explains that hosted signup is invite-only and password-reset email is rate-limited, framing the deployment honestly as a portfolio demonstrator rather than a production service. On narrow viewports where the copy doesn't fit one line, it becomes a pause-then-scroll marquee (auto-detected from real text overflow, not a guessed breakpoint), with a static/reduced-motion fallback. Rendered as a `position: fixed` overlay with zero layout footprint on `.welcome`'s own box, so it can't disturb the existing pixel-tuned desktop/mobile layouts. (#139)
+- **SEO meta + static social-card image** — `index.html` gains a description, canonical link, and Open Graph/Twitter Card tags. The card image (`public/og-image.png`) is a static, pre-rendered PNG generated via `scripts/generate-og-image.mjs` (using the already-installed `@napi-rs/canvas`), matching this project's no-SSR architecture rather than generating one per request. (#139)
+- **`public/robots.txt`** — disallows only `/api/`, since the SPA's client-side router never changes the URL path. (#139)
+- **Security headers (hosted only)** — `vercel.json` now sets a Content-Security-Policy, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` on every route. `connect-src` is scoped to exactly the external hosts the browser bundle calls (`*.supabase.co` for auth, `openrouter.ai` for the BYOK AI provider); Vercel Analytics/Speed Insights need no extra allowance since both report via same-origin paths. Full rationale in `docs/deployment.md`'s new "Security Headers" section. (#139)
+
+### Fixed
+
+- **Lighthouse accessibility baseline** (89 → 96) — a marquee color-contrast violation (an earlier fix incorrectly let the banner's un-clipped text spill outside its navy background during animation), a missing `<main>` landmark (this app rebuilds each page's root fresh under `<body>` on every mount; two of the three page-mount paths were using a plain `<div>`), and a WCAG 2.5.3 label/content mismatch on the Welcome footer's "Report issue"/"Request feature" links. (#139)
+- **Vercel build warnings** — `engines.node` pinned to `20.x` instead of an open `>=20.19.0` range (Vercel would otherwise silently move to a new Node major, a real risk given `better-sqlite3`'s native binary is matched to a specific Node ABI); `vite.config.js` sets `build.chunkSizeWarningLimit: 600` since the main entry chunk sits just over Vite's 500kB default. The `prebuild-install` deprecation warning has no available fix — confirmed even the latest `better-sqlite3` still pulls the same deprecated range — and is accepted as an upstream-only warning. (#139)
+
 ## [1.14.0] — 2026-07-10
 
 Hosted Password Management — hosted users can now change their password from Settings, request a password-reset email if they forget it, and set a new password from the emailed link, closing the "no custom in-app reset UI" gap left open since feature 018.
@@ -1688,7 +1704,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/reso830/Project_Alice/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/reso830/Project_Alice/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0
