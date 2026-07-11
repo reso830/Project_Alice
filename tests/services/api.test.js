@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   archive,
+  changePassword,
   create,
   deleteAccount,
   getAll,
@@ -235,6 +236,37 @@ describe('api service', () => {
       method: 'DELETE',
       body: JSON.stringify({ confirm: 'DELETE' }),
     }));
+  });
+
+  it('changePassword sends the password body to PATCH /api/account/password', async () => {
+    vi.spyOn(authStore, 'getAccessToken').mockReturnValue('tok');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: { updated: true } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      changePassword({ currentPassword: 'old-pw', newPassword: 'new-password' }),
+    ).resolves.toEqual({ updated: true });
+    expect(fetchMock).toHaveBeenCalledWith('/api/account/password', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'old-pw', newPassword: 'new-password' }),
+    }));
+  });
+
+  it('changePassword surfaces a typed INVALID_PASSWORD error from the response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: { code: 'INVALID_PASSWORD', message: 'Incorrect password.' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      changePassword({ currentPassword: 'wrong', newPassword: 'new-password' }),
+    ).rejects.toMatchObject({ code: 'INVALID_PASSWORD' });
   });
 
   it('throws error envelopes for non-2xx responses', async () => {

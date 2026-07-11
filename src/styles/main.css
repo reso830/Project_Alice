@@ -6721,6 +6721,256 @@ button.footer__link {
   opacity: .88;
 }
 
+/* ── Password change modal (feature 045) ─────────────────────────────────
+   Lifted wholesale from design_handoff_password_reset_modal/password-change-
+   form.jsx's .pcf-* styles (Alice_Change_ForgotPwd.zip) — self-contained on
+   purpose per the handoff's own note ("styled independently... so Settings
+   isn't coupled to Welcome-page CSS"), not reusing .delete-modal's tokens. */
+
+.pcf-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 18, 40, .5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: pcfFade .2s ease-out;
+}
+
+@keyframes pcfFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pcf-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: #FFFFFF;
+  color: #1A1A2E;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .06);
+  animation: pcfPop .25s cubic-bezier(.2, .8, .3, 1.2);
+  font-family: var(--font-ui);
+}
+
+@keyframes pcfPop {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.pcf-x {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: #6B7280;
+  cursor: pointer;
+  transition: background .14s, color .14s;
+}
+
+.pcf-x:hover {
+  background: #E9E6DF;
+  color: #1A1A2E;
+}
+
+.pcf-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 46px 4px 22px;
+}
+
+.pcf-sigil {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 9px rgba(79, 70, 229, .3));
+}
+
+.pcf-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+.pcf-subtitle {
+  font-size: 12.5px;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.pcf-body {
+  padding: 18px 22px 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pcf-field {
+  margin-top: 14px;
+}
+
+.pcf-field:first-child {
+  margin-top: 0;
+}
+
+.pcf-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4B5563;
+  margin-bottom: 6px;
+}
+
+.pcf-input-wrap {
+  position: relative;
+}
+
+.pcf-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 44px 0 13px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: #1A1A2E;
+  background: #F8F7F4;
+  border: 1px solid #E4DFD6;
+  border-radius: 9px;
+  outline: none;
+  transition: border-color .14s, box-shadow .14s, background .14s;
+}
+
+.pcf-input::placeholder {
+  color: #9CA3AF;
+}
+
+.pcf-input:focus {
+  border-color: #4F46E5;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, .16);
+}
+
+.pcf-err .pcf-input {
+  border-color: #E5484D;
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, .14);
+}
+
+.pcf-peek {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 44px;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: #9CA3AF;
+  cursor: pointer;
+}
+
+.pcf-peek:hover {
+  color: #4B5563;
+}
+
+.pcf-err-msg {
+  font-size: 11.5px;
+  color: #E5484D;
+  margin-top: 6px;
+}
+
+.pcf-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.pcf-btn {
+  appearance: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: 9px;
+  padding: 11px 18px;
+  transition: background .14s, border-color .14s, transform .1s;
+}
+
+.pcf-btn-outline {
+  border: 1px solid #E4DFD6;
+  background: #FFFFFF;
+  color: #1A1A2E;
+}
+
+.pcf-btn-outline:hover {
+  background: #FAF9F6;
+  border-color: #D4CDC0;
+}
+
+.pcf-btn-primary {
+  border: none;
+  background: #4F46E5;
+  color: #FFFFFF;
+}
+
+.pcf-btn-primary:hover {
+  filter: brightness(.93);
+}
+
+.pcf-btn-primary:active {
+  transform: translateY(1px);
+}
+
+.pcf-btn-primary:disabled {
+  opacity: .7;
+  cursor: default;
+}
+
+.pcf-center {
+  padding: 34px 26px 30px;
+  text-align: center;
+}
+
+.pcf-check {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(34, 197, 94, .12);
+  color: #22C55E;
+}
+
+.pcf-center h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+.pcf-center p {
+  margin: 0;
+  font-size: 13.5px;
+  color: #6B7280;
+  margin-top: 9px;
+  line-height: 1.55;
+}
+
 /* ── CreationPicker ─────────────────────────────────────────────────────── */
 
 .creation-picker-backdrop {
@@ -9244,6 +9494,58 @@ button.welcome__footer-link {
   margin: 0 0 18px;
 }
 
+/* Feature 045 — Forgot Password's "check your inbox" confirmation. Centered
+   per the design handoff (distinct from verification_sent's existing
+   left-aligned .auth-overlay__verification-text, which this does not
+   change) — a dedicated wrapper rather than altering that shared class. */
+.auth-overlay__center {
+  text-align: center;
+}
+
+.auth-overlay__center .auth-overlay__verification-text {
+  margin-bottom: 16px;
+}
+
+/* Sized to match the established icon-badge pattern (PasswordChangeModal's
+   `.pcf-check`, src/styles/main.css) — accent-tinted rather than the
+   success green, since this isn't a completed action, just a sent email. */
+.auth-overlay__check {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.auth-overlay__back-link {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--t2);
+  text-align: center;
+  cursor: pointer;
+}
+
+.auth-overlay__back-link:hover,
+.auth-overlay__back-link:focus-visible {
+  color: var(--indigo);
+  text-decoration: underline;
+}
+
+.auth-overlay__back-link:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
 .auth-overlay__done {
   align-self: flex-end;
   background: var(--indigo);
@@ -9309,6 +9611,29 @@ button.welcome__footer-link {
   font-size: 12px;
   color: var(--color-danger);
   min-height: 1em;
+}
+
+/* Feature 045 — LoginForm's "Forgot password?" link, login view only. */
+.auth-form__forgot-link {
+  align-self: flex-end;
+  margin-top: -2px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--indigo);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.auth-form__forgot-link:hover,
+.auth-form__forgot-link:focus-visible {
+  color: var(--indigo-hover);
+  text-decoration: underline;
+}
+
+.auth-form__forgot-link:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .auth-form__error {
@@ -12436,13 +12761,15 @@ button.welcome__footer-link {
 
 /* Suppress browser-native password-reveal controls on inputs with custom toggles */
 .auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-reveal,
-.conn-panel__field .edit-field__control::-ms-reveal {
+.conn-panel__field .edit-field__control::-ms-reveal,
+.pcf-input-wrap .pcf-input::-ms-reveal {
   display: none;
 }
 
 /* Suppress native clear controls defensively on custom toggle inputs */
 .auth-form__input-wrap:has(.auth-form__password-toggle) .auth-form__input::-ms-clear,
-.conn-panel__field .edit-field__control::-ms-clear {
+.conn-panel__field .edit-field__control::-ms-clear,
+.pcf-input-wrap .pcf-input::-ms-clear {
   display: none;
 }
 

@@ -7,6 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-07-10
+
+Hosted Password Management — hosted users can now change their password from Settings, request a password-reset email if they forget it, and set a new password from the emailed link, closing the "no custom in-app reset UI" gap left open since feature 018.
+
+### Added
+
+- **Change Password (Settings)** — a new "Change password" control in the Profile page's Account section (hosted only) opens a three-field modal (current/new/confirm, each with its own show/hide toggle); `PATCH /api/account/password` re-verifies the current password via a throwaway Supabase sign-in before updating it with the service-role admin client. Local mode has no control (there's no password to change); demo mode shows the same explanatory copy as Delete Account. (045-auth-password-reset)
+- **Forgot Password (Welcome)** — a "Forgot password?" link on the login form opens a one-field email-entry view; submitting calls `supabase.auth.resetPasswordForEmail` and always shows the same "If an account exists for {email}, we've sent a password reset link" confirmation regardless of whether the address is actually registered (non-enumeration). (045-auth-password-reset)
+- **Reset Password (via emailed link)** — opening a valid recovery link lands directly on a "Set a new password" overlay (never the login form first); submitting a new password signs the user out and returns them to a standard logged-out Welcome/login with a success toast. Abandoning the overlay (×, Escape, backdrop, or its own "Back to sign in") also ends the recovery session, waiting for that sign-out to actually settle before closing so the overlay never disappears while the session is still live. An expired or already-used link shows a dedicated "This reset link has expired" state with a path back to Forgot Password instead of a confusing/broken form. (045-auth-password-reset)
+- **`validatePassword`** — the 8-character-minimum password-policy check and its error string are now centralized in `src/utils/validate.js`, shared by Login, Signup, Change Password, and Reset Password instead of being duplicated per form. (045-auth-password-reset)
+
 ## [1.13.1] — 2026-07-10
 
 README trimmed from 309 to 180 lines and `docs/features/` reorganized by roadmap phase, with detail relocated rather than deleted. (#100)
@@ -1677,7 +1688,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.13.1...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/reso830/Project_Alice/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/reso830/Project_Alice/compare/v1.12.12...v1.13.0
 [1.12.11]: https://github.com/reso830/Project_Alice/compare/v1.12.10...v1.12.11

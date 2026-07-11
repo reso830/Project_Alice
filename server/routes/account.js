@@ -44,5 +44,24 @@ export function createAccountRouter({ repos, requireAuth } = {}) {
     }
   });
 
+  // Feature 045 (Change Password). Hosted only in practice — the local
+  // adapter's `changePassword()` unconditionally throws NOT_SUPPORTED — but
+  // the route itself stays runtime-agnostic like `DELETE /`, dispatched
+  // through `req.repos.account`. currentPassword/newPassword are never
+  // logged, matching `DELETE /`'s handling of password/confirm above.
+  router.patch('/password', async (req, res, next) => {
+    try {
+      const result = await req.repos.account.changePassword(req.body ?? {});
+      return res.status(200).json({ data: result });
+    } catch (err) {
+      if (err && typeof err.status === 'number') {
+        return res.status(err.status).json({
+          error: { code: err.code, message: err.message },
+        });
+      }
+      return next(err);
+    }
+  });
+
   return router;
 }

@@ -1,10 +1,10 @@
 import { supabase } from '../../services/supabaseClient.js';
 import { createSvgIcon } from '../../utils/icons.js';
+import { validatePassword } from '../../utils/validate.js';
 
 const ERROR_MESSAGE =
   "Sign-in failed. Check your email and password, or confirm your email if you haven't yet.";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN = 8;
 const EYE_PATHS = [
   'M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z',
   'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
@@ -68,7 +68,7 @@ function field(name, type, labelText, initialValue, { onChange } = {}) {
   return { wrap, input, fieldError };
 }
 
-export function mountLoginForm(container, { email = '', onEmailChange } = {}) {
+export function mountLoginForm(container, { email = '', onEmailChange, onSwitch } = {}) {
   const form = el('form', 'auth-form auth-form--login');
   form.setAttribute('novalidate', '');
 
@@ -76,6 +76,17 @@ export function mountLoginForm(container, { email = '', onEmailChange } = {}) {
     onChange: (value) => onEmailChange?.(value),
   });
   const passwordField = field('password', 'password', 'Password', '');
+
+  // Feature 045 — login view only (README §"Screens/Views"): a forgotten
+  // password has nothing to do with the signup form. Placed inside the
+  // password field's wrap so it reads as attached to that field, matching
+  // the design handoff's own layout.
+  const forgotLink = document.createElement('button');
+  forgotLink.type = 'button';
+  forgotLink.className = 'auth-form__forgot-link';
+  forgotLink.textContent = 'Forgot password?';
+  forgotLink.addEventListener('click', () => onSwitch?.('forgot'));
+  passwordField.wrap.append(forgotLink);
 
   const errorRegion = el('div', 'auth-form__error');
   errorRegion.setAttribute('aria-live', 'polite');
@@ -112,8 +123,9 @@ export function mountLoginForm(container, { email = '', onEmailChange } = {}) {
       setFieldError(emailField, 'Enter a valid email address.');
       valid = false;
     }
-    if (passwordField.input.value.length < PASSWORD_MIN) {
-      setFieldError(passwordField, `Password must be at least ${PASSWORD_MIN} characters.`);
+    const passwordError = validatePassword(passwordField.input.value);
+    if (passwordError) {
+      setFieldError(passwordField, passwordError);
       valid = false;
     }
     return valid;
@@ -127,12 +139,7 @@ export function mountLoginForm(container, { email = '', onEmailChange } = {}) {
       );
     }
     if (touched.password) {
-      setFieldError(
-        passwordField,
-        passwordField.input.value.length >= PASSWORD_MIN
-          ? ''
-          : `Password must be at least ${PASSWORD_MIN} characters.`,
-      );
+      setFieldError(passwordField, validatePassword(passwordField.input.value) ?? '');
     }
   }
 

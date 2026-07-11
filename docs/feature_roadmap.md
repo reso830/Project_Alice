@@ -92,7 +92,7 @@ Alice is evolving through four major phases:
 - [x] 042-welcome-brand-refresh  ·  shipped v1.11.0
 - [x] 043-legal-and-footer  ·  shipped v1.11.1
 - [x] 044-hosted-startup-performance  ·  shipped v1.12.0
-- [ ] 045-auth-password-reset
+- [x] 045-auth-password-reset  ·  shipped v1.14.0
 
 ---
 

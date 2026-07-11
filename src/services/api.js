@@ -162,3 +162,20 @@ export function deleteAccount(payload = {}) {
   }
   return request('DELETE', '/api/account', payload);
 }
+
+// Change password (hosted only). Mirrors deleteAccount's demo-mode
+// short-circuit shape for defense-in-depth (Profile.js already gates the
+// Change Password control out of Demo/Local Mode, so this branch is not
+// reachable through the UI, but the function stays safe to call regardless
+// — feature 045).
+export function changePassword(payload = {}) {
+  if (isDemo()) {
+    return fromDemo(() => {
+      throw {
+        code: 'DEMO_UNAVAILABLE',
+        message: 'Password changes are not available in the demo.',
+      };
+    });
+  }
+  return request('PATCH', '/api/account/password', payload);
+}
