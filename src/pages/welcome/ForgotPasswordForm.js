@@ -14,17 +14,27 @@ const DELIVERY_ERROR_MESSAGE = "Couldn't send the reset link. Please try again."
 // masking anything that could reveal whether an account exists, but it does
 // NOT require masking a genuine transport/provider failure — the spec's own
 // edge cases call for a retryable inline error there instead (contracts/
-// api.md). This is a deliberate allow-list, not a deny-list: only the two
-// documented rate-limit codes (node_modules/@supabase/auth-js/dist/main/
-// lib/error-codes.d.ts's ErrorCode union — `over_email_send_rate_limit`/
-// `over_request_rate_limit`) and auth-js's own `AuthRetryableFetchError`
-// (its exported, documented signal for "the fetch itself failed, this is
-// retryable" — thrown, not returned in `{error}`, for network-level
-// failures) count as a genuine failure. Everything else — including
-// whatever Supabase actually returns for an unregistered email, whatever
-// its exact shape turns out to be — still proceeds to the same generic
-// confirmation, erring toward non-enumeration safety by default rather than
-// trying to enumerate every "safe to mask" error shape.
+// api.md). An earlier version of this function hand-picked two rate-limit
+// codes, which a follow-up review correctly flagged as too narrow — GoTrue's
+// documented ErrorCode union (node_modules/@supabase/auth-js/dist/main/lib/
+// error-codes.d.ts) has dozens of codes for genuine operational failures
+// (`unexpected_failure`, `email_provider_disabled`, `request_timeout`,
+// hook-related timeouts, etc.) that would all fall through a hand-picked
+// list the same way.
+//
+// Rather than keep enumerating individual codes as new gaps get found,
+// this keys off `err.status` — every `AuthError`/`AuthApiError` from
+// auth-js carries the real HTTP status GoTrue's server returned
+// (errors.js's `AuthError` constructor). By REST convention, `5xx` means
+// the server itself failed for some operational reason, and `429` means
+// rate-limited — neither has anything to do with whether the account
+// exists (that's a `4xx` concern: `user_not_found`/`email_not_confirmed`-
+// shaped codes, which stay masked by falling through to `false` below).
+// This is deliberately a general rule, not a list, so it doesn't need
+// updating every time Supabase adds a new operational error code.
+// `AuthRetryableFetchError` (network-level, thrown rather than returned —
+// may not reliably carry a `.status`) and the two rate-limit codes are kept
+// as an explicit belt-and-suspenders check alongside the general rule.
 function isGenuineDeliveryFailure(err) {
   if (!err) {
     return false;
@@ -32,7 +42,10 @@ function isGenuineDeliveryFailure(err) {
   if (err.name === 'AuthRetryableFetchError') {
     return true;
   }
-  return err.code === 'over_email_send_rate_limit' || err.code === 'over_request_rate_limit';
+  if (err.code === 'over_email_send_rate_limit' || err.code === 'over_request_rate_limit') {
+    return true;
+  }
+  return typeof err.status === 'number' && (err.status >= 500 || err.status === 429);
 }
 
 // Feature 045, live-verification finding (2026-07-10): a failed/expired

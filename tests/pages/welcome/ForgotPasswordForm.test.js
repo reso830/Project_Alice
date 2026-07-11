@@ -217,6 +217,65 @@ describe('mountForgotPasswordForm', () => {
 
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
+
+    // Follow-up code-review finding (2026-07-11): the original two-code
+    // allow-list missed other genuine operational failures GoTrue can
+    // return. Fixed via a general `status >= 500 || status === 429` rule
+    // instead of continuing to hand-pick codes — these three are the
+    // reviewer's own named examples, now caught by that general rule
+    // rather than by name.
+    it.each([
+      ['unexpected_failure', 500],
+      ['email_provider_disabled', 500],
+      ['request_timeout', 504],
+    ])('does NOT call onSuccess for a %s error (status %i) — caught by the general 5xx rule, not a hand-picked code', async (code, status) => {
+      supabaseMocks.resetPasswordForEmail.mockResolvedValue({
+        data: null,
+        error: { code, status, message: 'operational failure' },
+      });
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(container.querySelector('.auth-form__error').textContent).toContain("Couldn't send");
+    });
+
+    it('a 429 status alone (no rate-limit code) is also caught by the general rule', async () => {
+      supabaseMocks.resetPasswordForEmail.mockResolvedValue({
+        data: null,
+        error: { code: 'some_future_rate_limit_code', status: 429, message: 'slow down' },
+      });
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it('a 4xx status (account/input-shaped, e.g. user_not_found) still masks to success even though a status is present', async () => {
+      supabaseMocks.resetPasswordForEmail.mockResolvedValue({
+        data: null,
+        error: { code: 'user_not_found', status: 404, message: 'no user' },
+      });
+      const onSuccess = vi.fn();
+      unmount = mountForgotPasswordForm(container, { onSuccess });
+
+      const form = container.querySelector('form');
+      form.querySelector('input[name="email"]').value = 'jane@example.com';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('disables the submit button and shows the pending label while in flight', async () => {
