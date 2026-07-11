@@ -93,6 +93,12 @@
   --warm: var(--bg);
   --navy-deep: #0E0E20;
   --gold: #F2B544;
+
+  /* Issue #139: Welcome page limitations banner (hosted mode only) — a
+     fixed-height slim bar; `.welcome--has-banner` subtracts this from the
+     welcome page's viewport-height calculations so the page still fits one
+     screen instead of overflowing by the banner's height. */
+  --limitations-banner-h: 36px;
 }
 
 *,
@@ -7348,6 +7354,13 @@ button[aria-busy="true"] {
   color: var(--t1);
 }
 
+/* Issue #139: leaves exactly one banner's worth of height for the
+   limitations bar (a sibling rendered above `.welcome`), so the pair still
+   fits one viewport instead of pushing the page taller than 100dvh. */
+.welcome--has-banner {
+  min-height: calc(100dvh - var(--limitations-banner-h));
+}
+
 .welcome__content {
   position: relative;
   z-index: 2;
@@ -7486,6 +7499,73 @@ button[aria-busy="true"] {
   font-size: 13px;
   font-weight: 500;
   border: 1px solid var(--border);
+}
+
+/* Issue #139: hosted-mode-only, non-dismissible disclosure that this is a
+   demonstrator, not a production service. Rendered as a sibling above
+   `.welcome` (not a grid/flex child of it) so it never disturbs the
+   pixel-tuned desktop grid or the mobile fixed-viewport layout — see
+   `.welcome--has-banner` for how those subtract its height back out. Fixed
+   `height` (not `min-height`) keeps that subtraction exact regardless of
+   whether the text is static or scrolling. */
+.welcome__limitations-banner {
+  position: relative;
+  z-index: 3;
+  height: var(--limitations-banner-h);
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  background: var(--navy-deep);
+  border-bottom: 1px solid var(--on-navy-hairline);
+}
+
+.welcome__limitations-viewport {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.welcome__limitations-track {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--on-navy-fg-soft);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Applied via JS only once the track is measured to actually overflow its
+   viewport (`shouldMarquee` in WelcomePage.js) — never guessed from a
+   breakpoint, since it depends on real text metrics at the current width. */
+.welcome__limitations-banner--marquee .welcome__limitations-viewport {
+  overflow: visible;
+}
+.welcome__limitations-banner--marquee .welcome__limitations-track {
+  animation: welcome-limitations-marquee 16s linear infinite;
+}
+
+@keyframes welcome-limitations-marquee {
+  0%, 8% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Reduced-motion fallback: no scrolling — a single static (possibly
+   visually truncated) line. The full copy stays in the DOM either way, so
+   screen readers always get the complete text regardless of the visual
+   ellipsis. */
+@media (prefers-reduced-motion: reduce) {
+  .welcome__limitations-banner--marquee .welcome__limitations-viewport {
+    overflow: hidden;
+  }
+  .welcome__limitations-banner--marquee .welcome__limitations-track {
+    animation: none;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 100%;
+  }
 }
 
 .welcome__cta-group {
@@ -8958,6 +9038,14 @@ button.welcome__footer-link {
   min-height: 100dvh;
   padding: 22px 22px 14px;
   overflow: hidden;
+}
+
+/* Issue #139: mobile uses a hard `height` (not `min-height`), so unlike the
+   desktop grid it must subtract the banner's height explicitly or its
+   fixed-viewport content would get clipped by `overflow: hidden` above. */
+.welcome--mobile.welcome--has-banner {
+  height: calc(100dvh - var(--limitations-banner-h));
+  min-height: calc(100dvh - var(--limitations-banner-h));
 }
 
 /* Keep the galaxy grid + sparkle starfield on mobile for theme consistency

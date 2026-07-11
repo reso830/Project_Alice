@@ -23,6 +23,10 @@ const supabaseMocks = vi.hoisted(() => ({
   signOut: vi.fn(),
 }));
 
+const supabaseClientState = vi.hoisted(() => ({
+  isHostedAuthAvailable: true,
+}));
+
 vi.mock('../../src/services/supabaseClient.js', () => ({
   supabase: {
     auth: {
@@ -34,11 +38,11 @@ vi.mock('../../src/services/supabaseClient.js', () => ({
     },
   },
   emailRedirectUrl: 'https://example.com/?auth=callback',
-  isHostedAuthAvailable: true,
+  get isHostedAuthAvailable() { return supabaseClientState.isHostedAuthAvailable; },
 }));
 
 import { AuthOverlay } from '../../src/pages/welcome/AuthOverlay.js';
-import { WelcomePage } from '../../src/pages/welcome/WelcomePage.js';
+import { WelcomePage, shouldMarquee } from '../../src/pages/welcome/WelcomePage.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 const mainCss = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
@@ -68,6 +72,7 @@ beforeEach(() => {
   supabaseMocks.updateUser.mockReset();
   supabaseMocks.signOut.mockReset().mockResolvedValue({ error: null });
   demoStubMocks.enterDemo.mockReset();
+  supabaseClientState.isHostedAuthAvailable = true;
 });
 
 afterEach(() => {
@@ -188,6 +193,92 @@ describe('WelcomePage — structure', () => {
     tryDemo.click();
 
     expect(demoStubMocks.enterDemo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('WelcomePage — limitations banner (issue #139)', () => {
+  it('renders the banner before .welcome, with the agreed copy, when hosted auth is available', () => {
+    supabaseClientState.isHostedAuthAvailable = true;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('note');
+    expect(banner.textContent).toContain('Project Alice is a portfolio demonstrator');
+    expect(banner.textContent).toContain('Hosted signup requires an invite');
+    expect(banner.textContent).toContain('password-reset emails are limited');
+
+    // Sibling before `.welcome`, not nested inside its grid/flex layout.
+    expect(banner.nextElementSibling).toBe(container.querySelector('.welcome'));
+    expect(container.querySelector('.welcome').classList.contains('welcome--has-banner')).toBe(true);
+  });
+
+  it('has no dismiss control — non-dismissible per product decision', () => {
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    expect(banner.querySelector('button')).toBeNull();
+  });
+
+  it('does not render the banner in local mode (isHostedAuthAvailable=false)', () => {
+    supabaseClientState.isHostedAuthAvailable = false;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(container.querySelector('.welcome__limitations-banner')).toBeNull();
+    expect(container.querySelector('.welcome').classList.contains('welcome--has-banner')).toBe(false);
+  });
+
+  it('removes the resize listener on unmount', () => {
+    const addSpy = vi.spyOn(globalThis, 'addEventListener');
+    const removeSpy = vi.spyOn(globalThis, 'removeEventListener');
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function));
+    const [, listener] = addSpy.mock.calls.find(([event]) => event === 'resize');
+
+    WelcomePage.unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('resize', listener);
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it('re-measures overflow and toggles the marquee class on resize', () => {
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    const viewport = container.querySelector('.welcome__limitations-viewport');
+    const track = container.querySelector('.welcome__limitations-track');
+
+    Object.defineProperty(track, 'scrollWidth', { value: 800, configurable: true });
+    Object.defineProperty(viewport, 'clientWidth', { value: 320, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(true);
+
+    Object.defineProperty(track, 'scrollWidth', { value: 300, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(false);
+  });
+});
+
+describe('shouldMarquee (issue #139)', () => {
+  it('is true when the track is wider than the viewport', () => {
+    expect(shouldMarquee({ scrollWidth: 500 }, { clientWidth: 300 })).toBe(true);
+  });
+
+  it('is false when the track fits within the viewport', () => {
+    expect(shouldMarquee({ scrollWidth: 200 }, { clientWidth: 300 })).toBe(false);
+  });
+
+  it('tolerates 1px of subpixel rounding without flagging overflow', () => {
+    expect(shouldMarquee({ scrollWidth: 301 }, { clientWidth: 300 })).toBe(false);
+  });
+
+  it('is false when either element is missing', () => {
+    expect(shouldMarquee(null, { clientWidth: 300 })).toBe(false);
+    expect(shouldMarquee({ scrollWidth: 500 }, null)).toBe(false);
   });
 });
 

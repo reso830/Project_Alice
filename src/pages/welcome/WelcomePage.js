@@ -4,10 +4,19 @@ import { enterDemo } from './demoStub.js';
 import { LegalModal } from '../../components/LegalModal.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 import { RECOVERY_FLOW_MARKER, RECOVERY_URL_MARKER } from '../../data/authStore.js';
+import { isHostedAuthAvailable } from '../../services/supabaseClient.js';
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 const PORTFOLIO_URL = 'https://alvinresoso.com';
+
+// Issue #139: hosted-mode-only, non-dismissible disclosure. Copy is a
+// deliberate product decision (see issue #139) — don't reword without
+// re-checking there.
+const LIMITATIONS_BANNER_COPY =
+  'Heads up — Project Alice is a portfolio demonstrator, not a live product. '
+  + 'Hosted signup requires an invite, and password-reset emails are limited '
+  + 'to a handful every few hours.';
 
 // Theme-driven brand mark. Production ships the midnight (navy) theme per the
 // welcome-redesign prototype default; warm/white remain as CSS design states.
@@ -47,6 +56,10 @@ let _keyHandler = null;
 let _legalDialog = null; // 'terms' | 'privacy' | null
 let _legalDialogNode = null;
 let _legalTriggerEl = null;
+let _limitationsBannerEl = null;
+let _limitationsViewportEl = null;
+let _limitationsTrackEl = null;
+let _limitationsResizeListener = null;
 
 const LAYOUT_CLASSES = ['diagonal', 'split', 'centered', 'hero'];
 const THEME_CLASSES = ['warm', 'white', 'navy'];
@@ -413,6 +426,39 @@ function renderFooterMeta() {
   return wrap;
 }
 
+// Issue #139: true once the ticker text is actually wider than the space
+// it has to scroll in — never guessed from a breakpoint, since that varies
+// with font rendering/zoom. `+1` tolerates subpixel rounding.
+export function shouldMarquee(trackEl, viewportEl) {
+  if (!trackEl || !viewportEl) return false;
+  return trackEl.scrollWidth > viewportEl.clientWidth + 1;
+}
+
+function updateLimitationsMarquee() {
+  if (!_limitationsBannerEl || !_limitationsTrackEl || !_limitationsViewportEl) return;
+  _limitationsBannerEl.classList.toggle(
+    'welcome__limitations-banner--marquee',
+    shouldMarquee(_limitationsTrackEl, _limitationsViewportEl),
+  );
+}
+
+function renderLimitationsBanner() {
+  const banner = el('div', 'welcome__limitations-banner');
+  banner.setAttribute('role', 'note');
+  banner.setAttribute('aria-label', 'Hosted deployment limitations');
+
+  const viewport = el('div', 'welcome__limitations-viewport');
+  const track = el('span', 'welcome__limitations-track', LIMITATIONS_BANNER_COPY);
+  viewport.append(track);
+  banner.append(viewport);
+
+  _limitationsBannerEl = banner;
+  _limitationsViewportEl = viewport;
+  _limitationsTrackEl = track;
+
+  return banner;
+}
+
 function renderVerificationBanner() {
   const banner = el('div', 'welcome__verification-banner');
   banner.setAttribute('role', 'status');
@@ -581,6 +627,7 @@ export function mount(container, deps = {}) {
   _root = el('div', 'welcome');
   applyTweakClasses(_root, _effective);
   if (_isMobile) _root.classList.add('welcome--mobile');
+  if (isHostedAuthAvailable) _root.classList.add('welcome--has-banner');
 
   const left = el('section', 'welcome__content');
   const pitchMid = el('div', 'welcome__pitch-mid');
@@ -592,7 +639,21 @@ export function mount(container, deps = {}) {
   _overlaySlot.hidden = true;
 
   _root.append(renderStarfield(), left, footerMeta, _overlaySlot);
-  container.replaceChildren(_root);
+
+  // Issue #139: rendered as a sibling above `.welcome`, not a child of it —
+  // keeps it out of the desktop grid and the mobile fixed-viewport flex box
+  // entirely; `.welcome--has-banner` (set above) subtracts its height back
+  // out of both so the page still fits one viewport.
+  if (isHostedAuthAvailable) {
+    container.replaceChildren(renderLimitationsBanner(), _root);
+    updateLimitationsMarquee();
+    if (typeof globalThis.addEventListener === 'function') {
+      _limitationsResizeListener = () => updateLimitationsMarquee();
+      globalThis.addEventListener('resize', _limitationsResizeListener);
+    }
+  } else {
+    container.replaceChildren(_root);
+  }
 
   ensureSlideshowMounted();
 
@@ -663,6 +724,13 @@ export function unmount() {
   _mobileMql = null;
   _mobileListener = null;
   _isMobile = false;
+  if (_limitationsResizeListener && typeof globalThis.removeEventListener === 'function') {
+    try { globalThis.removeEventListener('resize', _limitationsResizeListener); } catch { /* best-effort */ }
+  }
+  _limitationsResizeListener = null;
+  _limitationsBannerEl = null;
+  _limitationsViewportEl = null;
+  _limitationsTrackEl = null;
   if (_heroSlideshow) {
     try {
       _heroSlideshow.unmount();
