@@ -94,11 +94,13 @@
   --navy-deep: #0E0E20;
   --gold: #F2B544;
 
-  /* Issue #139: Welcome page limitations banner (hosted mode only) — a
-     fixed-height slim bar; `.welcome--has-banner` subtracts this from the
-     welcome page's viewport-height calculations so the page still fits one
-     screen instead of overflowing by the banner's height. */
-  --limitations-banner-h: 36px;
+  /* Issue #139: Welcome page limitations banner (hosted mode only) — fixed
+     height, chosen to match the desktop/tablet content's minimum top
+     padding (`clamp(32px, 5vw, 68px)` on `.welcome__content`) so the fixed
+     overlay banner never covers real content there, only that padding
+     gutter. Mobile's top padding is thinner, so `.welcome--has-banner`
+     redistributes it (not adds to it) — see `.welcome--mobile.welcome--has-banner`. */
+  --limitations-banner-h: 32px;
 }
 
 *,
@@ -7354,13 +7356,6 @@ button[aria-busy="true"] {
   color: var(--t1);
 }
 
-/* Issue #139: leaves exactly one banner's worth of height for the
-   limitations bar (a sibling rendered above `.welcome`), so the pair still
-   fits one viewport instead of pushing the page taller than 100dvh. */
-.welcome--has-banner {
-  min-height: calc(100dvh - var(--limitations-banner-h));
-}
-
 .welcome__content {
   position: relative;
   z-index: 2;
@@ -7502,15 +7497,20 @@ button[aria-busy="true"] {
 }
 
 /* Issue #139: hosted-mode-only, non-dismissible disclosure that this is a
-   demonstrator, not a production service. Rendered as a sibling above
-   `.welcome` (not a grid/flex child of it) so it never disturbs the
-   pixel-tuned desktop grid or the mobile fixed-viewport layout — see
-   `.welcome--has-banner` for how those subtract its height back out. Fixed
-   `height` (not `min-height`) keeps that subtraction exact regardless of
-   whether the text is static or scrolling. */
+   demonstrator, not a production service. `position: fixed` and rendered as
+   a sibling of `.welcome` (not a grid/flex child of it) so it takes up zero
+   layout space in either the desktop grid or the mobile fixed-viewport flex
+   box — both are tuned with no vertical slack, so an earlier version of
+   this rule that tried to reserve room by shrinking `.welcome`'s own
+   height/min-height caused a scrollable overflow on tablet portrait and
+   clipped content on mobile (issue #139 review). Sits above `--z-modal`
+   (300) so it stays visible even while the auth overlay is open. */
 .welcome__limitations-banner {
-  position: relative;
-  z-index: 3;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 310;
   height: var(--limitations-banner-h);
   width: 100%;
   box-sizing: border-box;
@@ -8942,7 +8942,26 @@ button.welcome__footer-link {
     flex-direction: column;
     align-items: stretch;
     overflow: hidden;
-    padding: 24px 32px 18px;
+    --welcome-tablet-pad-top: 24px;
+    --welcome-tablet-pad-bottom: 18px;
+    padding: var(--welcome-tablet-pad-top) 32px var(--welcome-tablet-pad-bottom);
+  }
+
+  /* Issue #139: same hard `height` + `overflow: hidden` pattern as
+     `.welcome--mobile` — a review found the initial fix (shrinking
+     height/min-height to "make room" for the banner) had no visible effect
+     here at all, since this rule's `height: 100dvh` has equal specificity
+     to `.welcome--has-banner` and wins on source order, so the banner's
+     height was simply added on top, producing an unwanted scroll on tablet
+     portrait (confirmed on iPad mini). This redistributes the existing top
+     padding (24px, thinner than the 32px banner) the same net-neutral way
+     the mobile fix does — see `.welcome--mobile.welcome--has-banner`. */
+  .welcome.welcome--has-banner {
+    padding-top: max(var(--welcome-tablet-pad-top), var(--limitations-banner-h));
+    padding-bottom: calc(
+      var(--welcome-tablet-pad-top) + var(--welcome-tablet-pad-bottom)
+      - max(var(--welcome-tablet-pad-top), var(--limitations-banner-h))
+    );
   }
 
   /* JS forces the `centered` layout at tablet width; override it to left-align
@@ -9036,16 +9055,28 @@ button.welcome__footer-link {
      `.welcome--theme-navy` so mobile matches the desktop/tablet theme. */
   height: 100dvh;
   min-height: 100dvh;
-  padding: 22px 22px 14px;
+  --welcome-mobile-pad-top: 22px;
+  --welcome-mobile-pad-bottom: 14px;
+  padding: var(--welcome-mobile-pad-top) 22px var(--welcome-mobile-pad-bottom);
   overflow: hidden;
 }
 
-/* Issue #139: mobile uses a hard `height` (not `min-height`), so unlike the
-   desktop grid it must subtract the banner's height explicitly or its
-   fixed-viewport content would get clipped by `overflow: hidden` above. */
+/* Issue #139: mobile's top padding is thinner than the fixed banner, so
+   without this the banner would sit over the top of the brand mark.
+   Redistributes (not adds to) the *existing* top+bottom padding so the
+   total — and therefore the available content height — stays identical to
+   the no-banner case. Reads the two custom properties above rather than
+   hardcoding a total, so this stays correct under the ultra-short-viewport
+   override further down, which sets different values for those same two
+   properties. (An earlier version of this rule shrank `height`/`min-height`
+   instead, which clipped content via `overflow: hidden` above — mobile has
+   zero vertical slack to reclaim that way; see issue #139 review.) */
 .welcome--mobile.welcome--has-banner {
-  height: calc(100dvh - var(--limitations-banner-h));
-  min-height: calc(100dvh - var(--limitations-banner-h));
+  padding-top: max(var(--welcome-mobile-pad-top), var(--limitations-banner-h));
+  padding-bottom: calc(
+    var(--welcome-mobile-pad-top) + var(--welcome-mobile-pad-bottom)
+    - max(var(--welcome-mobile-pad-top), var(--limitations-banner-h))
+  );
 }
 
 /* Keep the galaxy grid + sparkle starfield on mobile for theme consistency
@@ -9271,7 +9302,9 @@ button.welcome__footer-link {
 
 @media (max-width: 620px) and (orientation: portrait) and (max-height: 599px) {
   .welcome--mobile {
-    padding: 12px 18px 10px;
+    --welcome-mobile-pad-top: 12px;
+    --welcome-mobile-pad-bottom: 10px;
+    padding: var(--welcome-mobile-pad-top) 18px var(--welcome-mobile-pad-bottom);
   }
 
   .welcome--mobile .welcome__content {
