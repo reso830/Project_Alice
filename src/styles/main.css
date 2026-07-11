@@ -7895,6 +7895,32 @@ button.welcome__footer-link {
   }
 }
 
+/* Issue #139 (tablet-portrait finding, PR #140 review): Feature 042 brought
+   the grid + starfield back for mobile (below) but tablet (621-900px) was
+   left on the blanket `display: none` above with no re-enable — reported
+   missing on iPad mini. Bring both back here too, reusing the same
+   centred-layout positioning mobile uses (tablet is also
+   `.welcome--layout-centered`, not the desktop diagonal split). */
+@media (min-width: 621px) and (max-width: 900px) {
+  .welcome__starfield {
+    display: block;
+  }
+  .welcome--theme-navy::before {
+    display: block;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    -webkit-mask-image: none;
+            mask-image: none;
+  }
+  .welcome--theme-navy::after {
+    display: block;
+    top: 38%;
+    left: 50%;
+    width: min(560px, 120%);
+  }
+}
+
 .welcome--theme-navy .welcome__brand-text,
 .welcome--theme-navy .welcome__headline {
   color: #FFFFFF;
