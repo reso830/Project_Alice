@@ -23,6 +23,10 @@ const supabaseMocks = vi.hoisted(() => ({
   signOut: vi.fn(),
 }));
 
+const supabaseClientState = vi.hoisted(() => ({
+  isHostedAuthAvailable: true,
+}));
+
 vi.mock('../../src/services/supabaseClient.js', () => ({
   supabase: {
     auth: {
@@ -34,11 +38,11 @@ vi.mock('../../src/services/supabaseClient.js', () => ({
     },
   },
   emailRedirectUrl: 'https://example.com/?auth=callback',
-  isHostedAuthAvailable: true,
+  get isHostedAuthAvailable() { return supabaseClientState.isHostedAuthAvailable; },
 }));
 
 import { AuthOverlay } from '../../src/pages/welcome/AuthOverlay.js';
-import { WelcomePage } from '../../src/pages/welcome/WelcomePage.js';
+import { WelcomePage, shouldMarquee } from '../../src/pages/welcome/WelcomePage.js';
 import { APP_VERSION } from '../../src/pages/welcome/shared/appMeta.js';
 
 const mainCss = readFileSync('src/styles/main.css', 'utf8').replace(/\r\n/g, '\n');
@@ -53,6 +57,38 @@ function makeHeroStub() {
   };
 }
 
+// jsdom (this project's test env) has no native ResizeObserver — this mock
+// mirrors the real API just enough for WelcomePage.js's marquee detection:
+// construct with a callback, `observe()` records the target, and tests
+// trigger a re-measure by calling `triggerResizeObservers()` directly
+// instead of dispatching a real layout event.
+class MockResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+    this.observed = [];
+    MockResizeObserver.instances.push(this);
+  }
+
+  observe(el) {
+    this.observed.push(el);
+  }
+
+  unobserve(el) {
+    this.observed = this.observed.filter((observed) => observed !== el);
+  }
+
+  disconnect() {
+    this.disconnected = true;
+  }
+}
+MockResizeObserver.instances = [];
+
+function triggerResizeObservers() {
+  for (const instance of MockResizeObserver.instances) {
+    instance.callback([]);
+  }
+}
+
 beforeEach(() => {
   container = document.createElement('div');
   document.body.append(container);
@@ -62,12 +98,15 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
+  MockResizeObserver.instances = [];
+  globalThis.ResizeObserver = MockResizeObserver;
   supabaseMocks.signInWithPassword.mockReset();
   supabaseMocks.signUp.mockReset();
   supabaseMocks.resetPasswordForEmail.mockReset();
   supabaseMocks.updateUser.mockReset();
   supabaseMocks.signOut.mockReset().mockResolvedValue({ error: null });
   demoStubMocks.enterDemo.mockReset();
+  supabaseClientState.isHostedAuthAvailable = true;
 });
 
 afterEach(() => {
@@ -155,6 +194,10 @@ describe('WelcomePage — structure', () => {
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[1].getAttribute('rel')).toBe('noopener noreferrer');
+    // WCAG 2.5.3 (issue #139 Lighthouse audit): accessible name must contain
+    // the visible text verbatim, or voice-control users saying "click Report
+    // issue" can't target it.
+    expect(links[1].getAttribute('aria-label')).toContain('Report issue');
 
     // [2] request-feature link → ISSUE_URL
     expect(links[2].textContent).toBe('Request feature');
@@ -162,6 +205,7 @@ describe('WelcomePage — structure', () => {
       'https://github.com/reso830/Project_Alice/issues/new',
     );
     expect(links[2].getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links[2].getAttribute('aria-label')).toContain('Request feature');
 
     // [3] portfolio link (part of the base 5 items, not desktop-only)
     expect(links[3].textContent).toBe('alvinresoso.com');
@@ -188,6 +232,117 @@ describe('WelcomePage — structure', () => {
     tryDemo.click();
 
     expect(demoStubMocks.enterDemo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('WelcomePage — limitations banner (issue #139)', () => {
+  it('renders the banner before .welcome, with the agreed copy, when hosted auth is available', () => {
+    supabaseClientState.isHostedAuthAvailable = true;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('note');
+    expect(banner.textContent).toContain('Project Alice is a portfolio demonstrator');
+    expect(banner.textContent).toContain('Hosted signup requires an invite');
+    expect(banner.textContent).toContain('password-reset emails are limited');
+
+    // Sibling before `.welcome`, not nested inside its grid/flex layout.
+    expect(banner.nextElementSibling).toBe(container.querySelector('.welcome'));
+    expect(container.querySelector('.welcome').classList.contains('welcome--has-banner')).toBe(true);
+  });
+
+  it('has no dismiss control — non-dismissible per product decision', () => {
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    expect(banner.querySelector('button')).toBeNull();
+  });
+
+  it('does not render the banner in local mode (isHostedAuthAvailable=false)', () => {
+    supabaseClientState.isHostedAuthAvailable = false;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(container.querySelector('.welcome__limitations-banner')).toBeNull();
+    expect(container.querySelector('.welcome').classList.contains('welcome--has-banner')).toBe(false);
+  });
+
+  it('observes the track and viewport via ResizeObserver, and disconnects it on unmount', () => {
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(MockResizeObserver.instances.length).toBe(1);
+    const observer = MockResizeObserver.instances[0];
+    expect(observer.observed).toContain(container.querySelector('.welcome__limitations-track'));
+    expect(observer.observed).toContain(container.querySelector('.welcome__limitations-viewport'));
+
+    WelcomePage.unmount();
+
+    expect(observer.disconnected).toBe(true);
+  });
+
+  it('re-measures overflow via ResizeObserver — never synchronously on mount, so no forced reflow right after replaceChildren()', () => {
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    const banner = container.querySelector('.welcome__limitations-banner');
+    const viewport = container.querySelector('.welcome__limitations-viewport');
+    const track = container.querySelector('.welcome__limitations-track');
+
+    // No measurement has happened yet — mount() never calls
+    // updateLimitationsMarquee() itself, only ResizeObserver does.
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(false);
+
+    Object.defineProperty(track, 'scrollWidth', { value: 800, configurable: true });
+    Object.defineProperty(viewport, 'clientWidth', { value: 320, configurable: true });
+    triggerResizeObservers();
+
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(true);
+    // Distance (not the track's full width) is what the CSS animates by —
+    // see the "jump-cut" fix in main.css.
+    expect(track.style.getPropertyValue('--marquee-distance')).toBe('480px');
+
+    Object.defineProperty(track, 'scrollWidth', { value: 300, configurable: true });
+    triggerResizeObservers();
+
+    expect(banner.classList.contains('welcome__limitations-banner--marquee')).toBe(false);
+  });
+
+  it('does not set up a ResizeObserver in local mode (no banner to measure)', () => {
+    supabaseClientState.isHostedAuthAvailable = false;
+    WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
+
+    expect(MockResizeObserver.instances.length).toBe(0);
+  });
+});
+
+describe('shouldMarquee (issue #139)', () => {
+  it('is true when the track is wider than the viewport', () => {
+    expect(shouldMarquee({ scrollWidth: 500 }, { clientWidth: 300 })).toBe(true);
+  });
+
+  it('is false when the track fits within the viewport', () => {
+    expect(shouldMarquee({ scrollWidth: 200 }, { clientWidth: 300 })).toBe(false);
+  });
+
+  it('tolerates 1px of subpixel rounding without flagging overflow', () => {
+    expect(shouldMarquee({ scrollWidth: 301 }, { clientWidth: 300 })).toBe(false);
+  });
+
+  it('is false when either element is missing', () => {
+    expect(shouldMarquee(null, { clientWidth: 300 })).toBe(false);
+    expect(shouldMarquee({ scrollWidth: 500 }, null)).toBe(false);
+  });
+
+  it('keeps the marquee viewport clipped during animation (Lighthouse audit regression)', () => {
+    // An earlier version set `overflow: visible` on
+    // `.welcome__limitations-banner--marquee .welcome__limitations-viewport`,
+    // which let the untruncated white-on-navy text spill out over the
+    // page's own (light) background during the scroll — a Lighthouse a11y
+    // audit caught it as a near-zero color-contrast violation. The viewport
+    // must stay `overflow: hidden` in every state; only the track's
+    // `transform` should move.
+    expect(mainCss).not.toMatch(
+      /\.welcome__limitations-banner--marquee\s+\.welcome__limitations-viewport\s*\{[^}]*overflow:\s*visible/,
+    );
   });
 });
 

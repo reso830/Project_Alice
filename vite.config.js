@@ -51,6 +51,15 @@ export default defineConfig({
       '/api': 'http://localhost:3001',
     },
   },
+  build: {
+    // The main entry chunk (core app + Supabase SDK, everything not lazy-
+    // loaded per-page) sits just over Vite's 500kB default at ~508kB —
+    // already gzips to ~141kB, and the page-level chunks (Calendar, Profile,
+    // ProfileEdit) are already code-split via dynamic import. Raising the
+    // limit stops the warning firing on every build without silencing a
+    // limit so high it'd miss genuine future bloat.
+    chunkSizeWarningLimit: 600,
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.js'],

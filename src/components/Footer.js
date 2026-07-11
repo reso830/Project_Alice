@@ -3,7 +3,7 @@ import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from '../pages/welc
 
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
-const HOSTED_URL = 'https://project-alice-gamma.vercel.app';
+const HOSTED_URL = 'https://alice-os.app';
 const PORTFOLIO_URL = 'https://alvinresoso.com';
 
 function displayVersion(version) {

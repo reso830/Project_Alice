@@ -297,6 +297,11 @@ describe('bootstrap — ConfigError handshake wiring', () => {
     await Promise.resolve();
 
     expect(document.querySelector('#welcome-root')).not.toBeNull();
+    // Issue #139 (Lighthouse "landmark-one-main" audit): the page root the
+    // whole app tree rebuilds under <body> on every mount must itself be a
+    // <main> landmark — index.html's static <main id="app"> never survives
+    // to this point (clearBody() removes it before this root is appended).
+    expect(document.querySelector('#welcome-root').tagName).toBe('MAIN');
     expect(document.querySelector('.config-error')).toBeNull();
 
     health.resolve({ status: 'ok', runtime: 'hosted' });

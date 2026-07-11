@@ -4,10 +4,19 @@ import { enterDemo } from './demoStub.js';
 import { LegalModal } from '../../components/LegalModal.js';
 import { APP_VERSION, ISSUE_URL, LICENSE_NAME, LICENSE_URL } from './shared/appMeta.js';
 import { RECOVERY_FLOW_MARKER, RECOVERY_URL_MARKER } from '../../data/authStore.js';
+import { isHostedAuthAvailable } from '../../services/supabaseClient.js';
 
 const REPOSITORY_URL = 'https://github.com/reso830/Project_Alice';
 const RELEASES_URL = 'https://github.com/reso830/Project_Alice/releases/latest';
 const PORTFOLIO_URL = 'https://alvinresoso.com';
+
+// Issue #139: hosted-mode-only, non-dismissible disclosure. Copy is a
+// deliberate product decision (see issue #139) — don't reword without
+// re-checking there.
+const LIMITATIONS_BANNER_COPY =
+  'Heads up — Project Alice is a portfolio demonstrator, not a live product. '
+  + 'Hosted signup requires an invite, and password-reset emails are limited '
+  + 'to a handful every few hours.';
 
 // Theme-driven brand mark. Production ships the midnight (navy) theme per the
 // welcome-redesign prototype default; warm/white remain as CSS design states.
@@ -47,6 +56,10 @@ let _keyHandler = null;
 let _legalDialog = null; // 'terms' | 'privacy' | null
 let _legalDialogNode = null;
 let _legalTriggerEl = null;
+let _limitationsBannerEl = null;
+let _limitationsViewportEl = null;
+let _limitationsTrackEl = null;
+let _limitationsResizeObserver = null;
 
 const LAYOUT_CLASSES = ['diagonal', 'split', 'centered', 'hero'];
 const THEME_CLASSES = ['warm', 'white', 'navy'];
@@ -387,8 +400,8 @@ function renderFooterMeta() {
     makeExternalLink(LICENSE_NAME, LICENSE_URL, `${LICENSE_NAME} license`),
     makeLegalLink('Terms & Conditions', 'terms', 'View Terms & Conditions'),
     makeLegalLink('Privacy Policy', 'privacy', 'View Privacy Policy'),
-    makeExternalLink('Report issue', ISSUE_URL, 'Report an issue on GitHub'),
-    makeExternalLink('Request feature', ISSUE_URL, 'Request a feature on GitHub'),
+    makeExternalLink('Report issue', ISSUE_URL, 'Report issue on GitHub'),
+    makeExternalLink('Request feature', ISSUE_URL, 'Request feature on GitHub'),
     makeExternalLink('alvinresoso.com', PORTFOLIO_URL, 'Visit alvinresoso.com'),
   );
 
@@ -411,6 +424,50 @@ function renderFooterMeta() {
   wrap.append(repo, downloadRow);
 
   return wrap;
+}
+
+// Issue #139: true once the ticker text is actually wider than the space
+// it has to scroll in — never guessed from a breakpoint, since that varies
+// with font rendering/zoom. `+1` tolerates subpixel rounding.
+export function shouldMarquee(trackEl, viewportEl) {
+  if (!trackEl || !viewportEl) return false;
+  return trackEl.scrollWidth > viewportEl.clientWidth + 1;
+}
+
+// Issue #139 review (Antigravity): re-measures on a real layout change
+// (ResizeObserver) rather than only on window `resize` — the self-hosted
+// @fontsource fonts load asynchronously, and a font swap changes the
+// track's rendered width (and therefore whether it overflows) without
+// firing a `resize` event at all, which could leave the marquee stuck in
+// the wrong state. Also sets `--marquee-distance` to the exact overflow
+// in pixels so the CSS animation slides by precisely that amount instead
+// of the track's full `-100%` width, which used to leave a blank gap
+// (track fully exited) right before the loop reset.
+function updateLimitationsMarquee() {
+  if (!_limitationsBannerEl || !_limitationsTrackEl || !_limitationsViewportEl) return;
+  const overflowing = shouldMarquee(_limitationsTrackEl, _limitationsViewportEl);
+  if (overflowing) {
+    const distance = _limitationsTrackEl.scrollWidth - _limitationsViewportEl.clientWidth;
+    _limitationsTrackEl.style.setProperty('--marquee-distance', `${distance}px`);
+  }
+  _limitationsBannerEl.classList.toggle('welcome__limitations-banner--marquee', overflowing);
+}
+
+function renderLimitationsBanner() {
+  const banner = el('div', 'welcome__limitations-banner');
+  banner.setAttribute('role', 'note');
+  banner.setAttribute('aria-label', 'Hosted deployment limitations');
+
+  const viewport = el('div', 'welcome__limitations-viewport');
+  const track = el('span', 'welcome__limitations-track', LIMITATIONS_BANNER_COPY);
+  viewport.append(track);
+  banner.append(viewport);
+
+  _limitationsBannerEl = banner;
+  _limitationsViewportEl = viewport;
+  _limitationsTrackEl = track;
+
+  return banner;
 }
 
 function renderVerificationBanner() {
@@ -581,6 +638,7 @@ export function mount(container, deps = {}) {
   _root = el('div', 'welcome');
   applyTweakClasses(_root, _effective);
   if (_isMobile) _root.classList.add('welcome--mobile');
+  if (isHostedAuthAvailable) _root.classList.add('welcome--has-banner');
 
   const left = el('section', 'welcome__content');
   const pitchMid = el('div', 'welcome__pitch-mid');
@@ -592,7 +650,28 @@ export function mount(container, deps = {}) {
   _overlaySlot.hidden = true;
 
   _root.append(renderStarfield(), left, footerMeta, _overlaySlot);
-  container.replaceChildren(_root);
+
+  // Issue #139: rendered as a sibling above `.welcome`, not a child of it —
+  // it's `position: fixed` (zero layout footprint), so `.welcome--has-banner`
+  // (set above) only needs to redistribute existing top padding on the
+  // narrow-viewport hard-height layouts, never subtract from a height.
+  if (isHostedAuthAvailable) {
+    container.replaceChildren(renderLimitationsBanner(), _root);
+    // No synchronous measurement here — ResizeObserver's own initial
+    // callback (fired asynchronously, before the next paint) covers first
+    // mount, so this never forces a layout reflow immediately after
+    // `replaceChildren()`. It also re-fires on any later box-size change to
+    // either element, which a plain `resize` listener wouldn't catch when
+    // the self-hosted @fontsource fonts finish loading asynchronously and
+    // change the track's rendered width with no `resize` event at all.
+    if (typeof globalThis.ResizeObserver === 'function') {
+      _limitationsResizeObserver = new globalThis.ResizeObserver(() => updateLimitationsMarquee());
+      _limitationsResizeObserver.observe(_limitationsTrackEl);
+      _limitationsResizeObserver.observe(_limitationsViewportEl);
+    }
+  } else {
+    container.replaceChildren(_root);
+  }
 
   ensureSlideshowMounted();
 
@@ -663,6 +742,13 @@ export function unmount() {
   _mobileMql = null;
   _mobileListener = null;
   _isMobile = false;
+  if (_limitationsResizeObserver) {
+    try { _limitationsResizeObserver.disconnect(); } catch { /* best-effort */ }
+  }
+  _limitationsResizeObserver = null;
+  _limitationsBannerEl = null;
+  _limitationsViewportEl = null;
+  _limitationsTrackEl = null;
   if (_heroSlideshow) {
     try {
       _heroSlideshow.unmount();
