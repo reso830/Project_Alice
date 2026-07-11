@@ -168,11 +168,23 @@ export async function init() {
   // fell straight through to `applySession()` and silently overwrote
   // `password-recovery` with `authenticated` — main.js briefly mounted the
   // Reset Password overlay, then immediately swapped it for Tracker.
-  // `recoverySessionActive` closes that gap: once true, only an explicit
-  // SIGNED_OUT (the real success/abandon paths' own `signOut()` call) is
-  // allowed through; every other event is ignored for the rest of this
-  // page load, regardless of what session it carries.
-  let recoverySessionActive = false;
+  //
+  // The same gap existed for `recovery-expired` too (found in a follow-up
+  // real-browser test, same day): a later unguarded event resolving
+  // `applySession(null)` -> `unauthenticated` tripped main.js's Phase 04
+  // "an ended recovery session returns to login" logic, silently bouncing
+  // the user off the expired-link screen onto the login view before they
+  // could see it.
+  //
+  // `recoveryGuardResolved` closes both gaps: once EITHER outcome is
+  // reached, only an explicit SIGNED_OUT (the real success/abandon paths'
+  // own `signOut()` call — recovery-expired's own paths never fire one, so
+  // it simply never unlocks from that state, which is correct: neither of
+  // its legitimate actions — "Request a new link" or closing the overlay —
+  // needs authStore's status to change) is allowed through; every other
+  // event is ignored for the rest of this page load, regardless of what
+  // session it carries.
+  let recoveryGuardResolved = false;
 
   function disarmGuard() {
     guardArmed = false;
@@ -185,13 +197,14 @@ export async function init() {
   function resolveRecoveryExpired() {
     if (!guardArmed) return;
     disarmGuard();
+    recoveryGuardResolved = true;
     state = { status: 'recovery-expired', user: null, accessToken: null };
     notify();
   }
 
   function resolvePasswordRecovery(session) {
     disarmGuard();
-    recoverySessionActive = true;
+    recoveryGuardResolved = true;
     const { user, accessToken } = sessionToUserAndToken(session);
     state = { status: 'password-recovery', user, accessToken };
     notify();
@@ -232,13 +245,14 @@ export async function init() {
       // applied, regardless of the event's name.
       return;
     }
-    if (recoverySessionActive) {
-      // A confirmed recovery session is active — hold everything except a
-      // genuine sign-out (the success path's post-update signOut(), or the
-      // abandon path's close()-triggered one). See recoverySessionActive's
-      // own comment above for why this exists.
+    if (recoveryGuardResolved) {
+      // The recovery guard has already resolved (password-recovery or
+      // recovery-expired) — hold everything except a genuine sign-out (the
+      // success path's post-update signOut(), or the abandon path's
+      // close()-triggered one). See recoveryGuardResolved's own comment
+      // above for why this exists.
       if (evt === 'SIGNED_OUT') {
-        recoverySessionActive = false;
+        recoveryGuardResolved = false;
         applySession(session);
       }
       return;

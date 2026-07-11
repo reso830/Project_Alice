@@ -563,7 +563,15 @@ describe('authStore', () => {
         expect(store.getAuthState().status).toBe('authenticated');
       });
 
-      it('after an immediate error-based recovery-expired resolution, a later real sign-in still resolves normally (guard properly disarmed)', async () => {
+      // Live-browser finding (2026-07-11, follow-up to the sticky-session
+      // fix below): the exact same gap existed for recovery-expired — a
+      // later unguarded event resolving `unauthenticated` tripped main.js's
+      // "an ended recovery session returns to login" logic, silently
+      // bouncing the user off the expired-link screen before they could see
+      // it. This test's original premise (a later sign-in resolves
+      // normally) was the bug, not the spec — recovery-expired must stay
+      // just as sticky as password-recovery.
+      it('after an immediate error-based recovery-expired resolution, a later auth event is held — recovery-expired does not get silently overwritten', async () => {
         vi.stubGlobal('location', {
           hash: '#error=access_denied&error_code=otp_expired',
           search: '?auth=callback&flow=recovery',
@@ -580,6 +588,28 @@ describe('authStore', () => {
           access_token: 'tok-11',
         });
 
+        expect(store.getAuthState().status).toBe('recovery-expired');
+      });
+
+      it('a genuine SIGNED_OUT after recovery-expired still transitions to unauthenticated, and a later real sign-in resolves normally afterward', async () => {
+        vi.stubGlobal('location', {
+          hash: '#error=access_denied&error_code=otp_expired',
+          search: '?auth=callback&flow=recovery',
+        });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+        expect(store.getAuthState().status).toBe('recovery-expired');
+
+        supabaseMock.fire('SIGNED_OUT', null);
+        expect(store.getAuthState().status).toBe('unauthenticated');
+
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-17', email: 'later-sign-in-2@example.com' },
+          access_token: 'tok-17',
+        });
         expect(store.getAuthState().status).toBe('authenticated');
       });
     });
