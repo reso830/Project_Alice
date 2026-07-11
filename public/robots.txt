@@ -1,0 +1,6 @@
+# Project Alice is a single-page app served entirely at "/" — the client-
+# side router never changes the URL path (see src/main.js's navigate()),
+# so there are no other real frontend paths to disallow. The one path that
+# matters is the API, which crawlers gain nothing from indexing.
+User-agent: *
+Disallow: /api/
