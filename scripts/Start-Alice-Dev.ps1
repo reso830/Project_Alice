@@ -112,7 +112,7 @@ function Resolve-NpmCommand {
     return $npm.Source
   }
 
-  throw 'npm was not found on PATH. Install Node.js 20.19 or later, then try again.'
+  throw 'npm was not found on PATH. Install Node.js 24.x, then try again.'
 }
 
 function Start-AliceProcess {
