@@ -381,6 +381,104 @@ describe('authStore', () => {
       expect(store.getAuthState().status).toBe('password-recovery');
     });
 
+    // Live-browser finding (2026-07-11, via temporary diagnostic logging on
+    // a real deployed preview): a real Supabase client can deliver a SECOND
+    // event — an extra INITIAL_SESSION — after PASSWORD_RECOVERY has already
+    // fired and resolved, which the original design (fully disarming the
+    // guard the instant PASSWORD_RECOVERY resolved) had no defense against —
+    // it fell straight through to applySession() and silently overwrote
+    // password-recovery with authenticated. This is the actual root cause of
+    // "a valid recovery link lands on Tracker instead of Reset Password."
+    describe('a confirmed recovery session stays sticky against later events (live-browser fix, 2026-07-11)', () => {
+      it('a second INITIAL_SESSION after PASSWORD_RECOVERY does not overwrite password-recovery with authenticated', async () => {
+        vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        const recoverySession = {
+          user: { id: 'user-12', email: 'sticky@example.com' },
+          access_token: 'tok-12',
+        };
+        supabaseMock.fire('PASSWORD_RECOVERY', recoverySession);
+        expect(store.getAuthState().status).toBe('password-recovery');
+
+        // The exact real-world reproduction: a second, later INITIAL_SESSION
+        // carrying the same (still-valid) session.
+        supabaseMock.fire('INITIAL_SESSION', recoverySession);
+
+        expect(store.getAuthState().status).toBe('password-recovery');
+      });
+
+      it('a later SIGNED_IN after PASSWORD_RECOVERY is also held, not just INITIAL_SESSION specifically', async () => {
+        vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        supabaseMock.fire('PASSWORD_RECOVERY', {
+          user: { id: 'user-13', email: 'sticky2@example.com' },
+          access_token: 'tok-13',
+        });
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-13', email: 'sticky2@example.com' },
+          access_token: 'tok-13',
+        });
+
+        expect(store.getAuthState().status).toBe('password-recovery');
+      });
+
+      it('a genuine SIGNED_OUT after PASSWORD_RECOVERY still correctly transitions to unauthenticated (the real success/abandon paths must keep working)', async () => {
+        vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        supabaseMock.fire('PASSWORD_RECOVERY', {
+          user: { id: 'user-14', email: 'ends@example.com' },
+          access_token: 'tok-14',
+        });
+        expect(store.getAuthState().status).toBe('password-recovery');
+
+        supabaseMock.fire('SIGNED_OUT', null);
+
+        expect(store.getAuthState()).toEqual({
+          status: 'unauthenticated',
+          user: null,
+          accessToken: null,
+        });
+      });
+
+      it('after that SIGNED_OUT, a later real sign-in resolves normally (the sticky filter itself gets cleared, not stuck forever)', async () => {
+        vi.stubGlobal('location', { hash: '#type=recovery', search: '' });
+        supabaseMock = makeAuthMock({ session: null });
+        isHostedAuthAvailableMock = true;
+
+        const store = await import('../../src/data/authStore.js');
+        await store.init();
+
+        supabaseMock.fire('PASSWORD_RECOVERY', {
+          user: { id: 'user-15', email: 'reset@example.com' },
+          access_token: 'tok-15',
+        });
+        supabaseMock.fire('SIGNED_OUT', null);
+        expect(store.getAuthState().status).toBe('unauthenticated');
+
+        supabaseMock.fire('SIGNED_IN', {
+          user: { id: 'user-16', email: 'newlogin@example.com' },
+          access_token: 'tok-16',
+        });
+
+        expect(store.getAuthState().status).toBe('authenticated');
+      });
+    });
+
     // Live-verification finding (2026-07-10, Browser Smoke Test): a real
     // expired/invalid recovery link's Supabase redirect carries NO `type=
     // recovery` at all — only `#error=access_denied&error_code=otp_expired

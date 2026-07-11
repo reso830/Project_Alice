@@ -91,8 +91,6 @@ function sessionToUserAndToken(session) {
 function applySession(session) {
   const { user, accessToken } = sessionToUserAndToken(session);
   state = { status: user ? 'authenticated' : 'unauthenticated', user, accessToken };
-  // TEMP DIAGNOSTIC (2026-07-11) — see init()'s matching comment.
-  console.debug('[045-debug] applySession()', { resultingStatus: state.status });
   notify();
 }
 
@@ -160,19 +158,21 @@ export async function init() {
   const guardWasArmed = hasRecoveryUrlMarker();
   let guardArmed = guardWasArmed;
   let guardTimer = null;
-
-  // TEMP DIAGNOSTIC (2026-07-11) — remove once the real-browser "recovery
-  // link lands on Tracker" investigation is resolved. Logs the exact URL
-  // state authStore saw at guard-arm time, and every subsequent auth event
-  // this init() run reacts to, so the actual event/timing sequence in a
-  // real deployed build can be observed directly instead of inferred from
-  // source-reading alone.
-  console.debug('[045-debug] init() guard check', {
-    guardWasArmed,
-    hash: typeof globalThis.location !== 'undefined' ? globalThis.location.hash : '(no location)',
-    search: typeof globalThis.location !== 'undefined' ? globalThis.location.search : '(no location)',
-    hasErrorMarker: hasRecoveryErrorMarker(),
-  });
+  // Live-browser finding (2026-07-11, via temporary diagnostic logging):
+  // a real deployed build can deliver a SECOND event — an extra
+  // INITIAL_SESSION — after PASSWORD_RECOVERY has already fired and
+  // resolved, contradicting research.md D1's assumption (based on a single
+  // registration's expected ordering) that PASSWORD_RECOVERY is the last
+  // word. The original design fully "opened the gate" the instant
+  // PASSWORD_RECOVERY resolved (`guardArmed = false`), so that second event
+  // fell straight through to `applySession()` and silently overwrote
+  // `password-recovery` with `authenticated` — main.js briefly mounted the
+  // Reset Password overlay, then immediately swapped it for Tracker.
+  // `recoverySessionActive` closes that gap: once true, only an explicit
+  // SIGNED_OUT (the real success/abandon paths' own `signOut()` call) is
+  // allowed through; every other event is ignored for the rest of this
+  // page load, regardless of what session it carries.
+  let recoverySessionActive = false;
 
   function disarmGuard() {
     guardArmed = false;
@@ -186,15 +186,14 @@ export async function init() {
     if (!guardArmed) return;
     disarmGuard();
     state = { status: 'recovery-expired', user: null, accessToken: null };
-    console.debug('[045-debug] resolveRecoveryExpired()', { state });
     notify();
   }
 
   function resolvePasswordRecovery(session) {
     disarmGuard();
+    recoverySessionActive = true;
     const { user, accessToken } = sessionToUserAndToken(session);
     state = { status: 'password-recovery', user, accessToken };
-    console.debug('[045-debug] resolvePasswordRecovery()', { state });
     notify();
   }
 
@@ -214,12 +213,6 @@ export async function init() {
   // Registered before awaiting getSession() (previously the reverse) so a
   // PASSWORD_RECOVERY event arriving during that await is never missed.
   supabase.auth.onAuthStateChange((evt, session) => {
-    console.debug('[045-debug] onAuthStateChange', {
-      evt,
-      guardArmed,
-      stateStatusBefore: state.status,
-      hasSessionUser: Boolean(session?.user),
-    });
     // Feature 020: while the visitor is in the portfolio demo, ignore
     // Supabase auth events. Demo is exited explicitly via `exitDemo()`
     // or by a page refresh (FR-005). Letting a SIGNED_IN/SIGNED_OUT
@@ -239,15 +232,21 @@ export async function init() {
       // applied, regardless of the event's name.
       return;
     }
-    console.debug('[045-debug] onAuthStateChange -> applySession (guard not armed)', { evt });
+    if (recoverySessionActive) {
+      // A confirmed recovery session is active — hold everything except a
+      // genuine sign-out (the success path's post-update signOut(), or the
+      // abandon path's close()-triggered one). See recoverySessionActive's
+      // own comment above for why this exists.
+      if (evt === 'SIGNED_OUT') {
+        recoverySessionActive = false;
+        applySession(session);
+      }
+      return;
+    }
     applySession(session);
   });
 
   const { data } = await supabase.auth.getSession();
-  console.debug('[045-debug] getSession() resolved', {
-    guardWasArmed,
-    hasSessionUser: Boolean(data?.session?.user),
-  });
   // Skip entirely if the guard was ever armed (whether still pending or
   // already resolved by an event) — once armed, the guard's own handlers
   // are the sole source of truth; `getSession()`'s result here would

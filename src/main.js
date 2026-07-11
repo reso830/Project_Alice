@@ -415,10 +415,6 @@ function mountConfigError() {
 }
 
 function render(state) {
-  // TEMP DIAGNOSTIC (2026-07-11) — remove alongside authStore.js's matching
-  // logs once the real-browser "recovery link lands on Tracker" issue is
-  // resolved.
-  console.debug('[045-debug] main.js render()', { status: state.status, welcomeMounted: _welcomeMounted, shellMounted: _shellMounted });
   if (_configErrorMounted) {
     return;
   }
