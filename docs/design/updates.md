@@ -69,15 +69,20 @@ copyright line) — see [`footer.md`](footer.md) for the full footer spec.
 
 ### Hosted — Download button
 ```
-[Alice logo] Project Alice  Your job search, organized.        [ ↓ Download  v1.8.0 ]
+[Alice logo] Project Alice  Your Career OS.                    [ ↓ Download Portable Alice ]
 ```
 - Element: `<a class="fdl-btn">`, OS-agnostic — points to the **latest GitHub
   release** (`https://github.com/reso830/Project_Alice/releases/latest`).
-- Label is simply **Download** + a muted mono version chip (`v1.8.0`, bound to
-  `APP_VERSION`). A download glyph leads.
+- Label is simply **Download Portable Alice**. A download glyph leads.
 - Style: translucent white surface (`rgba(255,255,255,.06)`), `1px` hairline
   border (`rgba(255,255,255,.14)`), `--r-sm`. **Hover → indigo** fill + border.
-- The version chip dims to `rgba(255,255,255,.55)` (→ `.8` on hover).
+
+> **No version number on this chip:** `APP_VERSION` (the running build's
+> version, bumped per-feature) and the actual latest cut GitHub Release
+> (bumped in batches) can drift apart — the link always resolves to
+> whatever release is actually live, so labeling the chip with `APP_VERSION`
+> could advertise a version the link doesn't deliver. The chip stays
+> version-agnostic; the real version is visible on the release page itself.
 
 > **OS handling:** a single link, deliberately platform-agnostic. Because Alice
 > is a web app, there are no per-OS binaries to disambiguate — the release page
@@ -85,7 +90,7 @@ copyright line) — see [`footer.md`](footer.md) for the full footer spec.
 
 ### Local — hosted link
 ```
-[Alice logo] Project Alice  Your job search, organized.        Open hosted version ↗
+[Alice logo] Project Alice  Your Career OS.                    Open hosted version ↗
 ```
 - Element: `<a class="fhosted">` — mono, muted (`rgba(255,255,255,.5)`), external
   arrow glyph; **hover → white**. No button chrome.

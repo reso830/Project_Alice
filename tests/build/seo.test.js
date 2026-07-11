@@ -6,13 +6,13 @@ describe('SEO meta (issue #139)', () => {
   const html = readFileSync('index.html', 'utf8');
 
   it('has a description and canonical link', () => {
-    expect(html).toContain('<meta name="description" content="Track every job application and surface the right next move — from first apply to signed offer.">');
+    expect(html).toContain('<meta name="description" content="Your Career OS — track every application and see how you match, all in one place.">');
     expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"\s*>/);
   });
 
   it('has Open Graph tags pointing at the static social-card image', () => {
     expect(html).toContain('<meta property="og:type" content="website">');
-    expect(html).toContain('<meta property="og:title" content="Project Alice — Your job search, organized.">');
+    expect(html).toContain('<meta property="og:title" content="Project Alice — Your Career OS">');
     expect(html).toMatch(/<meta property="og:image" content="https:\/\/[^"]+\/og-image\.png"\s*>/);
     expect(html).toContain('<meta property="og:image:width" content="1200">');
     expect(html).toContain('<meta property="og:image:height" content="630">');

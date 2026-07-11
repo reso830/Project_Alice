@@ -36,7 +36,7 @@ function createBrand() {
   tagline.className = 'footer__tagline';
   version.className = 'footer__version-inline';
   name.textContent = 'Project Alice';
-  tagline.textContent = 'Your job search, organized.';
+  tagline.textContent = 'Your Career OS.';
   version.textContent = displayVersion(APP_VERSION);
 
   line1.append(name, tagline);
@@ -55,16 +55,10 @@ function createModeControl(runtime) {
     link.textContent = 'Open hosted version ↗';
     link.setAttribute('aria-label', 'Open hosted version');
   } else {
-    const label = document.createElement('span');
-    const version = document.createElement('span');
-
     link.className = 'footer__download';
     link.href = RELEASES_URL;
-    link.setAttribute('aria-label', `Download Project Alice ${displayVersion(APP_VERSION)}`);
-    label.textContent = 'Download Portable Alice';
-    version.className = 'footer__download-version';
-    version.textContent = displayVersion(APP_VERSION);
-    link.append(label, version);
+    link.setAttribute('aria-label', 'Download Project Alice Portable');
+    link.textContent = 'Download Portable Alice';
   }
 
   link.target = '_blank';

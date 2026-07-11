@@ -1,6 +1,6 @@
-# Project Alice — Application Tracker
+# Project Alice — Your Career OS
 
-A local-first job application tracker built with vanilla JavaScript, Vite, and a SQLite-backed Express API. Review applications, inspect details, update statuses, star priority leads, copy saved job URLs, and archive records.
+A local-first Career OS built with vanilla JavaScript, Vite, and a SQLite-backed Express API. Track every application and see how you match — review applications, inspect details, update statuses, star priority leads, copy saved job URLs, and archive records.
 
 ## Features
 

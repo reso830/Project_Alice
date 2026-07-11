@@ -79,8 +79,8 @@ The page has **four** layout modes selectable via the `layout` Tweak (`diagonal`
 │                            │                        │
 │  [logo]  Project Alice     │   ╱  Hero slideshow    │
 │                            │  ╱   (navy slab)       │
-│  Your job search,          │ ╱                      │
-│  organized.                │╱                       │
+│  Your Career OS.           │ ╱                      │
+│                            │╱                       │
 │                            │                        │
 │  [Sign in →][Create][Demo] │                        │
 │                            │                        │
@@ -108,8 +108,8 @@ Rendered in `Welcome Tablet.html` by embedding `Welcome.html?layout=centered` in
 │            [logo]                    │
 │        Project Alice                 │
 │                                      │
-│       Your job search,               │
-│         organized.                   │
+│           Your Career OS.            │
+│                                      │
 │                                      │
 │   [Sign in →] [Create] [Demo]        │
 │                                      │
@@ -143,8 +143,8 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 │   [logo, 68px]     │  ← brand stack (left-aligned)
 │   Project Alice    │
 │                    │
-│   Your job search, │  ← headline
-│   organized.       │
+│   Your Career OS.  │  ← headline
+│                    │
 │                    │
 │                    │  ← flex spacer (margin-top: auto)
 │                    │
@@ -164,7 +164,7 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 
 - **Container** — `.mw`: `width: 100%; height: 100%; background: var(--warm); display: flex; flex-direction: column; padding: 96px 28px 56px`. The 96px top padding clears the dynamic island + status bar.
 - **Brand stack** — left-aligned column, `gap: 18px`. Logo 68×68 (`alice-sigil-full.svg`), wordmark Sora 700 / 32px / `-.6px` tracking.
-- **Headline** — 38px / `-1.2px` tracking / line-height 1.04 / `text-wrap: balance`. "organized." rendered in indigo with the same underline-glow `::after` as desktop.
+- **Headline** — 38px / `-1.2px` tracking / line-height 1.04 / `text-wrap: balance`. "Career OS." rendered in indigo with the same underline-glow `::after` as desktop.
 - **CTA group** — `margin-top: auto` anchors it to the lower half. Buttons are **full-width**, 12px radius, 16px / 20px padding, 15px font, vertical stack with 10px gap. Pulsing green dot on the ghost "Try the demo" button (`mw-pulse` 1.8s infinite).
 - No slideshow and no prototyping controls at this viewport. The mini footer remains visible. The Auth Modal is still mounted — tapping Sign in / Create account opens it in the same overlay used on desktop.
 
@@ -180,7 +180,7 @@ A simplified portrait screen — **not** a squished desktop. No slideshow, no di
 - Gap 14px (desktop) / 18px (mobile, stacked).
 
 ### 4.2 Headline
-- Copy: `Your job search,\n<em>organized.</em>`
+- Copy: `Your <em>Career OS.</em>` (single flowing line, no forced break; wraps naturally via `text-wrap: balance`)
 - Sora 700; desktop `clamp(40px, 5.8vw, 84px)`, mobile 38px.
 - Line-height `1.02`, tracking `-2px` (desktop) / `-1.2px` (mobile).
 - `text-wrap: balance`.

@@ -52,7 +52,7 @@ async function main() {
   ctx.font = wordmarkFont;
   const wordmarkWidth = ctx.measureText('Project Alice').width;
   ctx.font = taglineFont;
-  const taglineWidth = ctx.measureText('Your job search, organized.').width;
+  const taglineWidth = ctx.measureText('Your Career OS.').width;
   const textWidth = Math.max(wordmarkWidth, taglineWidth);
 
   const sigilSize = 210;
@@ -73,7 +73,7 @@ async function main() {
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
   ctx.font = taglineFont;
-  ctx.fillText('Your job search, organized.', textX, centerY + 42);
+  ctx.fillText('Your Career OS.', textX, centerY + 42);
 
   const buffer = await canvas.encode('png');
   const outPath = path.join(root, 'public/og-image.png');

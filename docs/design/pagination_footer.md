@@ -124,7 +124,7 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 **Desktop (≥ 640px)** — 3-column grid inside a max-width container:
 ```
 ┌─────────────────────────────────────────────────────┐
-│  [Alice icon] Project Alice  Your job search, org…  │  ← brand (full width)
+│  [Alice icon] Project Alice  Your Career OS.        │  ← brand (full width)
 │ ─────────────────────────────────────────────────── │  ← <hr>
 │  VERSION         STACK            FEEDBACK          │
 │  v0.3.0          Vanilla JS · Vite Report an issue  │
@@ -142,7 +142,7 @@ A persistent site footer rendered at the bottom of every page view. Dark-themed 
 
 | Section | Label | Content | Interactive? |
 |---|---|---|---|
-| Brand | — | Alice icon + "Project Alice" + "Your job search, organized." | No |
+| Brand | — | Alice icon + "Project Alice" + "Your Career OS." | No |
 | Version | `VERSION` | `v0.3.0`, `Built Apr 2026` | No |
 | Stack | `STACK` | `Vanilla JS · Vite`, `Vitest · ESLint` | No |
 | Feedback | `FEEDBACK` | "Report an issue", "Request a feature" | Yes (links) |

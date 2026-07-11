@@ -136,14 +136,13 @@ describe('WelcomePage — structure', () => {
     expect(text?.textContent).toBe('Project Alice');
   });
 
-  it('renders the headline with the fixed line break', () => {
+  it('renders the headline as a single flowing line, no forced break', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const headline = container.querySelector('.welcome__headline');
     expect(headline).not.toBeNull();
-    expect(headline.textContent).toContain('Your job search,');
-    expect(headline.textContent).toContain('organized.');
-    expect(headline.querySelector('br')).not.toBeNull();
+    expect(headline.textContent).toBe('Your Career OS.');
+    expect(headline.querySelector('br')).toBeNull();
   });
 
   it('renders the three CTAs in order (Sign In, Create Account, Try the demo)', () => {
@@ -160,12 +159,12 @@ describe('WelcomePage — structure', () => {
     expect(ctas[2].disabled).toBe(false);
   });
 
-  it('headline accents "organized." with an indigo em element', () => {
+  it('headline accents "Career OS." with an indigo em element', () => {
     WelcomePage.mount(container, { heroSlideshow: heroSlideshowStub });
 
     const accent = container.querySelector('.welcome__headline em.welcome__headline-accent');
     expect(accent).not.toBeNull();
-    expect(accent.textContent).toBe('organized.');
+    expect(accent.textContent).toBe('Career OS.');
   });
 
   it('renders the mini footer with version, issue links, repo link, and download chip sourced from appMeta', () => {
@@ -218,7 +217,7 @@ describe('WelcomePage — structure', () => {
     expect(links[4].classList.contains('welcome__footer-desktop-only')).toBe(true);
 
     // [5] download chip (desktop-only)
-    expect(links[5].textContent).toBe(`Download Alice Portable ${APP_VERSION}`);
+    expect(links[5].textContent).toBe('Download Alice Portable');
     expect(links[5].getAttribute('href')).toBe(
       'https://github.com/reso830/Project_Alice/releases/latest',
     );

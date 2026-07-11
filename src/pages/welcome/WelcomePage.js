@@ -218,11 +218,10 @@ function renderBrand({ theme = 'warm' } = {}) {
 function renderHeadline() {
   const headline = document.createElement('h1');
   headline.className = 'welcome__headline';
-  headline.append(document.createTextNode('Your job search,'));
-  headline.append(document.createElement('br'));
+  headline.append(document.createTextNode('Your '));
   const accent = document.createElement('em');
   accent.className = 'welcome__headline-accent';
-  accent.textContent = 'organized.';
+  accent.textContent = 'Career OS.';
   headline.append(accent);
   return headline;
 }
@@ -231,7 +230,7 @@ function renderSupportingCopy() {
   return el(
     'p',
     'welcome__supporting',
-    'Track every application and surface the right next move — from first apply to signed offer.',
+    'Track every application and see how you match — all in one place, on your terms.',
   );
 }
 
@@ -409,9 +408,9 @@ function renderFooterMeta() {
   repo.classList.add('welcome__footer-desktop-only');
 
   const download = makeExternalLink(
-    `Download Alice Portable ${APP_VERSION}`,
+    'Download Alice Portable',
     RELEASES_URL,
-    `Download Alice Portable ${APP_VERSION}`,
+    'Download Alice Portable',
   );
   download.classList.add('welcome__footer-download', 'welcome__footer-desktop-only');
   download.prepend(createDownloadIcon());

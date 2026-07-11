@@ -54,7 +54,7 @@ All copy is verbatim from source; version/license values resolve from `appMeta.j
 |---------|-------|---------|
 | Logo | `.footer__brand-icon` | `alice-sigil-full.svg` (`alt=""`, `aria-hidden="true"`) |
 | Name | `.footer__brand-name` | "Project Alice" |
-| Tagline | `.footer__tagline` | "Your job search, organized." |
+| Tagline | `.footer__tagline` | "Your Career OS." |
 
 ### Sections (`.footer__section`)
 Each is a `<section>` with an uppercase `.footer__label` and one or more
