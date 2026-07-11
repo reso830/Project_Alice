@@ -7,6 +7,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-07-11
+
+Final polish pass before the v2.0.0 milestone — repositions Alice as a "Career OS" across the website, README, and GitHub, alongside repo housekeeping and a Node.js runtime bump. (#141, #142, #143)
+
+### Changed
+
+- **"Career OS" repositioning** — the primary tagline moves from "Your job search, organized." to "Your Career OS." across the welcome hero, the app footer, `index.html` meta/Open Graph/Twitter tags, the generated OG social image, and README's title/opening line. GitHub repo description, homepage (now `alice-os.app`, was a stale preview URL), and topics updated to match. The headline stays aspirational positioning (AI describes implementation, not identity, per the issue's philosophy); supporting copy was written and then corrected during review to describe only shipped capabilities — application tracking and compatibility matching — after catching an early draft overselling unshipped cover-letter/interview-prep features. (#141, #142)
+- **Node.js bumped to 24.x** — `engines.node` moved from `20.x` to `24.x` after Vercel deprecated Node 20.x deployments; CI matrix now tests `22.x`/`24.x` instead of `20.x`/`22.x`. (#143)
+
+### Fixed
+
+- **Broken math rendering in `docs/compatibility_scoring.md`** — GitHub's markdown pipeline strips a layer of backslash-escaping from punctuation inside `$...$`/`$$...$$` math blocks before KaTeX runs, corrupting `\#`, `\,`, `\;`, `\!`, `\{`, `\}`, `\%`, and `\\` row-breaks. Affected Sections 2, 3, 5, 6, and 7, not just the originally reported Section 6. (#141)
+- **Unbalanced hero headline layout** — a hardcoded `<br>` forced "Your" onto its own line above "Career OS."; removed so the headline flows naturally via the existing `text-wrap: balance` CSS. (#142)
+
+### Removed
+
+- **`ISSUE-120-PLAN.md`** — a leftover ad-hoc planning doc for issue #120, already shipped in v1.12.2 and unreferenced anywhere. (#141)
+
 ## [1.15.0] — 2026-07-11
 
 Production readiness pass — a hosted-mode limitations banner on the Welcome page, SEO/social meta, security headers, and a Lighthouse accessibility/best-practices/performance baseline audit. (#139)
@@ -1704,7 +1722,8 @@ Calendar v2 patch — design polish + inline Day Details Panel pivot driven by t
 - Vitest test suite for core validation logic
 - ESLint v9 configuration
 
-[Unreleased]: https://github.com/reso830/Project_Alice/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/reso830/Project_Alice/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/reso830/Project_Alice/compare/v1.15.0...v2.0.0
 [1.15.0]: https://github.com/reso830/Project_Alice/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/reso830/Project_Alice/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/reso830/Project_Alice/compare/v1.13.0...v1.13.1
