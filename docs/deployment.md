@@ -406,9 +406,9 @@ projects created from 2024 onwards. No shared HS256 secret is required.
 
 In the Supabase dashboard, under **Authentication → URL Configuration**:
 
-- **Site URL** — set to the production URL (during 018 development this was
-  `https://project-alice-gamma.vercel.app`, but the canonical alias is what
-  matters; team-scoped preview URLs do not need to be the Site URL).
+- **Site URL** — set to the production URL, `https://alice-os.app` (the
+  custom domain configured on Vercel, added issue #139; team-scoped preview
+  URLs do not need to be the Site URL).
 - **Redirect URLs** — at minimum:
   - `https://<production-host>/**`
   - `https://<preview-host>/**` (e.g. `*.vercel.app/**` for preview deploys)

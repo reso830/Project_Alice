@@ -140,7 +140,7 @@ describe('Footer', () => {
     expect(footer.querySelector('.footer__download')).toBeNull();
     expect(link).not.toBeNull();
     expect(link.textContent).toBe('Open hosted version ↗');
-    expect(link.href).toBe('https://project-alice-gamma.vercel.app/');
+    expect(link.href).toBe('https://alice-os.app/');
   });
 
   it('uses visual labels without adding footer headings', () => {
