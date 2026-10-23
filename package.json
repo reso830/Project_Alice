@@ -9,9 +9,9 @@
     "build": "vite build",
     "build:portable": "node scripts/build-portable.mjs",
     "preview": "vite preview",
-    "server:dev": "nodemon server/index.js",
+    "server:dev": "node --watch server/index.js",
     "server:start": "node server/index.js",
-    "server:dev:hosted": "nodemon --exec \"node --env-file=.env.local\" server/index.js",
+    "server:dev:hosted": "node --watch --env-file=.env.local server/index.js",
     "server:start:hosted": "node --env-file=.env.local server/index.js",
     "db:init": "node server/db-init.js",
     "db:seed": "node server/db-seed.js",
@@ -27,9 +27,8 @@
   "devDependencies": {
     "eslint": "^9.0.0",
     "jsdom": "^29.0.2",
-    "nodemon": "^3.1.14",
-    "vite": "^8.0.16",
-    "vitest": "^4.1.11"
+    "vite": "^8.1.6",
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": "24.x"
