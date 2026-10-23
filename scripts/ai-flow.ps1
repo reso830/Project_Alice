@@ -478,7 +478,7 @@ function Update-RequirementsReadinessFromVerdicts {
 
 function ConvertTo-MarkdownCell {
     param([string]$Value)
-    return (($Value -replace '\r?\n', '<br>') -replace '\|', '\|').Trim()
+    return ((($Value -replace '\\', '\\') -replace '\|', '\|') -replace '\r\n?|\n', '<br>').Trim()
 }
 
 function Add-AiWorkflowFindingsFromReview {

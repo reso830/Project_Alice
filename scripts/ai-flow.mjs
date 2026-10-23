@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { escapeMarkdownCell } from './lib/markdown.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -546,10 +547,6 @@ ${note}
   console.log(`AI workflow log updated: ${workflowPath}`);
 }
 
-function markdownCell(value) {
-  return value.replace(/\r?\n/g, '<br>').replace(/\|/g, '\\|').trim();
-}
-
 function normalizeSeverity(value) {
   const upper = value.toUpperCase();
   if (['CRITICAL', 'P0', 'BLOCKER', 'BLOCKING'].includes(upper)) return 'CRITICAL';
@@ -613,7 +610,7 @@ function addFindingsFromReview(sectionHeading, raisedBy, logFile, allowedVerdict
   const rows = [];
   for (const finding of findings) {
     const parsed = parseFindingSeverity(finding);
-    const cell = markdownCell(parsed.text);
+    const cell = escapeMarkdownCell(parsed.text);
     if (existing.includes(cell)) continue;
     rows.push(`| ${nextId++} | ${parsed.severity} | New | ${cell} | ${raisedBy} |  |`);
   }

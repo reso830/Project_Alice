@@ -1,4 +1,5 @@
 export { STATUS_COLORS, STATUS_LABELS } from '../../shared/constants.js';
+import { validateEmail } from '../utils/validate.js';
 
 const ARRAY_FIELDS = [
   'experience',
@@ -10,7 +11,6 @@ const ARRAY_FIELDS = [
   'links',
 ];
 const STRING_FIELDS = ['firstName', 'lastName', 'city', 'phone', 'email', 'summary'];
-const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
 const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
@@ -435,8 +435,9 @@ export function validateProfile(data = {}, isNormalised = false) {
     errors.lastName = 'Last Name is required.';
   }
 
-  if (profile.email && !EMAIL_PATTERN.test(profile.email)) {
-    errors.email = 'Email must be a valid email address.';
+  if (profile.email) {
+    const emailError = validateEmail(profile.email);
+    if (emailError) errors.email = emailError;
   }
 
   profile.experience.forEach((entry, index) => {
