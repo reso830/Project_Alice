@@ -141,7 +141,7 @@ export function createApp({
   }
 
   // Catch-all route for unmatched API routes to ensure JSON 404 formatting consistent with API contract
-  app.all('/api/*', (_req, res) => {
+  app.all('/api/*splat', (_req, res) => {
     res.status(404).json({
       error: {
         code: 'NOT_FOUND',
