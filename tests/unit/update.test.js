@@ -728,6 +728,20 @@ describe('update route behavior', () => {
     expect(onShutdown).toHaveBeenCalledTimes(1);
   });
 
+  test('throttles repeated restart requests', async () => {
+    const { baseUrl } = await makeServer();
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const restart = await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+      expect(restart.response.status).toBe(409);
+    }
+
+    const throttled = await requestJson(baseUrl, '/api/update/restart', { method: 'POST' });
+
+    expect(throttled.response.status).toBe(429);
+    expect(throttled.body.error.code).toBe('UPDATE_RESTART_RATE_LIMITED');
+  });
+
   test('rejects cancel once a restart has been requested, preserving the staged update', async () => {
     const root = makeRoot();
     const onShutdown = vi.fn();

@@ -72,7 +72,9 @@ describe('Footer', () => {
   it('renders the license link to PolyForm in a new tab', () => {
     const footer = Footer.render();
     const links = [...footer.querySelectorAll('.footer__link')];
-    const licenseLink = links.find((l) => l.href?.includes('polyformproject.org'));
+    const licenseLink = links.find(
+      (link) => link.getAttribute('href') === 'https://polyformproject.org/licenses/noncommercial/1.0.0',
+    );
 
     expect(licenseLink).toBeTruthy();
     expect(licenseLink.textContent).toBe('PolyForm Noncommercial 1.0.0');

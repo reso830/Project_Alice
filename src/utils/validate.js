@@ -1,4 +1,3 @@
-const EMAIL_PATTERN = /^[^@]+@[^@]+\.[^@]+$/;
 const MONTH_YEAR_PATTERN = /^(\d{2})\/(\d{4})$/;
 const YEAR_PATTERN = /^\d{4}$/;
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
@@ -62,6 +61,17 @@ export function validateUrl(value) {
   }
 }
 
+export function isValidEmail(value) {
+  const atIndex = value.indexOf('@');
+
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) {
+    return false;
+  }
+
+  const dotIndex = value.indexOf('.', atIndex + 1);
+  return dotIndex > atIndex + 1 && dotIndex < value.length - 1;
+}
+
 export function validateEmail(value) {
   const trimmed = asString(value);
 
@@ -69,7 +79,7 @@ export function validateEmail(value) {
     return null;
   }
 
-  return EMAIL_PATTERN.test(trimmed) ? null : 'Email must be a valid email address.';
+  return isValidEmail(trimmed) ? null : 'Email must be a valid email address.';
 }
 
 // Deliberately does NOT trim (unlike asString/other validators here): a

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isValidEmail,
   validateEmail,
   validateMonthYear,
   validatePassword,
@@ -40,6 +41,10 @@ describe('validate utilities', () => {
     expect(validateEmail('ana@example.com')).toBeNull();
     expect(validateEmail('not-an-email')).toBe('Email must be a valid email address.');
     expect(validateEmail('')).toBeNull();
+  });
+
+  it('validates long malformed email addresses without regex backtracking', () => {
+    expect(isValidEmail(`ana@${'example'.repeat(10_000)}`)).toBe(false);
   });
 
   it('validates password minimum length', () => {

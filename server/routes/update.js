@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import zlib from 'node:zlib';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 
 import { APP_VERSION } from '../appVersion.js';
 import { readUpdateSettings, writeUpdateSettings } from '../portable/settings.js';
@@ -12,6 +13,8 @@ const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/reso830/Project_
 const CACHE_MS = 60 * 60 * 1000;
 const CHECK_TIMEOUT_MS = 1500;
 const DOWNLOAD_TIMEOUT_MS = 30 * 1000;
+const RESTART_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RESTART_RATE_LIMIT = 5;
 const READY_STATUS = 'ready-to-restart';
 export const PORTABLE_ZIP_RE = /^alice-v.*-win-x64\.zip$/i;
 const ACTIVE_UPDATE_STATUSES = new Set([
@@ -453,6 +456,18 @@ export function createUpdateRouter({
     cancelRequested: false,
   };
   const router = express.Router();
+  const restartRateLimiter = rateLimit({
+    windowMs: RESTART_RATE_LIMIT_WINDOW_MS,
+    limit: RESTART_RATE_LIMIT,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: {
+        code: 'UPDATE_RESTART_RATE_LIMITED',
+        message: 'Too many restart requests. Try again in a minute.',
+      },
+    },
+  });
 
   function clearStagedUpdate() {
     fs.rmSync(path.join(dataDir, 'update-staging'), { recursive: true, force: true });
@@ -648,7 +663,7 @@ export function createUpdateRouter({
     res.status(200).json(publicStatus(state, now));
   });
 
-  router.post('/restart', (_req, res) => {
+  router.post('/restart', restartRateLimiter, (_req, res) => {
     if (state.status.status !== READY_STATUS) {
       res.status(409).json({
         error: {
