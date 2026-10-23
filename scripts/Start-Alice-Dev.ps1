@@ -96,7 +96,7 @@ function New-KillOnCloseJob {
   # closes. Because this launcher process holds the only handle, the child tree
   # is torn down whenever the launcher exits for ANY reason — Ctrl+C, closing
   # the window (where the `finally` block does not run), or a crash — so no
-  # orphaned nodemon/vite processes are left holding ports 3001/5173.
+  # orphaned Node/Vite processes are left holding ports 3001/5173.
   Add-JobObjectType
   return [AliceLauncher.JobObject]::CreateKillOnClose()
 }
@@ -174,7 +174,7 @@ function Start-AliceProcess {
   [void]$process.Start()
 
   # Assign to the kill-on-close job right after start so the child — and any
-  # grandchildren it spawns (nodemon -> node, vite workers) — are captured.
+  # descendants it spawns (the Node watcher and Vite workers) — are captured.
   if ($JobHandle -ne [IntPtr]::Zero) {
     [AliceLauncher.JobObject]::Assign($JobHandle, $process.Handle)
   }
